@@ -248,8 +248,23 @@ names: `inningsScoreList.batTeamName` is a short code ("EZONE" for Central Zone,
 Africa A) that matches no full name under `normalizeTeamName` or `codeMatchesName`, so a name-based
 swap silently never fires. The payload and the `live-winprob` entries carry `team1Id`,
 `CricketMatch.Team` carries `teamId`, and `viewmodels/MatchLiveDetailAlignment.kt` compares those.
-`battingTeamIsTeam1` is not a substitute: it is `current.inningsId === isl[0].inningsId`, so it is
-false for a side batting its *second* innings even though that side is team1.
+`battingTeamIsTeam1` was not a substitute either: it compared `current.inningsId` with
+`isl[0].inningsId`, so it was false for a side batting its *second* innings even though that side is
+team1 — and `winProbFor` flips the probability on it, so for half of every Test the number was
+published against the opposition. It is now `current.batTeamId === isl[0].batTeamId`, the same field
+`firstInningsTeamId` already reads, with the innings-id form kept only as a fallback for a miniscore
+carrying no `batTeamId`.
+
+**A Test is three outcomes, so the complement of a win is not the other side's win.** `evaluateLong`
+returns a normalised (loss, draw, win) triple, and re-orienting it to team1 with `1 - batting` — as
+`winProbFor` did — hands the whole draw to the bowling side. Match 170667 published
+`winProbabilityTeam1 = 0.80` against a `drawProbability` of 0.41: a sum of 1.21, leaving the loss
+negative, which the bar clamped away rather than surfaced. The rule now lives in one place,
+`orientToTeam1` in `match-sync/src/main.js`, and subtracts the draw; the draw itself belongs to
+neither side and is never re-oriented. The device half
+(`MatchLiveDetailAlignment.alignedTo`) already did this correctly. The integration test carried its
+own copy of the orientation rule, which is why the suite stayed green through the bug — it now
+imports the exported one. **A mirrored rule is not a pinned rule.**
 
 **The commentary feed is chronological, and chronological is not cricket order.** Rows are ordered
 by `sort_key` (the Cricbuzz timestamp), so a Test's third-innings over 60 is genuinely newer than

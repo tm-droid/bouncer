@@ -710,7 +710,7 @@ export function teamInningsSides(isl, matchFormat) {
  * `team1` throughout means the FIRST-INNINGS batting side, matching the team1Score/team2Score
  * convention above so a consumer does not need a second mapping.
  */
-function liveSituation(ms, isl) {
+export function liveSituation(ms, isl) {
   const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
   const current = isl.find((e) => e.inningsId === ms.inningsId) ?? isl[isl.length - 1];
   if (!current) return null;
@@ -729,8 +729,13 @@ function liveSituation(ms, isl) {
     // Match on team name, not innings id: a Test has four innings entries, two of them belonging
     // to the side currently batting, so "some other innings" picks the wrong team.
     bowlingTeamName: isl.find((e) => e.batTeamName && e.batTeamName !== current.batTeamName)?.batTeamName ?? null,
-    // The batting side is team1 only while the first innings is in progress.
-    battingTeamIsTeam1: current.inningsId === isl[0]?.inningsId,
+    // Team identity, not innings identity. A Test side bats twice, so comparing innings ids called
+    // the third innings "not team1" even when the first-innings side was the one batting — and the
+    // only consumer flips the win probability on this, so it landed against the wrong team for half
+    // of every Test. Innings ids remain the fallback for a miniscore carrying no batTeamId.
+    battingTeamIsTeam1: current.batTeamId != null && isl[0]?.batTeamId != null
+      ? String(current.batTeamId) === String(isl[0].batTeamId)
+      : current.inningsId === isl[0]?.inningsId,
     // Which side "team1" means here, as an id the device can compare against its own team order.
     // The name cannot serve: Cricbuzz writes it as a short code that matches no full team name.
     firstInningsTeamId: isl[0]?.batTeamId != null ? String(isl[0].batTeamId) : null,

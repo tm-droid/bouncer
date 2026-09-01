@@ -667,6 +667,23 @@ function bothSidesKnown({ sides, teamStats, format, gender }) {
   });
 }
 
+/**
+ * The first-innings side's win probability, given the batting side's.
+ *
+ * A Test is three outcomes, so the complement of the batting side's win is `loss + draw`, not the
+ * bowling side's win. Returning it handed the whole draw to the bowling side and published pairs
+ * that sum past 1 — match 170667 read 0.80 against a 0.41 draw, which leaves the loss negative.
+ * The draw belongs to neither side and so is never re-oriented; it is only subtracted out.
+ *
+ * Exported so the orientation rule has exactly one definition. The integration test used to carry
+ * its own copy of it, which is why the suite stayed green through the bug above.
+ */
+export function orientToTeam1({ battingTeamWinProbability, drawProbability, battingTeamIsTeam1 }) {
+  if (battingTeamIsTeam1) return battingTeamWinProbability;
+  const other = 1 - (drawProbability ?? 0) - battingTeamWinProbability;
+  return Math.min(1, Math.max(0, other));
+}
+
 function winProbFor(detail, title, model) {
   const s = detail?.situation;
   if (!s) return null;
@@ -722,9 +739,12 @@ function winProbFor(detail, title, model) {
     });
   if (result.undetermined) return null;
 
-  const batting = result.battingTeamWinProbability;
   return {
-    team1WinProbability: s.battingTeamIsTeam1 ? batting : 1 - batting,
+    team1WinProbability: orientToTeam1({
+      battingTeamWinProbability: result.battingTeamWinProbability,
+      drawProbability: result.drawProbability,
+      battingTeamIsTeam1: s.battingTeamIsTeam1,
+    }),
     // A draw belongs to neither side, so unlike the win probability it is not re-oriented.
     drawProbability: result.drawProbability,
     confidence: result.confidence,

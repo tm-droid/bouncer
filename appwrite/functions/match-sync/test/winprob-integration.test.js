@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { evaluate, evaluateLong, evaluatePrematch, longFeatures, formatFromText, ballsRemainingFor, inningsBalls } from "../src/winprob.js";
 import { resolveMatchTeams } from "../src/teamnames.js";
+import { orientToTeam1 } from "../src/main.js";
+import { liveSituation } from "../src/cricbuzz.js";
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 
@@ -40,8 +42,9 @@ test("balls remaining falls back to the format budget when oversRem is absent", 
   );
 });
 
-// Mirrors winProbFor in main.js. Kept here rather than exported so main.js stays a function entry
-// point; the assertions below are about the orientation rule, which is the part that has bitten us.
+// The evaluate() half of winProbFor, ending in main.js's own `orientToTeam1`. This helper used to
+// re-implement that last step, so the suite stayed green while the real one handed a Test's whole
+// draw to the bowling side — a mirrored rule is not a pinned rule.
 function orient(situation, { model = null, title = "" } = {}) {
   const format = formatFromText(situation.matchFormat, title);
   const ballsRemaining = ballsRemainingFor({
@@ -63,9 +66,11 @@ function orient(situation, { model = null, title = "" } = {}) {
     model,
   });
   if (r.undetermined) return null;
-  return situation.battingTeamIsTeam1
-    ? r.battingTeamWinProbability
-    : 1 - r.battingTeamWinProbability;
+  return orientToTeam1({
+    battingTeamWinProbability: r.battingTeamWinProbability,
+    drawProbability: r.drawProbability,
+    battingTeamIsTeam1: situation.battingTeamIsTeam1,
+  });
 }
 
 /**
@@ -321,6 +326,64 @@ test("the opening over of a Test returns the priors, not a confident number", ()
   });
   assert.ok(Math.abs(opening.battingTeamWinProbability - priors[2]) < 0.01);
   assert.ok(Math.abs(opening.drawProbability - priors[1]) < 0.01);
+});
+
+test("re-orienting a Test subtracts the draw instead of handing it to the other side", () => {
+  // The published defect: match 170667 carried winProbabilityTeam1 0.80 against a 0.41 draw, a sum
+  // of 1.21 that leaves the loss negative. `1 - batting` is `loss + draw` in a three-outcome model.
+  const r = evaluateLong({ ...testSituation, model: longModel() });
+  const team1 = orientToTeam1({
+    battingTeamWinProbability: r.battingTeamWinProbability,
+    drawProbability: r.drawProbability,
+    battingTeamIsTeam1: false,
+  });
+  assert.ok(
+    Math.abs(team1 - (1 - r.drawProbability - r.battingTeamWinProbability)) < 1e-9,
+    "team1 must be the loss class, not loss + draw",
+  );
+  assert.ok(team1 + r.drawProbability <= 1 + 1e-9, `team1 ${team1} + draw ${r.drawProbability} > 1`);
+  assert.equal(
+    orientToTeam1({
+      battingTeamWinProbability: r.battingTeamWinProbability,
+      drawProbability: r.drawProbability,
+      battingTeamIsTeam1: true,
+    }),
+    r.battingTeamWinProbability,
+    "the batting side's own number is never re-oriented",
+  );
+});
+
+test("a limited-overs flip is unchanged — no draw to subtract", () => {
+  // The fix must reduce to the old arithmetic for every format that is not a Test.
+  assert.equal(
+    orientToTeam1({ battingTeamWinProbability: 0.62, drawProbability: null, battingTeamIsTeam1: false }),
+    1 - 0.62,
+  );
+});
+
+test("a Test's third innings is team1's when the same side batted first", () => {
+  // battingTeamIsTeam1 compared innings ids, so a side batting its SECOND innings read as not-team1
+  // and winProbFor flipped the probability onto the opposition for half of every Test.
+  const isl = [
+    { inningsId: 1, batTeamId: 9, batTeamName: "ENG", score: 325, wickets: 10 },
+    { inningsId: 2, batTeamId: 6, batTeamName: "IND", score: 241, wickets: 10 },
+    { inningsId: 3, batTeamId: 9, batTeamName: "ENG", score: 168, wickets: 4 },
+  ];
+  const ms = {
+    inningsId: 3,
+    matchScoreDetails: { matchFormat: "TEST", inningsScoreList: isl },
+    score: 168,
+    wickets: 4,
+  };
+  const s = liveSituation(ms, isl);
+  assert.equal(s.battingTeamIsTeam1, true, "England batted first and are batting again");
+  assert.equal(s.firstInningsTeamId, "9", "and team1 is still the side the device aligns on");
+
+  const second = liveSituation(
+    { ...ms, inningsId: 2 },
+    isl,
+  );
+  assert.equal(second.battingTeamIsTeam1, false, "India batting is genuinely not team1");
 });
 
 test("a fourth-innings Test chase carries a target rather than an empty one", () => {
