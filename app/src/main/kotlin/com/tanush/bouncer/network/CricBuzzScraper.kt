@@ -24,8 +24,6 @@ import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
-import com.tanush.bouncer.managers.TeamLogoManager
-import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.utils.BallMetric
 import com.tanush.bouncer.utils.ballMetricOf
 import com.tanush.bouncer.utils.startsWithBallLabel
@@ -355,10 +353,10 @@ class CricBuzzScraper {
             val scoreFields = parseMatchScoreFields(obj, info)
 
             val teams = listOf(
-                CricketMatch.Team(team1, scoreFields.team1Score, "", scoreFields.team1IsBatting,
-                    TeamLogoManager.getLogoUrl(team1), TeamAcronymManager.getAcronym(team1), scoreFields.team1Overs),
-                CricketMatch.Team(team2, scoreFields.team2Score, "", scoreFields.team2IsBatting,
-                    TeamLogoManager.getLogoUrl(team2), TeamAcronymManager.getAcronym(team2), scoreFields.team2Overs)
+                cricketTeam(team1, teamIdOf(info, "team1"), scoreFields.team1Score,
+                    scoreFields.team1Overs, scoreFields.team1IsBatting),
+                cricketTeam(team2, teamIdOf(info, "team2"), scoreFields.team2Score,
+                    scoreFields.team2Overs, scoreFields.team2IsBatting)
             )
 
             val matchScore = buildMatchScore(scoreFields)

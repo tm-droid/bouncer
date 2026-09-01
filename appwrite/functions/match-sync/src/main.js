@@ -730,6 +730,9 @@ function winProbFor(detail, title, model) {
     confidence: result.confidence,
     battingTeamName: s.battingTeamName,
     battingTeamIsTeam1: s.battingTeamIsTeam1,
+    // The side team1WinProbability is oriented to, as a Cricbuzz team id. Without it the device
+    // cannot tell this "team1" from its own teams[0], which is Cricbuzz's listing order.
+    team1Id: s.firstInningsTeamId ?? null,
     format,
   };
 }

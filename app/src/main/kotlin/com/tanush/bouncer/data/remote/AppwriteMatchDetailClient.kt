@@ -37,6 +37,10 @@ data class MatchLiveDetailPayload(
     // tell the two orders apart, and put each score against the wrong team whenever they differed.
     val team1Name: String? = null,
     val team2Name: String? = null,
+    // Cricbuzz team ids for the two slots above — the only reliable way to align them with this
+    // screen's team order, since the names are short codes.
+    val team1Id: String? = null,
+    val team2Id: String? = null,
     val currentRunRate: String? = null,
     val requiredRunRate: String? = null,
     val scorecard: Scorecard? = null,

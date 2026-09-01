@@ -16,15 +16,18 @@ import org.junit.Test
  */
 class MatchLiveDetailAlignmentTest {
 
-    private fun team(name: String) = CricketMatch.Team(name, "", "", false, null, "")
+    private fun team(name: String, id: String) =
+        CricketMatch.Team(name, "", "", false, null, "", "0.0", id)
 
-    private val teams = listOf(team("England"), team("India"))
+    // Central Zone vs East Zone, as Cricbuzz ids and names them — the codes on the innings list
+    // ("CZONE", "EZONE") match neither full name, which is why alignment is by id.
+    private val teams = listOf(team("Central Zone", "237"), team("East Zone", "235"))
 
     @Test
     fun `a payload already in our order is returned untouched`() {
         val payload = MatchLiveDetailPayload(
-            team1Score = "266 & 83/2", team1Name = "England",
-            team2Score = "214", team2Name = "India",
+            team1Score = "266 & 158", team1Id = "237",
+            team2Score = "266 & 125/5", team2Id = "235",
             winProbabilityTeam1 = 0.7,
         )
         assertSame(payload, payload.alignedTo(teams))
@@ -33,53 +36,56 @@ class MatchLiveDetailAlignmentTest {
     @Test
     fun `a payload oriented to the other side is swapped, probability included`() {
         val aligned = MatchLiveDetailPayload(
-            team1Score = "266 & 83/2", team1Overs = "25.1", team1Name = "India",
-            team2Score = "214", team2Overs = "71.4", team2Name = "England",
+            team1Score = "266 & 125/5", team1Overs = "33", team1Name = "EZONE", team1Id = "235",
+            team2Score = "266 & 158", team2Overs = "50.2", team2Name = "CZONE", team2Id = "237",
             winProbabilityTeam1 = 0.7,
         ).alignedTo(teams)
 
-        assertEquals("214", aligned.team1Score)
-        assertEquals("71.4", aligned.team1Overs)
-        assertEquals("England", aligned.team1Name)
-        assertEquals("266 & 83/2", aligned.team2Score)
-        assertEquals("India", aligned.team2Name)
+        assertEquals("266 & 158", aligned.team1Score)
+        assertEquals("50.2", aligned.team1Overs)
+        assertEquals("CZONE", aligned.team1Name)
+        assertEquals("237", aligned.team1Id)
+        assertEquals("266 & 125/5", aligned.team2Score)
+        assertEquals("235", aligned.team2Id)
         assertEquals(0.3, aligned.winProbabilityTeam1!!, 1e-9)
     }
 
     @Test
     fun `a swap takes the draw out of the other side's share`() {
         val aligned = MatchLiveDetailPayload(
-            team1Name = "India", team2Name = "England",
+            team1Id = "235", team2Id = "237",
             winProbabilityTeam1 = 0.5, winProbabilityDraw = 0.2,
         ).alignedTo(teams)
-        // The bar computes the second segment as 1 - draw - team1, so the swap must match it.
+        // The bar computes its second segment as 1 - draw - team1, so the swap must match it.
         assertEquals(0.3, aligned.winProbabilityTeam1!!, 1e-9)
         assertEquals(0.2, aligned.winProbabilityDraw!!, 1e-9)
     }
 
     @Test
-    fun `an unknown or missing name leaves the payload alone`() {
-        val unknown = MatchLiveDetailPayload(team1Name = "Australia", team1Score = "100/2")
+    fun `an unknown or missing id leaves the payload alone`() {
+        val unknown = MatchLiveDetailPayload(team1Id = "999", team1Score = "100/2")
         assertSame(unknown, unknown.alignedTo(teams))
-        val unnamed = MatchLiveDetailPayload(team1Score = "100/2")
-        assertSame(unnamed, unnamed.alignedTo(teams))
+        val unidentified = MatchLiveDetailPayload(team1Score = "100/2")
+        assertSame(unidentified, unidentified.alignedTo(teams))
     }
 
     @Test
-    fun `name matching ignores punctuation and case`() {
-        assertTrue(serverTeam1IsSecondTeam("india", teams))
-        assertFalse(serverTeam1IsSecondTeam("England", teams))
+    fun `a match cached before team ids existed is left alone`() {
+        val idless = listOf(team("Central Zone", ""), team("East Zone", ""))
+        val payload = MatchLiveDetailPayload(team1Id = "235", team1Score = "266 & 125/5")
+        assertSame(payload, payload.alignedTo(idless))
+    }
+
+    @Test
+    fun `the id decides which side the server means`() {
+        assertTrue(serverTeam1IsSecondTeam("235", teams))
+        assertFalse(serverTeam1IsSecondTeam("237", teams))
     }
 
     @Test
     fun `the aggregate file is swapped when its team1 is our second team`() {
-        // Batting side is our teams[0], and the file says the batting side is NOT its team1 —
-        // so the file's team1 is our teams[1].
         val probability = WinProbabilityStore.Probability(
-            team1Percent = 70.0,
-            drawPercent = null,
-            battingTeamName = "England",
-            battingTeamIsTeam1 = false,
+            team1Percent = 70.0, drawPercent = null, team1Id = "235",
         )
         assertEquals(30.0, probability.alignedTo(teams).team1Percent, 1e-9)
     }
@@ -87,10 +93,7 @@ class MatchLiveDetailAlignmentTest {
     @Test
     fun `the aggregate file is left alone when the two orders agree`() {
         val probability = WinProbabilityStore.Probability(
-            team1Percent = 70.0,
-            drawPercent = 10.0,
-            battingTeamName = "England",
-            battingTeamIsTeam1 = true,
+            team1Percent = 70.0, drawPercent = 10.0, team1Id = "237",
         )
         assertSame(probability, probability.alignedTo(teams))
     }

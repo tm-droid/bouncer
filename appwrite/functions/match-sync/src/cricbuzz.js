@@ -610,9 +610,11 @@ export function parseLiveDetail(liveHtml) {
       team1Score: null,
       team1Overs: null,
       team1Name: null,
+      team1Id: null,
       team2Score: null,
       team2Overs: null,
       team2Name: null,
+      team2Id: null,
       currentRunRate: null,
       requiredRunRate: null,
       status: null,
@@ -639,9 +641,11 @@ export function parseLiveDetail(liveHtml) {
     team1Score: sides[0]?.score ?? null,
     team1Overs: sides[0]?.overs ?? null,
     team1Name: sides[0]?.name ?? null,
+    team1Id: sides[0]?.id ?? null,
     team2Score: sides[1]?.score ?? null,
     team2Overs: sides[1]?.overs ?? null,
     team2Name: sides[1]?.name ?? null,
+    team2Id: sides[1]?.id ?? null,
     currentRunRate: ms.currentRunRate != null ? String(ms.currentRunRate) : null,
     requiredRunRate: ms.requiredRunRate != null ? String(ms.requiredRunRate) : null,
     status: ms.status ? String(ms.status) : null,
@@ -683,6 +687,9 @@ export function teamInningsSides(isl, matchFormat) {
     const last = entries[entries.length - 1];
     return {
       name: name || null,
+      // The id is what the device aligns on: `batTeamName` is a short code ("EZONE", "RSAA") that
+      // matches no full team name, while this is the same id Cricbuzz puts on matchInfo.team1/2.
+      id: last.batTeamId != null ? String(last.batTeamId) : null,
       score: entries
         .map((e) =>
           multiDay && Number(e.wickets) >= ALL_OUT_WICKETS ? `${e.score}` : `${e.score}/${e.wickets}`
@@ -724,6 +731,9 @@ function liveSituation(ms, isl) {
     bowlingTeamName: isl.find((e) => e.batTeamName && e.batTeamName !== current.batTeamName)?.batTeamName ?? null,
     // The batting side is team1 only while the first innings is in progress.
     battingTeamIsTeam1: current.inningsId === isl[0]?.inningsId,
+    // Which side "team1" means here, as an id the device can compare against its own team order.
+    // The name cannot serve: Cricbuzz writes it as a short code that matches no full team name.
+    firstInningsTeamId: isl[0]?.batTeamId != null ? String(isl[0].batTeamId) : null,
     runsScored: num(current.score),
     wicketsLost: num(current.wickets),
     ballsBowled,

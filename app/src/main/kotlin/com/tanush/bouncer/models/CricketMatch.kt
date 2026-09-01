@@ -171,7 +171,12 @@ data class CricketMatch(
         val isBatting: Boolean,
         val logoUrl: String?,
         val acronym: String = "",
-        val overs: String = "0.0"
+        val overs: String = "0.0",
+        // Cricbuzz's own team id. The server orients its live payload to the first-innings batting
+        // side and names that side with a short code ("EZONE", "RSAA") that matches no full name,
+        // so the id is the only thing the two orders can be compared on. Blank for a match parsed
+        // before this existed, which reads as "unknown" and leaves the payload as it arrived.
+        val teamId: String = ""
     )
 
     @Serializable

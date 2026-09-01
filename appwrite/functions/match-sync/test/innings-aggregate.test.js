@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { teamInningsSides } from "../src/cricbuzz.js";
 
 // `inningsScoreList` as Cricbuzz publishes it: one entry per innings, flat, in innings order.
+const TEAM_IDS = { India: "1", England: "2", Australia: "3", "South Africa": "4" };
 const inn = (inningsId, batTeamName, score, wickets, overs) => ({
-  inningsId, batTeamName, score, wickets, overs,
+  inningsId, batTeamName, batTeamId: TEAM_IDS[batTeamName], score, wickets, overs,
 });
 
 test("a limited-overs match keeps the shape it always had", () => {
@@ -13,8 +14,8 @@ test("a limited-overs match keeps the shape it always had", () => {
     inn(2, "England", 187, 8, 35.1),
   ], "ODI");
   assert.deepEqual(sides, [
-    { name: "India", score: "248/3", overs: "42.3" },
-    { name: "England", score: "187/8", overs: "35.1" },
+    { name: "India", id: "1", score: "248/3", overs: "42.3" },
+    { name: "England", id: "2", score: "187/8", overs: "35.1" },
   ]);
 });
 
@@ -30,8 +31,8 @@ test("a Test side that has batted twice carries both innings", () => {
     inn(3, "India", 83, 2, 25.1),
   ], "TEST");
   // Indexing the flat list as [0]/[1] dropped this third entry entirely, which is the bug.
-  assert.deepEqual(sides[0], { name: "India", score: "266 & 83/2", overs: "25.1" });
-  assert.deepEqual(sides[1], { name: "England", score: "214", overs: "71.4" });
+  assert.deepEqual(sides[0], { name: "India", id: "1", score: "266 & 83/2", overs: "25.1" });
+  assert.deepEqual(sides[1], { name: "England", id: "2", score: "214", overs: "71.4" });
 });
 
 test("a fourth innings lands on the side that is batting it", () => {
@@ -44,6 +45,19 @@ test("a fourth innings lands on the side that is batting it", () => {
   assert.equal(sides[0].score, "400/8 & 180/4");
   assert.equal(sides[1].score, "250 & 120/3");
   assert.equal(sides[1].overs, "33.4");
+});
+
+test("the ids come through, since the names are short codes the device cannot match", () => {
+  const sides = teamInningsSides([
+    { inningsId: 1, batTeamName: "CZONE", batTeamId: 237, score: 266, wickets: 10, overs: 80.1 },
+    { inningsId: 2, batTeamName: "EZONE", batTeamId: 235, score: 266, wickets: 10, overs: 57 },
+    { inningsId: 3, batTeamName: "CZONE", batTeamId: 237, score: 158, wickets: 10, overs: 50.2 },
+    { inningsId: 4, batTeamName: "EZONE", batTeamId: 235, score: 125, wickets: 5, overs: 33 },
+  ], "TEST");
+  assert.deepEqual(sides, [
+    { name: "CZONE", id: "237", score: "266 & 158", overs: "50.2" },
+    { name: "EZONE", id: "235", score: "266 & 125/5", overs: "33" },
+  ]);
 });
 
 test("the side order is first-innings side first, and both are named", () => {

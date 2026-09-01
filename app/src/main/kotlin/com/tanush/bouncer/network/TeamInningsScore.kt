@@ -1,9 +1,13 @@
 package com.tanush.bouncer.network
 
 import com.google.gson.JsonObject
+import com.tanush.bouncer.managers.TeamAcronymManager
+import com.tanush.bouncer.managers.TeamLogoManager
+import com.tanush.bouncer.models.CricketMatch
 
 /**
- * How a side's score is written when it has batted more than once.
+ * The team fields the match list reads out of Cricbuzz's flight payload: the score of a side that
+ * has batted more than once, its id, and the assembled team.
  *
  * Its own file because CricBuzzScraper.kt is at detekt's file-level TooManyFunctions threshold, and
  * because `match-sync/src/cricbuzz.js` holds the same rule for the detail payload — the two are
@@ -51,3 +55,24 @@ internal fun teamInningsScore(scoreObj: JsonObject, key: String, multiDay: Boole
     }.joinToString(" & ")
     return TeamInningsScore(score, innings.lastOrNull()?.get("overs")?.asString ?: "")
 }
+
+/**
+ * Cricbuzz's id for one side of a fixture, or "" when the payload does not name it.
+ *
+ * Carried on `CricketMatch.Team` because the live detail payload is oriented by team id — its team
+ * names are short codes ("EZONE", "RSAA") that match no full name. See MatchLiveDetailAlignment.
+ */
+internal fun teamIdOf(info: JsonObject, key: String): String =
+    info.getAsJsonObject(key)?.get("teamId")?.asString ?: ""
+
+/** One side of a fixture as the app models it, with the branding the managers hold for its name. */
+internal fun cricketTeam(
+    name: String,
+    id: String,
+    score: String,
+    overs: String,
+    isBatting: Boolean,
+): CricketMatch.Team = CricketMatch.Team(
+    name, score, "", isBatting, TeamLogoManager.getLogoUrl(name),
+    TeamAcronymManager.getAcronym(name), overs, id,
+)

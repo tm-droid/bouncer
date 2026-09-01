@@ -44,6 +44,8 @@ object WinProbabilityStore {
         val prematch: Boolean? = null,
         val battingTeamName: String? = null,
         val battingTeamIsTeam1: Boolean? = null,
+        // Cricbuzz id of the side team1WinProbability is oriented to (the first-innings side).
+        val team1Id: String? = null,
         val format: String? = null,
     )
 
@@ -56,9 +58,8 @@ object WinProbabilityStore {
         val drawPercent: Double?,
         val isPrematch: Boolean = false,
         // "team1" is the server's first-innings batting side, not necessarily the match's teams[0].
-        // These two carry enough to tell which is which; see MatchLiveDetailAlignment.
-        val battingTeamName: String? = null,
-        val battingTeamIsTeam1: Boolean? = null,
+        // [team1Id] names that side by Cricbuzz id; see MatchLiveDetailAlignment.
+        val team1Id: String? = null,
     )
 
     @Serializable
@@ -112,8 +113,7 @@ object WinProbabilityStore {
                         team1Percent = (team1 * 100.0).coerceIn(0.0, 100.0),
                         drawPercent = entry.drawProbability?.let { (it * 100.0).coerceIn(0.0, 100.0) },
                         isPrematch = entry.prematch == true,
-                        battingTeamName = entry.battingTeamName,
-                        battingTeamIsTeam1 = entry.battingTeamIsTeam1,
+                        team1Id = entry.team1Id,
                     )
                 }
             }.toMap()
