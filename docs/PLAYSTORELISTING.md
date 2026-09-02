@@ -84,7 +84,7 @@ Breadcrumb PII: `HttpClientProvider` logs full request URL (e.g. `https://api.gr
 These items must appear in the Privacy Policy:
 
 1. **Sentry crash reporting** — crash logs, ANRs, performance traces, session replay (masked), screenshots on crash, HTTP URLs, SQL query patterns, file I/O patterns
-2. **External LLM calls** — match context (team names, player names, ball-by-ball scores) sent to Groq (groq.com), Cerebras (cerebras.ai), SambaNova (sambanova.ai) for AI ball commentary generation. No user identity attached.
+2. **External LLM calls** — match context (team names, player names, ball-by-ball scores) is sent to Groq (groq.com), Cerebras (cerebras.ai) and SambaNova (sambanova.ai) for AI ball commentary generation. Since 2026-08-04 these calls are made by the Appwrite backend, not by the device, and no user identity is attached.
 3. **Highlightly API** — team names sent to Highlightly for fuzzy match highlight lookup
 4. **Firebase Cloud Messaging** — device registers with FCM (Google) to receive push notifications for match events. FCM token not forwarded to any backend.
 5. **Appwrite device sync** — anonymous device UUID synced to Appwrite cloud for favourite teams persistence
@@ -94,68 +94,82 @@ These items must appear in the Privacy Policy:
 ## Store Listing Content
 
 ### Short Description
-**63 chars (limit: 80)**
+**70 chars (limit: 80)**
 
 ```
-Live cricket scores, AI commentary & win probability
+It hits different. Live cricket scores, commentary and win probability
 ```
+
+Alternates:
+- `Live cricket scores, ball-by-ball commentary and win probability in one app` (75)
+- `Cricket that hits different — live scores, commentary, win probability` (70)
+
+"It hits different" is the tagline used on the closing beat of the ad and the
+Play Store showcase video. Keep store copy and video on the same line.
 
 ---
 
 ### Full Description
-**Paste into Play Console → Store listing → Full description**
+**~2,000 chars (limit: 4,000) — paste into Play Console → Store listing → Full description**
 
 ```
-Bouncer brings cricket intelligence to your fingertips with real-time live scores, AI-powered ball commentary, and a machine learning win probability engine.
+It hits different.
 
-LIVE MATCH COVERAGE
-Follow every ball with live scores, ball-by-ball commentary, and full scorecards. Track current batsmen, bowling figures, and partnership stats. Match flow shows DRS reviews, powerplays, and impact substitutions — sourced from CricBuzz and ESPNCricinfo.
+Bouncer follows the cricket, not the clutter. Live scores, ball-by-ball commentary, full scorecards and the numbers that actually explain a match — in one fast, quiet app.
 
-AI BALL COMMENTARY
-Every delivery gets AI-generated commentary that blends insights from two data sources. Powered by Llama 3.3 70B with automatic failover across Groq, Cerebras, and SambaNova. Commentary is shared across users for near-zero latency delivery.
+LIVE SCORES
+Live, upcoming and recent matches on a single screen, refreshed as the game moves. Tests, ODIs, T20s, The Hundred and domestic competitions — and a Test side's score shows both innings, not just the last one.
 
-WIN PROBABILITY ENGINE
-A custom neural network trained on historical Cricsheet data calculates real-time win probability for the chasing team after every ball. The model evaluates 35 contextual features: wickets lost, run rates, recent momentum, team strength ratios, and pressure metrics. Falls back to a Monte Carlo simulation while the model warms up.
+BALL-BY-BALL COMMENTARY
+Every delivery, in order, grouped by over, with wickets and boundaries called out as they happen.
 
-SMART NOTIFICATIONS
-Get alerted the moment it matters: wicket falls (with dismissal type, bowler, runs), boundaries, centuries, half-centuries, and 5-wicket hauls. Configure notifications per match — mute noisy matches, set quiet hours globally.
+WIN PROBABILITY
+Live win probability that updates as the match turns, plus a swing chart showing where the game actually changed.
 
-HOME SCREEN WIDGETS
-A live match score widget in three sizes (2×1, 3×2, 4×2) shows the current score, run rate, and team names. A countdown widget shows time to the next scheduled match. Lock screen widget support on Android 14+.
+FULL SCORECARDS
+Batting and bowling cards, extras, fall of wickets and partnerships, run rate, required rate and projected score.
 
-PLAYER INTELLIGENCE
-Browse player profiles with career statistics, recent form, and batting and bowling averages. Compare any two players head-to-head. View complete squad rosters for every team.
+HIGHLIGHTS AND NEWS
+Highlight clips from the matches you're following, plus cricket news in the app.
 
-SERIES & STANDINGS
-Follow IPL, international, and bilateral series. Points tables update in real time. Browse upcoming fixtures and past results by series.
+PLAYERS AND SERIES
+Player profiles with career numbers and recent form, side-by-side player comparison, series pages, fixtures and points tables.
 
-HIGHLIGHTS
-Watch key match moments and video highlights sourced automatically from Highlightly. Browse by match or series.
+FOLLOW WHAT YOU CARE ABOUT
+Pick your favourite teams, set match reminders, and get notifications only for the matches you subscribe to.
 
-ANDROID AUTO
-Take the score with you on the road via Android Auto.
+ON YOUR HOME SCREEN AND IN YOUR CAR
+Home-screen and lock-screen widgets, a countdown widget for the next match, an ongoing live-score notification you can pin, and Android Auto support for scores on the drive.
 
-OFFLINE-CAPABLE
-Aggressive local caching with Room SQLite keeps the app fast even on poor connections. WorkManager background sync keeps data fresh when the app is closed.
+BUILT TO STAY OUT OF THE WAY
+Light and dark themes that both look right, offline caching so the last score is there when signal isn't, and no account to create. Open the app and the cricket is there.
 
-GLASSMORPHISM DESIGN
-Modern glassmorphism visual language with Material You dynamic theming that adapts to your wallpaper.
-
-IPL · T20I · ODI · Test · International · Bilateral Series
+No sign-up. No clutter. Just the match.
 ```
+
+**Claims discipline.** Every line above is backed by shipped code. Do not
+reintroduce the copy this block replaced: "Powered by Llama 3.3 70B / Groq,
+Cerebras, SambaNova" (device keys removed 2026-08-04 — generation is server-side,
+and most stored commentary rows are raw Cricbuzz passthrough), "custom neural
+network ... 35 contextual features ... Monte Carlo fallback" (overstates the
+`bouncer-win-probability` function), and "GLASSMORPHISM DESIGN / Material You
+dynamic theming" (removed by the August 2026 restraint pass).
 
 ---
 
 ### What's New
-**~380 chars (limit: 500)**
+**~390 chars (limit: 500)**
 
 ```
-• Fixed AI commentary verification — unverified responses no longer cached
-• Win probability: ML dispatcher and format propagation fixes
-• Match flow: DRS reviews, powerplays, impact substitutions now shown
-• Pre-match: pitch reports and team news from ESPNCricinfo
-• Player recent form from Cricbuzz
-• Toss result and umpire details displayed
+First release.
+
+• Live scores for Tests, ODIs, T20s, The Hundred and domestic cricket
+• Ball-by-ball commentary, in match order
+• Live win probability with a swing chart
+• Full scorecards: extras, fall of wickets, partnerships
+• Highlights, news, player profiles and comparison
+• Home-screen, lock-screen and countdown widgets
+• Android Auto, plus light and dark themes
 ```
 
 ---
