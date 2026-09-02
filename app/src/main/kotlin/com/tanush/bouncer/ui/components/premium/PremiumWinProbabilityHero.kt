@@ -30,12 +30,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.BackgroundBase
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.LiveRed
@@ -156,7 +158,7 @@ fun PremiumWinProbabilityHero(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "WIN PROBABILITY",
+                text = stringResource(R.string.common_win_probability),
                 color = TextSecondary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black,

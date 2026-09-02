@@ -32,11 +32,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.tanush.bouncer.R
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
@@ -80,7 +82,7 @@ fun TeamDetailScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.common_back),
                             tint = colors.onSurface,
                         )
                     }
@@ -141,7 +143,7 @@ private fun TeamDetailContent(
             item(key = "no_matches") {
                 EmptyStateV2(
                     icon = Icons.Outlined.SportsCricket,
-                    title = "No current matches",
+                    title = stringResource(R.string.teams_no_current_matches),
                     subtitle = "Live, upcoming and recent $teamName matches will appear here",
                 )
             }

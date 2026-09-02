@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.core.content.ContextCompat
+import androidx.glance.LocalContext
 import com.tanush.bouncer.R
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -737,7 +738,7 @@ fun WidgetLoadingLayout(
             ) {}
             Spacer(modifier = GlanceModifier.height(WidgetTheme.spacingSmall))
             androidx.glance.text.Text(
-                text = "Loading...",
+                text = LocalContext.current.getString(R.string.widget_loading),
                 style = WidgetTypography.bodyMedium
             )
         }
@@ -805,7 +806,7 @@ fun WidgetEmptyLayout(
             )
             Spacer(modifier = GlanceModifier.height(WidgetTheme.spacingXSmall))
             androidx.glance.text.Text(
-                text = "Tap to open app",
+                text = LocalContext.current.getString(R.string.widget_tap_to_open_app),
                 style = WidgetTypography.labelSmall
             )
         }

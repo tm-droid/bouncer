@@ -32,11 +32,13 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
@@ -113,7 +115,7 @@ fun HighlightMomentsCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Key Moments",
+                        text = stringResource(R.string.moments_title),
                         color = colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
@@ -190,7 +192,7 @@ fun HighlightMomentsCard(
                     fontSize = 10.sp
                 )
                 Text(
-                    text = "overs",
+                    text = stringResource(R.string.moments_overs),
                     color = colors.textMuted,
                     fontSize = 10.sp
                 )
@@ -384,7 +386,7 @@ private fun ImpactIndicator(impact: Float) {
         }
         
         Text(
-            text = "IMPACT",
+            text = stringResource(R.string.moments_impact),
             color = colors.textMuted,
             fontSize = 7.sp,
             letterSpacing = 0.5.sp
@@ -468,7 +470,7 @@ fun FeaturedMomentCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "MOMENT OF THE MATCH",
+                            text = stringResource(R.string.moments_moment_of_the_match),
                             color = hierarchy.secondary.primary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
@@ -561,7 +563,7 @@ fun FeaturedMomentCard(
                         IconButton(onClick = onLike) {
                             Icon(
                                 imageVector = Icons.Filled.FavoriteBorder,
-                                contentDescription = "Like",
+                                contentDescription = stringResource(R.string.moments_like),
                                 tint = colors.statusLive.copy(alpha = 0.7f)
                             )
                         }
@@ -570,7 +572,7 @@ fun FeaturedMomentCard(
                         IconButton(onClick = onShare) {
                             Icon(
                                 imageVector = Icons.Filled.Share,
-                                contentDescription = "Share",
+                                contentDescription = stringResource(R.string.common_share),
                                 tint = colors.statusInfo.copy(alpha = 0.7f)
                             )
                         }

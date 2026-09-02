@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tanush.bouncer.R
 import com.tanush.bouncer.viewmodels.PointsTableViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,7 +68,7 @@ fun PointsTableScreen(
 
     Scaffold(
         topBar = {
-            BouncerTopBarV2(title = "Points Table", showBack = true, onBack = onBackClick)
+            BouncerTopBarV2(title = stringResource(R.string.points_points_table), showBack = true, onBack = onBackClick)
         },
         containerColor = colors.background,
     ) { innerPadding ->
@@ -97,7 +99,7 @@ fun PointsTableScreen(
                     Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                         EmptyStateV2(
                             icon = Icons.Outlined.TableChart,
-                            title = "No standings available",
+                            title = stringResource(R.string.points_no_standings_available),
                             subtitle = error ?: "",
                             onRetry = viewModel::retry,
                         )

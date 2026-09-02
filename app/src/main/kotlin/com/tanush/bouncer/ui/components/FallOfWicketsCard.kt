@@ -21,10 +21,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.abs
 import io.sentry.Sentry
@@ -463,7 +465,7 @@ private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        text = "Wickets",
+                        text = stringResource(R.string.common_wickets),
                         color = colors.textTertiary,
                         fontSize = 9.sp
                     )
@@ -477,7 +479,7 @@ private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        text = "Avg Partnership",
+                        text = stringResource(R.string.fow_avg_partnership),
                         color = colors.textTertiary,
                         fontSize = 9.sp
                     )

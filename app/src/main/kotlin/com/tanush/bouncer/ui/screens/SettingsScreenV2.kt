@@ -39,6 +39,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.tanush.bouncer.R
 import com.tanush.bouncer.data.MatchesResponseCache
 import com.tanush.bouncer.services.MatchCacheService
 import kotlinx.coroutines.Dispatchers
@@ -121,7 +123,7 @@ fun SettingsScreenV2(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Settings", style = typography.titleMedium) },
+                title = { Text(stringResource(R.string.common_settings), style = typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -146,26 +148,26 @@ fun SettingsScreenV2(
             item {
                 Column(Modifier.padding(horizontal = spacing.lg)) {
                     SettingsItemV2(
-                        icon = Icons.Default.Notifications, title = "Live Match Alerts",
-                        subtitle = "Get notified when your favorite team is playing",
+                        icon = Icons.Default.Notifications, title = stringResource(R.string.settings_live_match_alerts),
+                        subtitle = stringResource(R.string.settings_get_notified_when_your_favorite_team),
                         trailing = SettingsTrailing.Toggle(liveNotifications),
                         onClick = { togglePref(PreferencesHelper.KEY_LIVE_NOTIFICATIONS, liveNotifications) { liveNotifications = it } },
                     )
                     SettingsItemV2(
-                        icon = Icons.Default.Star, title = "Boundary Alerts",
-                        subtitle = "Celebrate every four and six",
+                        icon = Icons.Default.Star, title = stringResource(R.string.settings_boundary_alerts),
+                        subtitle = stringResource(R.string.settings_celebrate_every_four_and_six),
                         trailing = SettingsTrailing.Toggle(boundaryAlerts),
                         onClick = { togglePref(PreferencesHelper.KEY_BOUNDARY_ALERTS, boundaryAlerts) { boundaryAlerts = it } },
                     )
                     SettingsItemV2(
-                        icon = Icons.Default.Star, title = "Wicket Alerts",
-                        subtitle = "Never miss a crucial wicket",
+                        icon = Icons.Default.Star, title = stringResource(R.string.settings_wicket_alerts),
+                        subtitle = stringResource(R.string.settings_never_miss_a_crucial_wicket),
                         trailing = SettingsTrailing.Toggle(wicketAlerts),
                         onClick = { togglePref(PreferencesHelper.KEY_WICKET_ALERTS, wicketAlerts) { wicketAlerts = it } },
                     )
                     SettingsItemV2(
-                        icon = Icons.Default.AutoAwesome, title = "AI Insights",
-                        subtitle = "AI-generated insights in commentary",
+                        icon = Icons.Default.AutoAwesome, title = stringResource(R.string.settings_ai_insights),
+                        subtitle = stringResource(R.string.settings_ai_generated_insights_in_commentary),
                         trailing = SettingsTrailing.Toggle(aiInsights),
                         onClick = { togglePref(PreferencesHelper.KEY_AI_INSIGHTS, aiInsights) { aiInsights = it } },
                     )
@@ -178,8 +180,8 @@ fun SettingsScreenV2(
             item {
                 Column(Modifier.padding(horizontal = spacing.lg)) {
                     SettingsItemV2(
-                        icon = Icons.Default.Palette, title = "Appearance",
-                        subtitle = "Theme variants and display options",
+                        icon = Icons.Default.Palette, title = stringResource(R.string.common_appearance),
+                        subtitle = stringResource(R.string.settings_theme_variants_and_display_options),
                         trailing = SettingsTrailing.Navigation,
                         onClick = onAppearanceClick,
                     )
@@ -192,20 +194,20 @@ fun SettingsScreenV2(
             item {
                 Column(Modifier.padding(horizontal = spacing.lg)) {
                     SettingsItemV2(
-                        icon = Icons.Default.Vibration, title = "Haptic Feedback",
-                        subtitle = "Feel the game with vibrations",
+                        icon = Icons.Default.Vibration, title = stringResource(R.string.settings_haptic_feedback),
+                        subtitle = stringResource(R.string.settings_feel_the_game_with_vibrations),
                         trailing = SettingsTrailing.Toggle(hapticFeedback),
                         onClick = { togglePref(PreferencesHelper.KEY_HAPTIC_FEEDBACK, hapticFeedback) { hapticFeedback = it } },
                     )
                     SettingsItemV2(
-                        icon = Icons.Default.Speed, title = "Auto Refresh",
-                        subtitle = "Automatically update scores every 10 seconds",
+                        icon = Icons.Default.Speed, title = stringResource(R.string.settings_auto_refresh),
+                        subtitle = stringResource(R.string.settings_automatically_update_scores_every_10_seconds),
                         trailing = SettingsTrailing.Toggle(autoRefresh),
                         onClick = { togglePref(PreferencesHelper.KEY_AUTO_REFRESH, autoRefresh) { autoRefresh = it } },
                     )
                     SettingsItemV2(
                         icon = Icons.Default.Speed,
-                        title = "Refresh Interval",
+                        title = stringResource(R.string.settings_refresh_interval),
                         subtitle = "Fallback poll when push is unavailable: every ${refreshIntervalMinutes}m",
                         trailing = SettingsTrailing.Value("${refreshIntervalMinutes}m"),
                         onClick = {
@@ -225,26 +227,26 @@ fun SettingsScreenV2(
                         },
                     )
                     SettingsItemV2(
-                        title = "Win Probability",
-                        subtitle = "Show live win probability predictions",
+                        title = stringResource(R.string.settings_win_probability),
+                        subtitle = stringResource(R.string.settings_show_live_win_probability_predictions),
                         trailing = SettingsTrailing.Toggle(showProbability),
                         onClick = { togglePref(PreferencesHelper.KEY_SHOW_WIN_PROBABILITY, showProbability) { showProbability = it } },
                     )
                     SettingsItemV2(
-                        title = "Reduced Motion",
-                        subtitle = "Use simpler transitions",
+                        title = stringResource(R.string.settings_reduced_motion),
+                        subtitle = stringResource(R.string.settings_use_simpler_transitions),
                         trailing = SettingsTrailing.Toggle(reducedMotion),
                         onClick = { togglePref(PreferencesHelper.KEY_REDUCED_MOTION, reducedMotion) { reducedMotion = it } },
                     )
                     SettingsItemV2(
                         icon = Icons.Default.Delete,
-                        title = "Clear App Cache",
-                        subtitle = "Remove cached match data",
+                        title = stringResource(R.string.settings_clear_app_cache),
+                        subtitle = stringResource(R.string.settings_remove_cached_match_data),
                         trailing = SettingsTrailing.Navigation,
                         onClick = { showClearCacheDialog = true },
                     )
                     SettingsItemV2(
-                        icon = Icons.Default.Favorite, title = "Favorite Teams",
+                        icon = Icons.Default.Favorite, title = stringResource(R.string.common_favorite_teams),
                         trailing = SettingsTrailing.Navigation,
                         onClick = onFavoritesClick,
                     )
@@ -257,13 +259,13 @@ fun SettingsScreenV2(
             item {
                 Column(Modifier.padding(horizontal = spacing.lg)) {
                     SettingsItemV2(
-                        icon = Icons.Default.Info, title = "About Bouncer",
+                        icon = Icons.Default.Info, title = stringResource(R.string.settings_about_bouncer),
                         trailing = SettingsTrailing.Navigation,
                         onClick = onAboutClick,
                     )
                     SettingsItemV2(
-                        icon = Icons.Default.Refresh, title = "Redo Setup",
-                        subtitle = "Re-run the onboarding flow to update your teams and preferences",
+                        icon = Icons.Default.Refresh, title = stringResource(R.string.settings_redo_setup),
+                        subtitle = stringResource(R.string.settings_re_run_the_onboarding_flow_to),
                         trailing = SettingsTrailing.Navigation,
                         onClick = onRedoSetup,
                     )
@@ -275,8 +277,8 @@ fun SettingsScreenV2(
         if (showClearCacheDialog) {
             AlertDialog(
                 onDismissRequest = { showClearCacheDialog = false },
-                title = { Text("Clear Cache?") },
-                text = { Text("This will remove all cached match data. The app will re-fetch on next load.") },
+                title = { Text(stringResource(R.string.settings_clear_cache)) },
+                text = { Text(stringResource(R.string.settings_this_will_remove_all_cached_match)) },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -290,10 +292,10 @@ fun SettingsScreenV2(
                                 cacheCleared = true
                             }
                         }
-                    ) { Text("Clear") }
+                    ) { Text(stringResource(R.string.settings_clear)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showClearCacheDialog = false }) { Text("Cancel") }
+                    TextButton(onClick = { showClearCacheDialog = false }) { Text(stringResource(R.string.common_cancel)) }
                 }
             )
         }

@@ -19,9 +19,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
 import java.util.Locale
@@ -223,7 +225,7 @@ private fun BowlerRow(
                                     color = colors.statusSuccess.copy(alpha = 0.2f)
                                 ) {
                                     Text(
-                                        text = "BOWLING",
+                                        text = stringResource(R.string.bowling_bowling),
                                         color = colors.statusSuccess,
                                         fontSize = 8.sp,
                                         fontWeight = FontWeight.Bold,
@@ -285,13 +287,13 @@ private fun BowlerRow(
                 ) {
                     MiniStatBox(
                         value = "${bowler.dots}",
-                        label = "Dots",
+                        label = stringResource(R.string.bowling_dots),
                         color = colors.statusSuccess
                     )
                     if (bowler.wides + bowler.noBalls > 0) {
                         MiniStatBox(
                             value = "${bowler.wides + bowler.noBalls}",
-                            label = "Extras",
+                            label = stringResource(R.string.bowling_extras),
                             color = colors.statusWarning
                         )
                     }
@@ -324,7 +326,7 @@ private fun EconomyGauge(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Economy",
+                text = stringResource(R.string.bowling_economy),
                 color = colors.textTertiary,
                 fontSize = 10.sp
             )
@@ -453,7 +455,7 @@ private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
-                text = "TEAM BOWLING",
+                text = stringResource(R.string.bowling_team_bowling),
                 color = colors.textTertiary,
                 fontSize = 10.sp,
                 letterSpacing = 0.5.sp,
@@ -472,7 +474,7 @@ private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        text = "Wickets",
+                        text = stringResource(R.string.common_wickets),
                         color = colors.textTertiary,
                         fontSize = 9.sp
                     )
@@ -486,7 +488,7 @@ private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        text = "Economy",
+                        text = stringResource(R.string.bowling_economy),
                         color = colors.textTertiary,
                         fontSize = 9.sp
                     )
@@ -500,7 +502,7 @@ private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        text = "Dot Balls",
+                        text = stringResource(R.string.bowling_dot_balls),
                         color = colors.textTertiary,
                         fontSize = 9.sp
                     )

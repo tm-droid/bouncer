@@ -24,10 +24,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.ShinyGoldDeep
 import com.tanush.bouncer.ui.theme.ShinyGoldMid
@@ -120,7 +122,7 @@ fun SeriesStandingsCard(
 
                         Column {
                             Text(
-                                text = "STANDINGS",
+                                text = stringResource(R.string.series_standings),
                                 color = hierarchy.secondary.primary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -199,17 +201,17 @@ fun SeriesStandingsCard(
                 ) {
                     LegendItem(
                         color = colors.statusSuccess,
-                        label = "Qualified",
+                        label = stringResource(R.string.series_qualified),
                     )
                     Spacer(modifier = Modifier.width(20.dp))
                     LegendItem(
                         color = colors.statusWarning,
-                        label = "In Contention",
+                        label = stringResource(R.string.series_in_contention),
                     )
                     Spacer(modifier = Modifier.width(20.dp))
                     LegendItem(
                         color = colors.statusLive,
-                        label = "Eliminated",
+                        label = stringResource(R.string.series_eliminated),
                     )
                 }
             }

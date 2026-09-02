@@ -38,9 +38,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.ChartBlue
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -137,7 +139,7 @@ fun PowerPlayAnalysisCard(
 
                     Column {
                         Text(
-                            text = "POWERPLAY ANALYSIS",
+                            text = stringResource(R.string.powerplay_analysis),
                             color = hierarchy.secondary.primary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -325,7 +327,7 @@ private fun PowerPlayPhaseRow(
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 StatBubble(
                     value = "${phase.runs}/${phase.wickets}",
-                    label = "Score",
+                    label = stringResource(R.string.powerplay_score),
                     isHighlighted = phase.isActive,
                 )
 

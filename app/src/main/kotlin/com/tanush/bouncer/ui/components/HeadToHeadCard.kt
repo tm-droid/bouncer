@@ -20,11 +20,13 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.CoilImage
 import coil.request.ImageRequest
 import com.tanush.bouncer.managers.TeamLogoManager
@@ -153,17 +155,17 @@ fun HeadToHeadCard(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 StatColumn(
-                    label = "Total",
+                    label = stringResource(R.string.h2h_total),
                     value = stats.totalMatches.toString(),
                     icon = Icons.Default.SportsCricket
                 )
                 StatColumn(
-                    label = "Draws",
+                    label = stringResource(R.string.h2h_draws),
                     value = stats.draws.toString(),
                     icon = Icons.Default.Remove
                 )
                 StatColumn(
-                    label = "No Result",
+                    label = stringResource(R.string.h2h_no_result),
                     value = "0",
                     icon = Icons.Default.Cloud
                 )

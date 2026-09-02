@@ -18,11 +18,13 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.NetworkStatusBanner
 import com.tanush.bouncer.ui.components.rememberIsOffline
@@ -87,7 +89,7 @@ fun AllMatchesScreenV2(
     Scaffold(
         topBar = {
             Column {
-                BouncerTopBarV2(title = "Matches")
+                BouncerTopBarV2(title = stringResource(R.string.common_matches))
                 NetworkStatusBanner(isOffline = isOffline)
             }
         },
@@ -141,14 +143,14 @@ fun AllMatchesScreenV2(
                         val errorState = loadingState as? LoadingState.Error
                         if (errorState != null) {
                             EmptyStateV2(
-                                title = "Couldn't load matches",
+                                title = stringResource(R.string.matches_couldnt_load),
                                 subtitle = errorState.message,
                                 icon = Icons.Outlined.CloudOff,
                                 onRetry = { viewModel.refreshMatches() },
                             )
                         } else {
                             EmptyStateV2(
-                                title = "No matches",
+                                title = stringResource(R.string.matches_none),
                                 subtitle = if (selectedFormat == "All") "No matches found" else "No $selectedFormat matches found",
                                 icon = Icons.Outlined.SportsCricket,
                             )

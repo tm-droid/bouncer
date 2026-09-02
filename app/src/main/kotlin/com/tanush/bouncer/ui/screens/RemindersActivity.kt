@@ -11,7 +11,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.utils.RemindersManager
 import com.tanush.bouncer.utils.Reminder
@@ -44,17 +46,17 @@ fun RemindersScreen() {
 
     Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Scheduled Reminders", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.reminders_scheduled_reminders), style = MaterialTheme.typography.titleLarge)
             TextButton(onClick = {
                 RemindersManager.clearAll(ctx)
                 reminders = mutableListOf()
-            }) { Text("Clear all") }
+            }) { Text(stringResource(R.string.reminders_clear_all)) }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         if (reminders.isEmpty()) {
-            Text("No reminders set", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+            Text(stringResource(R.string.reminders_no_reminders_set), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(reminders, key = { it.id }) { r ->
@@ -76,7 +78,7 @@ fun RemindersScreen() {
                                         RemindersManager.deleteReminder(ctx, r.id)
                                         ReminderScheduler.cancelReminder(ctx, r.id)
                                         reminders = RemindersManager.getReminders(ctx).toMutableList()
-                                    }) { Text("Delete") }
+                                    }) { Text(stringResource(R.string.reminders_delete)) }
 
                                     Spacer(modifier = Modifier.height(6.dp))
 
@@ -104,7 +106,7 @@ fun RemindersScreen() {
                                             android.widget.Toast.makeText(ctx, "Rescheduled", android.widget.Toast.LENGTH_SHORT).show()
                                         }, hour, minute, true)
                                         timePicker.show()
-                                    }) { Text("Reschedule") }
+                                    }) { Text(stringResource(R.string.reminders_reschedule)) }
                                 }
                             }
                         }

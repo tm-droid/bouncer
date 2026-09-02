@@ -17,9 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.components.GlassCard
@@ -77,7 +79,7 @@ fun TossResultCard(
                 Spacer(modifier = Modifier.width(8.dp))
 
                 Text(
-                    text = "TOSS RESULT",
+                    text = stringResource(R.string.toss_toss_result),
                     color = TextTertiary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
@@ -140,21 +142,21 @@ fun TossResultCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 TossStatItem(
-                    label = "VENUE WIN %",
+                    label = stringResource(R.string.toss_venue_win),
                     value = if (tossDetails.decision == "bat") "52%" else "48%",
                     color = TextPrimary,
                     modifier = Modifier.weight(1f)
                 )
 
                 TossStatItem(
-                    label = "H2H TOSS",
+                    label = stringResource(R.string.toss_h2h_toss),
                     value = "3-2",
                     color = TextPrimary,
                     modifier = Modifier.weight(1f)
                 )
 
                 TossStatItem(
-                    label = "DEW FACTOR",
+                    label = stringResource(R.string.toss_dew_factor),
                     value = "HIGH",
                     color = colors.statusSuccess,
                     modifier = Modifier.weight(1f)

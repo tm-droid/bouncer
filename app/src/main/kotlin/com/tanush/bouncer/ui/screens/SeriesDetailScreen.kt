@@ -21,8 +21,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -44,7 +46,7 @@ fun SeriesDetailScreen(
 
     Scaffold(
         topBar = {
-            BouncerTopBarV2(title = "Series Detail", showBack = true, onBack = onBackClick)
+            BouncerTopBarV2(title = stringResource(R.string.series_series_detail), showBack = true, onBack = onBackClick)
         },
         containerColor = colors.background,
     ) { innerPadding ->
@@ -82,13 +84,13 @@ fun SeriesDetailScreen(
             when (selectedTab) {
                 0 -> SeriesTabPlaceholder(
                     icon = Icons.Outlined.CalendarMonth,
-                    title = "Schedule coming soon",
-                    subtitle = "Fixtures for this series will appear here.",
+                    title = stringResource(R.string.series_schedule_coming_soon),
+                    subtitle = stringResource(R.string.series_fixtures_for_this_series_will_appear),
                 )
                 2 -> SeriesTabPlaceholder(
                     icon = Icons.Outlined.BarChart,
-                    title = "Stats coming soon",
-                    subtitle = "Series statistics will appear here.",
+                    title = stringResource(R.string.series_stats_coming_soon),
+                    subtitle = stringResource(R.string.series_series_statistics_will_appear_here),
                 )
             }
         }

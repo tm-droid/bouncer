@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.BuildConfig
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.v2.SettingsItemV2
 import com.tanush.bouncer.ui.components.v2.SettingsTrailing
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -49,7 +51,7 @@ fun AboutScreenV2(onBackClick: () -> Unit) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("About", style = typography.titleMedium) },
+                title = { Text(stringResource(R.string.common_about), style = typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -100,7 +102,7 @@ fun AboutScreenV2(onBackClick: () -> Unit) {
             item(key = "changelog") {
                 SettingsItemV2(
                     icon = Icons.Default.NewReleases,
-                    title = "Changelog",
+                    title = stringResource(R.string.about_changelog),
                     trailing = SettingsTrailing.Navigation,
                     onClick = {},
                 )
@@ -108,7 +110,7 @@ fun AboutScreenV2(onBackClick: () -> Unit) {
             item(key = "licenses") {
                 SettingsItemV2(
                     icon = Icons.Default.Description,
-                    title = "Open Source Licenses",
+                    title = stringResource(R.string.about_open_source_licenses),
                     trailing = SettingsTrailing.Navigation,
                     onClick = {},
                 )
@@ -116,7 +118,7 @@ fun AboutScreenV2(onBackClick: () -> Unit) {
             item(key = "privacy") {
                 SettingsItemV2(
                     icon = Icons.Default.Lock,
-                    title = "Privacy Policy",
+                    title = stringResource(R.string.about_privacy_policy),
                     trailing = SettingsTrailing.Navigation,
                     onClick = {},
                 )
@@ -124,7 +126,7 @@ fun AboutScreenV2(onBackClick: () -> Unit) {
             item(key = "terms") {
                 SettingsItemV2(
                     icon = Icons.Default.Gavel,
-                    title = "Terms of Service",
+                    title = stringResource(R.string.about_terms_of_service),
                     trailing = SettingsTrailing.Navigation,
                     onClick = {},
                 )
@@ -134,7 +136,7 @@ fun AboutScreenV2(onBackClick: () -> Unit) {
             item(key = "footer") {
                 Spacer(Modifier.height(spacing.xxxl))
                 Text(
-                    text = "Made with ❤️ by Tanush",
+                    text = stringResource(R.string.about_made_with_by_tanush),
                     style = typography.bodySmall,
                     color = colors.textSecondary,
                     modifier = Modifier.fillMaxWidth(),

@@ -21,11 +21,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.GoldPrimary
 
@@ -241,7 +243,7 @@ fun GoldProgressBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "WIN PROBABILITY",
+                    text = stringResource(R.string.common_win_probability),
                     color = colors.textSecondary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,

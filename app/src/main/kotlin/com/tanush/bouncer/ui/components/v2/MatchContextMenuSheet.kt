@@ -22,10 +22,12 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.tanush.bouncer.R
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -65,7 +67,7 @@ fun MatchContextMenuSheet(
 
             // Share score
             ListItem(
-                headlineContent = { Text("Share Score") },
+                headlineContent = { Text(stringResource(R.string.match_share_score)) },
                 leadingContent = { Icon(Icons.Default.Share, contentDescription = null) },
                 modifier = Modifier.clickable {
                     val scoreText = match.teams.joinToString(" vs ") { "${it.name} ${it.score?.toString() ?: "-"}" }
@@ -93,14 +95,14 @@ fun MatchContextMenuSheet(
 
             // Set reminder
             ListItem(
-                headlineContent = { Text("Set Reminder") },
+                headlineContent = { Text(stringResource(R.string.common_set_reminder)) },
                 leadingContent = { Icon(Icons.Default.Notifications, contentDescription = null) },
                 modifier = Modifier.clickable { onSetReminder(); onDismiss() }
             )
 
             // Copy match ID
             ListItem(
-                headlineContent = { Text("Copy Match ID") },
+                headlineContent = { Text(stringResource(R.string.match_copy_match_id)) },
                 leadingContent = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
                 modifier = Modifier.clickable {
                     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

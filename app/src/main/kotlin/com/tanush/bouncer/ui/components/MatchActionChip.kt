@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -46,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.accessibility.rememberReducedMotionEnabled
 import com.tanush.bouncer.ui.extensions.pressScale
 
@@ -70,10 +72,11 @@ private data class PhaseStyle(
     val iconSize: Float = 16f
 )
 
+@Composable
 private fun phaseStyle(phase: MatchPhase): PhaseStyle = when (phase) {
     MatchPhase.UPCOMING -> PhaseStyle(
         icon = Icons.Outlined.Notifications,
-        label = "Follow",
+        label = stringResource(R.string.match_follow),
         background = CardDark,
         contentColor = Gold
     )
@@ -87,19 +90,19 @@ private fun phaseStyle(phase: MatchPhase): PhaseStyle = when (phase) {
     )
     MatchPhase.INNINGS_BREAK -> PhaseStyle(
         icon = Icons.Outlined.Pause,
-        label = "Break",
+        label = stringResource(R.string.match_break),
         background = CardDark,
         contentColor = Color.White.copy(alpha = 0.6f)
     )
     MatchPhase.COMPLETED -> PhaseStyle(
         icon = Icons.Outlined.Assessment,
-        label = "Scorecard",
+        label = stringResource(R.string.match_scorecard),
         background = CardDark,
         contentColor = Gold
     )
     MatchPhase.HIGHLIGHTS -> PhaseStyle(
         icon = Icons.Outlined.PlayArrow,
-        label = "Highlights",
+        label = stringResource(R.string.match_highlights),
         background = CardDark,
         contentColor = Gold
     )

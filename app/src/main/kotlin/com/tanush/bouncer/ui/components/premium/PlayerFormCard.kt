@@ -17,11 +17,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
@@ -115,14 +117,14 @@ fun PlayerFormCard(
 
                     Column {
                         Text(
-                            text = "PERFORMANCE FORM",
+                            text = stringResource(R.string.player_performance_form),
                             color = colors.textTertiary,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.2.sp,
                         )
                         Text(
-                            text = "RECENT ANALYTICS",
+                            text = stringResource(R.string.player_recent_analytics),
                             color = colors.textPrimary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
@@ -143,14 +145,14 @@ fun PlayerFormCard(
                     .padding(2.dp),
             ) {
                 FormTabButton(
-                    label = "BATTERS",
+                    label = stringResource(R.string.player_batters),
                     isSelected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
                     modifier = Modifier.weight(1f),
                 )
 
                 FormTabButton(
-                    label = "BOWLERS",
+                    label = stringResource(R.string.player_bowlers),
                     isSelected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
                     modifier = Modifier.weight(1f),

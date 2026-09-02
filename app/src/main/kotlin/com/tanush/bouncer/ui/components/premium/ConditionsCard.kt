@@ -18,10 +18,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
@@ -107,7 +109,7 @@ fun ConditionsCard(
 
                     Column {
                         Text(
-                            text = "GAME CONDITIONS",
+                            text = stringResource(R.string.conditions_game_conditions),
                             color = TextTertiary,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Black,
@@ -148,7 +150,12 @@ fun ConditionsCard(
                             Text("${weather.temperature}°C", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Black)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("HUMIDITY", color = TextTertiary, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                            Text(
+                                stringResource(R.string.conditions_humidity),
+                                color = TextTertiary,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Black
+                            )
                             Text("${weather.humidity}%", color = colors.statusInfo, fontSize = 16.sp, fontWeight = FontWeight.Black)
                         }
                     }
@@ -164,7 +171,12 @@ fun ConditionsCard(
                         modifier = Modifier.padding(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("PITCH TYPE", color = TextTertiary, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                        Text(
+                            stringResource(R.string.conditions_pitch_type),
+                            color = TextTertiary,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Black
+                        )
                         Text(pitch.type.uppercase(), color = colors.statusSuccess, fontSize = 16.sp, fontWeight = FontWeight.Black)
                     }
                 }
@@ -175,7 +187,7 @@ fun ConditionsCard(
             // Technical Pitch Stats
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "TECHNICAL PITCH ANALYSIS",
+                    text = stringResource(R.string.conditions_technical_pitch_analysis),
                     color = TextTertiary,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Black,
@@ -183,7 +195,12 @@ fun ConditionsCard(
                 )
                 
                 PitchCharacteristicRow(label = "PACE", value = pitch.pace, progress = animatedProgress.value, color = colors.statusInfo)
-                PitchCharacteristicRow(label = "BOUNCE", value = pitch.bounce, progress = animatedProgress.value, color = colors.statusSuccess)
+                PitchCharacteristicRow(
+                    label = stringResource(R.string.conditions_bounce),
+                    value = pitch.bounce,
+                    progress = animatedProgress.value,
+                    color = colors.statusSuccess
+                )
                 PitchCharacteristicRow(label = "SPIN", value = pitch.spin, progress = animatedProgress.value, color = hierarchy.secondary.primary.copy(alpha = 0.7f))
                 PitchCharacteristicRow(label = "SEAM", value = pitch.seam, progress = animatedProgress.value, color = colors.statusLive)
             }

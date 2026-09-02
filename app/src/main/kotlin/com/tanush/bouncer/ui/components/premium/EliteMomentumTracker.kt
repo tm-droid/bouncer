@@ -18,9 +18,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.*
 
 /**
@@ -48,7 +50,7 @@ fun EliteMomentumTracker(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
         Text(
-            text = "MATCH MOMENTUM STREAM",
+            text = stringResource(R.string.share_match_momentum_stream),
             color = TextMuted,
             fontSize = 10.sp,
             fontWeight = FontWeight.Black,

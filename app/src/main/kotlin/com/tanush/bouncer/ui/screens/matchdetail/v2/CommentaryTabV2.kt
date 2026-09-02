@@ -331,7 +331,7 @@ private fun OverSeparatorCard(overNumber: Int, balls: List<ParsedBall>) {
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = "MAIDEN",
+                            text = stringResource(R.string.commentary_maiden),
                             style = typography.labelSmall,
                             color = colors.cricket.maiden,
                             fontWeight = FontWeight.Bold,

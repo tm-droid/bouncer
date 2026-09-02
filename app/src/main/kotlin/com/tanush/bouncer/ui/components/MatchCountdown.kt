@@ -25,11 +25,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.GlassSurface
 import com.tanush.bouncer.ui.theme.GoldPrimary
@@ -101,7 +103,7 @@ fun MatchCountdown(
             }
 
             Text(
-                text = "MATCH STARTS IN",
+                text = stringResource(R.string.match_match_starts_in),
                 color = colors.textMuted,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
@@ -115,7 +117,7 @@ fun MatchCountdown(
             if (remainingTime < LAST_HOUR_MILLIS) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Starting Soon!",
+                    text = stringResource(R.string.match_starting_soon),
                     color = colors.statusSuccess,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold

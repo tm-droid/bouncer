@@ -24,10 +24,12 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.*
 
 /* ---------- Shared helpers ---------- */
@@ -229,7 +231,7 @@ private fun CommentaryEventBadge(
     hierarchy: ColorHierarchy
 ) {
     when {
-        isWicket -> EventBadge(text = "WICKET", color = colors.statusLive)
+        isWicket -> EventBadge(text = stringResource(R.string.match_wicket), color = colors.statusLive)
         runs == "6" -> EventBadge(text = "SIX", color = hierarchy.secondary.primary)
         runs == "4" -> EventBadge(text = "FOUR", color = colors.statusInfo)
     }
@@ -444,7 +446,7 @@ private fun KeyMomentsHeader(count: Int) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "KEY MOMENTS",
+            text = stringResource(R.string.match_key_moments),
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.5.sp,
@@ -781,7 +783,7 @@ private fun TopPerformersRow(
     ) {
         topScorer?.let {
             PerformerMini(
-                label = "Top Scorer",
+                label = stringResource(R.string.match_top_scorer),
                 name = it.name,
                 stat = it.stat,
                 modifier = Modifier.weight(1f)
@@ -789,7 +791,7 @@ private fun TopPerformersRow(
         }
         topBowler?.let {
             PerformerMini(
-                label = "Best Bowler",
+                label = stringResource(R.string.match_best_bowler),
                 name = it.name,
                 stat = it.stat,
                 modifier = Modifier.weight(1f)

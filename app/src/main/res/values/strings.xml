@@ -9,158 +9,19 @@
     <string name="title_stats_detail">Statistics Details</string>
     <string name="title_reminders">Match Reminders</string>
     <string name="onboarding_title">Welcome to Bouncer</string>
-    
-    <!-- Navigation -->
-    <string name="nav_stats">Analysis</string>
-    <string name="nav_achievements">Milestones</string>
-    
-    <!-- Sections -->
-    <string name="section_more_matches">Upcoming Fixtures</string>
-    <string name="section_quick_actions">Quick Actions</string>
-    <string name="section_insights">Match Insights</string>
-    <string name="section_activity">Recent Activity</string>
-    <string name="section_trending_news">Trending News</string>
-    
+
     <!-- Tab Titles -->
-    <string name="tab_live">Live</string>
     <string name="tab_scorecard">Scorecard</string>
-    <string name="tab_lineups">Lineups</string>
-    <string name="tab_overs">Overs</string>
     <string name="tab_info">Match Info</string>
     
     <!-- Actions -->
-    <string name="action_refresh">Refresh Data</string>
-    <string name="action_back">Return</string>
-    <string name="action_view_all">View All</string>
     <string name="action_clear">Clear All</string>
-    <string name="action_share">Share Match</string>
-    
-    <!-- States -->
-    <string name="state_loading">Fetching latest data…</string>
-    <string name="state_no_matches_title">No Matches Found</string>
-    <string name="state_no_matches_desc">There are currently no active matches to display.</string>
-    <string name="state_error_title">Connection Error</string>
-    <string name="state_error_desc">We couldn’t load the data. Please check your connection and try again.</string>
-    
-    <!-- Alerts & Events -->
-    <string name="event_wicket">Wicket</string>
-    <string name="event_boundary">Boundary</string>
-    <string name="event_powerplay">Powerplay Active</string>
-    <string name="event_milestone">Milestone Achieved</string>
-    
+
     <!-- Accessibility -->
-    <string name="cd_match_card">Match card for %1$s versus %2$s</string>
-    <string name="cd_team_logo">Official logo for %1$s</string>
-    <string name="cd_live_indicator">Live match active indicator</string>
     <string name="cd_notifications">Manage notifications</string>
     <string name="cd_settings">Open app settings</string>
-    <string name="cd_profile">View user profile</string>
-    <string name="cd_back_button">Navigate back</string>
-    <string name="cd_share_button">Share match details</string>
-
-    <!-- App Update -->
-    <string name="update_available_title">Update Available</string>
-    <string name="update_subtitle">Bouncer %1$s is ready</string>
-    <string name="update_whats_new">What\'s New</string>
-    <string name="update_current_version">Current: v%1$s</string>
-    <string name="update_new_version">New: v%1$s</string>
-    <string name="update_version_arrow" translatable="false">→</string>
-    <string name="update_size_and_time">(%1$.1f MB, ~%2$d minutes on WiFi)</string>
-    <string name="update_downloading">Downloading Update</string>
-    <string name="update_download_in_progress">Optimizing package for secure install...</string>
-    <string name="update_ready_to_install">Ready to Install</string>
-    <string name="update_progress_percent" translatable="false">%1$d%%</string>
-    <string name="update_action_now">Update Now</string>
-    <string name="update_action_later">Later</string>
-    <string name="update_action_install">Install</string>
-    <string name="update_action_retry">Try Again</string>
-
-    <string name="update_notification_title">Bouncer update available</string>
-    <string name="update_notification_body">Version %1$s is ready to download</string>
-    <string name="update_notification_channel_name">App Updates</string>
-    <string name="update_notification_channel_desc">Silent background checks and update readiness badges</string>
-
-    <string name="update_mock_feature_one">Faster live score rendering with smoother transitions</string>
-    <string name="update_mock_feature_two">Fixes for match feed refresh and edge-case crashes</string>
-    <string name="update_mock_feature_three">Security hardening for network payload validation</string>
-    <string name="update_mock_feature_four">Denser match list and a flatter, quieter interface</string>
-
-    <string name="cd_update_dialog">Bouncer app update dialog</string>
-    <string name="cd_update_bouncer_logo">Bouncer update icon</string>
-    <string name="cd_update_feature_icon">Update feature item icon</string>
-    <string name="cd_update_download_estimate">Download size and time estimate</string>
-    <string name="cd_update_badge">Update available badge</string>
 
     <!-- Notification Settings -->
-    <string name="notification_title">Notifications</string>
-    <string name="notification_overview_title">At a glance</string>
-    <string name="notification_section_live_match_alerts">LIVE MATCH ALERTS</string>
-    <string name="notification_section_team_preferences">TEAM PREFERENCES</string>
-    <string name="notification_section_sound_haptics">SOUND &amp; HAPTICS</string>
-    <string name="notification_section_do_not_disturb">DO NOT DISTURB</string>
-    <string name="notification_section_advanced">ADVANCED</string>
-
-    <string name="notification_live_match_subtext">Choose exactly what happens during live games, from starts to milestones.</string>
-    <string name="notification_match_start_alerts">Match Start Alerts</string>
-    <string name="notification_match_start_alerts_help">Get a heads-up right when your tracked match begins.</string>
-    <string name="notification_wicket_alerts">Wicket Alerts</string>
-    <string name="notification_wicket_alerts_help">Instant wicket pings. Disabled by default if you prefer less noise.</string>
-    <string name="notification_milestone_alerts">Milestone Alerts</string>
-    <string name="notification_milestone_alerts_help">50s, centuries, key partnerships, and landmark moments.</string>
-    <string name="notification_score_updates">Score Updates</string>
-    <string name="notification_score_updates_help">Select how often score updates should arrive.</string>
-    <string name="notification_frequency_every_run">Every run</string>
-    <string name="notification_frequency_every_over">Every over</string>
-    <string name="notification_frequency_every_wicket">Every wicket</string>
-
-    <string name="notification_count_teams_selected">%1$d out of %2$d teams</string>
-    <string name="team_india">India</string>
-    <string name="team_australia">Australia</string>
-    <string name="team_england">England</string>
-    <string name="team_pakistan">Pakistan</string>
-    <string name="team_south_africa">South Africa</string>
-
-    <string name="notification_sound_enabled">Sound Enabled</string>
-    <string name="notification_sound_enabled_help">Play a sound for priority alerts.</string>
-    <string name="notification_sound_wicket_chime">Wicket Chime</string>
-    <string name="notification_sound_goal_horn">Goal Horn</string>
-    <string name="notification_sound_stadium_roar">Stadium Roar</string>
-    <string name="notification_sound_soft_pulse">Soft Pulse</string>
-    <string name="notification_sound_classic_bell">Classic Bell</string>
-    <string name="notification_preview_sound">Preview sound</string>
-    <string name="notification_haptic_feedback">Haptic Feedback</string>
-    <string name="notification_haptic_feedback_help">Add tactile feedback to key alert interactions.</string>
-    <string name="notification_vibration_intensity">Vibration Intensity</string>
-    <string name="notification_vibration_low">Low</string>
-    <string name="notification_vibration_medium">Medium</string>
-    <string name="notification_vibration_high">High</string>
-
-    <string name="notification_dnd_subtext">Control when alerts should pause and how live matches behave overnight.</string>
-    <string name="notification_enable_quiet_hours">Enable Quiet Hours</string>
-    <string name="notification_enable_quiet_hours_help">Silence non-urgent notifications during selected hours.</string>
-    <string name="notification_quiet_hours_from">From</string>
-    <string name="notification_quiet_hours_to">To</string>
-    <string name="notification_allow_live_during_quiet_hours">Allow live match alerts during quiet hours</string>
-    <string name="notification_quiet_hours_queue_help">Notifications will queue until quiet hours end.</string>
-    <string name="notification_quiet_hours_summary">Quiet: %1$s - %2$s</string>
-    <string name="notification_quiet_hours_off">Quiet hours off</string>
-
-    <string name="notification_battery_optimization">Battery Optimization</string>
-    <string name="notification_battery_optimization_help">Delay non-critical alerts when battery is low.</string>
-    <string name="notification_group_similar">Group Similar Notifications</string>
-    <string name="notification_group_similar_help">Bundle repeated updates into cleaner stacks.</string>
-    <string name="notification_show_previews">Show Previews on Lock Screen</string>
-    <string name="notification_show_previews_help">Display alert content on lock screen cards.</string>
-    <string name="notification_clear_history">Clear All Notification History</string>
-    <string name="notification_clear_history_title">Clear notification history?</string>
-    <string name="notification_clear_history_message">This removes Bouncer notification history for this device.</string>
-    <string name="notification_action_cancel">Cancel</string>
-
-    <string name="notification_preset_balanced">Balanced</string>
-    <string name="notification_preset_minimal">Minimal</string>
-    <string name="notification_preset_maximum">All-In</string>
-
-    <string name="notification_cd_expand_section">Expand or collapse section</string>
 
     <string name="live_activity_title">Bouncer Live Update</string>
     <string name="live_activity_channel_name">Live Match Updates</string>
@@ -172,12 +33,6 @@
     <string name="live_activity_last_update_less_than_min">&lt; 1m ago</string>
     <string name="live_activity_last_update_minutes">%1$dm ago</string>
     <string name="live_activity_last_update_hours">%1$dh ago</string>
-
-    <string name="live_activity_style_section_title">LIVE ACTIVITIES</string>
-    <string name="live_activity_style_section_subtitle">Persistent Android Live Update notifications for real-time cricket.</string>
-    <string name="live_activity_style_battery">Battery: %1$d/5</string>
-    <string name="live_activity_style_visibility">Visibility: %1$d/5</string>
-    <string name="live_activity_style_live_indicator">Live • low-latency updates</string>
 
     <string name="live_activity_style_compact_title">Compact</string>
     <string name="live_activity_style_compact_subtitle">Balanced scoreline optimized for status-chip visibility.</string>
@@ -290,7 +145,6 @@
     <string name="overview_last_batsmen">Last Batsmen</string>
     <string name="overview_current_bowler">Current Bowler</string>
     <string name="overview_best_bowler">Best Bowler</string>
-    <string name="overview_match_status">Match Status</string>
     <string name="overview_this_over">This Over</string>
     <string name="overview_last_wicket">Last Wicket</string>
     <string name="overview_not_started_title">Match hasn\'t started</string>
@@ -314,4 +168,246 @@
 
     <string name="highlights_empty_title">No highlights yet</string>
     <string name="highlights_empty_subtitle">Clips appear here once key moments are available for this match.</string>
+
+    <!-- Extracted UI strings -->
+    <string name="about_changelog">Changelog</string>
+    <string name="about_made_with_by_tanush">Made with ❤️ by Tanush</string>
+    <string name="about_open_source_licenses">Open Source Licenses</string>
+    <string name="about_privacy_policy">Privacy Policy</string>
+    <string name="about_terms_of_service">Terms of Service</string>
+    <string name="matches_couldnt_load">Couldn\'t load matches</string>
+    <string name="matches_none">No matches</string>
+    <string name="notification_channel_live_events_desc">Notifications for live match events</string>
+    <string name="appearance_dark">Dark</string>
+    <string name="appearance_light">Light</string>
+    <string name="appearance_selected">Selected</string>
+    <string name="appearance_system">System</string>
+    <string name="appearance_theme">Theme</string>
+    <string name="bowling_bowling">BOWLING</string>
+    <string name="bowling_dot_balls">Dot Balls</string>
+    <string name="bowling_dots">Dots</string>
+    <string name="bowling_economy">Economy</string>
+    <string name="bowling_extras">Extras</string>
+    <string name="bowling_team_bowling">TEAM BOWLING</string>
+    <string name="commentary_maiden">MAIDEN</string>
+    <string name="common_about">About</string>
+    <string name="common_achievements">Achievements</string>
+    <string name="common_ai_prediction">AI PREDICTION</string>
+    <string name="common_analytics">Analytics</string>
+    <string name="common_appearance">Appearance</string>
+    <string name="common_back">Back</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_current_over">Current Over</string>
+    <string name="common_favorite_teams">Favorite Teams</string>
+    <string name="common_head_to_head">HEAD TO HEAD</string>
+    <string name="common_matches">Matches</string>
+    <string name="common_no_live_matches">No live matches</string>
+    <string name="common_no_scorecard_available">No scorecard available</string>
+    <string name="common_remove">Remove</string>
+    <string name="common_run_rate">RUN RATE</string>
+    <string name="common_set_reminder">Set Reminder</string>
+    <string name="common_settings">Settings</string>
+    <string name="common_share">Share</string>
+    <string name="common_wickets">Wickets</string>
+    <string name="common_win_probability">WIN PROBABILITY</string>
+    <string name="conditions_bounce">BOUNCE</string>
+    <string name="conditions_game_conditions">GAME CONDITIONS</string>
+    <string name="conditions_humidity">HUMIDITY</string>
+    <string name="conditions_pitch_type">PITCH TYPE</string>
+    <string name="conditions_technical_pitch_analysis">TECHNICAL PITCH ANALYSIS</string>
+    <string name="drs_review_in_progress">REVIEW IN PROGRESS</string>
+    <string name="share_key_performer">KEY PERFORMER</string>
+    <string name="share_match_momentum_stream">MATCH MOMENTUM STREAM</string>
+    <string name="state_no_internet_connection">No internet connection</string>
+    <string name="fow_avg_partnership">Avg Partnership</string>
+    <string name="favorites_add">Add</string>
+    <string name="favorites_add_team">Add Team</string>
+    <string name="favorites_add_teams_to_quickly_access_fixtures">Add teams to quickly access fixtures and updates.</string>
+    <string name="favorites_favorites">Favorites</string>
+    <string name="favorites_move_down">Move down</string>
+    <string name="favorites_move_up">Move up</string>
+    <string name="favorites_no_favorite_teams_yet">No favorite teams yet</string>
+    <string name="favorites_quick_access_to_your_teams">Quick access to your teams</string>
+    <string name="favorites_remove_team">Remove Team</string>
+    <string name="favorites_search_teams">Search teams...</string>
+    <string name="favorites_tap_to_open_team_details">Tap to open team details</string>
+    <string name="h2h_draws">Draws</string>
+    <string name="h2h_no_result">No Result</string>
+    <string name="h2h_total">Total</string>
+    <string name="historical_at_this_venue">AT THIS VENUE</string>
+    <string name="historical_by_format">BY FORMAT</string>
+    <string name="historical_historical_statistics">Historical Statistics</string>
+    <string name="historical_recent_meetings">RECENT MEETINGS</string>
+    <string name="info_status">Status</string>
+    <string name="intelligence_activity_feed">Activity Feed</string>
+    <string name="intelligence_activity_from_live_matches_will_appear">Activity from live matches will appear here</string>
+    <string name="intelligence_couldn_t_load_activity">Couldn\'t load activity</string>
+    <string name="intelligence_no_activity_yet">No Activity Yet</string>
+    <string name="moments_impact">IMPACT</string>
+    <string name="moments_title">Key Moments</string>
+    <string name="moments_like">Like</string>
+    <string name="moments_moment_of_the_match">MOMENT OF THE MATCH</string>
+    <string name="moments_overs">overs</string>
+    <string name="live_current_score">Current Score</string>
+    <string name="live_live_scoring_graph">LIVE SCORING GRAPH</string>
+    <string name="live_required_rr">Required RR</string>
+    <string name="live_run_progression_by_over">Run progression by over</string>
+    <string name="live_waiting_for_updates">Waiting for updates...</string>
+    <string name="match_all_on">All On</string>
+    <string name="match_balanced">Balanced</string>
+    <string name="match_best_bowler">Best Bowler</string>
+    <string name="match_break">Break</string>
+    <string name="match_copy_match_id">Copy Match ID</string>
+    <string name="match_follow">Follow</string>
+    <string name="match_following">Following</string>
+    <string name="match_highlights">Highlights</string>
+    <string name="match_key_factors">KEY FACTORS</string>
+    <string name="match_key_moments">KEY MOMENTS</string>
+    <string name="match_key_only">Key Only</string>
+    <string name="match_match_starts_in">MATCH STARTS IN</string>
+    <string name="match_momentum_summary">MOMENTUM SUMMARY</string>
+    <string name="match_mute">Mute</string>
+    <string name="match_notifications">Notifications</string>
+    <string name="match_predicted_winner">PREDICTED WINNER</string>
+    <string name="match_scorecard">Scorecard</string>
+    <string name="match_share_score">Share Score</string>
+    <string name="match_starting_soon">Starting Soon!</string>
+    <string name="match_target_chase">TARGET CHASE</string>
+    <string name="match_tie_draw">TIE/DRAW</string>
+    <string name="match_top_scorer">Top Scorer</string>
+    <string name="match_wicket">WICKET</string>
+    <string name="match_wins">Wins</string>
+    <string name="match_yet_to_bat">Yet to bat</string>
+    <string name="more_dev_tools">Dev Tools</string>
+    <string name="more_diagnostics_and_debug">Diagnostics and debug</string>
+    <string name="more_explore">Explore</string>
+    <string name="more_preferences_and_notifications">Preferences and notifications</string>
+    <string name="more_theme_and_display">Theme and display</string>
+    <string name="more_version_licenses_and_credits">Version, licenses and credits</string>
+    <string name="news_article">Article</string>
+    <string name="news_article_unavailable">Article unavailable</string>
+    <string name="news_couldn_t_load_the_full_story">Couldn\'t load the full story</string>
+    <string name="news_news">News</string>
+    <string name="news_pull_down_to_refresh_and_try">Pull down to refresh and try again</string>
+    <string name="news_the_live_news_source_is_unavailable">The live news source is unavailable. Pull down to try again.</string>
+    <string name="news_this_story_may_have_expired_head">This story may have expired. Head back for the latest headlines.</string>
+    <string name="notification_four">FOUR! 💛</string>
+    <string name="notification_ongoing_live_match_score_updates">Ongoing live match score updates</string>
+    <string name="notification_six">SIX! 💜</string>
+    <string name="notification_wicket">WICKET! 🔴</string>
+    <string name="notifications_no_notifications_yet">No notifications yet</string>
+    <string name="notifications_subscribe_to_matches_with_the_bell">Subscribe to matches with the bell icon to get alerts</string>
+    <string name="comparison_over_by_over">Over-by-Over Comparison</string>
+    <string name="comparison_phase">PHASE COMPARISON</string>
+    <string name="partnership_best_partnership">BEST PARTNERSHIP</string>
+    <string name="partnership_current_partnership">CURRENT PARTNERSHIP</string>
+    <string name="partnership_partnerships">PARTNERSHIPS</string>
+    <string name="player_batters">BATTERS</string>
+    <string name="player_bowlers">BOWLERS</string>
+    <string name="player_compare">Compare</string>
+    <string name="player_performance_form">PERFORMANCE FORM</string>
+    <string name="player_player">Player</string>
+    <string name="player_player_1">Player 1</string>
+    <string name="player_player_2">Player 2</string>
+    <string name="player_recent_analytics">RECENT ANALYTICS</string>
+    <string name="player_retry">Retry</string>
+    <string name="player_search_player">Search player…</string>
+    <string name="player_tap_to_search">Tap to search</string>
+    <string name="player_the_profile_isn_t_available_right">The profile isn\'t available right now. Check your connection and try again.</string>
+    <string name="points_no_standings_available">No standings available</string>
+    <string name="points_points_table">Points Table</string>
+    <string name="powerplay_analysis">POWERPLAY ANALYSIS</string>
+    <string name="powerplay_score">Score</string>
+    <string name="prediction_live_stats">LIVE STATS</string>
+    <string name="prediction_prediction">Prediction</string>
+    <string name="prediction_run_rate">Run Rate</string>
+    <string name="premium_a_win_probability_appears_once_the">A win probability appears once the model has enough of the innings to</string>
+    <string name="premium_avg_score">Avg. Score</string>
+    <string name="premium_batter">BATTER</string>
+    <string name="premium_batting">Batting</string>
+    <string name="premium_bowler">BOWLER</string>
+    <string name="premium_current_run_rate">CURRENT RUN RATE</string>
+    <string name="premium_highest_score">Highest Score</string>
+    <string name="premium_live">Live</string>
+    <string name="premium_lost">Lost</string>
+    <string name="premium_matches_won">Matches Won</string>
+    <string name="premium_no_forecast_for_this_match_yet">No forecast for this match yet</string>
+    <string name="premium_recent_form">RECENT FORM</string>
+    <string name="premium_required_run_rate">REQUIRED RUN RATE</string>
+    <string name="premium_wicket">Wicket</string>
+    <string name="premium_win">Win %</string>
+    <string name="premium_won">Won</string>
+    <string name="reminders_clear_all">Clear all</string>
+    <string name="reminders_delete">Delete</string>
+    <string name="reminders_no_reminders_set">No reminders set</string>
+    <string name="reminders_reschedule">Reschedule</string>
+    <string name="reminders_scheduled_reminders">Scheduled Reminders</string>
+    <string name="scoreboard_required">REQUIRED</string>
+    <string name="series_active_cricket_series_will_appear_here">Active cricket series will appear here</string>
+    <string name="series_check_your_connection_and_try_again">Check your connection and try again</string>
+    <string name="series_couldn_t_load_series">Couldn\'t load series</string>
+    <string name="series_eliminated">Eliminated</string>
+    <string name="series_fixtures_for_this_series_will_appear">Fixtures for this series will appear here.</string>
+    <string name="series_in_contention">In Contention</string>
+    <string name="series_no_series_found">No series found</string>
+    <string name="series_qualified">Qualified</string>
+    <string name="series_schedule_coming_soon">Schedule coming soon</string>
+    <string name="series_series">Series</string>
+    <string name="series_series_detail">Series Detail</string>
+    <string name="series_series_statistics_will_appear_here">Series statistics will appear here.</string>
+    <string name="series_standings">STANDINGS</string>
+    <string name="series_stats_coming_soon">Stats coming soon</string>
+    <string name="settings_about_bouncer">About Bouncer</string>
+    <string name="settings_ai_generated_insights_in_commentary">AI-generated insights in commentary</string>
+    <string name="settings_ai_insights">AI Insights</string>
+    <string name="settings_auto_refresh">Auto Refresh</string>
+    <string name="settings_automatically_update_scores_every_10_seconds">Automatically update scores every 10 seconds</string>
+    <string name="settings_boundary_alerts">Boundary Alerts</string>
+    <string name="settings_celebrate_every_four_and_six">Celebrate every four and six</string>
+    <string name="settings_clear">Clear</string>
+    <string name="settings_clear_app_cache">Clear App Cache</string>
+    <string name="settings_clear_cache">Clear Cache?</string>
+    <string name="settings_feel_the_game_with_vibrations">Feel the game with vibrations</string>
+    <string name="settings_get_notified_when_your_favorite_team">Get notified when your favorite team is playing</string>
+    <string name="settings_haptic_feedback">Haptic Feedback</string>
+    <string name="settings_live_match_alerts">Live Match Alerts</string>
+    <string name="settings_never_miss_a_crucial_wicket">Never miss a crucial wicket</string>
+    <string name="settings_re_run_the_onboarding_flow_to">Re-run the onboarding flow to update your teams and preferences</string>
+    <string name="settings_redo_setup">Redo Setup</string>
+    <string name="settings_reduced_motion">Reduced Motion</string>
+    <string name="settings_refresh_interval">Refresh Interval</string>
+    <string name="settings_remove_cached_match_data">Remove cached match data</string>
+    <string name="settings_show_live_win_probability_predictions">Show live win probability predictions</string>
+    <string name="settings_theme_variants_and_display_options">Theme variants and display options</string>
+    <string name="settings_this_will_remove_all_cached_match">This will remove all cached match data. The app will re-fetch on next load.</string>
+    <string name="settings_use_simpler_transitions">Use simpler transitions</string>
+    <string name="settings_wicket_alerts">Wicket Alerts</string>
+    <string name="settings_win_probability">Win Probability</string>
+    <string name="stats_deep_dive_into_match_data">Deep dive into match data</string>
+    <string name="stats_full_breakdown_and_charts_demo">Full breakdown and charts (demo)</string>
+    <string name="stats_stats_hub">Stats Hub</string>
+    <string name="stats_unlock_badges_rewards">Unlock badges &amp; rewards</string>
+    <string name="teams_no_current_matches">No current matches</string>
+    <string name="toss_dew_factor">DEW FACTOR</string>
+    <string name="toss_h2h_toss">H2H TOSS</string>
+    <string name="toss_toss_result">TOSS RESULT</string>
+    <string name="toss_venue_win">VENUE WIN %</string>
+    <string name="widget_check_back_soon">Check back soon</string>
+    <string name="widget_check_back_when_matches_are_scheduled">Check back when matches are scheduled</string>
+    <string name="widget_check_the_app_for_schedule">Check the app for schedule</string>
+    <string name="widget_choose_which_match_to_display_on">Choose which match to display on this widget</string>
+    <string name="widget_confirm_selection">Confirm Selection</string>
+    <string name="widget_live">● LIVE</string>
+    <string name="widget_loading">Loading...</string>
+    <string name="widget_no_matches_available">No Matches Available</string>
+    <string name="widget_no_upcoming_matches">No upcoming matches</string>
+    <string name="widget_overs">Overs:</string>
+    <string name="widget_partnership">Partnership:</string>
+    <string name="widget_refresh">Refresh</string>
+    <string name="widget_select_match">Select Match</string>
+    <string name="widget_tap_to_open_app">Tap to open app</string>
+    <string name="widget_until_match_starts">until match starts</string>
+    <string name="widget_use_default">Use Default</string>
+    <string name="winprob_key_strategic_moments">KEY STRATEGIC MOMENTS</string>
+    <string name="winprob_live_strategic_analytics">LIVE STRATEGIC ANALYTICS</string>
 </resources>

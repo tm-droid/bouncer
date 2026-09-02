@@ -25,10 +25,12 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.CoilImage
 import coil.request.ImageRequest
 import com.tanush.bouncer.managers.TeamLogoManager
@@ -110,12 +112,12 @@ fun PredictionMatchCard(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.TrendingUp,
-                    contentDescription = "Prediction",
+                    contentDescription = stringResource(R.string.prediction_prediction),
                     tint = GoldPrimary,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = "AI PREDICTION",
+                    text = stringResource(R.string.common_ai_prediction),
                     color = GoldPrimary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
@@ -416,7 +418,7 @@ private fun KeyStatsComparison(match: CricketMatch) {
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-            text = "LIVE STATS",
+            text = stringResource(R.string.prediction_live_stats),
             color = hierarchy.secondary.primary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Black,
@@ -427,7 +429,7 @@ private fun KeyStatsComparison(match: CricketMatch) {
         
         // Run rate comparison (simulated)
         StatComparisonRow(
-            label = "Run Rate",
+            label = stringResource(R.string.prediction_run_rate),
             team1Value = 7.5f,
             team2Value = 6.8f,
             maxValue = 12f,
@@ -436,7 +438,7 @@ private fun KeyStatsComparison(match: CricketMatch) {
         
         // Wickets comparison
         StatComparisonRow(
-            label = "Wickets",
+            label = stringResource(R.string.common_wickets),
             team1Value = 3f,
             team2Value = 4f,
             maxValue = 10f,

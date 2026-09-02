@@ -9,8 +9,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.PrefsRegistry
 import io.sentry.Sentry
@@ -84,7 +86,7 @@ fun MatchNotificationPrefsSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Notifications", style = typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.match_notifications), style = typography.titleMedium, fontWeight = FontWeight.Bold)
                 IconButton(onClick = {
                     MatchNotificationPrefs.save(context, matchId, prefs)
                     onDismiss()
@@ -114,7 +116,7 @@ fun MatchNotificationPrefsSheet(
                     },
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("All On", style = typography.labelMedium)
+                    Text(stringResource(R.string.match_all_on), style = typography.labelMedium)
                 }
                 OutlinedButton(
                     onClick = {
@@ -125,7 +127,7 @@ fun MatchNotificationPrefsSheet(
                     },
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Key Only", style = typography.labelMedium)
+                    Text(stringResource(R.string.match_key_only), style = typography.labelMedium)
                 }
                 OutlinedButton(
                     onClick = {
@@ -136,7 +138,7 @@ fun MatchNotificationPrefsSheet(
                     },
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Mute", style = typography.labelMedium)
+                    Text(stringResource(R.string.match_mute), style = typography.labelMedium)
                 }
             }
 

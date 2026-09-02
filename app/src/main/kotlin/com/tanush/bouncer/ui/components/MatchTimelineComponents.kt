@@ -27,12 +27,14 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.PI
@@ -502,7 +504,7 @@ fun HeadToHeadCard(
         ) {
             // Header
             Text(
-                text = "HEAD TO HEAD",
+                text = stringResource(R.string.common_head_to_head),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
@@ -531,7 +533,7 @@ fun HeadToHeadCard(
                         color = team1Color
                     )
                     Text(
-                        text = "Wins",
+                        text = stringResource(R.string.match_wins),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
                         color = colors.textMuted
@@ -547,7 +549,7 @@ fun HeadToHeadCard(
                         color = TextPrimary
                     )
                     Text(
-                        text = "Matches",
+                        text = stringResource(R.string.common_matches),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
                         color = colors.textMuted
@@ -579,7 +581,7 @@ fun HeadToHeadCard(
                         color = team2Color
                     )
                     Text(
-                        text = "Wins",
+                        text = stringResource(R.string.match_wins),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
                         color = colors.textMuted
@@ -704,7 +706,7 @@ fun RunMeter(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "TARGET CHASE",
+            text = stringResource(R.string.match_target_chase),
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.5.sp,

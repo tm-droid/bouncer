@@ -29,9 +29,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.analysis.MatchProjections
 import com.tanush.bouncer.ui.theme.*
@@ -119,14 +121,14 @@ fun LiveScoringGraphCard(
 
                     Column {
                         Text(
-                            text = "LIVE SCORING GRAPH",
+                            text = stringResource(R.string.live_live_scoring_graph),
                             color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
                         )
                         Text(
-                            text = "Run progression by over",
+                            text = stringResource(R.string.live_run_progression_by_over),
                             color = colors.textSecondary,
                             fontSize = 13.sp,
                         )
@@ -412,13 +414,13 @@ fun LiveScoringGraphCard(
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 ScoringStatItem(
-                    label = "Current Over",
+                    label = stringResource(R.string.common_current_over),
                     value = "${scoringData.currentOver}",
                     subtext = "of ${scoringData.totalOvers}",
                 )
 
                 ScoringStatItem(
-                    label = "Current Score",
+                    label = stringResource(R.string.live_current_score),
                     value = "${scoringData.team1Scores.lastOrNull() ?: 0}",
                     subtext = scoringData.team1Name,
                 )
@@ -433,7 +435,7 @@ fun LiveScoringGraphCard(
                     val rrr = MatchProjections.requiredRunRate(target + 1, current, ballsBowled, totalBalls) ?: 0.0
 
                     ScoringStatItem(
-                        label = "Required RR",
+                        label = stringResource(R.string.live_required_rr),
                         value = String.format(Locale.US, "%.2f", rrr),
                         subtext = "$required from $oversRemaining",
                     )

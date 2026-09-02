@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.LocalContext
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -25,6 +26,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import androidx.work.*
 import com.tanush.bouncer.BouncerActivity
+import com.tanush.bouncer.R
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -420,7 +422,7 @@ class CountdownWidget : GlanceAppWidget() {
             Spacer(modifier = GlanceModifier.height(8.dp))
             
             Text(
-                text = "No upcoming matches",
+                text = LocalContext.current.getString(R.string.widget_no_upcoming_matches),
                 style = TextStyle(
                     color = WidgetColorScheme.textPrimary,
                     fontSize = 13.sp,
@@ -431,7 +433,7 @@ class CountdownWidget : GlanceAppWidget() {
             Spacer(modifier = GlanceModifier.height(4.dp))
             
             Text(
-                text = "Check the app for schedule",
+                text = LocalContext.current.getString(R.string.widget_check_the_app_for_schedule),
                 style = TextStyle(
                     color = WidgetColorScheme.textSecondary,
                     fontSize = 10.sp

@@ -11,7 +11,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
@@ -46,7 +48,7 @@ fun BouncerTopBarV2(
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.common_back),
                     )
                 }
             }

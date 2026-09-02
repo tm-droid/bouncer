@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -36,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -99,7 +101,7 @@ fun IntelligenceFeedScreenV2(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Activity Feed", style = typography.titleMedium) },
+                title = { Text(stringResource(R.string.intelligence_activity_feed), style = typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -118,15 +120,15 @@ fun IntelligenceFeedScreenV2(
             val errorState = loadingState as? LoadingState.Error
             if (errorState != null) {
                 EmptyStateV2(
-                    title = "Couldn't load activity",
+                    title = stringResource(R.string.intelligence_couldn_t_load_activity),
                     subtitle = errorState.message,
                     modifier = Modifier.fillMaxSize().padding(padding),
                     onRetry = { liveActivityViewModel?.refreshMatches() },
                 )
             } else {
                 EmptyStateV2(
-                    title = "No Activity Yet",
-                    subtitle = "Activity from live matches will appear here",
+                    title = stringResource(R.string.intelligence_no_activity_yet),
+                    subtitle = stringResource(R.string.intelligence_activity_from_live_matches_will_appear),
                     modifier = Modifier.fillMaxSize().padding(padding),
                 )
             }

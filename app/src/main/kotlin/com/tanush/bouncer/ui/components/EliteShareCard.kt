@@ -32,11 +32,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.Dispatchers
@@ -356,7 +358,7 @@ fun EliteShareCardPreview(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "KEY PERFORMER",
+                            text = stringResource(R.string.share_key_performer),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = GoldLight,
@@ -435,7 +437,7 @@ fun EliteShareCardPreview(
             ) {
                 Icon(
                     imageVector = Icons.Default.Share,
-                    contentDescription = "Share",
+                    contentDescription = stringResource(R.string.common_share),
                     tint = colors.backgroundBase,
                     modifier = Modifier.size(20.dp)
                 )
@@ -472,7 +474,7 @@ private fun WinProbabilityShareBar(
                 color = if (probability > 0.5f) colors.statusSuccess else hierarchy.secondary.primary
             )
             Text(
-                text = "WIN PROBABILITY",
+                text = stringResource(R.string.common_win_probability),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = colors.textTertiary,
@@ -931,7 +933,7 @@ fun ShareCardButton(
         } else {
             Icon(
                 imageVector = Icons.Default.Share,
-                contentDescription = "Share",
+                contentDescription = stringResource(R.string.common_share),
                 tint = colors.backgroundBase,
                 modifier = Modifier.size(20.dp)
             )

@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -37,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.managers.NotificationItem
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
@@ -73,7 +75,7 @@ fun NotificationsScreen(onBack: () -> Unit) {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.common_back),
                             tint = colors.onSurface,
                         )
                     }
@@ -87,8 +89,8 @@ fun NotificationsScreen(onBack: () -> Unit) {
     ) { innerPadding ->
         if (items.isEmpty()) {
             EmptyStateV2(
-                title = "No notifications yet",
-                subtitle = "Subscribe to matches with the bell icon to get alerts",
+                title = stringResource(R.string.notifications_no_notifications_yet),
+                subtitle = stringResource(R.string.notifications_subscribe_to_matches_with_the_bell),
                 modifier = Modifier.padding(innerPadding),
             )
         } else {

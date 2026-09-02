@@ -17,10 +17,12 @@ import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
@@ -333,7 +335,7 @@ private fun PhaseRow(
                         )
                     } else {
                         Text(
-                            text = "Yet to bat",
+                            text = stringResource(R.string.match_yet_to_bat),
                             color = colors.textTertiary,
                             fontSize = 11.sp
                         )
@@ -449,7 +451,7 @@ private fun MomentumSummary(
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
-                text = "MOMENTUM SUMMARY",
+                text = stringResource(R.string.match_momentum_summary),
                 color = colors.textTertiary,
                 fontSize = 10.sp,
                 letterSpacing = 0.5.sp,
@@ -517,7 +519,7 @@ private fun MomentumSummary(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Balanced",
+                        text = stringResource(R.string.match_balanced),
                         color = colors.textTertiary,
                         fontSize = 10.sp
                     )

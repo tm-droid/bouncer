@@ -19,10 +19,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import kotlin.math.*
@@ -99,7 +101,7 @@ fun OverByOverComparisonCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Over-by-Over Comparison",
+                        text = stringResource(R.string.comparison_over_by_over),
                         color = TextPrimary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
@@ -378,7 +380,7 @@ private fun PhaseComparisonRow(comparisonInfo: OverByOverComparisonInfo) {
     
     Column {
         Text(
-            text = "PHASE COMPARISON",
+            text = stringResource(R.string.comparison_phase),
             color = TextSecondary,
             fontSize = 10.sp,
             letterSpacing = 1.sp

@@ -20,10 +20,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.appwidget.GlanceAppWidgetManager
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.components.glass.GlassCard
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
@@ -112,7 +114,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
             ) {
                 // Header
                 Text(
-                    text = "Select Match",
+                    text = stringResource(R.string.widget_select_match),
                     color = colors.textPrimary,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
@@ -120,7 +122,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
                 )
                 
                 Text(
-                    text = "Choose which match to display on this widget",
+                    text = stringResource(R.string.widget_choose_which_match_to_display_on),
                     color = colors.textSecondary,
                     fontSize = 14.sp,
                     modifier = Modifier.padding(bottom = 24.dp)
@@ -166,7 +168,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
                         enabled = selectedMatchId != null
                     ) {
                         Text(
-                            text = "Confirm Selection",
+                            text = stringResource(R.string.widget_confirm_selection),
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
                         )
@@ -201,7 +203,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "No Matches Available",
+                        text = stringResource(R.string.widget_no_matches_available),
                         color = colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Medium
@@ -210,7 +212,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "Check back when matches are scheduled",
+                        text = stringResource(R.string.widget_check_back_when_matches_are_scheduled),
                         color = colors.textSecondary,
                         fontSize = 14.sp
                     )
@@ -226,7 +228,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
                         ),
                         border = BorderStroke(1.dp, colors.goldPrimary.copy(alpha = 0.45f))
                     ) {
-                        Text("Use Default")
+                        Text(stringResource(R.string.widget_use_default))
                     }
                 }
             }

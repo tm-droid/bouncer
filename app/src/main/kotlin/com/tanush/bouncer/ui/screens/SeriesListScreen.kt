@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FiniteAnimationSpec
@@ -33,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tanush.bouncer.R
 import com.tanush.bouncer.viewmodels.SeriesListViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,7 +75,7 @@ fun SeriesListScreen(
 
     Scaffold(
         topBar = {
-            BouncerTopBarV2(title = "Series", showBack = true, onBack = onBackClick)
+            BouncerTopBarV2(title = stringResource(R.string.series_series), showBack = true, onBack = onBackClick)
         },
         containerColor = colors.background,
     ) { innerPadding ->
@@ -133,8 +135,8 @@ private fun SeriesListBody(
         SeriesListState.Error -> {
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 EmptyStateV2(
-                    title = "Couldn't load series",
-                    subtitle = "Check your connection and try again",
+                    title = stringResource(R.string.series_couldn_t_load_series),
+                    subtitle = stringResource(R.string.series_check_your_connection_and_try_again),
                     onRetry = onRetry,
                 )
             }
@@ -142,8 +144,8 @@ private fun SeriesListBody(
         SeriesListState.Empty -> {
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 EmptyStateV2(
-                    title = "No series found",
-                    subtitle = "Active cricket series will appear here",
+                    title = stringResource(R.string.series_no_series_found),
+                    subtitle = stringResource(R.string.series_active_cricket_series_will_appear_here),
                 )
             }
         }

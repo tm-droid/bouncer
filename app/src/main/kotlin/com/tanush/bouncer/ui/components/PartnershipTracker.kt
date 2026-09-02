@@ -22,10 +22,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.*
 import io.sentry.Sentry
 import java.util.Locale
@@ -215,7 +217,7 @@ private fun CurrentPartnershipCard(
                             )
                     )
                     Text(
-                        text = "CURRENT PARTNERSHIP",
+                        text = stringResource(R.string.partnership_current_partnership),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,

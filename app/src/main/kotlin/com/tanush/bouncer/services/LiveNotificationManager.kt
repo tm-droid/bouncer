@@ -130,7 +130,7 @@ class LiveNotificationManager(private val context: Context) {
             "Live Match Updates",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Ongoing live match score updates"
+            description = context.getString(R.string.notification_ongoing_live_match_score_updates)
             setShowBadge(false)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
@@ -688,7 +688,7 @@ class LiveNotificationManager(private val context: Context) {
         showEventAlert(
             notificationId = NOTIFICATION_ID_WICKET,
             channelId = CHANNEL_ID_WICKETS,
-            title = "WICKET! 🔴",
+            title = context.getString(R.string.notification_wicket),
             text = "$batsmanName $dismissalType by $bowlerName ($runsScored runs)",
             color = COLOR_WICKET,
             match = match,
@@ -706,7 +706,7 @@ class LiveNotificationManager(private val context: Context) {
         showEventAlert(
             notificationId = NOTIFICATION_ID_BOUNDARY,
             channelId = CHANNEL_ID_BOUNDARIES,
-            title = "SIX! 💜",
+            title = context.getString(R.string.notification_six),
             text = "$batsmanName hits $bowlerName for six! $description",
             color = COLOR_SIX,
             match = match,
@@ -724,7 +724,7 @@ class LiveNotificationManager(private val context: Context) {
         showEventAlert(
             notificationId = NOTIFICATION_ID_BOUNDARY,
             channelId = CHANNEL_ID_BOUNDARIES,
-            title = "FOUR! 💛",
+            title = context.getString(R.string.notification_four),
             text = "$batsmanName hits $bowlerName for four! $description",
             color = COLOR_FOUR,
             match = match,

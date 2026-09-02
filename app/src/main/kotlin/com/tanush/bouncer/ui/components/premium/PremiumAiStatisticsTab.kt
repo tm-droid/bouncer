@@ -14,9 +14,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -93,7 +95,7 @@ private fun WinProbabilityPanel(winProb: Float, battingTeam: String) {
     BouncerCard {
         Column(modifier = Modifier.padding(spacing.lg)) {
             Text(
-                text = "WIN PROBABILITY",
+                text = stringResource(R.string.common_win_probability),
                 style = typography.overline,
                 color = colors.textSecondary,
             )
@@ -151,12 +153,12 @@ private fun RunRateRow(crr: String?, rrr: String?) {
     ) {
         RunRateCard(
             modifier = Modifier.weight(1f),
-            label = "CURRENT RUN RATE",
+            label = stringResource(R.string.premium_current_run_rate),
             value = crr,
         )
         RunRateCard(
             modifier = Modifier.weight(1f),
-            label = "REQUIRED RUN RATE",
+            label = stringResource(R.string.premium_required_run_rate),
             value = rrr,
         )
     }
@@ -196,14 +198,14 @@ private fun NoForecastYet() {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "No forecast for this match yet",
+                text = stringResource(R.string.premium_no_forecast_for_this_match_yet),
                 style = typography.titleMedium,
                 color = colors.onSurface,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(spacing.xs))
             Text(
-                text = "A win probability appears once the model has enough of the innings to " +
+                text = stringResource(R.string.premium_a_win_probability_appears_once_the) +
                     "score it.",
                 style = typography.bodySmall,
                 color = colors.textSecondary,

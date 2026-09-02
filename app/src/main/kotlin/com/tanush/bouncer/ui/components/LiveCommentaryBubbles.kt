@@ -18,11 +18,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.utils.CommentaryEventType
 import com.tanush.bouncer.utils.parseCommentaryType
@@ -502,7 +504,7 @@ fun CommentaryTicker(
                 )
             } else {
                 Text(
-                    text = "Waiting for updates...",
+                    text = stringResource(R.string.live_waiting_for_updates),
                     color = TextTertiary,
                     fontSize = 12.sp,
                     fontStyle = FontStyle.Italic,

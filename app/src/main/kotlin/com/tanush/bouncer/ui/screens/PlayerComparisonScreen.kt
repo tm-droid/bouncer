@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.v2.ShimmerBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -88,7 +90,7 @@ fun PlayerComparisonScreen(
     Scaffold(
         topBar = {
             BouncerTopBarV2(
-                title = "Compare",
+                title = stringResource(R.string.player_compare),
                 showBack = true,
                 onBack = onBackClick,
             )
@@ -150,7 +152,7 @@ private fun LazyListScope.playerPickerSection(
             PlayerPickerCard(
                 player = player1,
                 loading = loadingPlayer1,
-                label = "Player 1",
+                label = stringResource(R.string.player_player_1),
                 isActive = activePickerSlot == 1,
                 onTap = { onSlotChange(if (activePickerSlot == 1) 0 else 1) },
                 onClear = { onClearPlayer(1) },
@@ -159,7 +161,7 @@ private fun LazyListScope.playerPickerSection(
             PlayerPickerCard(
                 player = player2,
                 loading = loadingPlayer2,
-                label = "Player 2",
+                label = stringResource(R.string.player_player_2),
                 isActive = activePickerSlot == 2,
                 onTap = { onSlotChange(if (activePickerSlot == 2) 0 else 2) },
                 onClear = { onClearPlayer(2) },
@@ -288,7 +290,7 @@ private fun PlayerPickerCard(
             } else if (player != null) {
                 // Player selected but still placeholder (no stats yet / loading)
                 Text(player.name, style = typography.labelMedium, fontWeight = FontWeight.Bold, color = colors.onSurface)
-                Text("Tap to search", style = typography.labelSmall, color = colors.textSecondary)
+                Text(stringResource(R.string.player_tap_to_search), style = typography.labelSmall, color = colors.textSecondary)
             } else {
                 // Empty slot
                 Box(
@@ -299,7 +301,7 @@ private fun PlayerPickerCard(
                 }
                 Spacer(Modifier.height(spacing.xs))
                 Text(label, style = typography.labelMedium, color = colors.textSecondary)
-                Text("Tap to search", style = typography.labelSmall, color = colors.textSecondary)
+                Text(stringResource(R.string.player_tap_to_search), style = typography.labelSmall, color = colors.textSecondary)
             }
         }
     }
@@ -335,7 +337,7 @@ private fun PlayerSearchBox(
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            placeholder = { Text("Search player…", style = typography.bodyMedium) },
+            placeholder = { Text(stringResource(R.string.player_search_player), style = typography.bodyMedium) },
             leadingIcon = { Icon(Icons.Default.Search, "Search", tint = colors.textSecondary) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),

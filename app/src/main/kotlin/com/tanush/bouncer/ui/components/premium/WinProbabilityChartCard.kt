@@ -23,10 +23,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.models.WinProbabilityPoint
 import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
@@ -142,14 +144,14 @@ private fun ChartHeader(goldPrimary: Color) {
 
             Column {
                 Text(
-                    text = "WIN PROBABILITY".uppercase(),
+                    text = stringResource(R.string.common_win_probability).uppercase(),
                     color = goldPrimary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.5.sp,
                 )
                 Text(
-                    text = "LIVE STRATEGIC ANALYTICS",
+                    text = stringResource(R.string.winprob_live_strategic_analytics),
                     color = TextTertiary,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold
@@ -289,7 +291,7 @@ private fun KeyMomentsList(keyEvents: List<WinProbabilityPoint>, goldPrimary: Co
     if (keyEvents.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            text = "KEY STRATEGIC MOMENTS",
+            text = stringResource(R.string.winprob_key_strategic_moments),
             color = TextTertiary,
             fontSize = 9.sp,
             fontWeight = FontWeight.Black,

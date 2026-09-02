@@ -65,11 +65,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.request.ImageRequest
+import com.tanush.bouncer.R
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.ui.components.CoilImage
@@ -123,13 +125,13 @@ private fun RemoveTeamDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Remove Team") },
+        title = { Text(stringResource(R.string.favorites_remove_team)) },
         text = { Text("Remove $teamName from favorites?") },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text("Remove") }
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.common_remove)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }
@@ -172,12 +174,12 @@ fun FavoritesScreen(
                 IconButton(onClick = onBackClick) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.common_back),
                         tint = colors.onBackground,
                     )
                 }
                 Text(
-                    text = "Favorites",
+                    text = stringResource(R.string.favorites_favorites),
                     style = typography.titleLarge,
                     color = colors.onBackground,
                 )
@@ -199,7 +201,7 @@ fun FavoritesScreen(
                     IconButton(onClick = { showAddTeamSheet = true }) {
                         Icon(
                             imageVector = Icons.Default.Add,
-                            contentDescription = "Add Team",
+                            contentDescription = stringResource(R.string.favorites_add_team),
                             tint = colors.textSecondary,
                         )
                     }
@@ -317,7 +319,7 @@ fun FavoritesScreen(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Delete,
-                                            contentDescription = "Remove",
+                                            contentDescription = stringResource(R.string.common_remove),
                                             tint = colors.cricket.onEvent,
                                         )
                                     }
@@ -356,7 +358,7 @@ fun FavoritesScreen(
                     .align(Alignment.BottomEnd)
                     .padding(end = spacing.lg, bottom = 116.dp),
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Team")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.favorites_add_team))
             }
         }
 
@@ -387,8 +389,12 @@ private fun FavoritesHeader(count: Int) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                Text("Favorite Teams", style = typography.headlineMedium, color = colors.onSurface)
-                Text("Quick access to your teams", style = typography.bodySmall, color = colors.textSecondary)
+                Text(stringResource(R.string.common_favorite_teams), style = typography.headlineMedium, color = colors.onSurface)
+                Text(
+                    stringResource(R.string.favorites_quick_access_to_your_teams),
+                    style = typography.bodySmall,
+                    color = colors.textSecondary
+                )
             }
             Box(
                 contentAlignment = Alignment.Center,
@@ -446,20 +452,20 @@ private fun ReorderableTeamCard(
             Row {
                 ReorderControlButton(
                     icon = Icons.Default.KeyboardArrowUp,
-                    contentDescription = "Move up",
+                    contentDescription = stringResource(R.string.favorites_move_up),
                     enabled = canMoveUp,
                     onClick = onMoveUp,
                 )
                 ReorderControlButton(
                     icon = Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Move down",
+                    contentDescription = stringResource(R.string.favorites_move_down),
                     enabled = canMoveDown,
                     onClick = onMoveDown,
                 )
                 IconButton(onClick = onRemove) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Remove",
+                        contentDescription = stringResource(R.string.common_remove),
                         tint = colors.textSecondary,
                     )
                 }
@@ -525,7 +531,7 @@ private fun FavoriteTeamListRow(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "Tap to open team details",
+                    text = stringResource(R.string.favorites_tap_to_open_team_details),
                     style = typography.bodySmall,
                     color = colors.textSecondary,
                 )
@@ -533,7 +539,7 @@ private fun FavoriteTeamListRow(
             IconButton(onClick = { showRemoveDialog = true }) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Remove",
+                    contentDescription = stringResource(R.string.common_remove),
                     tint = colors.textSecondary,
                 )
             }
@@ -558,8 +564,8 @@ private fun EmptyFavoritesState(onAddTeam: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         EmptyStateV2(
             icon = Icons.Outlined.SportsCricket,
-            title = "No favorite teams yet",
-            subtitle = "Add teams to quickly access fixtures and updates.",
+            title = stringResource(R.string.favorites_no_favorite_teams_yet),
+            subtitle = stringResource(R.string.favorites_add_teams_to_quickly_access_fixtures),
             onRetry = onAddTeam,
             actionLabel = "Add team",
         )
@@ -605,11 +611,11 @@ private fun AddTeamBottomSheet(
                 .padding(bottom = spacing.xxxl),
             verticalArrangement = Arrangement.spacedBy(spacing.lg),
         ) {
-            Text(text = "Add Team", style = typography.headlineMedium, color = colors.onSurface)
+            Text(text = stringResource(R.string.favorites_add_team), style = typography.headlineMedium, color = colors.onSurface)
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Search teams...") },
+                placeholder = { Text(stringResource(R.string.favorites_search_teams)) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -679,7 +685,7 @@ private fun TeamSelectionRow(teamName: String, onClick: () -> Unit) {
             )
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Add",
+                contentDescription = stringResource(R.string.favorites_add),
                 tint = colors.primaryText,
                 modifier = Modifier.size(22.dp),
             )

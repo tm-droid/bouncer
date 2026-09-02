@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import io.sentry.Sentry
 
@@ -34,6 +36,6 @@ fun StatsDetailScreen(title: String) {
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
         Text(title, style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(12.dp))
-        Text("Full breakdown and charts (demo)")
+        Text(stringResource(R.string.stats_full_breakdown_and_charts_demo))
     }
 }

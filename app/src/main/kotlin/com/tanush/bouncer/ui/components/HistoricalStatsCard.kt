@@ -22,11 +22,13 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.CoilImage
 import coil.request.ImageRequest
 import com.tanush.bouncer.ui.theme.*
@@ -112,14 +114,14 @@ fun HistoricalStatsCard(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = "HEAD TO HEAD",
+                    text = stringResource(R.string.common_head_to_head),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
                     color = hierarchy.secondary.primary
                 )
                 Text(
-                    text = "Historical Statistics",
+                    text = stringResource(R.string.historical_historical_statistics),
                     fontSize = 10.sp,
                     color = colors.textSecondary
                 )
@@ -416,7 +418,7 @@ private fun RecentFormSection(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = "RECENT MEETINGS",
+            text = stringResource(R.string.historical_recent_meetings),
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp,
@@ -524,7 +526,7 @@ private fun FormatBreakdownSection(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = "BY FORMAT",
+            text = stringResource(R.string.historical_by_format),
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp,
@@ -637,7 +639,7 @@ private fun VenueHistorySection(
         ) {
             Column {
                 Text(
-                    text = "AT THIS VENUE",
+                    text = stringResource(R.string.historical_at_this_venue),
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp,

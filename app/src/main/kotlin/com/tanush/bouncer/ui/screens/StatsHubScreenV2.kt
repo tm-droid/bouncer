@@ -19,6 +19,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.SettingsItemV2
 import com.tanush.bouncer.ui.components.v2.SettingsTrailing
@@ -38,7 +40,7 @@ fun StatsHubScreenV2(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Stats Hub", style = typography.titleMedium) },
+                title = { Text(stringResource(R.string.stats_stats_hub), style = typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -65,8 +67,8 @@ fun StatsHubScreenV2(
             item(key = "analytics") {
                 SettingsItemV2(
                     icon = Icons.Default.Analytics,
-                    title = "Analytics",
-                    subtitle = "Deep dive into match data",
+                    title = stringResource(R.string.common_analytics),
+                    subtitle = stringResource(R.string.stats_deep_dive_into_match_data),
                     trailing = SettingsTrailing.Navigation,
                     onClick = onOpenAnalytics,
                 )
@@ -74,8 +76,8 @@ fun StatsHubScreenV2(
             item(key = "achievements") {
                 SettingsItemV2(
                     icon = Icons.Default.SportsCricket,
-                    title = "Achievements",
-                    subtitle = "Unlock badges & rewards",
+                    title = stringResource(R.string.common_achievements),
+                    subtitle = stringResource(R.string.stats_unlock_badges_rewards),
                     trailing = SettingsTrailing.Navigation,
                     onClick = onOpenAchievements,
                 )

@@ -11,8 +11,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.PrefsRegistry
 import com.tanush.bouncer.utils.ReminderScheduler
@@ -59,7 +61,7 @@ fun ReminderBottomSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Set Reminder", style = typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.common_set_reminder), style = typography.titleMedium, fontWeight = FontWeight.Bold)
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, "Close", tint = colors.textSecondary)
                 }

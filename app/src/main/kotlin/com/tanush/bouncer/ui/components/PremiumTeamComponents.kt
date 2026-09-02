@@ -27,11 +27,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.GoldPrimary
@@ -291,7 +293,7 @@ private fun RecentFormSection(form: List<MatchResult>) {
     val colors = BouncerDesignSystem.colors
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "RECENT FORM",
+            text = stringResource(R.string.premium_recent_form),
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp,
@@ -313,10 +315,10 @@ private fun QuickStatsRow(stats: TeamQuickStats) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        QuickStat(label = "Matches", value = "${stats.matchesPlayed}")
-        QuickStat(label = "Won", value = "${stats.wins}", valueColor = colors.statusSuccess)
-        QuickStat(label = "Lost", value = "${stats.losses}", valueColor = colors.statusLive)
-        QuickStat(label = "Win %", value = "${stats.winPercentage}%", valueColor = GoldPrimary)
+        QuickStat(label = stringResource(R.string.common_matches), value = "${stats.matchesPlayed}")
+        QuickStat(label = stringResource(R.string.premium_won), value = "${stats.wins}", valueColor = colors.statusSuccess)
+        QuickStat(label = stringResource(R.string.premium_lost), value = "${stats.losses}", valueColor = colors.statusLive)
+        QuickStat(label = stringResource(R.string.premium_win), value = "${stats.winPercentage}%", valueColor = GoldPrimary)
     }
 }
 
@@ -583,7 +585,7 @@ private fun FavoriteTeamChipContent(
         ) {
             Icon(
                 imageVector = Icons.Default.Close,
-                contentDescription = "Remove",
+                contentDescription = stringResource(R.string.common_remove),
                 modifier = Modifier.size(16.dp),
                 tint = colors.textMuted
             )
@@ -787,9 +789,13 @@ fun TeamVsTeamCard(
 
             HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.3f))
 
-            VersusStatRow(label = "Matches Won", value1 = team1Stats.wins, value2 = team2Stats.wins)
-            VersusStatRow(label = "Highest Score", value1 = team1Stats.highestScore, value2 = team2Stats.highestScore)
-            VersusStatRow(label = "Avg. Score", value1 = team1Stats.avgScore, value2 = team2Stats.avgScore)
+            VersusStatRow(label = stringResource(R.string.premium_matches_won), value1 = team1Stats.wins, value2 = team2Stats.wins)
+            VersusStatRow(
+                label = stringResource(R.string.premium_highest_score),
+                value1 = team1Stats.highestScore,
+                value2 = team2Stats.highestScore
+            )
+            VersusStatRow(label = stringResource(R.string.premium_avg_score), value1 = team1Stats.avgScore, value2 = team2Stats.avgScore)
         }
     }
 }

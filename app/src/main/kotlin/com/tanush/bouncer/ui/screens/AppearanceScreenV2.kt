@@ -33,8 +33,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.v2.ThemeModeV2
 
@@ -55,7 +57,7 @@ fun AppearanceScreenV2(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Appearance", style = typography.titleMedium) },
+                title = { Text(stringResource(R.string.common_appearance), style = typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -76,7 +78,7 @@ fun AppearanceScreenV2(
             verticalArrangement = Arrangement.spacedBy(spacing.lg),
         ) {
             item(key = "theme_label") {
-                Text("Theme", style = typography.titleMedium, color = colors.onSurface)
+                Text(stringResource(R.string.appearance_theme), style = typography.titleMedium, color = colors.onSurface)
             }
             item(key = "theme_cards") {
                 Row(
@@ -85,21 +87,21 @@ fun AppearanceScreenV2(
                 ) {
                     ThemeOptionCard(
                         icon = Icons.Default.LightMode,
-                        label = "Light",
+                        label = stringResource(R.string.appearance_light),
                         isSelected = currentMode == ThemeModeV2.Light,
                         onClick = { onModeChanged(ThemeModeV2.Light) },
                         modifier = Modifier.weight(1f),
                     )
                     ThemeOptionCard(
                         icon = Icons.Default.DarkMode,
-                        label = "Dark",
+                        label = stringResource(R.string.appearance_dark),
                         isSelected = currentMode == ThemeModeV2.Dark,
                         onClick = { onModeChanged(ThemeModeV2.Dark) },
                         modifier = Modifier.weight(1f),
                     )
                     ThemeOptionCard(
                         icon = Icons.Default.PhoneAndroid,
-                        label = "System",
+                        label = stringResource(R.string.appearance_system),
                         isSelected = currentMode == ThemeModeV2.System,
                         onClick = { onModeChanged(ThemeModeV2.System) },
                         modifier = Modifier.weight(1f),
@@ -143,7 +145,7 @@ private fun ThemeOptionCard(
             if (isSelected) {
                 Icon(
                     Icons.Default.Check,
-                    contentDescription = "Selected",
+                    contentDescription = stringResource(R.string.appearance_selected),
                     tint = colors.primaryText,
                     modifier = Modifier.size(18.dp).align(Alignment.TopEnd),
                 )

@@ -7,6 +7,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.tanush.bouncer.R
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.TextSecondary
@@ -26,7 +28,7 @@ fun ScorecardTab(
             CircularProgressIndicator(color = hierarchy.secondary.primary)
         }
         scorecard == null || scorecard.innings.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No scorecard available", color = TextSecondary)
+            Text(stringResource(R.string.common_no_scorecard_available), color = TextSecondary)
         }
         else -> PremiumScorecardTab(scorecard = scorecard, modifier = modifier)
     }

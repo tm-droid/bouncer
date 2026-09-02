@@ -33,9 +33,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.models.Achievement
 import com.tanush.bouncer.models.AchievementKind
 import androidx.compose.runtime.getValue
@@ -76,7 +78,7 @@ fun AchievementsScreenV2(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Achievements", style = typography.titleMedium) },
+                title = { Text(stringResource(R.string.common_achievements), style = typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")

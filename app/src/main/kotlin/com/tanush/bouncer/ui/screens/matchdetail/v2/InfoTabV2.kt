@@ -52,7 +52,7 @@ fun InfoTabV2(
                 BouncerCard {
                     Column(modifier = Modifier.padding(spacing.md)) {
                         Text(
-                            text = "Status",
+                            text = stringResource(R.string.info_status),
                             style = typography.labelMedium,
                             color = colors.textSecondary,
                         )

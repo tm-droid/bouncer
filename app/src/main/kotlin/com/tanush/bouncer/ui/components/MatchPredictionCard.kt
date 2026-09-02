@@ -19,10 +19,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
 
@@ -136,7 +138,7 @@ fun MatchPredictionCard(
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = "AI PREDICTION",
+                                text = stringResource(R.string.common_ai_prediction),
                                 color = colors.statusInfo,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
@@ -191,7 +193,7 @@ fun MatchPredictionCard(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "PREDICTED WINNER",
+                            text = stringResource(R.string.match_predicted_winner),
                             color = colors.textSecondary,
                             fontSize = 10.sp,
                             letterSpacing = 2.sp
@@ -307,7 +309,7 @@ fun MatchPredictionCard(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "TIE/DRAW",
+                                text = stringResource(R.string.match_tie_draw),
                                 color = colors.textTertiary,
                                 fontSize = 10.sp
                             )
@@ -391,7 +393,7 @@ fun MatchPredictionCard(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text(
-                        text = "KEY FACTORS",
+                        text = stringResource(R.string.match_key_factors),
                         color = colors.textTertiary,
                         fontSize = 10.sp,
                         letterSpacing = 1.sp

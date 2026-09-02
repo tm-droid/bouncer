@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.ActionParameters
@@ -28,6 +29,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import com.tanush.bouncer.BouncerActivity
+import com.tanush.bouncer.R
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -381,7 +383,7 @@ class BouncerGlanceWidget : GlanceAppWidget() {
             )
             Spacer(modifier = GlanceModifier.height(8.dp))
             Text(
-                text = "No live matches",
+                text = LocalContext.current.getString(R.string.common_no_live_matches),
                 style = TextStyle(
                     color = WidgetColorScheme.textPrimary,
                     fontSize = 14.sp,
@@ -390,7 +392,7 @@ class BouncerGlanceWidget : GlanceAppWidget() {
             )
             Spacer(modifier = GlanceModifier.height(4.dp))
             Text(
-                text = "Check back soon",
+                text = LocalContext.current.getString(R.string.widget_check_back_soon),
                 style = TextStyle(
                     color = WidgetColorScheme.textSecondary,
                     fontSize = 11.sp

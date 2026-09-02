@@ -21,11 +21,13 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.PI
@@ -329,7 +331,7 @@ fun RunRateSpeedometer(
                 color = crrColor
             )
             Text(
-                text = "RUN RATE",
+                text = stringResource(R.string.common_run_rate),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = colors.textTertiary,

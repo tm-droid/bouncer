@@ -42,10 +42,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.tanush.bouncer.R
 import com.tanush.bouncer.models.FormatStats
 import com.tanush.bouncer.models.PlayerProfile
 import com.tanush.bouncer.network.PlayerProfileScraper
@@ -109,7 +111,7 @@ fun PlayerDetailScreenV2(
     Scaffold(
         topBar = {
             BouncerTopBarV2(
-                title = "Player",
+                title = stringResource(R.string.player_player),
                 showBack = true,
                 onBack = onBackClick,
                 actions = {
@@ -151,7 +153,7 @@ fun PlayerDetailScreenV2(
                     EmptyStateV2(
                         icon = Icons.Default.Person,
                         title = "Couldn't load $playerName",
-                        subtitle = "The profile isn't available right now. Check your connection and try again.",
+                        subtitle = stringResource(R.string.player_the_profile_isn_t_available_right),
                     )
                     Button(
                         onClick = { retryCount++ },
@@ -162,7 +164,7 @@ fun PlayerDetailScreenV2(
                     ) {
                         Icon(Icons.Default.Refresh, "Retry", Modifier.size(16.dp))
                         Spacer(Modifier.width(spacing.xs))
-                        Text("Retry", style = typography.labelMedium)
+                        Text(stringResource(R.string.player_retry), style = typography.labelMedium)
                     }
                 }
             }

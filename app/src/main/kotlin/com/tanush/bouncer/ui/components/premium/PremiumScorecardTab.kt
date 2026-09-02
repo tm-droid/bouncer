@@ -18,12 +18,14 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.Innings
 import com.tanush.bouncer.models.BatsmanStats
@@ -52,7 +54,7 @@ fun PremiumScorecardTab(
     }
     if (scorecard.innings.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No scorecard available", color = TextSecondary)
+            Text(stringResource(R.string.common_no_scorecard_available), color = TextSecondary)
         }
         return
     }
@@ -133,10 +135,16 @@ fun PremiumScorecardTab(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.width(2.dp).height(16.dp).background(hierarchy.secondary.primary))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Batting", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.premium_batting), color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                     Surface(color = BouncerThemeV2.colors.surfaceVariant, shape = RoundedCornerShape(4.dp), border = BorderStroke(1.dp, GlassSurface)) {
-                        Text("Live", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                        Text(
+                            stringResource(R.string.premium_live),
+                            color = TextSecondary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
                     }
                 }
             }
@@ -261,7 +269,13 @@ private fun BattingTableHeader() {
             .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text("BATTER", modifier = Modifier.weight(3f), color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(
+            stringResource(R.string.premium_batter),
+            modifier = Modifier.weight(3f),
+            color = TextMuted,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold
+        )
         Text("R", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Text("B", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Text("4s", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -390,7 +404,7 @@ private fun FallOfWicketsCarousel(fow: List<FallOfWicket>) {
                     .padding(12.dp)
             ) {
                 Column {
-                    Text("Wicket", color = TextMuted, fontSize = 10.sp)
+                    Text(stringResource(R.string.premium_wicket), color = TextMuted, fontSize = 10.sp)
                     Text(score, color = hierarchy.secondary.primary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text(detail, color = TextSecondary, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
@@ -410,7 +424,13 @@ private fun BowlingTableHeader() {
             .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text("BOWLER", modifier = Modifier.weight(3.5f), color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(
+            stringResource(R.string.premium_bowler),
+            modifier = Modifier.weight(3.5f),
+            color = TextMuted,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold
+        )
         Text("O", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Text("M", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Text("R", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)

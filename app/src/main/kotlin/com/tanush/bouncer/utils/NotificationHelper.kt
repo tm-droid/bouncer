@@ -8,6 +8,7 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.tanush.bouncer.BouncerActivity
+import com.tanush.bouncer.R
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -31,7 +32,7 @@ object NotificationHelper {
                     CHANNEL_NAME,
                     NotificationManager.IMPORTANCE_DEFAULT
                 ).apply {
-                    description = "Notifications for live match events"
+                    description = context.getString(R.string.notification_channel_live_events_desc)
                 }
                 val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 manager.createNotificationChannel(channel)

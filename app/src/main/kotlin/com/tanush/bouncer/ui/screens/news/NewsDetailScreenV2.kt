@@ -15,12 +15,14 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.ShimmerBox
@@ -50,7 +52,7 @@ fun NewsDetailScreenV2(
     Scaffold(
         topBar = {
             BouncerTopBarV2(
-                title = "Article",
+                title = stringResource(R.string.news_article),
                 showBack = true,
                 onBack = {
                     viewModel.clearSelectedArticle()
@@ -70,8 +72,8 @@ fun NewsDetailScreenV2(
                 item(key = "no_article") {
                     EmptyStateV2(
                         icon = Icons.Outlined.Newspaper,
-                        title = "Article unavailable",
-                        subtitle = "This story may have expired. Head back for the latest headlines.",
+                        title = stringResource(R.string.news_article_unavailable),
+                        subtitle = stringResource(R.string.news_this_story_may_have_expired_head),
                     )
                 }
                 return@LazyColumn
@@ -151,7 +153,7 @@ fun NewsDetailScreenV2(
                 item(key = "body_error") {
                     EmptyStateV2(
                         icon = Icons.Outlined.Newspaper,
-                        title = "Couldn't load the full story",
+                        title = stringResource(R.string.news_couldn_t_load_the_full_story),
                         subtitle = bodyError,
                         onRetry = viewModel::retryArticleBody,
                     )

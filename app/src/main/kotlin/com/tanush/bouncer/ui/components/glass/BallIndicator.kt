@@ -21,11 +21,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
@@ -427,7 +429,7 @@ fun CurrentOverDisplay(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Current Over",
+                    text = stringResource(R.string.common_current_over),
                     style = typography.labelMedium,
                     color = colors.textSecondary
                 )

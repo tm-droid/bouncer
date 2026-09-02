@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.BuildConfig
 
 import androidx.compose.foundation.layout.Arrangement
@@ -43,6 +44,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.SettingsItemV2
@@ -97,7 +99,7 @@ fun MoreScreenV2(
             // Explore section
             item(key = "explore_header") {
                 SectionHeaderV2(
-                    title = "Explore",
+                    title = stringResource(R.string.more_explore),
                     modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.sm),
                 )
             }
@@ -131,7 +133,7 @@ fun MoreScreenV2(
             item(key = "settings_header") {
                 Spacer(Modifier.height(spacing.lg))
                 SectionHeaderV2(
-                    title = "Settings",
+                    title = stringResource(R.string.common_settings),
                     modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.sm),
                 )
             }
@@ -141,22 +143,22 @@ fun MoreScreenV2(
                 ) {
                     SettingsItemV2(
                         icon = Icons.Default.Settings,
-                        title = "Settings",
-                        subtitle = "Preferences and notifications",
+                        title = stringResource(R.string.common_settings),
+                        subtitle = stringResource(R.string.more_preferences_and_notifications),
                         trailing = SettingsTrailing.Navigation,
                         onClick = onSettingsClick,
                     )
                     SettingsItemV2(
                         icon = Icons.Default.Palette,
-                        title = "Appearance",
-                        subtitle = "Theme and display",
+                        title = stringResource(R.string.common_appearance),
+                        subtitle = stringResource(R.string.more_theme_and_display),
                         trailing = SettingsTrailing.Navigation,
                         onClick = onAppearanceClick,
                     )
                     SettingsItemV2(
                         icon = Icons.Default.Info,
-                        title = "About",
-                        subtitle = "Version, licenses and credits",
+                        title = stringResource(R.string.common_about),
+                        subtitle = stringResource(R.string.more_version_licenses_and_credits),
                         trailing = SettingsTrailing.Navigation,
                         onClick = onAboutClick,
                     )
@@ -165,8 +167,8 @@ fun MoreScreenV2(
                     if (BuildConfig.DEBUG) {
                         SettingsItemV2(
                             icon = Icons.Default.Build,
-                            title = "Dev Tools",
-                            subtitle = "Diagnostics and debug",
+                            title = stringResource(R.string.more_dev_tools),
+                            subtitle = stringResource(R.string.more_diagnostics_and_debug),
                             trailing = SettingsTrailing.Navigation,
                             onClick = onDevToolsClick,
                         )

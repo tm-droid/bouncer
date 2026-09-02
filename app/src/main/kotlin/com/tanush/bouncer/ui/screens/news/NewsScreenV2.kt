@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -24,6 +25,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.tanush.bouncer.R
 import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
@@ -64,7 +66,7 @@ fun NewsScreenV2(
     }
 
     Scaffold(
-        topBar = { BouncerTopBarV2(title = "News") },
+        topBar = { BouncerTopBarV2(title = stringResource(R.string.news_news)) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = colors.background,
     ) { innerPadding ->
@@ -100,7 +102,7 @@ fun NewsScreenV2(
                         val error = error // capture delegated property to enable smart cast
                         EmptyStateV2(
                             title = error ?: "No news yet",
-                            subtitle = "Pull down to refresh and try again",
+                            subtitle = stringResource(R.string.news_pull_down_to_refresh_and_try),
                             onRetry = { viewModel.refreshNews() },
                         )
                     }
@@ -175,7 +177,7 @@ private fun StaleHeadlinesBanner(
             )
             Spacer(Modifier.height(spacing.xs))
             Text(
-                text = "The live news source is unavailable. Pull down to try again.",
+                text = stringResource(R.string.news_the_live_news_source_is_unavailable),
                 style = typography.bodySmall,
                 color = colors.textSecondary,
             )

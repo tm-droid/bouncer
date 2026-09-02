@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.*
+import androidx.glance.LocalContext
 import androidx.glance.action.Action
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
@@ -32,6 +33,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.tanush.bouncer.BouncerActivity
+import com.tanush.bouncer.R
 import java.util.Locale
 
 /**
@@ -261,7 +263,7 @@ fun QuickActionButtons(
         if (showShare) {
             QuickActionButton(
                 icon = "↗",
-                contentDescription = "Share",
+                contentDescription = LocalContext.current.getString(R.string.common_share),
                 onClick = actionStartActivity<BouncerActivity>()
             )
         }
@@ -324,7 +326,7 @@ fun OversProgressBar(
             horizontalAlignment = Alignment.Horizontal.Start
         ) {
             Text(
-                text = "Overs: ",
+                text = LocalContext.current.getString(R.string.widget_overs),
                 style = WidgetTypography.labelMedium
             )
             Text(
@@ -577,7 +579,7 @@ private fun LiveDot(modifier: GlanceModifier = GlanceModifier) {
 @Composable
 private fun LiveText(modifier: GlanceModifier = GlanceModifier) {
     Text(
-        text = "● LIVE",
+        text = LocalContext.current.getString(R.string.widget_live),
         style = WidgetTypography.statusLive,
         modifier = modifier
     )
@@ -636,7 +638,7 @@ fun WidgetRefreshButton(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Refresh",
+                    text = LocalContext.current.getString(R.string.widget_refresh),
                     style = WidgetTypography.labelMedium
                 )
             }
@@ -659,7 +661,7 @@ fun WidgetRefreshButton(
                 )
                 Spacer(modifier = GlanceModifier.width(4.dp))
                 Text(
-                    text = "Refresh",
+                    text = LocalContext.current.getString(R.string.widget_refresh),
                     style = WidgetTypography.labelMedium
                 )
             }
@@ -1214,7 +1216,7 @@ fun MatchCountdown(
         Spacer(modifier = GlanceModifier.height(4.dp))
         
         Text(
-            text = "until match starts",
+            text = LocalContext.current.getString(R.string.widget_until_match_starts),
             style = WidgetTypography.labelSmall
         )
     }
@@ -1374,7 +1376,7 @@ fun PartnershipWidget(
         verticalAlignment = Alignment.Vertical.CenterVertically
     ) {
         Text(
-            text = "Partnership:",
+            text = LocalContext.current.getString(R.string.widget_partnership),
             style = WidgetTypography.labelSmall,
             modifier = GlanceModifier.padding(end = 4.dp)
         )

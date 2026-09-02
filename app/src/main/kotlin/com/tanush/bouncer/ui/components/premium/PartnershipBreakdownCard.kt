@@ -26,9 +26,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.ChartBlue
 import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.SuccessGreen
@@ -135,7 +137,7 @@ fun PartnershipBreakdownCard(
 
                     Column {
                         Text(
-                            text = "PARTNERSHIPS",
+                            text = stringResource(R.string.partnership_partnerships),
                             color = hierarchy.secondary.primary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -197,7 +199,7 @@ fun PartnershipBreakdownCard(
                 ) {
                     Column {
                         Text(
-                            text = "BEST PARTNERSHIP",
+                            text = stringResource(R.string.partnership_best_partnership),
                             color = hierarchy.secondary.primary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,

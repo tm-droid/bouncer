@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.LocalContext
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -23,6 +24,7 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.tanush.bouncer.BouncerActivity
+import com.tanush.bouncer.R
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -222,7 +224,7 @@ class BouncerLockScreenWidget : GlanceAppWidget() {
             Spacer(modifier = GlanceModifier.width(8.dp))
             
             Text(
-                text = "No live matches",
+                text = LocalContext.current.getString(R.string.common_no_live_matches),
                 style = TextStyle(
                     color = WidgetColorScheme.textSecondary,
                     fontSize = 12.sp

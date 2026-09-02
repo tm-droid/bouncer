@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.components.v2
 
+import androidx.compose.ui.res.stringResource
+import com.tanush.bouncer.R
 import kotlin.math.roundToInt
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -155,7 +157,7 @@ private fun MatchCardHeaderRow(
         if (isFavouriteTeam) {
             Icon(
                 imageVector = Icons.Default.Star,
-                contentDescription = "Following",
+                contentDescription = stringResource(R.string.match_following),
                 tint = colors.primaryText,
                 modifier = Modifier.size(14.dp).padding(end = 2.dp),
             )

@@ -24,10 +24,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.R
 import com.tanush.bouncer.models.DRSReviewData
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
@@ -79,7 +81,13 @@ fun DRSReviewCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Box(modifier = Modifier.size(6.dp).alpha(neonPulse).background(ChartCyan, CircleShape).shadow(4.dp, spotColor = ChartCyan))
-                    Text("REVIEW IN PROGRESS", color = ChartCyan, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text(
+                        stringResource(R.string.drs_review_in_progress),
+                        color = ChartCyan,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp
+                    )
                 }
             }
 
