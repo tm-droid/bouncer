@@ -228,7 +228,7 @@
     <string name="favorites_no_favorite_teams_yet">No favorite teams yet</string>
     <string name="favorites_quick_access_to_your_teams">Quick access to your teams</string>
     <string name="favorites_remove_team">Remove Team</string>
-    <string name="favorites_search_teams">Search teams...</string>
+    <string name="favorites_search_teams">Search teams&#8230;</string>
     <string name="favorites_tap_to_open_team_details">Tap to open team details</string>
     <string name="h2h_draws">Draws</string>
     <string name="h2h_no_result">No Result</string>
@@ -251,7 +251,7 @@
     <string name="live_live_scoring_graph">LIVE SCORING GRAPH</string>
     <string name="live_required_rr">Required RR</string>
     <string name="live_run_progression_by_over">Run progression by over</string>
-    <string name="live_waiting_for_updates">Waiting for updates...</string>
+    <string name="live_waiting_for_updates">Waiting for updates&#8230;</string>
     <string name="match_all_on">All On</string>
     <string name="match_balanced">Balanced</string>
     <string name="match_best_bowler">Best Bowler</string>
@@ -397,7 +397,7 @@
     <string name="widget_choose_which_match_to_display_on">Choose which match to display on this widget</string>
     <string name="widget_confirm_selection">Confirm Selection</string>
     <string name="widget_live">● LIVE</string>
-    <string name="widget_loading">Loading...</string>
+    <string name="widget_loading">Loading&#8230;</string>
     <string name="widget_no_matches_available">No Matches Available</string>
     <string name="widget_no_upcoming_matches">No upcoming matches</string>
     <string name="widget_overs">Overs:</string>
