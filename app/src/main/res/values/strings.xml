@@ -120,8 +120,7 @@
     <!-- Current and required run rate. Standard cricket abbreviations, said the same in Hindi. -->
     <string name="stat_crr_value" translatable="false">CRR: %1$s</string>
     <string name="stat_rrr_value" translatable="false">RRR: %1$s</string>
-    <string name="stat_crr" translatable="false">CRR</string>
-    <string name="stat_rrr" translatable="false">RRR</string>
+
 
     <string name="match_info_title">Match Information</string>
     <string name="match_info_series">Series</string>
