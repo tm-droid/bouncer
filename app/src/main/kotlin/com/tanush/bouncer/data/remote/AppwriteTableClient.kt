@@ -272,6 +272,17 @@ abstract class AppwriteTableClient(private val tag: String) {
                 if (e !is CancellationException) AppwriteReadGuard.recordFailure(name, e)
             }
         )
+        // The Appwrite SDK's Row.kt calls .getClass() on document field values without null-checking,
+        // so a document with any null field throws NPE inside the SDK before we ever see the row.
+        // Treat it the same as a missing row: return null so callers degrade gracefully.
+        val exception = result.exceptionOrNull()
+        if (exception is NullPointerException) {
+            sentryCaptureThrottled(
+                key = "appwrite.sdk.npe.$name",
+                message = "[$tag] Appwrite SDK NPE in '$name' (null document field): ${exception.message}",
+            )
+            return null
+        }
         return result.getOrThrow()
     }
 
