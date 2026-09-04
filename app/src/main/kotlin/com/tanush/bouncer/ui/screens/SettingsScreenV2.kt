@@ -1,6 +1,8 @@
 package com.tanush.bouncer.ui.screens
 
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.layout.Column
@@ -159,7 +161,7 @@ fun SettingsScreenV2(
                         title = stringResource(R.string.live_update_settings_title),
                         subtitle = stringResource(liveUpdateSubtitle),
                         trailing = SettingsTrailing.Navigation,
-                        onClick = { context.startActivity(promotedNotificationSettings(context.packageName)) },
+                        onClick = { context.openPromotedNotificationSettings() },
                     )
                     SettingsItemV2(
                         icon = Icons.Default.Notifications, title = stringResource(R.string.settings_live_match_alerts),
@@ -347,14 +349,26 @@ private fun liveUpdateSubtitleRes(): Int {
 }
 
 /**
- * The system screen that governs whether this app may promote notifications, falling back to the
- * app's ordinary notification settings on releases that have no such screen.
+ * Open the system screen governing whether this app may promote notifications, falling back to the
+ * app's ordinary notification settings.
+ *
+ * The fallback is not only for older releases. `ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS` is
+ * declared in the API 36 SDK but the screen behind it does not exist on every API 36 build — the
+ * stock Android 16 emulator resolves nothing for it, where an unguarded `startActivity` is an
+ * `ActivityNotFoundException`. Resolve before launching, and treat "no such screen" as ordinary.
  */
-private fun promotedNotificationSettings(packageName: String): Intent {
-    val action = if (Build.VERSION.SDK_INT >= PROMOTED_NOTIFICATION_SDK) {
-        Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS
-    } else {
-        Settings.ACTION_APP_NOTIFICATION_SETTINGS
+private fun Context.openPromotedNotificationSettings() {
+    // Each action addresses the app differently — the two notification screens by EXTRA_APP_PACKAGE,
+    // app details by a package: URI — so they cannot share one Intent.
+    val candidates = buildList {
+        if (Build.VERSION.SDK_INT >= PROMOTED_NOTIFICATION_SDK) {
+            add(Intent(Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+        }
+        add(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+        add(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
     }
-    return Intent(action).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+    for (intent in candidates) {
+        if (intent.resolveActivity(packageManager) == null) continue
+        if (runCatching { startActivity(intent) }.isSuccess) return
+    }
 }

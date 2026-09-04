@@ -136,7 +136,12 @@ reflection and no `@RequiresApi`** — below API 36 the same builder degrades to
 notification. Two API traps: `Notification.isRequestPromotedOngoing()` does **not** exist on stock
 API 36 even though the setter does (read `EXTRA_REQUEST_PROMOTED_ONGOING` from `extras` instead),
 and the settings intent is `Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS`, not the
-`ACTION_MANAGE_APP_PROMOTED_NOTIFICATIONS` the developer guide names. Pinned by
+`ACTION_MANAGE_APP_PROMOTED_NOTIFICATIONS` the developer guide names — **and that action resolves
+to nothing on a stock API 36 build** (the Android 16 emulator has neither the screen nor the
+feature: `canPostPromotedNotifications()` returns false there), so it must be `resolveActivity`-
+checked before `startActivity` or it is an `ActivityNotFoundException`. Promotion being unavailable
+is a normal device state, not an error: the app still posts an ordinary ongoing notification and
+the settings row says so. Pinned by
 `LiveUpdatePromotabilityTest` (**androidTest**, needs an API 36+ device), which asserts
 `Notification.hasPromotableCharacteristics()` — the platform's own verdict, and the only check that
 would have caught any of the above. It cannot be a unit test: there is no Robolectric here and the
