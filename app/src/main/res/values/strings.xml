@@ -23,27 +23,14 @@
 
     <!-- Notification Settings -->
 
-    <string name="live_activity_title">Bouncer Live Update</string>
-    <string name="live_activity_channel_name">Live Match Updates</string>
-    <string name="live_activity_channel_description">Persistent live score updates pinned at the top of notifications.</string>
-    <string name="live_activity_action_view_full_score">View Full Score</string>
-    <string name="live_activity_action_open_app">Open App</string>
-
-    <string name="live_activity_last_update_just_now">Just now</string>
-    <string name="live_activity_last_update_less_than_min">&lt; 1m ago</string>
-    <string name="live_activity_last_update_minutes">%1$dm ago</string>
-    <string name="live_activity_last_update_hours">%1$dh ago</string>
-
-    <string name="live_activity_style_compact_title">Compact</string>
-    <string name="live_activity_style_compact_subtitle">Balanced scoreline optimized for status-chip visibility.</string>
-    <string name="live_activity_style_detailed_title">Detailed</string>
-    <string name="live_activity_style_detailed_subtitle">Full context with batters, bowler, last ball, and chase info.</string>
-    <string name="live_activity_style_minimal_title">Minimal</string>
-    <string name="live_activity_style_minimal_subtitle">Only numbers, tiny footprint, best battery profile.</string>
-    <string name="live_activity_style_animated_title">Animated</string>
-    <string name="live_activity_style_animated_subtitle">Most expressive live look with pulse-forward emphasis.</string>
-    <string name="live_activity_style_statistics_title">Statistics</string>
-    <string name="live_activity_style_statistics_subtitle">Run rates, win probability, and wickets remaining at a glance.</string>
+    <string name="live_update_channel_name">Live score updates</string>
+    <string name="live_update_channel_description">A live scorecard pinned to the top of your notifications and lock screen while a match you follow is in progress.</string>
+    <string name="live_update_action_scorecard">Scorecard</string>
+    <string name="live_update_action_stop">Stop</string>
+    <string name="live_update_placeholder">Getting the latest score\u2026</string>
+    <string name="live_update_settings_title">Live score updates</string>
+    <string name="live_update_settings_subtitle">Show a live scorecard on your lock screen and status bar for matches you follow.</string>
+    <string name="live_update_settings_blocked">Live updates are turned off for Bouncer in system settings.</string>
 
     <!-- ── Home ─────────────────────────────────────────────────────────── -->
     <string name="home_title" translatable="false">BOUNCER</string>

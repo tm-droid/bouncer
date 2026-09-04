@@ -109,8 +109,6 @@
     <ID>CyclomaticComplexMethod:InteractionAccessibility.kt$HapticController$fun execute(pattern: HapticPattern)</ID>
     <ID>CyclomaticComplexMethod:InteractiveWidgetComponents.kt$@Composable fun MatchStatusChip( modifier: GlanceModifier = GlanceModifier, status: MatchStatus, customText: String? = null )</ID>
     <ID>CyclomaticComplexMethod:InteractiveWidgetComponents.kt$@Composable fun PowerplayIndicator( modifier: GlanceModifier = GlanceModifier, currentPowerplay: PowerplayPhase, oversInPhase: Float, totalOversInPhase: Float )</ID>
-    <ID>CyclomaticComplexMethod:LiveActivityManager.kt$LiveActivityManager$suspend fun shouldPostUpdate(update: LiveMatchUpdate?, nowMs: Long = System.currentTimeMillis()): Boolean</ID>
-    <ID>CyclomaticComplexMethod:LiveActivityService.kt$LiveActivityService$override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int</ID>
     <ID>CyclomaticComplexMethod:LiveCommentaryBubbles.kt$@Composable private fun CommentaryBubble( entry: CommentaryEntry, onClick: (() -&gt; Unit)? = null )</ID>
     <ID>CyclomaticComplexMethod:LiveCommentaryBubbles.kt$@Composable private fun getEventColor(type: CommentaryEventType): Color</ID>
     <ID>CyclomaticComplexMethod:LiveCommentaryBubbles.kt$@Composable private fun getEventIcon(type: CommentaryEventType)</ID>

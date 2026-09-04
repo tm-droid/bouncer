@@ -13,7 +13,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.tanush.bouncer.liveactivity.LiveActivityNotificationBuilder
+import com.tanush.bouncer.liveactivity.LiveUpdateNotifier
+import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.utils.PreferencesHelper
 
@@ -45,7 +46,10 @@ class BouncerActivity : ComponentActivity() {
 
         enableEdgeToEdge()
 
-        LiveActivityNotificationBuilder(applicationContext).createNotificationChannel()
+        LiveUpdateNotifier(applicationContext).ensureChannel()
+        // Foreground-service starts are refused from the background, so a subscription made while
+        // the app was closed only becomes a Live Update here.
+        MatchSubscriptionManager.resumeLiveUpdates(this)
         // Onboarding handles the permission prompt for new users.
         // Only request here for users who already completed onboarding (pre-onboarding installs).
         val onboardingDone = PreferencesHelper.getBoolean(this, PreferencesHelper.KEY_ONBOARDING_COMPLETE, false)

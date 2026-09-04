@@ -122,16 +122,6 @@
             column="40"/>
     </issue>
 
-    <issue
-        id="InlinedApi"
-        message="Field requires API level 29 (current min is 26): `android.content.pm.ServiceInfo#FOREGROUND_SERVICE_TYPE_DATA_SYNC`"
-        errorLine1="                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/tanush/bouncer/services/LiveActivityService.kt"
-            line="103"
-            column="17"/>
-    </issue>
 
     <issue
         id="OldTargetApi"
@@ -1001,16 +991,6 @@
             column="17"/>
     </issue>
 
-    <issue
-        id="ObsoleteSdkInt"
-        message="Unnecessary; `SDK_INT` is never &lt; 26"
-        errorLine1="        if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.O) return"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/tanush/bouncer/liveactivity/LiveActivityNotificationBuilder.kt"
-            line="97"
-            column="13"/>
-    </issue>
 
     <issue
         id="ObsoleteSdkInt"
@@ -2942,49 +2922,9 @@
             file="src/main/res/drawable/ic_launcher_monochrome.png"/>
     </issue>
 
-    <issue
-        id="SmallSp"
-        message="Avoid using sizes smaller than `11sp`: `10sp`"
-        errorLine1="        android:textSize=&quot;10sp&quot; />"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_activity_animated.xml"
-            line="42"
-            column="9"/>
-    </issue>
 
-    <issue
-        id="SmallSp"
-        message="Avoid using sizes smaller than `11sp`: `10sp`"
-        errorLine1="        android:textSize=&quot;10sp&quot; />"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_activity_detailed.xml"
-            line="58"
-            column="9"/>
-    </issue>
 
-    <issue
-        id="SmallSp"
-        message="Avoid using sizes smaller than `11sp`: `10sp`"
-        errorLine1="        android:textSize=&quot;10sp&quot; />"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_activity_minimal.xml"
-            line="25"
-            column="9"/>
-    </issue>
 
-    <issue
-        id="SmallSp"
-        message="Avoid using sizes smaller than `11sp`: `10sp`"
-        errorLine1="        android:textSize=&quot;10sp&quot; />"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_activity_statistics.xml"
-            line="82"
-            column="9"/>
-    </issue>
 
     <issue
         id="SmallSp"

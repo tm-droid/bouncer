@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!--
+      Non-runtime. Required for a notification to qualify as an Android Live Update, i.e. to be
+      promoted to the status-bar chip, the lock screen, and the top of the shade.
+    -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!--
         SCHEDULE_EXACT_ALARM is deliberately NOT declared. Play restricts it to alarm-clock and
@@ -126,11 +131,21 @@
         <receiver android:name=".services.MuteMatchReceiver"
                   android:exported="false" />
 
+        <!--
+          Keeps the process alive for the Appwrite Realtime frames that drive the Live Updates.
+          The promoted notifications themselves do not need a foreground service, which is why
+          LiveUpdateService.onTimeout can drop out of the foreground without clearing them.
+        -->
         <service
-            android:name=".services.LiveActivityService"
+            android:name=".services.LiveUpdateService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Notification swipe (delete intent) and the "Stop" action on a Live Update -->
+        <receiver
+            android:name=".services.LiveUpdateDismissReceiver"
+            android:exported="false" />
 
         <!-- Firebase Cloud Messaging service -->
         <service

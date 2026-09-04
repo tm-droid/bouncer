@@ -4,6 +4,7 @@ import com.tanush.bouncer.data.AppJson
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import com.tanush.bouncer.services.LiveUpdateService
 import com.tanush.bouncer.utils.PrefsRegistry
 import io.sentry.Sentry
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,7 @@ object MatchSubscriptionManager {
     private val KEY_SUBSCRIBED = PrefsRegistry.MatchSubscriptions.SUBSCRIBED_IDS
 
     private lateinit var prefs: SharedPreferences
+    private var appContext: Context? = null
     private var initialized = false
 
     private val _subscriptions = MutableStateFlow<Set<String>>(emptySet())
@@ -30,6 +32,7 @@ object MatchSubscriptionManager {
     fun initialize(context: Context) {
         if (initialized) return
         try {
+            appContext = context.applicationContext
             prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             _subscriptions.value = load()
             initialized = true
@@ -48,6 +51,7 @@ object MatchSubscriptionManager {
             if (current.add(matchId)) {
                 save(current)
                 Log.d(TAG, "Subscribed to $matchId (total: ${current.size})")
+                startLiveUpdates()
             }
         } catch (e: Exception) {
             Sentry.captureException(e)
@@ -92,6 +96,25 @@ object MatchSubscriptionManager {
         // real fix; commit() would only trade the loss for a main-thread disk write.
         prefs.edit().putString(KEY_SUBSCRIBED, AppJson.encodeToString(set.toList())).apply()
         _subscriptions.value = set
+    }
+
+    /**
+     * Following a match is what turns its Live Update on — there is no separate control, because a
+     * second switch for "follow this match, but do not show it" is a setting nobody wants.
+     *
+     * The service decides for itself which subscriptions are actually live and stops when none
+     * are, so this only has to nudge it. It is a no-op when the app is in the background, where
+     * the platform refuses a foreground-service start; the next foreground entry starts it.
+     */
+    private fun startLiveUpdates() {
+        val context = appContext ?: return
+        LiveUpdateService.start(context)
+    }
+
+    /** Start tracking whatever is already subscribed. Called once the app is in the foreground. */
+    fun resumeLiveUpdates(context: Context) {
+        if (!initialized || _subscriptions.value.isEmpty()) return
+        LiveUpdateService.start(context.applicationContext)
     }
 
     private fun load(): Set<String> {

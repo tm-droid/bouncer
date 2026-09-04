@@ -1,5 +1,8 @@
 package com.tanush.bouncer.ui.screens
 
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -40,6 +43,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.tanush.bouncer.R
 import com.tanush.bouncer.data.MatchesResponseCache
 import com.tanush.bouncer.services.MatchCacheService
@@ -76,6 +81,8 @@ fun SettingsScreenV2(
     var cacheCleared by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val liveUpdateSubtitle = liveUpdateSubtitleRes()
 
     // Toggle states
     var liveNotifications by remember {
@@ -147,6 +154,13 @@ fun SettingsScreenV2(
             item { SectionHeaderV2("Notifications", modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.sm)) }
             item {
                 Column(Modifier.padding(horizontal = spacing.lg)) {
+                    SettingsItemV2(
+                        icon = Icons.Default.Notifications,
+                        title = stringResource(R.string.live_update_settings_title),
+                        subtitle = stringResource(liveUpdateSubtitle),
+                        trailing = SettingsTrailing.Navigation,
+                        onClick = { context.startActivity(promotedNotificationSettings(context.packageName)) },
+                    )
                     SettingsItemV2(
                         icon = Icons.Default.Notifications, title = stringResource(R.string.settings_live_match_alerts),
                         subtitle = stringResource(R.string.settings_get_notified_when_your_favorite_team),
@@ -308,4 +322,39 @@ fun SettingsScreenV2(
             }
         }
     }
+}
+
+/** Android 16 (API 36) is where promoted ongoing notifications — Live Updates — exist. */
+private const val PROMOTED_NOTIFICATION_SDK = 36
+
+/**
+ * Subtitle for the Live Updates row, which doubles as the only place the user is told that the
+ * system has switched promotion off for this app.
+ *
+ * Re-read on every resume because the only way to change it is in system settings, which means
+ * leaving this screen and coming back.
+ */
+@Composable
+private fun liveUpdateSubtitleRes(): Int {
+    val context = LocalContext.current
+    var blocked by remember { mutableStateOf(false) }
+    LifecycleResumeEffect(Unit) {
+        blocked = Build.VERSION.SDK_INT >= PROMOTED_NOTIFICATION_SDK &&
+            !NotificationManagerCompat.from(context).canPostPromotedNotifications()
+        onPauseOrDispose { }
+    }
+    return if (blocked) R.string.live_update_settings_blocked else R.string.live_update_settings_subtitle
+}
+
+/**
+ * The system screen that governs whether this app may promote notifications, falling back to the
+ * app's ordinary notification settings on releases that have no such screen.
+ */
+private fun promotedNotificationSettings(packageName: String): Intent {
+    val action = if (Build.VERSION.SDK_INT >= PROMOTED_NOTIFICATION_SDK) {
+        Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS
+    } else {
+        Settings.ACTION_APP_NOTIFICATION_SETTINGS
+    }
+    return Intent(action).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
 }
