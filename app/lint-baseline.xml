@@ -992,16 +992,6 @@
     </issue>
 
 
-    <issue
-        id="ObsoleteSdkInt"
-        message="Unnecessary; `SDK_INT` is never &lt; 26"
-        errorLine1="        if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.O) return@reportingErrors"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/tanush/bouncer/services/LiveNotificationManager.kt"
-            line="124"
-            column="13"/>
-    </issue>
 
     <issue
         id="ObsoleteSdkInt"
@@ -1111,16 +1101,6 @@
             column="17"/>
     </issue>
 
-    <issue
-        id="Overdraw"
-        message="Possible overdraw: Root element paints background `@color/black_background` with a theme that also paints a background (inferred theme is `@style/Theme.Bouncer`)"
-        errorLine1="    android:background=&quot;@color/black_background&quot;>"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_compact.xml"
-            line="6"
-            column="5"/>
-    </issue>
 
     <issue
         id="Overdraw"
@@ -3333,27 +3313,7 @@
             column="26"/>
     </issue>
 
-    <issue
-        id="UseKtx"
-        message="Use the KTX function `createBitmap` instead?"
-        errorLine1="        val bitmap = Bitmap.createBitmap(SCORECARD_WIDTH, SCORECARD_HEIGHT, Bitmap.Config.ARGB_8888)"
-        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/tanush/bouncer/services/LiveNotificationManager.kt"
-            line="412"
-            column="22"/>
-    </issue>
 
-    <issue
-        id="UseKtx"
-        message="Use the KTX function `createBitmap` instead?"
-        errorLine1="        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)"
-        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/tanush/bouncer/services/LiveNotificationManager.kt"
-            line="827"
-            column="22"/>
-    </issue>
 
     <issue
         id="UseKtx"
@@ -3784,16 +3744,6 @@
             column="53"/>
     </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;App icon&quot;, should use `@string` resource"
-        errorLine1="        android:contentDescription=&quot;App icon&quot; />"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_compact.xml"
-            line="33"
-            column="9"/>
-    </issue>
 
     <issue
         id="HardcodedText"

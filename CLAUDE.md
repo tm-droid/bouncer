@@ -89,6 +89,8 @@ app/src/main/kotlin/com/tanush/bouncer/
 │                       # rate). The ML models moved server-side — score prediction and win
 │                       # probability are the `bouncer-win-probability` /
 │                       # `bouncer-train-win-probability` functions. Do not add a model here.
+├── liveactivity/       # Android Live Updates: LiveUpdateContent/Progress/Score (pure, tested),
+│                       # LiveUpdateNotifier (the promoted notification), LiveUpdateSources
 ├── auto/               # Android Auto (BouncerCarAppService)
 └── utils/              # WorkerLogger.enqueued/failed (Workers) + sentryBreadcrumb() (SentryBreadcrumbs.kt)
                         # — use these instead of raw Breadcrumb().apply boilerplate
@@ -117,6 +119,69 @@ Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` 
 **Device-side commentary gate:** `LiveActivityViewModel.updateAllLiveCommentaries` generates only for matches a screen currently holds via `holdCommentary`/`releaseCommentary`; with no holder it generates nothing. It used to loop **every** live match on every poll, and the Live tab polls every 6s — ten live matches wanted ~150 `bouncer-generate-commentary` executions/minute, saturated the EXECUTIONS rate cap seconds after launch, and starved player search. `IntelligenceFeedScreenV2` is the only consumer of the result (via `probabilityEvents`) and so the only holder. This is the device half of the server-side viewer gate below — same principle, different tier.
 
 **Live data flow:** score polling (`ScorePollingWorker` + FCM) → `LiveCommentaryManager` → `CommentaryFusionService` (delegates to `bouncer-generate-commentary` Appwrite function; OpenRouter used server-side) + `BallCommentaryService` (Groq → Cerebras → SambaNova per-ball) → UI via StateFlow. `AICacheService` warms cache from Appwrite Realtime events.
+
+**A Live Update is a promoted notification, and `RemoteViews` disqualify it.** The home-screen live
+score is an Android Live Update — an ongoing notification the system pins to the top of the shade,
+to the lock screen, and to a status-bar chip. The contract is narrow and every clause is
+load-bearing: the style must be Standard / `BigTextStyle` / `CallStyle` / `ProgressStyle` /
+`MetricStyle`; the manifest must declare `POST_PROMOTED_NOTIFICATIONS`; the notification must be
+`ongoing` and call `setRequestPromotedOngoing(true)`; and it must have **no** `setCustomContentView`
+and **not** be a group summary. The stack this replaced broke all three ways at once and reported
+none of them — it was built with `DecoratedCustomViewStyle` plus two `RemoteViews` (so promotion
+could never be granted), its `setRequestPromotedOngoing` was a reflective call into
+`NotificationCompat.Builder` with a silent catch, and its service was constructed with a
+`NoopMatchUpdateDataSource` that nothing ever started. `LiveUpdateNotifier` uses
+`NotificationCompat.ProgressStyle`; core-ktx 1.19 carries every promotion API, so there is **no
+reflection and no `@RequiresApi`** — below API 36 the same builder degrades to an ordinary ongoing
+notification. Two API traps: `Notification.isRequestPromotedOngoing()` does **not** exist on stock
+API 36 even though the setter does (read `EXTRA_REQUEST_PROMOTED_ONGOING` from `extras` instead),
+and the settings intent is `Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS`, not the
+`ACTION_MANAGE_APP_PROMOTED_NOTIFICATIONS` the developer guide names. Pinned by
+`LiveUpdatePromotabilityTest` (**androidTest**, needs an API 36+ device), which asserts
+`Notification.hasPromotableCharacteristics()` — the platform's own verdict, and the only check that
+would have caught any of the above. It cannot be a unit test: there is no Robolectric here and the
+promotion rules live in the framework, not in `NotificationCompat`.
+
+**The Live Update feed is Realtime, and the foreground service exists only to receive it.**
+`LiveUpdateService` subscribes `AppwriteMatchDetailClient.observeMatch` per followed live match —
+the row `bouncer-match-sync` already writes every minute — so a tracked match costs one billed read
+at first paint and none after. A promoted notification does **not** need a foreground service; the
+FGS only keeps the process alive for the websocket frames, which is why `onTimeout` (the API 34+
+six-hour cumulative `dataSync` cap, which a Test day exceeds) can `STOP_FOREGROUND_DETACH` and
+leave every card posted. Subscribing to a match is the only control — there is deliberately no
+second toggle, and the settings row exists only to surface the one state the user cannot fix from
+inside the app. The channel is `live_update_scores` at `IMPORTANCE_DEFAULT`: the retired
+`live_activity_updates` was `IMPORTANCE_LOW`, channel importance is immutable after creation, and a
+LOW channel has no status-bar presence for the chip to attach to. `startForeground` binds the
+service to exactly one notification id, so one match's card is the anchor and `anchorTo` moves it
+when that match ends.
+
+**A Test has no ball budget, so its Live Update bar counts wickets.** `ProgressStyle` takes its
+maximum from the **sum of the segment lengths** — there is no separate max to set. Limited-overs
+matches use balls bowled out of `CricketConstants.inningsBalls(format)`, with the powerplay /
+middle / death windows as segments and a point per fall of wicket; only T20 and ODI have those
+windows defined, so T10 and The Hundred get one neutral segment rather than a proportional guess.
+`inningsBalls` returns null for TEST precisely so nothing borrows T20's 120, so a Test reports
+wickets out of ten instead of inventing a denominator such as a day's 90 overs. Unreadable overs
+give an **indeterminate** bar, never a zeroed determinate one — that would claim the innings had
+not started.
+
+**The payload names the first-innings side, not the batting side.** `MatchLiveDetailPayload`'s
+`team1*` slots belong to whoever batted first, which is the wrong team for the whole of a second
+innings, and the payload never says who is batting. `battingSlot` (`LiveUpdateScore.kt`) finds it by
+matching the live `score` line against each side's latest innings — both are built from the same
+Cricbuzz totals, so the comparison is exact. Do not compare the names: `team1Name` is a short code
+("EZONE", "RSAA") that matches no full team name, which is why every join onto the app's own teams
+goes by `teamId`.
+
+**`probabilityEvents` classifies from prose, and always has.** `classifyProbabilityEvent` used to
+prefer a structural read of the scraped recent-balls array — sound reasoning, since a "W" there is
+the scorer's own record rather than an interpretation of prose. That branch was never once
+reachable: the array's only writer sat inside the dead live-notification path, behind a
+`notificationManager ?: return` whose setter had no caller anywhere in the app. Restoring it needs
+a ball source `LiveActivityViewModel` does not have — the match-list scrape sets `recentBalls` to
+null and only the per-match detail scrape carries it, which on the six-second Live poll would be
+one scrape per live match per tick.
 
 **AI cache (3-tier):** `MemoryFifoCache` (256 entries; FIFO eviction, not LRU — `utils/BoundedLruCache` is the real LRU) → Room `ai_commentary_cache` → Appwrite `ai-commentary-cache` table. All four commentary functions (`generateBallCommentary`, `fuse`, `streamCommentary`, `summarizeOversWithAI`) check cache before calling any AI provider. Completed matches use **permanent TTL** (`Long.MAX_VALUE` in Room, `expires_at = "2099-01-01T00:00:00.000Z"` in Appwrite) — `isMatchComplete` flag threads from ViewModels → `LiveCommentaryManager` → `CommentaryFusionService` → `AICacheService`. Never set permanent=true for live matches.
 

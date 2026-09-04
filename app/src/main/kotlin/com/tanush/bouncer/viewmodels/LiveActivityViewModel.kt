@@ -9,14 +9,12 @@ import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.managers.NotificationItem
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.TimelineEventType
-import com.tanush.bouncer.ui.components.glass.BallEvent
 import com.tanush.bouncer.utils.TimelineEventExtractor
 import com.tanush.bouncer.utils.bouncerExceptionHandler
 import com.tanush.bouncer.data.CricBuzzMatchRepository
 import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.data.remote.WinProbabilityStore
 import com.tanush.bouncer.network.CricBuzzUrls
-import com.tanush.bouncer.services.LiveNotificationManager
 import com.tanush.bouncer.services.MatchCacheService
 import com.tanush.bouncer.services.LiveCommentaryManager
 import io.sentry.Breadcrumb
@@ -94,28 +92,14 @@ class LiveActivityViewModel(
         private const val TAG = "LiveActivityViewModel"
         private const val MIN_MANUAL_REFRESH_INTERVAL_MS = 10_000L
         private const val MAX_PROBABILITY_EVENTS = 300
-        private const val MIN_PROB = 5.0
-        private const val MAX_PROB = 95.0
-        private const val IMPACT_WICKET = -8.0
-        private const val IMPACT_BOUNDARY = 4.0
-        private const val IMPACT_DOT = -1.0
         private const val LIVE_POLL_INTERVAL_MS = 6_000L
         private const val SLOW_POLL_INTERVAL_MS = 60_000L
         private const val DEFAULT_POLL_INTERVAL_MS = 30_000L
         private const val MAX_BACKOFF_MULTIPLIER = 4
         private const val FAILURE_REPORT_THRESHOLD = 3
-        private const val OVER_BALL_COUNT = 5
     }
 
     private val liveCommentaryManager = LiveCommentaryManager()
-
-    // Set from a context-aware component (Activity / Composable with LocalContext).
-    // Must pass applicationContext (or a context whose lifecycle outlives this ViewModel) to avoid leaking an Activity.
-    private var notificationManager: LiveNotificationManager? = null
-
-    fun setNotificationManager(manager: LiveNotificationManager) {
-        notificationManager = manager
-    }
 
     private val _keyEvent = MutableStateFlow<Pair<String, String>?>(null)
     val keyEvent: StateFlow<Pair<String, String>?> = _keyEvent.asStateFlow()
@@ -179,24 +163,12 @@ class LiveActivityViewModel(
      */
     private val commentaryFocus = MutableStateFlow<Map<String, Int>>(emptyMap())
 
-    private val _firstInningsEndBall = MutableStateFlow<Map<String, Int>>(emptyMap())
-    val firstInningsEndBall: StateFlow<Map<String, Int>> = _firstInningsEndBall.asStateFlow()
-
     private val cachedMatches = mutableMapOf<String, List<CricketMatch>>()
     private val pollingTasks = ConcurrentHashMap<String, Job>()
     @Volatile private var isPollingActive = false
     private var hasCompletedInitialFetch = false
     private var initialFetchJob: Job? = null
     private val consecutiveFailures = mutableMapOf<String, Int>()
-
-    // Tracks the last-known recentBalls per match (from fetchBallByBallAndBatsmen, not from the match list scrape)
-    private val recentBallsCache = mutableMapOf<String, List<String>>()
-
-    // Match IDs that were live in the previous poll cycle; used to detect match completion for auto-dismiss.
-    private val previouslyLiveMatchIds = mutableSetOf<String>()
-
-    private val _completedOvers = MutableStateFlow<Map<String, List<List<String>>>>(emptyMap())
-    val completedOvers: StateFlow<Map<String, List<List<String>>>> = _completedOvers.asStateFlow()
 
     init {
         liveCommentaryManager.onKeyEvent = { title, body -> onLiveKeyEvent(title, body) }
@@ -221,48 +193,11 @@ class LiveActivityViewModel(
                     )
                 )
 
-                notificationManager?.let { dispatchKeyEventAlert(it, liveMatch, title, body) }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Log.e(TAG, "Error processing key event: $title", e)
                 Sentry.captureException(e)
             }
-        }
-    }
-
-    private fun dispatchKeyEventAlert(
-        manager: LiveNotificationManager,
-        match: CricketMatch,
-        title: String,
-        body: String,
-    ) {
-        when {
-            title.contains("Wicket", ignoreCase = true) -> manager.showWicketAlert(
-                match = match,
-                batsmanName = body.substringBefore(" ").take(30),
-                bowlerName = "",
-                dismissalType = "dismissed",
-                runsScored = 0
-            )
-            title.contains("Six", ignoreCase = true) -> manager.showSixAlert(
-                match = match,
-                batsmanName = "",
-                bowlerName = "",
-                description = body.take(60)
-            )
-            title.contains("Boundary", ignoreCase = true) || title.contains("Four", ignoreCase = true) ->
-                manager.showFourAlert(
-                    match = match,
-                    batsmanName = "",
-                    bowlerName = "",
-                    description = body.take(60)
-                )
-            title.contains("AI Strategic", ignoreCase = true) -> manager.showMilestoneAlert(
-                match = match,
-                playerName = "AI Insight",
-                milestone = title,
-                description = body.take(80)
-            )
         }
     }
 
@@ -495,7 +430,6 @@ class LiveActivityViewModel(
         if (status == "Live") {
             updateMatches(status)
             updateAllLiveCommentaries()
-            updateLiveNotifications()
         } else if (!MatchCacheService.isCacheValid(status)) {
             updateMatches(status)
         }
@@ -598,131 +532,28 @@ class LiveActivityViewModel(
         _aiCommentary.value = updatedCommentary
     }
 
-    private suspend fun updateLiveNotifications() {
-        val manager = notificationManager ?: return
-
-        for (match in _currentMatches.value) {
-            if (!match.isLive) continue
-            updateNotificationForMatch(manager, match)
-        }
-    }
-
-    private suspend fun updateNotificationForMatch(
-        manager: LiveNotificationManager,
-        match: CricketMatch,
-    ) {
-        try {
-            val details = matchRepository.fetchBallByBallAndBatsmen(match.id)
-            val batsmenInfo = details.batsmen.map { bat ->
-                LiveNotificationManager.BatsmanInfo(
-                    name = bat.name,
-                    runs = bat.runs.toIntOrNull() ?: 0,
-                    balls = bat.balls.toIntOrNull() ?: 0,
-                    isStriker = bat.isStriker,
-                )
-            }
-
-            val bowlerInfo = details.bowler?.let { b ->
-                LiveNotificationManager.BowlerInfo(
-                    name = b.name,
-                    overs = b.overs,
-                    runs = b.runs.toIntOrNull() ?: 0,
-                    wickets = b.wickets.toIntOrNull() ?: 0,
-                )
-            }
-
-            recordOverCompletion(match.id, details.recentBalls.orEmpty())
-
-            val lastEvent = _aiCommentary.value[match.id]?.let {
-                detectEventFromCommentary(match.id, it)
-            }
-
-            manager.showLiveMatchNotification(
-                match = match,
-                winProbability = match.winProbabilityFraction,
-                lastEvent = lastEvent,
-                batsmen = batsmenInfo,
-                bowler = bowlerInfo,
-                recentBalls = details.recentBalls,
-                requiredRate = match.score?.requiredRunRate,
-            )
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Log.w(TAG, "Failed to update notification for match ${match.id}", e)
-            breadcrumb(
-                category = "notification.error",
-                message = "Failed to update live notification for match: ${match.id}",
-                level = SentryLevel.WARNING,
-                data = mapOf("match_id" to match.id),
-            )
-            Sentry.captureException(e)
-        }
-    }
-
-    private fun recordOverCompletion(matchId: String, newBalls: List<String>) {
-        val prevBalls = recentBallsCache[matchId].orEmpty()
-        // Detect over completion: had ≥5 balls, now reset to fewer
-        if (prevBalls.size >= OVER_BALL_COUNT && newBalls.size < prevBalls.size) {
-            val overs = _completedOvers.value.toMutableMap()
-            overs[matchId] = overs[matchId].orEmpty() + listOf(prevBalls)
-            _completedOvers.value = overs
-        }
-        recentBallsCache[matchId] = newBalls
-    }
-
     /**
-     * Classify the event a notification would announce.
+     * Classify a key moment from the commentary prose.
      *
-     * Prefers the scraped recent-balls array over the commentary prose, matching what
-     * [classifyProbabilityEvent] already does. A "W" in the ball array is the scorer's own record
-     * of a dismissal; prose is an interpretation of it, and interpreting prose is what produced
-     * false "Wicket!" push notifications off lines like "bowled a beauty, no run".
+     * This used to prefer a structural read of the scraped recent-balls array, on the sound
+     * reasoning that a "W" in that array is the scorer's own record of a dismissal while prose is
+     * an interpretation of it. That branch was never once reachable: the array's only writer sat
+     * inside the live-notification path, behind a `notificationManager ?: return` whose setter had
+     * no caller anywhere in the app, so the cache was permanently empty and every classification
+     * fell through to prose regardless.
+     *
+     * Rather than keep a branch that cannot run, the prose path — the one that has always been in
+     * effect — is now the whole function. Restoring the structural read needs a ball source this
+     * ViewModel does not have: the match-list scrape sets `recentBalls` to null, and only the
+     * per-match detail scrape carries it, which on a six-second poll would be one scrape per live
+     * match per tick.
      */
-    private fun detectEventFromCommentary(
-        matchId: String?,
-        commentary: String,
-    ): LiveNotificationManager.MatchEvent? {
-        val structural = matchId?.let { recentBallsCache[it]?.lastOrNull() }?.let(BallEvent::from)
-        val type = when (structural) {
-            BallEvent.WICKET -> LiveNotificationManager.EventType.WICKET
-            BallEvent.SIX -> LiveNotificationManager.EventType.SIX
-            BallEvent.FOUR -> LiveNotificationManager.EventType.FOUR
-            // Any other scored ball is a known non-event; do not fall through to prose and
-            // second-guess the scorer.
-            null -> return detectEventFromProse(commentary)
-            else -> return null
+    private fun classifyProbabilityEvent(commentary: String): ProbabilityEventType =
+        when (TimelineEventExtractor.detectBallType(commentary)) {
+            TimelineEventType.WICKET -> ProbabilityEventType.WICKET
+            TimelineEventType.SIX, TimelineEventType.FOUR -> ProbabilityEventType.BOUNDARY
+            else -> ProbabilityEventType.OTHER
         }
-        return LiveNotificationManager.MatchEvent(type, commentary.take(80))
-    }
-
-    private fun detectEventFromProse(commentary: String): LiveNotificationManager.MatchEvent? {
-        val type = when (TimelineEventExtractor.detectBallType(commentary)) {
-            TimelineEventType.WICKET -> LiveNotificationManager.EventType.WICKET
-            TimelineEventType.SIX -> LiveNotificationManager.EventType.SIX
-            TimelineEventType.FOUR -> LiveNotificationManager.EventType.FOUR
-            TimelineEventType.MILESTONE -> LiveNotificationManager.EventType.MILESTONE
-            else -> return null
-        }
-        return LiveNotificationManager.MatchEvent(type, commentary.take(80))
-    }
-
-    private fun classifyProbabilityEvent(matchId: String, commentary: String): ProbabilityEventType {
-        val lastBall = recentBallsCache[matchId]?.lastOrNull()
-        return if (lastBall != null) {
-            when (BallEvent.from(lastBall)) {
-                BallEvent.WICKET -> ProbabilityEventType.WICKET
-                BallEvent.SIX, BallEvent.FOUR -> ProbabilityEventType.BOUNDARY
-                BallEvent.DOT -> ProbabilityEventType.DOT_BALL
-                else -> ProbabilityEventType.OTHER
-            }
-        } else {
-            when (TimelineEventExtractor.detectBallType(commentary)) {
-                TimelineEventType.WICKET -> ProbabilityEventType.WICKET
-                TimelineEventType.SIX, TimelineEventType.FOUR -> ProbabilityEventType.BOUNDARY
-                else -> ProbabilityEventType.OTHER
-            }
-        }
-    }
 
     /**
      * Record a key moment from commentary.
@@ -735,7 +566,7 @@ class LiveActivityViewModel(
      */
     private fun updateProbabilityEventsFromCommentary(matchId: String, commentary: String) {
         val match = _currentMatches.value.find { it.id == matchId } ?: return
-        val eventType = classifyProbabilityEvent(matchId, commentary)
+        val eventType = classifyProbabilityEvent(commentary)
 
         val currentEvents = _probabilityEvents.value[matchId].orEmpty()
         val probability = match.winProbability ?: return
@@ -760,10 +591,6 @@ class LiveActivityViewModel(
 
     fun getProbabilityEventsForMatch(matchId: String): List<ProbabilityEvent> =
         _probabilityEvents.value[matchId].orEmpty()
-
-    fun setFirstInningsEndBall(matchId: String, ball: Int) {
-        _firstInningsEndBall.value = _firstInningsEndBall.value + (matchId to ball)
-    }
 
     private suspend fun updateMatches(status: String) {
         val url = CricBuzzUrls.urlForStatus(status)
@@ -805,35 +632,15 @@ class LiveActivityViewModel(
         updateHomeMatches()
         if (status == "Live") {
             pruneStaleMatchData(matchesWithProbability)
-            dismissCompletedMatchNotifications(matchesWithProbability)
         }
     }
 
     private fun pruneStaleMatchData(currentLiveMatches: List<CricketMatch>) {
         val liveIds = currentLiveMatches.map { it.id }.toSet()
-        recentBallsCache.keys.retainAll(liveIds)
         val staleIds = _probabilityEvents.value.keys - liveIds
         if (staleIds.isNotEmpty()) {
             _probabilityEvents.value = _probabilityEvents.value - staleIds
         }
-        val staleOverIds = _completedOvers.value.keys - liveIds
-        if (staleOverIds.isNotEmpty()) {
-            _completedOvers.value = _completedOvers.value - staleOverIds
-        }
-        val staleInningsIds = _firstInningsEndBall.value.keys - liveIds
-        if (staleInningsIds.isNotEmpty()) {
-            _firstInningsEndBall.value = _firstInningsEndBall.value - staleInningsIds
-        }
-    }
-
-    private fun dismissCompletedMatchNotifications(currentLiveMatches: List<CricketMatch>) {
-        val currentLiveIds = currentLiveMatches.filter { it.isLive }.map { it.id }.toSet()
-        val justFinished = previouslyLiveMatchIds - currentLiveIds
-        justFinished.forEach { matchId ->
-            notificationManager?.dismissLiveNotification(matchId)
-        }
-        previouslyLiveMatchIds.clear()
-        previouslyLiveMatchIds.addAll(currentLiveIds)
     }
 
     private fun updateHomeMatches() {
@@ -893,7 +700,6 @@ class LiveActivityViewModel(
         // The real lifecycle gate is LifecycleStartEffect in MainAppContainer — without it this
         // loop ran for the whole life of the Activity, backgrounded included.
         stopPolling()
-        notificationManager = null
         liveCommentaryManager.close()
     }
 }

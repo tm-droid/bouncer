@@ -32,7 +32,6 @@
     <ID>CognitiveComplexMethod:KeyMomentsCard.kt$@Composable fun FeaturedMomentCard( moment: HighlightMoment, modifier: Modifier = Modifier, onLike: (() -&gt; Unit)? = null, onShare: (() -&gt; Unit)? = null )</ID>
     <ID>CognitiveComplexMethod:LiveCommentaryBubbles.kt$@Composable private fun CommentaryBubble( entry: CommentaryEntry, onClick: (() -&gt; Unit)? = null )</ID>
     <ID>CognitiveComplexMethod:LiveMatchWidgetProvider.kt$LiveMatchWidgetProvider$private suspend fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int)</ID>
-    <ID>CognitiveComplexMethod:LiveNotificationManager.kt$LiveNotificationManager$private fun createExpandedView( match: CricketMatch, winProbability: Float?, lastEvent: MatchEvent?, batsmen: List&lt;BatsmanInfo&gt;? = null, bowler: BowlerInfo? = null, recentBalls: List&lt;String&gt;? = null, requiredRate: String? = null, teamAccentColor: Int = COLOR_MILESTONE ): RemoteViews</ID>
     <ID>CognitiveComplexMethod:LiveScoringGraphCard.kt$@Composable fun LiveScoringGraphCard( scoringData: LiveScoringData, modifier: Modifier = Modifier, )</ID>
     <ID>CognitiveComplexMethod:MatchContextMenuSheet.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MatchContextMenuSheet( match: CricketMatch, onDismiss: () -&gt; Unit, onSetReminder: () -&gt; Unit = {}, )</ID>
     <ID>CognitiveComplexMethod:MatchDetailViewV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MatchDetailViewV2( match: CricketMatch, onBackClick: () -&gt; Unit, )</ID>
@@ -114,10 +113,6 @@
     <ID>CyclomaticComplexMethod:LiveCommentaryBubbles.kt$@Composable private fun getEventIcon(type: CommentaryEventType)</ID>
     <ID>CyclomaticComplexMethod:LiveCommentaryManager.kt$LiveCommentaryManager$private suspend fun getBestCommentary( cricbuzzUrl: String, cricinfoUrl: String, keyNames: List&lt;String&gt;, isMatchComplete: Boolean ): String</ID>
     <ID>CyclomaticComplexMethod:LiveMatchWidgetProvider.kt$LiveMatchWidgetProvider$private suspend fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int)</ID>
-    <ID>CyclomaticComplexMethod:LiveNotificationManager.kt$LiveNotificationManager$fun getNotificationPriority(matchPhase: MatchPhase, eventType: EventType): Int</ID>
-    <ID>CyclomaticComplexMethod:LiveNotificationManager.kt$LiveNotificationManager$fun showLiveMatchNotification( match: CricketMatch, winProbability: Float? = null, lastEvent: MatchEvent? = null, batsmen: List&lt;BatsmanInfo&gt;? = null, bowler: BowlerInfo? = null, recentBalls: List&lt;String&gt;? = null, matchPhase: MatchPhase? = null, requiredRate: String? = null )</ID>
-    <ID>CyclomaticComplexMethod:LiveNotificationManager.kt$LiveNotificationManager$private fun createExpandedView( match: CricketMatch, winProbability: Float?, lastEvent: MatchEvent?, batsmen: List&lt;BatsmanInfo&gt;? = null, bowler: BowlerInfo? = null, recentBalls: List&lt;String&gt;? = null, requiredRate: String? = null, teamAccentColor: Int = COLOR_MILESTONE ): RemoteViews</ID>
-    <ID>CyclomaticComplexMethod:LiveNotificationManager.kt$LiveNotificationManager$private fun createScorecardBitmap( match: CricketMatch, winProbability: Float?, batsmen: List&lt;BatsmanInfo&gt;?, bowler: BowlerInfo? ): Bitmap</ID>
     <ID>CyclomaticComplexMethod:LiveScoringGraphCard.kt$@Composable fun LiveScoringGraphCard( scoringData: LiveScoringData, modifier: Modifier = Modifier, )</ID>
     <ID>CyclomaticComplexMethod:MainAppContainer.kt$private fun handleExternalDeepLink( deepLinkUri: String, navController: NavHostController, availableMatches: List&lt;CricketMatch&gt;, onMatchClick: (CricketMatch) -&gt; Unit ): Boolean</ID>
     <ID>CyclomaticComplexMethod:MatchDetailViewV2.kt$@Composable private fun ScoreHeaderV2( match: CricketMatch, team1: CricketMatch.Team?, team2: CricketMatch.Team?, score1: String, score2: String, overs1: String, overs2: String, currentRunRate: String?, requiredRunRate: String?, recentBalls: List&lt;String&gt;, )</ID>
@@ -262,8 +257,6 @@
     <ID>LongMethod:LiveCommentaryBubbles.kt$@Composable fun LiveCommentaryBubbles( entries: List&lt;CommentaryEntry&gt;, modifier: Modifier = Modifier, onEntryClick: ((CommentaryEntry) -&gt; Unit)? = null )</ID>
     <ID>LongMethod:LiveCommentaryBubbles.kt$@Composable private fun CommentaryBubble( entry: CommentaryEntry, onClick: (() -&gt; Unit)? = null )</ID>
     <ID>LongMethod:LiveMatchWidgetProvider.kt$LiveMatchWidgetProvider$private suspend fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int)</ID>
-    <ID>LongMethod:LiveNotificationManager.kt$LiveNotificationManager$private fun createExpandedView( match: CricketMatch, winProbability: Float?, lastEvent: MatchEvent?, batsmen: List&lt;BatsmanInfo&gt;? = null, bowler: BowlerInfo? = null, recentBalls: List&lt;String&gt;? = null, requiredRate: String? = null, teamAccentColor: Int = COLOR_MILESTONE ): RemoteViews</ID>
-    <ID>LongMethod:LiveNotificationManager.kt$LiveNotificationManager$private fun createScorecardBitmap( match: CricketMatch, winProbability: Float?, batsmen: List&lt;BatsmanInfo&gt;?, bowler: BowlerInfo? ): Bitmap</ID>
     <ID>LongMethod:LiveScoringGraphCard.kt$@Composable fun LiveScoringGraphCard( scoringData: LiveScoringData, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:MainAppContainer.kt$@Composable fun BouncerAppContent( externalDeepLinkUri: String? = null )</ID>
     <ID>LongMethod:MatchContextMenuSheet.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MatchContextMenuSheet( match: CricketMatch, onDismiss: () -&gt; Unit, onSetReminder: () -&gt; Unit = {}, )</ID>
@@ -371,7 +364,6 @@
     <ID>MaxLineLength:HistoricalStatsCard.kt$color = if (isLeading) hierarchy.secondary.primary.copy(alpha = 0.1f) else colors.glassBorder.copy(alpha = 0.1f)</ID>
     <ID>MaxLineLength:IntelligenceFeedScreenV2.kt$Text(alert.title, style = typography.titleSmall, fontWeight = FontWeight.Bold, color = colors.onSurface, modifier = Modifier.weight(1f))</ID>
     <ID>MaxLineLength:LiveCommentaryManager.kt$LiveCommentaryManager$private val summarizer: suspend (List&lt;String&gt;, String, Int) -&gt; String = { lines, matchId, over -&gt; CommentaryFusionService().summarizeOversWithAI(lines, matchId, over) }</ID>
-    <ID>MaxLineLength:LiveNotificationManager.kt$LiveNotificationManager$.</ID>
     <ID>MaxLineLength:MatchContextMenuSheet.kt$leadingContent = { Icon(if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = null) }</ID>
     <ID>MaxLineLength:MatchProjectionsTest.kt$MatchProjectionsTest$assertEquals(143, MatchProjections.projectedScore(currentRuns = 143, ballsBowled = T20_INNINGS_BALLS, totalBalls = T20_INNINGS_BALLS))</ID>
     <ID>MaxLineLength:MatchProjectionsTest.kt$MatchProjectionsTest$assertNull(MatchProjections.requiredRunRate(target = 150, currentRuns = 80, ballsBowled = T20_INNINGS_BALLS, totalBalls = T20_INNINGS_BALLS))</ID>
@@ -423,6 +415,7 @@
     <ID>SwallowedException:TeamLogoManagerTest.kt$TeamLogoManagerTest$e: NullPointerException</ID>
     <ID>ThrowsCount:RetryPolicy.kt$suspend fun &lt;T&gt; RetryPolicy.withRetry( isRetryable: (Throwable) -&gt; Boolean = { it !is Error }, onRetry: (attempt: Int, delayMs: Long, cause: Throwable) -&gt; Unit = { _, _, _ -&gt; }, block: suspend () -&gt; T ): T</ID>
     <ID>TooGenericExceptionThrown:DevToolsUtils.kt$CrashDumper$throw RuntimeException("DevTools induced crash (captured)")</ID>
+    <ID>TooManyFunctions:LiveActivityViewModel.kt$LiveActivityViewModel : ViewModel</ID>
     <ID>TooManyFunctions:AdvancedEffects.kt$com.tanush.bouncer.ui.theme.AdvancedEffects.kt</ID>
     <ID>TooManyFunctions:BallIndicator.kt$com.tanush.bouncer.ui.components.glass.BallIndicator.kt</ID>
     <ID>TooManyFunctions:ColorUtils.kt$com.tanush.bouncer.ui.theme.ColorUtils.kt</ID>
@@ -436,9 +429,7 @@
     <ID>TooManyFunctions:Gradients.kt$GradientPresets</ID>
     <ID>TooManyFunctions:InteractionAccessibility.kt$com.tanush.bouncer.ui.accessibility.InteractionAccessibility.kt</ID>
     <ID>TooManyFunctions:InteractiveWidgetComponents.kt$com.tanush.bouncer.ui.widgets.InteractiveWidgetComponents.kt</ID>
-    <ID>TooManyFunctions:LiveActivityViewModel.kt$LiveActivityViewModel : ViewModel</ID>
     <ID>TooManyFunctions:LiveCommentaryManager.kt$LiveCommentaryManager</ID>
-    <ID>TooManyFunctions:LiveNotificationManager.kt$LiveNotificationManager</ID>
     <ID>TooManyFunctions:MatchExperienceComponents.kt$com.tanush.bouncer.ui.components.MatchExperienceComponents.kt</ID>
     <ID>TooManyFunctions:MicroInteractions.kt$com.tanush.bouncer.ui.components.MicroInteractions.kt</ID>
     <ID>TooManyFunctions:NativePolish.kt$com.tanush.bouncer.ui.theme.NativePolish.kt</ID>
@@ -473,7 +464,6 @@
     <ID>UnusedParameter:InteractiveWidgetComponents.kt$matchId: String</ID>
     <ID>UnusedParameter:InteractiveWidgetComponents.kt$modifier: GlanceModifier = GlanceModifier</ID>
     <ID>UnusedParameter:InteractiveWidgetComponents.kt$originalTarget: Int</ID>
-    <ID>UnusedParameter:LiveNotificationManager.kt$LiveNotificationManager$teamAccentColor: Int = COLOR_MILESTONE</ID>
     <ID>UnusedParameter:MainAppContainer.kt$availableMatches: List&lt;CricketMatch&gt;</ID>
     <ID>UnusedParameter:MainAppContainer.kt$onMatchClick: (CricketMatch) -&gt; Unit</ID>
     <ID>UnusedParameter:MatchPhasesCard.kt$phaseNumber: Int</ID>
@@ -511,11 +501,6 @@
     <ID>UnusedPrivateProperty:FallOfWicketsCard.kt$val topScorer = wickets.maxByOrNull { it.batsmanRuns }</ID>
     <ID>UnusedPrivateProperty:HistoricalStatsCard.kt$val animatedTeam2 by animateFloatAsState( targetValue = team2Ratio, animationSpec = tween(1000, easing = FastOutSlowInEasing), label = "team2ratio" )</ID>
     <ID>UnusedPrivateProperty:HistoricalStatsCard.kt$val shimmer by infiniteTransition.animateFloat( initialValue = 0f, targetValue = 1f, animationSpec = infiniteRepeatable( animation = tween(2500, easing = LinearEasing), repeatMode = RepeatMode.Restart ), label = "shimmer" )</ID>
-    <ID>UnusedPrivateProperty:LiveActivityViewModel.kt$LiveActivityViewModel.Companion$private const val IMPACT_BOUNDARY = 4.0</ID>
-    <ID>UnusedPrivateProperty:LiveActivityViewModel.kt$LiveActivityViewModel.Companion$private const val IMPACT_DOT = -1.0</ID>
-    <ID>UnusedPrivateProperty:LiveActivityViewModel.kt$LiveActivityViewModel.Companion$private const val IMPACT_WICKET = -8.0</ID>
-    <ID>UnusedPrivateProperty:LiveActivityViewModel.kt$LiveActivityViewModel.Companion$private const val MAX_PROB = 95.0</ID>
-    <ID>UnusedPrivateProperty:LiveActivityViewModel.kt$LiveActivityViewModel.Companion$private const val MIN_PROB = 5.0</ID>
     <ID>UnusedPrivateProperty:MicroInteractions.kt$val rotationAngle by animateFloatAsState( targetValue = if (expanded) 180f else 0f, animationSpec = MicroSpring.Bouncy, label = "expand_rotation" )</ID>
     <ID>UnusedPrivateProperty:OverByOverComparisonCard.kt$val over = (totalOvers * i) / oversToShow</ID>
     <ID>UnusedPrivateProperty:PlayerProfileScraper.kt$PlayerProfileScraper$private const val TAG = "PlayerProfileScraper"</ID>
