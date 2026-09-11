@@ -1,14 +1,11 @@
 package com.tanush.bouncer.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,59 +14,68 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SportsCricket
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.tanush.bouncer.R
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.NotificationInboxManager
-import com.tanush.bouncer.utils.PreferencesHelper
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.NetworkStatusBanner
 import com.tanush.bouncer.ui.components.rememberIsOffline
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
-import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.components.v2.HeroMatchCard
 import com.tanush.bouncer.ui.components.v2.MatchCardV2
 import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
-import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
+import com.tanush.bouncer.ui.screens.RefreshFailureSnackbarEffect
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.v2.bouncerScreenBackground
-import com.tanush.bouncer.ui.screens.RefreshFailureSnackbarEffect
+import com.tanush.bouncer.utils.PreferencesHelper
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.viewmodels.STATUS_ALL
-import androidx.compose.ui.res.stringResource
-import com.tanush.bouncer.R
 
 /**
- * HomeScreenV2 — The main home tab.
+ * HomeScreenV2 — the main home tab.
  *
- * Sections: Filter chips → Hero card (featured live) → Live Now horizontal scroll →
- *           Upcoming vertical list → Recent Results → News headlines
+ * Top bar → status tabs (with the competition filter behind one icon) → the featured live match →
+ * every other match as rows.
+ *
+ * The filters used to be two rows of boxed chips, the first carrying a count ("Live 14") and the
+ * second sliding open under a toggle, above a "MATCHES" overline and a gold "See All". Cricbuzz and
+ * Cricinfo both switch match lists with plain text tabs; that is what this is now.
  */
 @Composable
 fun HomeScreenV2(
@@ -77,15 +83,14 @@ fun HomeScreenV2(
     onMatchClick: (CricketMatch) -> Unit,
     onMoreMatchesClick: () -> Unit,
     onAchievementsClick: () -> Unit,
-    onSettingsClick: () -> Unit = {},
     onNewsClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     LaunchedEffect(Unit) {
-        val pref = PreferencesHelper.getString(context, PreferencesHelper.KEY_PREFERRED_CATEGORY, "All")
-        if (pref != "All") viewModel.setCompetitionType(pref)
+        val pref = PreferencesHelper.getString(context, PreferencesHelper.KEY_PREFERRED_CATEGORY, CATEGORY_ALL)
+        if (pref != CATEGORY_ALL) viewModel.setCompetitionType(pref)
     }
 
     val selectedStatus by viewModel.selectedStatus.collectAsStateWithLifecycle()
@@ -95,54 +100,7 @@ fun HomeScreenV2(
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val loadingState by viewModel.loadingState.collectAsStateWithLifecycle()
     val unreadCount by NotificationInboxManager.unreadCount.collectAsStateWithLifecycle()
-    val subscriptions by MatchSubscriptionManager.subscriptions.collectAsStateWithLifecycle()
     val isOffline = rememberIsOffline()
-    val favourites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
-
-    val spacing = BouncerThemeV2.spacing
-    val colors = BouncerThemeV2.colors
-
-    // Personalization: matches involving followed teams float to the top and
-    // the hero slot prefers a live favourite-team match (serial position —
-    // "your cricket" is what the feed opens with).
-    val favouriteTeamNames = remember(favourites) {
-        favourites.map { it.trim().lowercase() }.toSet()
-    }
-    val featuredMatch = remember(currentMatches, favouriteTeamNames) {
-        currentMatches.firstOrNull { it.isLive && it.hasFavouriteTeam(favouriteTeamNames) }
-            ?: currentMatches.firstOrNull()
-    }
-    val remainingMatches = remember(currentMatches, featuredMatch, favouriteTeamNames) {
-        if (featuredMatch == null) {
-            emptyList()
-        } else {
-            val (fav, others) = currentMatches
-                .filterNot { it.id == featuredMatch.id }
-                .partition { it.hasFavouriteTeam(favouriteTeamNames) }
-            fav + others
-        }
-    }
-    val statusCounts by remember {
-        derivedStateOf {
-            if (currentMatches.isNotEmpty()) {
-                mapOf(mapStatus(selectedStatus) to currentMatches.size)
-            } else {
-                emptyMap()
-            }
-        }
-    }
-
-    val statusOptions = listOf("All", "Live", "Upcoming", "Recent")
-    val categoryOptions = listOf("All", "International", "League", "Domestic")
-
-    // Category chips are progressive-disclosure (Hick's law: one row of choices
-    // by default). Auto-expand whenever a non-default category is active so a
-    // hidden filter can never silently shape the feed.
-    var filtersExpanded by rememberSaveable { mutableStateOf(false) }
-    val categoryActive = selectedCompetitionType.isNotBlank() && selectedCompetitionType != "All"
-    LaunchedEffect(categoryActive) {
-        if (categoryActive) filtersExpanded = true
-    }
 
     // Refresh failed while content is on screen: keep the stale list, say so.
     // (The empty-list failure case is handled by the EmptyState below.)
@@ -157,44 +115,14 @@ fun HomeScreenV2(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Column {
-                BouncerTopBarV2(
-                    title = stringResource(R.string.home_title),
-                    actions = {
-                        BadgedBox(
-                            badge = {
-                                if (unreadCount > 0) {
-                                    Badge { Text(
-                                        if (unreadCount > 9) {
-                                            stringResource(R.string.home_unread_badge_overflow)
-                                        } else {
-                                            unreadCount.toString()
-                                        }
-                                    ) }
-                                }
-                            },
-                        ) {
-                            IconButton(onClick = onNotificationsClick) {
-                                Icon(
-                                    Icons.Default.Notifications,
-                                    contentDescription = stringResource(R.string.cd_notifications),
-                                )
-                            }
-                        }
-                        IconButton(onClick = onSearchClick) {
-                            Icon(
-                                Icons.Default.Search,
-                                contentDescription = stringResource(R.string.cd_search),
-                            )
-                        }
-                        IconButton(onClick = onSettingsClick) {
-                            Icon(
-                                Icons.Default.Settings,
-                                contentDescription = stringResource(R.string.cd_settings),
-                            )
-                        }
-                    },
-                )
+                HomeTopBar(unreadCount, onNotificationsClick, onSearchClick)
                 NetworkStatusBanner(isOffline = isOffline)
+                HomeFilterBar(
+                    selectedStatus = selectedStatus,
+                    selectedCategory = selectedCompetitionType,
+                    onStatusSelected = { viewModel.setAndFetchMatches(it) },
+                    onCategorySelected = { viewModel.setCompetitionType(it) },
+                )
             }
         },
         containerColor = BouncerThemeV2.colors.background,
@@ -204,157 +132,226 @@ fun HomeScreenV2(
             onRefresh = { viewModel.refreshMatches() },
             modifier = Modifier.padding(innerPadding),
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().bouncerScreenBackground(),
-                contentPadding = PaddingValues(vertical = spacing.md),
-            ) {
-                // ── Status filter chips (+ toggle for category filters) ──
-                item(key = "status_chips") {
-                    FilterChipRowV2(
-                        items = statusOptions,
-                        selectedItem = mapStatus(selectedStatus),
-                        onItemSelected = { chip ->
-                            viewModel.setAndFetchMatches(mapChipToStatus(chip))
-                        },
-                        counts = statusCounts,
-                        trailingContent = {
-                            IconButton(onClick = { filtersExpanded = !filtersExpanded }) {
-                                Icon(
-                                    Icons.Default.FilterList,
-                                    contentDescription = stringResource(
-                                        if (filtersExpanded) {
-                                            R.string.cd_filters_hide
-                                        } else {
-                                            R.string.cd_filters_show
-                                        }
-                                    ),
-                                    tint = if (categoryActive) colors.primary else colors.textSecondary,
+            HomeMatchList(currentMatches, isLoading, onMatchClick, onMoreMatchesClick)
+        }
+    }
+}
+
+@Composable
+private fun HomeTopBar(unreadCount: Int, onNotificationsClick: () -> Unit, onSearchClick: () -> Unit) {
+    // Settings is not here: the More tab owns it, and a third icon only crowded the wordmark.
+    BouncerTopBarV2(
+        title = stringResource(R.string.home_title),
+        showDivider = false,
+        actions = {
+            IconButton(onClick = onNotificationsClick) {
+                BadgedBox(
+                    badge = {
+                        if (unreadCount > 0) {
+                            Badge {
+                                Text(
+                                    if (unreadCount > MAX_BADGE_COUNT) {
+                                        stringResource(R.string.home_unread_badge_overflow)
+                                    } else {
+                                        unreadCount.toString()
+                                    }
                                 )
                             }
-                        },
+                        }
+                    },
+                ) {
+                    Icon(Icons.Outlined.Notifications, contentDescription = stringResource(R.string.cd_notifications))
+                }
+            }
+            IconButton(onClick = onSearchClick) {
+                Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.cd_search))
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeFilterBar(
+    selectedStatus: String,
+    selectedCategory: String,
+    onStatusSelected: (String) -> Unit,
+    onCategorySelected: (String) -> Unit,
+) {
+    val colors = BouncerThemeV2.colors
+    val selectedIndex = STATUS_TABS.indexOf(tabForStatus(selectedStatus)).coerceAtLeast(0)
+    // The bar's colour, not the page's: the tabs belong to the header, and in light mode the page grey
+    // under a white bar drew one more band.
+    Column(modifier = Modifier.background(colors.topBar)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            PrimaryScrollableTabRow(
+                selectedTabIndex = selectedIndex,
+                modifier = Modifier.weight(1f),
+                containerColor = colors.topBar,
+                contentColor = colors.onSurface,
+                edgePadding = BouncerThemeV2.spacing.xs,
+                indicator = {
+                    TabRowDefaults.PrimaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(selectedIndex, matchContentSize = true),
+                        width = Dp.Unspecified,
+                        color = colors.primaryText,
                     )
-                    Spacer(Modifier.height(spacing.xs))
+                },
+                divider = {},
+            ) {
+                STATUS_TABS.forEachIndexed { index, tab ->
+                    Tab(
+                        selected = index == selectedIndex,
+                        onClick = { onStatusSelected(STATUS_BY_TAB.getValue(tab)) },
+                        text = { Text(tab, style = BouncerThemeV2.typography.labelLarge) },
+                        selectedContentColor = colors.primaryText,
+                        unselectedContentColor = colors.textSecondary,
+                    )
                 }
+            }
+            CategoryFilterMenu(selectedCategory, onCategorySelected)
+        }
+        HorizontalDivider(color = colors.divider)
+    }
+}
 
-                // ── Category filter chips (collapsed by default) ──
-                item(key = "category_chips") {
-                    AnimatedVisibility(
-                        visible = filtersExpanded,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically(),
-                    ) {
-                        FilterChipRowV2(
-                            items = categoryOptions,
-                            selectedItem = selectedCompetitionType.ifBlank { "All" },
-                            onItemSelected = { chip ->
-                                viewModel.setCompetitionType(if (chip == "All") "All" else chip)
-                            },
-                        )
-                    }
-                    Spacer(Modifier.height(spacing.md))
-                }
-
-                // ── Loading shimmers ──
-                if (isLoading && currentMatches.isEmpty()) {
-                    items(3, key = { "shimmer_$it" }) {
-                        // Mirror the real row's geometry so first paint does not jump.
-                        ShimmerMatchCard(
-                            modifier = Modifier.padding(
-                                horizontal = spacing.lg,
-                                vertical = spacing.rowVertical,
-                            ),
-                        )
-                    }
-                    return@LazyColumn
-                }
-
-                // ── Empty state ──
-                if (currentMatches.isEmpty() && !isLoading) {
-                    item(key = "empty") {
-                        EmptyStateV2(
-                            title = stringResource(R.string.home_empty_title),
-                            subtitle = stringResource(R.string.home_empty_subtitle),
-                            icon = Icons.Outlined.SportsCricket,
-                        )
-                    }
-                    return@LazyColumn
-                }
-
-                // ── Hero featured match ──
-                featuredMatch?.let { fm ->
-                    item(key = "hero_${fm.id}") {
-                        val handleHeroClick = remember(fm.id) { { onMatchClick(fm) } }
-                        // Full-bleed: the hero and the rows below share one surface, so no
-                        // horizontal inset and no gap — its own trailing divider is the break.
-                        HeroMatchCard(
-                            match = fm,
-                            onClick = handleHeroClick,
-                            modifier = Modifier.animateItem(),
-                        )
-                    }
-                }
-
-                // ── All matches section ──
-                if (remainingMatches.isNotEmpty()) {
-                    item(key = "matches_header") {
-                        val handleMoreClick = remember { { onMoreMatchesClick() } }
-                        SectionHeaderV2(
-                            title = stringResource(R.string.section_matches),
-                            action = if (remainingMatches.size > 5) stringResource(R.string.action_see_all) else null,
-                            onAction = handleMoreClick,
-                        )
-                    }
-                    items(remainingMatches, key = { "match_${it.id}" }) { match ->
-                        val handleMatchClick = remember(match.id) {
-                            { onMatchClick(match) }
-                        }
-                        val handleSubscribeToggle = remember(match.id) {
-                            { MatchSubscriptionManager.toggle(match.id); Unit }
-                        }
-                        MatchCardV2(
-                            match = match,
-                            onClick = handleMatchClick,
-                            // No inset and no gap — the row owns its own padding and divider.
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .animateItem(),
-                            isSubscribed = match.id in subscriptions,
-                            onSubscribeToggle = handleSubscribeToggle,
-                            isFavouriteTeam = match.hasFavouriteTeam(favouriteTeamNames),
-                        )
-                    }
-                    item(key = "matches_spacer") {
-                        Spacer(Modifier.height(spacing.md))
-                    }
-                }
-
-                // Bottom spacing for nav bar
-                item(key = "bottom_spacer") {
-                    Spacer(Modifier.height(80.dp))
+/** Competition filter. Gold when it is narrowing the list, so a hidden filter never shapes it silently. */
+@Composable
+private fun CategoryFilterMenu(selectedCategory: String, onCategorySelected: (String) -> Unit) {
+    val colors = BouncerThemeV2.colors
+    var expanded by remember { mutableStateOf(false) }
+    val current = selectedCategory.ifBlank { CATEGORY_ALL }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(
+                Icons.Default.FilterList,
+                contentDescription = stringResource(R.string.cd_filter_category),
+                tint = if (current != CATEGORY_ALL) colors.primaryText else colors.textSecondary,
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, containerColor = colors.surface) {
+            CATEGORY_OPTIONS.forEach { option ->
+                CategoryMenuItem(option = option, selected = option == current) {
+                    expanded = false
+                    onCategorySelected(option)
                 }
             }
         }
     }
 }
 
+@Composable
+private fun CategoryMenuItem(option: String, selected: Boolean, onClick: () -> Unit) {
+    val colors = BouncerThemeV2.colors
+    DropdownMenuItem(
+        text = { Text(option, color = if (selected) colors.primaryText else colors.onSurface) },
+        onClick = onClick,
+        trailingIcon = {
+            if (selected) Icon(Icons.Default.Check, contentDescription = null, tint = colors.primaryText)
+        },
+    )
+}
+
+@Composable
+private fun HomeMatchList(
+    matches: List<CricketMatch>,
+    isLoading: Boolean,
+    onMatchClick: (CricketMatch) -> Unit,
+    onMoreMatchesClick: () -> Unit,
+) {
+    val spacing = BouncerThemeV2.spacing
+    val subscriptions by MatchSubscriptionManager.subscriptions.collectAsStateWithLifecycle()
+    val favourites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
+    val favouriteNames = remember(favourites) { favourites.map { it.trim().lowercase() }.toSet() }
+    val (featured, rows) = remember(matches, favouriteNames) { splitFeatured(matches, favouriteNames) }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().bouncerScreenBackground(),
+        contentPadding = PaddingValues(bottom = 80.dp),
+    ) {
+        when {
+            isLoading && matches.isEmpty() -> items(SHIMMER_ROWS, key = { "shimmer_$it" }) {
+                // Mirror the real row's geometry so first paint does not jump.
+                ShimmerMatchCard(Modifier.padding(horizontal = spacing.lg, vertical = spacing.rowVertical))
+            }
+            matches.isEmpty() -> item(key = "empty") {
+                EmptyStateV2(
+                    title = stringResource(R.string.home_empty_title),
+                    subtitle = stringResource(R.string.home_empty_subtitle),
+                    icon = Icons.Outlined.SportsCricket,
+                )
+            }
+            else -> {
+                featured?.let { fm ->
+                    item(key = "hero_${fm.id}") {
+                        HeroMatchCard(match = fm, onClick = { onMatchClick(fm) }, modifier = Modifier.animateItem())
+                    }
+                }
+                items(rows, key = { "match_${it.id}" }) { match ->
+                    MatchCardV2(
+                        match = match,
+                        onClick = { onMatchClick(match) },
+                        modifier = Modifier.fillMaxWidth().animateItem(),
+                        isSubscribed = match.id in subscriptions,
+                        onSubscribeToggle = { MatchSubscriptionManager.toggle(match.id) },
+                        isFavouriteTeam = match.hasFavouriteTeam(favouriteNames),
+                    )
+                }
+                item(key = "all_matches") { AllMatchesLink(onMoreMatchesClick) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AllMatchesLink(onClick: () -> Unit) {
+    val spacing = BouncerThemeV2.spacing
+    Spacer(Modifier.height(spacing.xs))
+    Text(
+        text = stringResource(R.string.home_all_matches),
+        style = BouncerThemeV2.typography.labelLarge,
+        color = BouncerThemeV2.colors.primaryText,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = spacing.lg, vertical = spacing.md),
+    )
+}
+
 // ─── Helpers ──────────────────────────────────────────────
+
+/**
+ * The featured match is a live one — a followed team's first, then any. Upcoming and finished lists
+ * have no hero. The rest of the list puts followed teams on top ("your cricket" is what it opens with).
+ */
+private fun splitFeatured(
+    matches: List<CricketMatch>,
+    favouriteNames: Set<String>,
+): Pair<CricketMatch?, List<CricketMatch>> {
+    val featured = matches.firstOrNull { it.isLive && it.hasFavouriteTeam(favouriteNames) }
+        ?: matches.firstOrNull { it.isLive }
+    val (followed, others) = matches
+        .filterNot { it.id == featured?.id }
+        .partition { it.hasFavouriteTeam(favouriteNames) }
+    return featured to followed + others
+}
 
 private fun CricketMatch.hasFavouriteTeam(favouriteNames: Set<String>): Boolean =
     favouriteNames.isNotEmpty() && teams.any { it.name.trim().lowercase() in favouriteNames }
 
-private fun mapStatus(vmStatus: String): String = when (vmStatus) {
+private fun tabForStatus(vmStatus: String): String = when (vmStatus) {
     "Live" -> "Live"
     "Upcoming" -> "Upcoming"
     "Recent", "Completed" -> "Recent"
     else -> "All"
 }
 
-// The chip label IS the ViewModel status, "All" included -- see STATUS_ALL. This used to map
-// "All" onto "Live", so the one chip that could not round-trip was also the one that looked
+// The tab label IS the ViewModel status, "All" included -- see STATUS_ALL. This used to map
+// "All" onto "Live", so the one filter that could not round-trip was also the one that looked
 // broken: the highlight jumped to Live and the feed never changed.
-private fun mapChipToStatus(chip: String): String = when (chip) {
-    "Live" -> "Live"
-    "Upcoming" -> "Upcoming"
-    "Recent" -> "Recent"
-    else -> STATUS_ALL
-}
+private val STATUS_BY_TAB = linkedMapOf("All" to STATUS_ALL, "Live" to "Live", "Upcoming" to "Upcoming", "Recent" to "Recent")
+private val STATUS_TABS = STATUS_BY_TAB.keys.toList()
+private const val CATEGORY_ALL = "All"
+private val CATEGORY_OPTIONS = listOf(CATEGORY_ALL, "International", "League", "Domestic")
+private const val SHIMMER_ROWS = 3
+private const val MAX_BADGE_COUNT = 9

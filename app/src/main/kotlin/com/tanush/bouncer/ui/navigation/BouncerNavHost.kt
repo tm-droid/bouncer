@@ -118,9 +118,6 @@ private fun NavGraphBuilder.primaryTabDestinations(
             onAchievementsClick = {
                 navController.navigateForward(BouncerScreen.Stats.route)
             },
-            onSettingsClick = {
-                navController.navigateForward(BouncerScreen.Settings.route)
-            },
             onNewsClick = {
                 navController.navigateToTab(BouncerScreen.News.route)
             },

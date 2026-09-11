@@ -18,6 +18,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
@@ -71,7 +72,8 @@ fun BottomNavBarV2(
                     selectedTextColor = colors.primaryText,
                     unselectedIconColor = colors.textSecondary,
                     unselectedTextColor = colors.textSecondary,
-                    indicatorColor = colors.primaryContainer,
+                    // No pill behind the selected item: gold ink and the filled icon already mark it.
+                    indicatorColor = Color.Transparent,
                 ),
             )
         }

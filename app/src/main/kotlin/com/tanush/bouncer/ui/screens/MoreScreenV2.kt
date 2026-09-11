@@ -87,7 +87,7 @@ fun MoreScreenV2(
     }
 
     Scaffold(
-        topBar = { BouncerTopBarV2(title = "BOUNCER") },
+        topBar = { BouncerTopBarV2(title = "Bouncer") },
         containerColor = colors.background,
     ) { padding ->
         LazyColumn(

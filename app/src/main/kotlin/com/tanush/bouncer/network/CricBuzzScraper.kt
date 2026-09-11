@@ -387,6 +387,7 @@ class CricBuzzScraper {
                 tossDecision = tossDecision,
                 umpire1 = ump1,
                 umpire2 = ump2,
+                seriesName = seriesName, matchDesc = matchDesc,
             )
         } catch (e: Exception) {
             Log.d(TAG, "Failed to parse match from element", e)

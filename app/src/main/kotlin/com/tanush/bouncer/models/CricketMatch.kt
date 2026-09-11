@@ -94,6 +94,10 @@ data class CricketMatch(
     val tossDecision: String? = null,
     val umpire1: String? = null,
     val umpire2: String? = null,
+    /** Cricbuzz `seriesName`, e.g. "England tour of Pakistan, 2026". Blank on lists cached before it was kept. */
+    val seriesName: String = "",
+    /** Cricbuzz `matchDesc`, e.g. "2nd Test" or "12th Match". Blank on lists cached before it was kept. */
+    val matchDesc: String = "",
 ) {
     // Classified over BOTH status fields at once. Either field can be stale or terse on its own,
     // and precedence resolves the disagreement correctly: a stale status="Live" alongside a

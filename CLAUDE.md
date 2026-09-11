@@ -260,17 +260,28 @@ the app read as generated rather than designed. Four rules, each written into th
   not "this is important": 12dp radius, `surface` fill, 1dp `divider` border, **0 elevation**. Use
   `BouncerRowGroup(items) { row(it) }` when several rows share one container. Never nest cards.
 - **Colour, one job each.** Every number, name, over and status line is neutral
-  (`onSurface`/`textSecondary`). Red = live only. **Gold = interactive affordance only** — links,
-  selected chip/tab, action text; not section headers, not borders, not fills. Team colour only
-  where it identifies a team as a *shape* (the win-probability bar), **never as ink**. Event colours
+  (`onSurface`/`textSecondary`) — a result is not win-green, or the Recent tab is one green column. Red = live only. **Gold = interactive affordance only** — links,
+  selected chip/tab, action text — plus the wordmark; not section headers, not borders, not fills, not
+  the top bar (which is the page colour with a hairline). Team colour only
+  where it identifies a team as a *shape* (the Home hero's win-probability bar), **never as ink**, and only
+  when `TeamColorRegistry.isKnown` is true for both sides: its hash fallback painted associate fixtures
+  magenta against lime. Dark-mode text greys are neutral, not cream/tan. Event colours
   only on ball chips and commentary badges. `glassBorderHighlight`/`glassBorder` are **border**
   tokens — using them as a fill is what gave Fall of Wickets its olive cast.
 - **Numerals are tabular.** Scores repoll ~every 6s; proportional digits reflow the row on each
   tick. `scoreLarge`/`scoreMedium`/`numeric`/`numericSmall` set `fontFeatureSettings = "tnum"` —
   use them for anything that re-renders with new digits in place.
-- **Motion reports state changes only.** No ambient loops. A score tick, a subscribe toggle, the
-  event flash and the LIVE dot are motion; a breathing glow, a sweeping shimmer or a pulsing border
-  is decoration. `SkeletonLoaders` are static blocks for the same reason.
+- **Motion reports state changes only.** No ambient loops. A score tick and the event flash are
+  motion; a breathing glow, a sweeping shimmer, a pulsing border, a bouncing bell and a pulsing LIVE
+  dot are decoration — `StatusBadgeV2` is a static dot and a word, with no tinted pill. `SkeletonLoaders` are static blocks for the same reason.
+
+- **Type and labels.** The face is IBM Plex Sans, bundled in `res/font` (`BouncerFontFamily`) —
+  not Inter, and not a downloadable font, which fell back to Roboto whenever the Play provider was
+  slow. Plex digits are tabular by construction. `SectionHeaderV2` is sentence case in `onSurface`;
+  a tiny tracked all-caps overline is the most recognisable generated-layout tell. A list row marks
+  only a **live** match; upcoming and decided rows say so in their status line. Home's filters are
+  text tabs plus one competition menu, not chip rows with counts, and its hero appears only for a
+  live match.
 
 Two related traps. **Don't restate the fixed header**: `ScoreHeaderV2` is a sibling of the pager,
 so it is on screen for every tab — Overview used to open with the status, CRR/RRR, recent balls and

@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.sp
 @Immutable
 object BouncerTypographyTokens {
     val displayLarge = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 40.sp,
         lineHeight = 48.sp,
@@ -18,7 +18,7 @@ object BouncerTypographyTokens {
     )
 
     val displayMedium = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 28.sp,
         lineHeight = 34.sp,
@@ -26,7 +26,7 @@ object BouncerTypographyTokens {
     )
 
     val headlineLarge = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 22.sp,
         lineHeight = 28.sp,
@@ -34,7 +34,7 @@ object BouncerTypographyTokens {
     )
 
     val headlineMedium = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 18.sp,
         lineHeight = 24.sp,
@@ -42,7 +42,7 @@ object BouncerTypographyTokens {
     )
 
     val headlineSmall = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 15.sp,
         lineHeight = 20.sp,
@@ -50,7 +50,7 @@ object BouncerTypographyTokens {
     )
 
     val titleLarge = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 16.sp,
         lineHeight = 22.sp,
@@ -58,7 +58,7 @@ object BouncerTypographyTokens {
     )
 
     val titleMedium = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp,
@@ -66,7 +66,7 @@ object BouncerTypographyTokens {
     )
 
     val bodyLarge = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp,
@@ -74,7 +74,7 @@ object BouncerTypographyTokens {
     )
 
     val bodyMedium = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp,
@@ -82,7 +82,7 @@ object BouncerTypographyTokens {
     )
 
     val bodySmall = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 16.sp,
@@ -90,7 +90,7 @@ object BouncerTypographyTokens {
     )
 
     val labelLarge = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 13.sp,
         lineHeight = 16.sp,
@@ -98,7 +98,7 @@ object BouncerTypographyTokens {
     )
 
     val labelMedium = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 11.sp,
         lineHeight = 14.sp,
@@ -106,7 +106,7 @@ object BouncerTypographyTokens {
     )
 
     val labelSmall = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 10.sp,
         lineHeight = 12.sp,

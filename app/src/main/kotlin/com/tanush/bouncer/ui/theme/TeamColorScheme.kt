@@ -110,6 +110,22 @@ object TeamColorRegistry {
         return hashFallback(key, ground)
     }
 
+    /**
+     * True when [teamName] has a real brand colour here rather than one derived from a hash of its name.
+     *
+     * The hash fallback is fine for telling two teams apart in a detail view, but on a list it painted
+     * arbitrary magenta/lime and violet/lime pairs for every associate and franchise side it did not
+     * know. Callers that only want colour when it means something ask this first. Fuzzy matching needs
+     * a key of [MIN_FUZZY_KEY] characters, or "LL" would claim Royal Challengers' colours.
+     */
+    fun isKnown(teamName: String?): Boolean {
+        if (teamName.isNullOrBlank()) return false
+        val normalized = normalize(teamName)
+        val key = acronyms[normalized.uppercase()] ?: normalized
+        if (key in knownTeams) return true
+        return key.length >= MIN_FUZZY_KEY && knownTeams.keys.any { it.contains(key) || key.contains(it) }
+    }
+
     fun forMatch(homeTeam: String?, awayTeam: String?, ground: Ground = DarkGround): MatchTeamPalette {
         return MatchTeamPalette(
             home = forTeam(homeTeam, ground),
@@ -154,6 +170,7 @@ object TeamColorRegistry {
     }
 
     private const val LIGHT_GROUND_LUMINANCE = 0.5f
+    private const val MIN_FUZZY_KEY = 4
     private const val LIGHT_SURFACE_TINT = 0.88f
 
     private fun normalize(value: String): String {

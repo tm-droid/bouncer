@@ -6,7 +6,8 @@ import androidx.compose.ui.graphics.Color
 
 /**
  * Complete light + dark color palettes for Bouncer V2.
- * Primary brand: premium warm gold — prestigious, bold, and distinct.
+ * Accent: gold, for things you can tap and for the wordmark. Data — scores, names, statuses — is
+ * always neutral ink.
  *
  * Contrast is a hard requirement, not a preference: every foreground/background pair defined here
  * is asserted against WCAG in `LightModeContrastTest`. The light palette used to fail badly —
@@ -16,7 +17,7 @@ import androidx.compose.ui.graphics.Color
 
 // ─── Raw palette ──────────────────────────────────────────
 
-// Gold brand — premium, prestigious
+// Gold accent
 val Gold700 = Color(0xFFE0B74F)
 val Gold800 = Color(0xFFAF8327)
 val Gold300 = Color(0xFFF3DB93)
@@ -47,8 +48,11 @@ val DarkBg = Color(0xFF0C1015)
 val DarkSurface = Color(0xFF161C26)
 val DarkSurfaceVariant = Color(0xFF202834)
 val DarkBorder = Color(0xFF2B3442)
-val DarkTextPrimary = Color(0xFFFCF7ED)
-val DarkTextSecondary = Color(0xFFC1B08D)
+// Neutral greys. These were a cream #FCF7ED and a tan #C1B08D, which tinted every line of text in
+// dark mode toward the gold accent — a warm-cream palette reads as a default, not a choice, and it
+// left gold with nothing to stand apart from.
+val DarkTextPrimary = Color(0xFFECEEF1)
+val DarkTextSecondary = Color(0xFFA0A7B2)
 
 // Semantic
 val LiveRed = Color(0xFFDC2626)
@@ -203,10 +207,11 @@ val LightColors = BouncerColorsV2(
     scheduled = ScheduledGray,
     error = LiveRed,
 
-    // Was Gold800, which puts white text at 3.44:1 — below AA.
-    topBar = GoldText,
-    onTopBar = White,
-    onTopBarMuted = White,
+    // The bar is the page, not a brand slab. It was GoldText (#8A6516), which painted a mustard band
+    // across the top of every screen; the wordmark now carries the gold on its own.
+    topBar = White,
+    onTopBar = GoldText,
+    onTopBarMuted = Gray600,
 
     scrim = ScrimDark,
 
@@ -243,7 +248,8 @@ val DarkColors = BouncerColorsV2(
     scheduled = ScheduledGray,
     error = LiveRedDark,
 
-    topBar = Color(0xFF131923),
+    // Same as the background: a separately tinted bar made one more band above the content.
+    topBar = DarkBg,
     // Gold title on near-black is the shipped dark bar; onTopBar carries it so the component does
     // not have to branch on mode.
     onTopBar = Gold300,

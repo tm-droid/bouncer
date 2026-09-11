@@ -54,6 +54,7 @@ class LightModeContrastTest {
         assertContrast(colors.primaryText, colors.background, AA, "$mode primaryText on background")
         assertContrast(colors.onPrimary, colors.primary, AA, "$mode onPrimary on primary")
         assertContrast(colors.onTopBar, colors.topBar, AA, "$mode onTopBar on topBar")
+        assertContrast(colors.onTopBarMuted, colors.topBar, AA_LARGE, "$mode onTopBarMuted on topBar")
     }
 
     /** Live/win/error are drawn as labels and dots on the page, so they are checked against it. */

@@ -6,11 +6,11 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.tanush.bouncer.ui.theme.InterFontFamily
+import com.tanush.bouncer.ui.theme.BouncerFontFamily
 
 /**
  * Bouncer V2 typography scale.
- * Uses the Inter brand font — bold/extra-bold for scores, semibold for headers.
+ * Uses [BouncerFontFamily] (IBM Plex Sans) — bold for scores, semibold for headers.
  *
  * Hierarchy is carried by size and weight, never by colour or by wrapping something in a box.
  *
@@ -29,7 +29,7 @@ private const val TABULAR = "tnum"
 data class BouncerTypographyV2(
     /** 32sp ExtraBold — large hero scores */
     val displayLarge: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 32.sp,
         lineHeight = 40.sp,
@@ -37,7 +37,7 @@ data class BouncerTypographyV2(
     ),
     /** 28sp Bold — section headers, screen titles */
     val displayMedium: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 28.sp,
         lineHeight = 36.sp,
@@ -45,28 +45,28 @@ data class BouncerTypographyV2(
     ),
     /** 24sp Bold — card titles, match scores in detail */
     val headlineLarge: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 24.sp,
         lineHeight = 32.sp,
     ),
     /** 20sp SemiBold — section headers in-screen */
     val headlineMedium: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 20.sp,
         lineHeight = 28.sp,
     ),
     /** 18sp SemiBold — match card series header */
     val titleLarge: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 18.sp,
         lineHeight = 26.sp,
     ),
     /** 16sp Medium — team names, player names */
     val titleMedium: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 16.sp,
         lineHeight = 24.sp,
@@ -74,7 +74,7 @@ data class BouncerTypographyV2(
     ),
     /** 14sp Medium — card sub-titles, list items */
     val titleSmall: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp,
@@ -82,7 +82,7 @@ data class BouncerTypographyV2(
     ),
     /** 16sp Normal — paragraph body */
     val bodyLarge: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp,
@@ -90,7 +90,7 @@ data class BouncerTypographyV2(
     ),
     /** 14sp Normal — secondary body, description */
     val bodyMedium: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp,
@@ -98,7 +98,7 @@ data class BouncerTypographyV2(
     ),
     /** 12sp Normal — captions, timestamps */
     val bodySmall: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 16.sp,
@@ -106,7 +106,7 @@ data class BouncerTypographyV2(
     ),
     /** 14sp Medium — buttons, chips, badges */
     val labelLarge: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp,
@@ -114,7 +114,7 @@ data class BouncerTypographyV2(
     ),
     /** 12sp Medium — small labels, tab bar labels */
     val labelMedium: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         lineHeight = 16.sp,
@@ -122,7 +122,7 @@ data class BouncerTypographyV2(
     ),
     /** 11sp Medium — micro labels, badges */
     val labelSmall: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 11.sp,
         lineHeight = 16.sp,
@@ -130,7 +130,7 @@ data class BouncerTypographyV2(
     ),
     /** 11sp Medium, wide-tracked — uppercase section headers ("MATCHES", "THIS OVER") */
     val overline: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 11.sp,
         lineHeight = 16.sp,
@@ -138,7 +138,7 @@ data class BouncerTypographyV2(
     ),
     /** 22sp ExtraBold, tabular — compact match card scores */
     val scoreLarge: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 22.sp,
         lineHeight = 28.sp,
@@ -146,7 +146,7 @@ data class BouncerTypographyV2(
     ),
     /** 16sp Bold, tabular — secondary scores, overs */
     val scoreMedium: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 16.sp,
         lineHeight = 22.sp,
@@ -154,7 +154,7 @@ data class BouncerTypographyV2(
     ),
     /** 14sp Medium, tabular — stat figures, overs, run rates in tables and rows */
     val numeric: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp,
@@ -162,7 +162,7 @@ data class BouncerTypographyV2(
     ),
     /** 12sp Normal, tabular — the small `(14.2)` overs figure beside a score */
     val numericSmall: TextStyle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 16.sp,

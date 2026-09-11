@@ -9,15 +9,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * Section title with optional "See All" button.
  *
- * A quiet uppercase overline, not a headline. At 20sp SemiBold in full-strength ink every section
- * label competed with the scores underneath it and made each screen read as a stack of equal
- * blocks; the label only has to say what the next few rows are. The action keeps gold, because
- * gold's one job in this app is "you can tap this".
+ * Sentence case, in the reader's own ink. It was an 11sp wide-tracked uppercase overline in grey, and
+ * the tiny all-caps label above every block is one of the most reliable signs of a generated layout —
+ * it also made each section read like a form caption. Weight separates the title from the rows under
+ * it; the action keeps gold, because gold's one job in this app is "you can tap this".
  */
 @Composable
 fun SectionHeaderV2(
@@ -38,9 +39,10 @@ fun SectionHeaderV2(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = title.uppercase(),
-            style = typography.overline,
-            color = colors.textSecondary,
+            text = title,
+            style = typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = colors.onSurface,
         )
         if (action != null && onAction != null) {
             Text(

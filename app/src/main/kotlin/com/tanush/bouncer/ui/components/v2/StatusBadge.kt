@@ -1,33 +1,20 @@
 package com.tanush.bouncer.ui.components.v2
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
-import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-
-/**
- * Status badge pills: LIVE (red pulse), UPCOMING (gray), COMPLETED (green).
- */
 
 enum class MatchStatusType { Live, Upcoming, Completed, Unknown }
 
@@ -60,6 +47,14 @@ fun determineMatchStatus(match: CricketMatch): MatchStatusType {
     return MatchStatusType.Upcoming
 }
 
+/**
+ * Match state as a dot and a word.
+ *
+ * No tinted pill and no pulse. A capsule behind every state gave each row of a list its own coloured
+ * lozenge, and a looping pulse draws the eye on a screen where nothing has changed — both read as
+ * generated rather than designed. Red on a static dot is enough to say "live"; the other states are
+ * grey because they are information, not alerts.
+ */
 @Composable
 fun StatusBadgeV2(
     statusType: MatchStatusType,
@@ -67,72 +62,29 @@ fun StatusBadgeV2(
     label: String? = null,
 ) {
     val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val shapes = BouncerThemeV2.shapes
-
-    val (dotColor, text) = when (statusType) {
+    val (tint, text) = when (statusType) {
         MatchStatusType.Live -> colors.live to (label ?: "LIVE")
-        MatchStatusType.Upcoming -> colors.scheduled to (label ?: "UPCOMING")
-        MatchStatusType.Completed -> colors.win to (label ?: "COMPLETED")
+        MatchStatusType.Upcoming -> colors.textSecondary to (label ?: "UPCOMING")
+        MatchStatusType.Completed -> colors.textSecondary to (label ?: "RESULT")
         MatchStatusType.Unknown -> colors.textSecondary to (label ?: "")
     }
 
     Row(
-        modifier = modifier
-            .background(dotColor.copy(alpha = 0.12f), shapes.pill)
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        if (statusType == MatchStatusType.Live) {
-            PulsingDot(color = dotColor)
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .clip(CircleShape)
-                    .background(dotColor)
-            )
-        }
-        Text(
-            text = text,
-            style = typography.labelSmall,
-            color = dotColor,
-        )
-    }
-}
-
-@Composable
-private fun PulsingDot(
-    color: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier,
-) {
-    // Infinite pulse is a vestibular trigger and constant-invalidation cost;
-    // reduced-motion users get a static dot (LIVE color still signals state).
-    if (BouncerMotion.reducedMotionEnabled) {
         Box(
-            modifier = modifier
+            modifier = Modifier
                 .size(6.dp)
                 .clip(CircleShape)
-                .background(color)
+                .background(tint)
         )
-        return
+        Text(
+            text = text,
+            style = BouncerThemeV2.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = tint,
+        )
     }
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulseAlpha",
-    )
-    Box(
-        modifier = modifier
-            .size(6.dp)
-            .alpha(alpha)
-            .clip(CircleShape)
-            .background(color)
-    )
 }

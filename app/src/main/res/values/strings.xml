@@ -33,14 +33,19 @@
     <string name="live_update_settings_blocked">Live updates are turned off for Bouncer in system settings.</string>
 
     <!-- ── Home ─────────────────────────────────────────────────────────── -->
-    <string name="home_title" translatable="false">BOUNCER</string>
+    <string name="home_title" translatable="false">Bouncer</string>
     <string name="home_empty_title">No matches found</string>
     <string name="home_empty_subtitle">Try changing your filters or pull to refresh</string>
     <string name="section_matches">Matches</string>
     <string name="action_see_all">See All</string>
     <string name="cd_search">Search</string>
-    <string name="cd_filters_show">Show category filters</string>
-    <string name="cd_filters_hide">Hide category filters</string>
+    <string name="cd_filter_category">Filter by competition</string>
+    <string name="home_all_matches">All matches</string>
+    <string name="match_starts_today">Starts today, %1$s</string>
+    <string name="match_starts_tomorrow">Starts tomorrow, %1$s</string>
+    <string name="match_starts_on">Starts %1$s, %2$s</string>
+    <string name="match_follow_live_updates">Follow live updates</string>
+    <string name="match_stop_live_updates">Stop live updates</string>
     <string name="home_unread_badge_overflow" translatable="false">9+</string>
 
     <!-- ── Search ───────────────────────────────────────────────────────── -->
