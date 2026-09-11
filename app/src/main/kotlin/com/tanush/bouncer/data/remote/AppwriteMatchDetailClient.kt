@@ -54,6 +54,51 @@ data class MatchLiveDetailPayload(
     // side. Null everywhere else, and a null must render a two-segment bar rather than a draw of
     // zero — "no draw is possible" and "a draw is possible but unlikely" are different claims.
     val winProbabilityDraw: Double? = null,
+    // Numeric match state, built by `liveSituation` in match-sync/src/cricbuzz.js from the same
+    // already-parsed miniscore the strings above come from.
+    //
+    // This shipped on the wire and was never modelled here, so `AppJson.ignoreUnknownKeys` dropped
+    // it on every read. Everything in it was instead being inferred on the device — the format from
+    // the cached list entry, the batting side from exact string equality between `score` and a side
+    // aggregate — and both of those inferences fail in ways this object simply does not have.
+    val situation: LiveSituation? = null,
+)
+
+/**
+ * The live match state as numbers rather than display strings.
+ *
+ * Every field is nullable: `liveSituation` returns null outright when the miniscore has no current
+ * innings, individual fields are null when Cricbuzz omits them, and rows written by older builds of
+ * the function have no `situation` at all. A consumer must degrade to the string paths rather than
+ * treat absence as zero.
+ *
+ * "team1" follows the same convention as [MatchLiveDetailPayload]: the side that batted **first**.
+ */
+@Serializable
+data class LiveSituation(
+    val inningsId: Int? = null,
+    /** Cricbuzz's own format word — "TEST", "ODI", "T20", "T10", "HUNDRED". */
+    val matchFormat: String? = null,
+    /** Short code of the side currently batting, e.g. "KENT". Never a full team name. */
+    val battingTeamName: String? = null,
+    val bowlingTeamName: String? = null,
+    /**
+     * Whether the side batting now is the first-innings side, compared by **team id** on the
+     * server. This is the authoritative answer to a question the payload's strings can only be
+     * guessed at.
+     */
+    val battingTeamIsTeam1: Boolean? = null,
+    val firstInningsTeamId: String? = null,
+    val runsScored: Int? = null,
+    val wicketsLost: Int? = null,
+    val ballsBowled: Int? = null,
+    /** Set only in the innings the match will finish in, so a Test's fourth innings carries one. */
+    val target: Int? = null,
+    val runsNeeded: Int? = null,
+    /** Cricbuzz's own overs-left figure, which already accounts for a reduced-overs match. */
+    val oversRemaining: Double? = null,
+    val currentRunRate: Double? = null,
+    val requiredRunRate: Double? = null,
 )
 
 object AppwriteMatchDetailClient : AppwriteTableClient("AppwriteMatchDetail") {

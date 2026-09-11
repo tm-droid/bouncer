@@ -9,13 +9,15 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.graphics.drawable.IconCompat
 import com.tanush.bouncer.R
 import com.tanush.bouncer.services.LiveUpdateDismissReceiver
 import com.tanush.bouncer.ui.screens.NotificationPrefsManager
-import com.tanush.bouncer.ui.theme.getTeamNotificationColor
+import com.tanush.bouncer.ui.theme.TeamColorRegistry
+import com.tanush.bouncer.ui.theme.TeamColors
 import com.tanush.bouncer.ui.widgets.WidgetRemoteViewsColors
 import com.tanush.bouncer.utils.NotificationPermission
 
@@ -27,7 +29,7 @@ import com.tanush.bouncer.utils.NotificationPermission
  * The promotion contract is narrow and every clause of it is load-bearing here:
  *
  *  - the style must be one of Standard / BigText / Call / Progress / Metric, so this builds
- *    [NotificationCompat.ProgressStyle] and **never** touches `setCustomContentView`. The stack
+ *    [NotificationCompat.BigTextStyle] and **never** touches `setCustomContentView`. The stack
  *    this replaces used `DecoratedCustomViewStyle` with two `RemoteViews`, which disqualified it
  *    outright — the promotion request it made by reflection could never have been honoured.
  *  - `POST_PROMOTED_NOTIFICATIONS` must be declared in the manifest.
@@ -37,10 +39,25 @@ import com.tanush.bouncer.utils.NotificationPermission
  * `NotificationCompat` carries all of these from core 1.17 onwards, so there is no reflection and
  * no `@RequiresApi`: below API 36 the compat builder drops the promotion fields and the same call
  * produces an ordinary ongoing notification, which is exactly the intended fallback.
+ *
+ * `BigTextStyle` rather than `ProgressStyle` because a cricket card is a scoreboard, not a
+ * position. `ProgressStyle` allows exactly one line of text below the title, which is why the card
+ * it replaced could show a batting pair and nothing else — no opposition total, no bowler, no
+ * target. The bar it bought in exchange carried a ball count nobody reads, and none of the iOS
+ * Live Activities this is modelled on has one.
+ *
+ * **`setColorized(true)` is a promotion requirement, not a styling choice.** It is the one flag
+ * `hasPromotableCharacteristics()` actually turns on, measured on a stock API 36 emulator across
+ * every combination of style, `shortCriticalText`, large icon and actions: colorized present is
+ * true, colorized absent is false, and nothing else moves the verdict — a `ProgressStyle` card
+ * with a chip and no colorized is refused just as a `BigTextStyle` one is. Dropping it to get the
+ * neutral card the design references use silently costs the chip, the lock-screen pin and the
+ * top-of-shade slot. So the lever on appearance is the **colour**, not whether there is one: the
+ * flat mustard this replaced was `getTeamNotificationColor` missing on every match, because it
+ * matched full country names against the payload's Cricbuzz short codes. Now it is the batting
+ * side's brand colour and the platform picks its own text colour against it.
  */
 class LiveUpdateNotifier(private val context: Context) {
-
-    private val colors by lazy { WidgetRemoteViewsColors.of(context) }
 
     /**
      * Creates the Live Update channel and retires the old one.
@@ -77,17 +94,16 @@ class LiveUpdateNotifier(private val context: Context) {
             NotificationManagerCompat.from(context).canPostPromotedNotifications()
 
     fun build(content: LiveUpdateContent, largeIcon: Bitmap?): Notification {
-        val accent = getTeamNotificationColor(content.accentTeamName)
-        return NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_ball)
             .setSubText(content.subText)
             .setContentTitle(content.title)
             .setContentText(content.text)
             .setShortCriticalText(content.shortCriticalText)
             .setLargeIcon(largeIcon)
-            .setColor(accent)
+            .setColor(accentColor(context, content.accentTeamName))
+            // Load-bearing for promotion; see the class comment. Not a style preference.
             .setColorized(true)
-            .setStyle(progressStyle(context, colors, content.progress, accent))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
@@ -103,7 +119,12 @@ class LiveUpdateNotifier(private val context: Context) {
             .setDeleteIntent(dismissIntent(content.matchId))
             .addAction(0, context.getString(R.string.live_update_action_scorecard), openMatchIntent(content.matchId))
             .addAction(0, context.getString(R.string.live_update_action_stop), stopIntent(content.matchId))
-            .build()
+        // An empty bigText would collapse the expanded card to the title alone, which is worse than
+        // the standard template's own expansion of the same two lines.
+        content.bigText.takeIf { it.isNotBlank() }?.let {
+            builder.setStyle(NotificationCompat.BigTextStyle().bigText(it))
+        }
+        return builder.build()
     }
 
     /**
@@ -169,46 +190,34 @@ class LiveUpdateNotifier(private val context: Context) {
     }
 }
 
+/**
+ * The batting side's colour, as the **fill** of a colorized card.
+ *
+ * [TeamColors.surface], not `primary`. `primary` is contrast-lifted to be legible *on* the ground,
+ * which is the opposite of what is wanted from a colour that *is* the ground — it came out as a
+ * highlighter-green card. `surface` is the registry's own team-tinted-card recipe (the brand colour
+ * washed over the ground, in the direction the ground goes), which is what the design references
+ * look like and what the platform can pick a readable text colour against.
+ *
+ * [TeamColorRegistry] rather than the retired `getTeamNotificationColor`: it is a plain object (so
+ * it is safe from a Service), it knows short codes through its acronym table, and unknown teams get
+ * a deterministic hash colour instead of everything collapsing onto one default.
+ *
+ * The ground is read from [context] on every call, never cached: `RemoteViews`-style colours are
+ * plain ARGB ints resolved per `Context`, and the notifier outlives a theme change.
+ */
+private fun accentColor(context: Context, teamName: String): Int {
+    val colors = WidgetRemoteViewsColors.of(context)
+    val ground = TeamColorRegistry.Ground(
+        background = Color(colors.background),
+        surface = Color(colors.surface),
+        ink = Color(colors.textPrimary),
+    )
+    return TeamColorRegistry.forTeam(teamName, ground).surface.toArgb()
+}
+
 /** Stable notification id for a match, so an update replaces its card rather than stacking a new one. */
 internal fun liveUpdateNotificationId(matchId: String): Int = ("live_update_$matchId").hashCode()
-
-/**
- * The bar itself. `ProgressStyle` takes its maximum from the sum of the segment lengths, so the
- * segments are what define the scale — there is no separate max to set.
- */
-private fun progressStyle(
-    context: Context,
-    colors: WidgetRemoteViewsColors,
-    progress: LiveUpdateProgress,
-    accent: Int,
-): NotificationCompat.ProgressStyle {
-    val style = NotificationCompat.ProgressStyle()
-        .setProgressTrackerIcon(IconCompat.createWithResource(context, R.drawable.ic_stat_ball))
-    if (progress !is LiveUpdateProgress.Determinate) {
-        // No readable over figure. An indeterminate bar says "working" honestly; a zeroed
-        // determinate one would claim the innings had not started.
-        return style.setProgressIndeterminate(true)
-            .addProgressSegment(NotificationCompat.ProgressStyle.Segment(1).setColor(accent))
-    }
-    progress.segments.forEach { segment ->
-        style.addProgressSegment(
-            NotificationCompat.ProgressStyle.Segment(segment.length).setColor(tintFor(colors, segment.tint, accent)),
-        )
-    }
-    progress.points.forEach { position ->
-        style.addProgressPoint(NotificationCompat.ProgressStyle.Point(position).setColor(colors.error))
-    }
-    // Segments carry phase meaning of their own, so the bar must not be recoloured by how far
-    // along the tracker happens to be.
-    return style.setStyledByProgress(false).setProgress(progress.progress)
-}
-
-private fun tintFor(colors: WidgetRemoteViewsColors, tint: SegmentTint, accent: Int): Int = when (tint) {
-    SegmentTint.POWERPLAY -> colors.success
-    SegmentTint.MIDDLE -> colors.textTertiary
-    SegmentTint.DEATH -> colors.warning
-    SegmentTint.NEUTRAL -> accent
-}
 
 /**
  * Matches the user has swiped away this session.

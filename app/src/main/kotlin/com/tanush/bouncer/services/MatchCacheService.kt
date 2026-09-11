@@ -21,6 +21,19 @@ import java.util.Date
  * 2. Persistent disk cache for offline support between app launches
  */
 object MatchCacheService {
+    /**
+     * The status keys every tier of this cache is addressed by.
+     *
+     * They are exported because they are not free-form: `getMatches`, `getOfflineMatches` and
+     * `getCacheExpirationInterval` all key on the exact string, so a caller that writes its own
+     * literal gets a permanent, silent miss. `LiveUpdateSources` used `"live"` against this
+     * service's `"Live"` and therefore never resolved a cached match on any device — which cost the
+     * Live Update its series name, its team crest and its format at once.
+     */
+    const val LIVE = "Live"
+    const val UPCOMING = "Upcoming"
+    const val RECENT = "Recent"
+
     private const val TAG = "MatchCacheService"
     private const val DISK_PREF_NAME = "match_cache_disk"
     private const val DISK_CACHE_MAX_AGE_MS = 3_600_000L // 1 hour for offline data
@@ -67,8 +80,8 @@ object MatchCacheService {
     private fun getCacheExpirationInterval(status: String): Long {
         try {
             return when (status) {
-                "Live" -> 6_000L // matches the Live poll interval; see the KDoc above
-                "Upcoming", "Recent" -> 60_000L // Upcoming and Recent matches cache expires after 60 seconds
+                LIVE -> 6_000L // matches the Live poll interval; see the KDoc above
+                UPCOMING, RECENT -> 60_000L // Upcoming and Recent matches cache expires after 60 seconds
                 else -> 30_000L // Default fallback
             }
         } catch (e: Exception) {

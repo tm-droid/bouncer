@@ -47,8 +47,8 @@ fun placeholderContent(matchId: String, match: CricketMatch?, fallbackTitle: Str
             ?: match?.matchTitle?.takeIf { it.isNotBlank() }
             ?: fallbackTitle,
         text = match?.currentStatus?.takeIf { it.isNotBlank() } ?: fallbackTitle,
+        bigText = "",
         shortCriticalText = null,
-        progress = LiveUpdateProgress.Indeterminate,
         accentTeamName = match?.teams?.firstOrNull()?.name.orEmpty(),
         logoTeamName = null,
         isComplete = false,
@@ -83,4 +83,5 @@ object LiveUpdateLogoLoader {
     }
 }
 
-private const val LIVE_STATUS = "live"
+/** The cache is keyed by this exact string; see [MatchCacheService.LIVE]. */
+private val LIVE_STATUS = MatchCacheService.LIVE

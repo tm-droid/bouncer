@@ -1,6 +1,7 @@
 package com.tanush.bouncer.liveactivity
 
 import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
+import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.models.CricketMatch
 
 /**
@@ -36,14 +37,18 @@ internal fun latestInnings(score: String?): String? =
     score?.substringAfterLast(INNINGS_JOIN)?.trim()?.takeIf { it.isNotEmpty() }
 
 /**
- * Which of the two payload slots is batting, found by matching the live score line against each
- * side's latest innings.
+ * Which of the two payload slots is batting.
  *
- * The payload never names the batting side, and `team1` is the wrong answer for the whole of a
- * second innings. Comparing the scores is the only signal available, and it is exact: `score` and
- * the side aggregates are built from the same Cricbuzz totals.
+ * `situation.battingTeamIsTeam1` is the answer where the row has one: the server compares **team
+ * ids**, which is the only comparison that holds for a side batting its second innings in a Test.
+ *
+ * The score comparison below is the fallback for rows written before `situation` existed. It works
+ * — `score` and the side aggregates are built from the same Cricbuzz totals, so the match is
+ * exact — but it is string equality, so any formatting drift on the server takes the batting side,
+ * the accent colour and the crest out together and silently.
  */
 internal fun battingSlot(payload: MatchLiveDetailPayload): Int? {
+    payload.situation?.battingTeamIsTeam1?.let { return if (it) 0 else 1 }
     val live = liveInningsScore(payload.score) ?: return null
     return listOf(payload.team1Score, payload.team2Score)
         .indexOfFirst { latestInnings(it) == live }
@@ -53,30 +58,38 @@ internal fun battingSlot(payload: MatchLiveDetailPayload): Int? {
 internal fun slotName(payload: MatchLiveDetailPayload, slot: Int): String? =
     (if (slot == 0) payload.team1Name else payload.team2Name)?.takeIf { it.isNotBlank() }
 
-internal fun slotOvers(payload: MatchLiveDetailPayload, slot: Int): String? =
-    (if (slot == 0) payload.team1Overs else payload.team2Overs)?.takeIf { it.isNotBlank() }
+/** A side's whole contribution, which in a multi-day match is two innings joined: `"266 & 234/1"`. */
+internal fun slotScore(payload: MatchLiveDetailPayload, slot: Int): String? =
+    (if (slot == 0) payload.team1Score else payload.team2Score)?.trim()?.takeIf { it.isNotEmpty() }
 
 /**
- * The full team name behind a payload slot, resolved through the match's own teams by team id.
+ * The full team name behind a payload slot, resolved through the match's own teams.
  *
- * A name-based join here would silently never fire, which is the failure mode the id exists to
- * remove.
+ * **Team id first**, because that is the only join that cannot be fooled by a short code. But
+ * `CricketMatch.Team.teamId` is populated by `CricBuzzScraper` alone — the Appwrite
+ * `poll-live-matches` blob does not emit it — so which list source served a match decides whether
+ * the id is there at all, and the crest appeared on roughly half of live matches for no reason a
+ * reader could see.
+ *
+ * The acronym fallback closes that. It is safe here in a way a name join is **not** safe for
+ * alignment: [singleOrNull] means an ambiguous code resolves to nothing, and the worst outcome is
+ * a card with no crest rather than a score against the wrong team. `TeamAcronymManager` reads a
+ * curated map — "South Africa" is "RSA", which no initials rule produces — and falls back to
+ * [com.tanush.bouncer.utils.acronymFor] when it has not been initialised.
  */
 internal fun matchTeamNameForSlot(
     payload: MatchLiveDetailPayload,
     match: CricketMatch?,
     slot: Int,
 ): String? {
-    val slotId = (if (slot == 0) payload.team1Id else payload.team2Id)?.takeIf { it.isNotBlank() }
-        ?: return null
-    return match?.teams?.firstOrNull { it.teamId == slotId }?.name?.takeIf { it.isNotBlank() }
-}
+    val teams = match?.teams?.filter { it.name.isNotBlank() }.orEmpty()
+    if (teams.isEmpty()) return null
 
-/**
- * Over notation for each wicket that has fallen in the innings being batted.
- *
- * The scorecard's last innings is the one in progress; earlier innings' wickets belong to a bar
- * that is no longer on screen.
- */
-internal fun currentInningsFallOfWicketOvers(payload: MatchLiveDetailPayload): List<String> =
-    payload.scorecard?.innings?.lastOrNull()?.fallOfWickets?.map { it.overs }.orEmpty()
+    val slotId = (if (slot == 0) payload.team1Id else payload.team2Id)?.takeIf { it.isNotBlank() }
+    if (slotId != null) {
+        teams.firstOrNull { it.teamId == slotId }?.let { return it.name }
+    }
+
+    val code = slotName(payload, slot) ?: return null
+    return teams.singleOrNull { TeamAcronymManager.getAcronym(it.name).equals(code, ignoreCase = true) }?.name
+}

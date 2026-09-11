@@ -4,6 +4,7 @@ import android.app.Notification
 import android.os.Build
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -34,15 +35,17 @@ class LiveUpdatePromotabilityTest {
     private val content = LiveUpdateContent(
         matchId = "170667",
         subText = "The Ashes · Test",
-        title = "ENG 348  ·  AUS 266 & 234/1",
+        title = "AUS 266 & 234/1 (56.4)",
         text = "Warner 95(159)* · Labuschagne 63(103)",
+        bigText = listOf(
+            "ENG 348",
+            "Warner 95 (159)*",
+            "Labuschagne 63 (103)",
+            "Cummins 2/45 (18.0)",
+            "Recent: 1 4 0 0 W 2",
+            "Australia trail by 48 runs",
+        ).joinToString("\n"),
         shortCriticalText = "234/1",
-        progress = progressFor(
-            format = com.tanush.bouncer.analysis.CricketConstants.MatchFormat.T20,
-            overs = "12.3",
-            wickets = 2,
-            fallOfWicketOvers = listOf("4.2", "11.5"),
-        ),
         accentTeamName = "Australia",
         logoTeamName = "Australia",
         isComplete = false,
@@ -99,18 +102,44 @@ class LiveUpdatePromotabilityTest {
     }
 
     /**
-     * An indeterminate bar is what a match with no readable over figure renders, and it must stay
-     * promotable — otherwise the first notification of every match, built before any payload
-     * arrives, would silently fail to promote.
+     * The placeholder card — posted before any payload arrives, so it has no expanded block and no
+     * chip — must stay promotable. Otherwise the first notification of every match would silently
+     * fail to promote, which is the class of failure this whole file exists to catch.
      */
     @Test
-    fun anIndeterminateBarIsStillPromotable() {
+    fun thePlaceholderCardIsStillPromotable() {
         assumeTrue("Live Updates are API 36+", Build.VERSION.SDK_INT >= PROMOTED_MIN_SDK)
-        val placeholder = content.copy(
-            progress = LiveUpdateProgress.Indeterminate,
-            shortCriticalText = null,
-        )
+        val placeholder = content.copy(bigText = "", shortCriticalText = null)
         assertTrue(notifier.build(placeholder, largeIcon = null).hasPromotableCharacteristics())
+    }
+
+    /** `BigTextStyle` is the promotable template this card relies on; a swap must be deliberate. */
+    @Test
+    fun theLiveUpdateUsesTheBigTextTemplate() {
+        val notification = notifier.build(content, largeIcon = null)
+        assertEquals(
+            Notification.BigTextStyle::class.java.name,
+            notification.extras.getString(Notification.EXTRA_TEMPLATE),
+        )
+        assertEquals(
+            content.bigText,
+            notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString(),
+        )
+    }
+
+    /**
+     * Colorized is the single flag `hasPromotableCharacteristics()` turns on.
+     *
+     * Measured on a stock API 36 emulator across every combination of style, `shortCriticalText`,
+     * large icon and actions: colorized present is promotable, colorized absent is not, and nothing
+     * else changes the verdict. Removing it to get a neutral card — which is what the iOS design
+     * references look like — silently costs the chip, the lock-screen pin and the top-of-shade
+     * slot. This assertion exists so that trade is never made by accident again.
+     */
+    @Test
+    fun theLiveUpdateIsColorizedBecausePromotionRequiresIt() {
+        val notification = notifier.build(content, largeIcon = null)
+        assertTrue(notification.extras.getBoolean(Notification.EXTRA_COLORIZED))
     }
 
     private companion object {

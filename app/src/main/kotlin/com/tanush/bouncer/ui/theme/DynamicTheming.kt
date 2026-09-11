@@ -17,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.palette.graphics.Palette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -458,27 +457,4 @@ object DynamicColors {
     val highContrast: HighContrastMode
         @Composable
         get() = LocalHighContrastMode.current
-}
-
-/**
- * Returns the primary team color as an ARGB int for use in Android notification APIs
- * (NotificationCompat.Builder.setColor, RemoteViews.setInt).
- * Fuzzy-matches on team name; falls back to gold if unrecognized.
- */
-fun getTeamNotificationColor(teamName: String): Int {
-    val lower = teamName.lowercase()
-    val scheme = when {
-        lower.contains("india") -> LegacyTeamSchemes.India
-        lower.contains("australia") -> LegacyTeamSchemes.Australia
-        lower.contains("england") -> LegacyTeamSchemes.England
-        lower.contains("pakistan") -> LegacyTeamSchemes.Pakistan
-        lower.contains("south africa") || lower.contains("southafrica") -> LegacyTeamSchemes.SouthAfrica
-        lower.contains("new zealand") || lower.contains("newzealand") -> LegacyTeamSchemes.NewZealand
-        lower.contains("west indies") || lower.contains("westindies") -> LegacyTeamSchemes.WestIndies
-        lower.contains("sri lanka") || lower.contains("srilanka") -> LegacyTeamSchemes.SriLanka
-        lower.contains("bangladesh") -> LegacyTeamSchemes.Bangladesh
-        lower.contains("afghanistan") -> LegacyTeamSchemes.Afghanistan
-        else -> LegacyTeamSchemes.Default
-    }
-    return scheme.primary.toArgb()
 }

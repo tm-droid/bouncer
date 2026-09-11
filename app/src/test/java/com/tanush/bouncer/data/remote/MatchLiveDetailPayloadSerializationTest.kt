@@ -3,6 +3,7 @@ package com.tanush.bouncer.data.remote
 import com.tanush.bouncer.data.AppJson
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -49,6 +50,45 @@ class MatchLiveDetailPayloadSerializationTest {
             """{"score":"120/3","someFutureField":{"a":1}}"""
         )
         assertEquals("120/3", payload.score)
+    }
+
+    /**
+     * `situation` shipped on the wire long before it was modelled here, so `ignoreUnknownKeys`
+     * dropped it on every read and the device went on inferring the format and the batting side
+     * from strings. The captured shape below is a real fourth-innings Test row.
+     */
+    @Test
+    fun `the situation object decodes`() {
+        val payload = AppJson.decodeFromString<MatchLiveDetailPayload>(
+            """
+            {
+              "score": "63/5 (18.4)",
+              "situation": {
+                "inningsId": 4, "matchFormat": "TEST",
+                "battingTeamName": "KENT", "bowlingTeamName": "DERBY",
+                "battingTeamIsTeam1": false, "firstInningsTeamId": "144",
+                "runsScored": 63, "wicketsLost": 5, "ballsBowled": 112,
+                "target": 434, "runsNeeded": 371, "oversRemaining": 79.2,
+                "currentRunRate": 3.38, "requiredRunRate": 4.68,
+                "long": {"inningsIndex": 3, "lead": -370, "declared": true}
+              }
+            }
+            """.trimIndent(),
+        )
+        val situation = payload.situation!!
+        assertEquals("TEST", situation.matchFormat)
+        assertEquals("KENT", situation.battingTeamName)
+        assertEquals(false, situation.battingTeamIsTeam1)
+        assertEquals(371, situation.runsNeeded)
+        assertEquals(79.2, situation.oversRemaining!!, 0.0001)
+    }
+
+    /** Rows written before the field existed, and a miniscore with no current innings, have none. */
+    @Test
+    fun `a payload with no situation still decodes`() {
+        val payload = AppJson.decodeFromString<MatchLiveDetailPayload>("""{"score":"120/3"}""")
+        assertEquals("120/3", payload.score)
+        assertNull(payload.situation)
     }
 
     @Test

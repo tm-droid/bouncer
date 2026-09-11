@@ -41,7 +41,8 @@ import java.util.Date
 internal const val STATUS_ALL = "All"
 
 /** The statuses that have a URL of their own, in the order "All" presents them. */
-private val FETCHABLE_STATUSES = listOf("Live", "Upcoming", "Recent")
+private val FETCHABLE_STATUSES =
+    listOf(MatchCacheService.LIVE, MatchCacheService.UPCOMING, MatchCacheService.RECENT)
 
 /** Which statuses a selection has to fetch and poll. Only "All" needs more than itself. */
 internal fun statusesToFetch(status: String): List<String> =
@@ -104,7 +105,7 @@ class LiveActivityViewModel(
     private val _keyEvent = MutableStateFlow<Pair<String, String>?>(null)
     val keyEvent: StateFlow<Pair<String, String>?> = _keyEvent.asStateFlow()
 
-    private val _selectedStatus = MutableStateFlow("Live")
+    private val _selectedStatus = MutableStateFlow(MatchCacheService.LIVE)
     val selectedStatus: StateFlow<String> = _selectedStatus.asStateFlow()
 
     private val _selectedCompetitionType = MutableStateFlow("All")
@@ -227,8 +228,8 @@ class LiveActivityViewModel(
     }
 
     private fun getPollingInterval(status: String): Long = when (status) {
-        "Live" -> LIVE_POLL_INTERVAL_MS
-        "Upcoming", "Recent" -> SLOW_POLL_INTERVAL_MS
+        MatchCacheService.LIVE -> LIVE_POLL_INTERVAL_MS
+        MatchCacheService.UPCOMING, MatchCacheService.RECENT -> SLOW_POLL_INTERVAL_MS
         else -> DEFAULT_POLL_INTERVAL_MS
     }
 
@@ -320,7 +321,7 @@ class LiveActivityViewModel(
     private fun cancelNonLivePollingTasks() {
         // Cancel only non-live polling tasks; live polling persists across status changes.
         pollingTasks.entries.removeAll { (status, job) ->
-            if (status != "Live") {
+            if (status != MatchCacheService.LIVE) {
                 Log.d(TAG, "Cancelling polling task for $status")
                 job.cancel()
                 true
@@ -329,11 +330,11 @@ class LiveActivityViewModel(
     }
 
     private fun ensurePollingForCurrentStatuses() {
-        if (!pollingTasks.containsKey("Live")) {
-            startPollingForStatus("Live")
+        if (!pollingTasks.containsKey(MatchCacheService.LIVE)) {
+            startPollingForStatus(MatchCacheService.LIVE)
         }
         statusesToFetch(_selectedStatus.value)
-            .filter { it != "Live" && !pollingTasks.containsKey(it) }
+            .filter { it != MatchCacheService.LIVE && !pollingTasks.containsKey(it) }
             .forEach { startPollingForStatus(it) }
     }
 
@@ -342,7 +343,7 @@ class LiveActivityViewModel(
             if (_currentMatches.value.isEmpty()) {
                 _isLoading.value = true
             }
-            for (status in listOf("Live", "Upcoming", "Recent")) {
+            for (status in FETCHABLE_STATUSES) {
                 try {
                     updateMatches(status)
                 } catch (e: Exception) {
@@ -369,7 +370,7 @@ class LiveActivityViewModel(
 
     private fun runFastResumeFetch() {
         // Fast resume path to avoid waiting for the next polling tick.
-        val targets = (listOf("Live") + statusesToFetch(_selectedStatus.value)).distinct()
+        val targets = (listOf(MatchCacheService.LIVE) + statusesToFetch(_selectedStatus.value)).distinct()
         viewModelScope.launch(bouncerExceptionHandler) {
             targets.forEach { runCatching { updateMatches(it) } }
         }
@@ -427,7 +428,7 @@ class LiveActivityViewModel(
     }
 
     private suspend fun runPollIteration(status: String) {
-        if (status == "Live") {
+        if (status == MatchCacheService.LIVE) {
             updateMatches(status)
             updateAllLiveCommentaries()
         } else if (!MatchCacheService.isCacheValid(status)) {
@@ -630,7 +631,7 @@ class LiveActivityViewModel(
         }
 
         updateHomeMatches()
-        if (status == "Live") {
+        if (status == MatchCacheService.LIVE) {
             pruneStaleMatchData(matchesWithProbability)
         }
     }
@@ -644,7 +645,7 @@ class LiveActivityViewModel(
     }
 
     private fun updateHomeMatches() {
-        val combined = (cachedMatches["Live"].orEmpty() + cachedMatches["Upcoming"].orEmpty())
+        val combined = (cachedMatches[MatchCacheService.LIVE].orEmpty() + cachedMatches[MatchCacheService.UPCOMING].orEmpty())
             .distinctBy { it.id }
         if (_allMatchesForHome.value != combined) {
             _allMatchesForHome.value = combined

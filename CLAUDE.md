@@ -131,7 +131,7 @@ none of them — it was built with `DecoratedCustomViewStyle` plus two `RemoteVi
 could never be granted), its `setRequestPromotedOngoing` was a reflective call into
 `NotificationCompat.Builder` with a silent catch, and its service was constructed with a
 `NoopMatchUpdateDataSource` that nothing ever started. `LiveUpdateNotifier` uses
-`NotificationCompat.ProgressStyle`; core-ktx 1.19 carries every promotion API, so there is **no
+`NotificationCompat.BigTextStyle`; core-ktx 1.19 carries every promotion API, so there is **no
 reflection and no `@RequiresApi`** — below API 36 the same builder degrades to an ordinary ongoing
 notification. Two API traps: `Notification.isRequestPromotedOngoing()` does **not** exist on stock
 API 36 even though the setter does (read `EXTRA_REQUEST_PROMOTED_ONGOING` from `extras` instead),
@@ -161,21 +161,61 @@ LOW channel has no status-bar presence for the chip to attach to. `startForegrou
 service to exactly one notification id, so one match's card is the anchor and `anchorTo` moves it
 when that match ends.
 
-**A Test has no ball budget, so its Live Update bar counts wickets.** `ProgressStyle` takes its
-maximum from the **sum of the segment lengths** — there is no separate max to set. Limited-overs
-matches use balls bowled out of `CricketConstants.inningsBalls(format)`, with the powerplay /
-middle / death windows as segments and a point per fall of wicket; only T20 and ODI have those
-windows defined, so T10 and The Hundred get one neutral segment rather than a proportional guess.
-`inningsBalls` returns null for TEST precisely so nothing borrows T20's 120, so a Test reports
-wickets out of ten instead of inventing a denominator such as a day's 90 overs. Unreadable overs
-give an **indeterminate** bar, never a zeroed determinate one — that would claim the innings had
-not started.
+**A cricket card is a scoreboard, not a position, so the style is `BigTextStyle`.** `ProgressStyle`
+allows exactly **one** line of text below the title, which is why the card it replaced showed a
+batting pair and nothing else — no opposition total, no bowler, no target — while a bar counting
+balls bowled took a third of the height. None of the iOS Live Activities this is modelled on has a
+bar. `LiveUpdateProgress` and its test were deleted with it; do not reintroduce a bar without
+re-reading what it would displace.
+
+**`setColorized(true)` is a promotion requirement, and it is the only flag that moves the verdict.**
+Measured on a stock API 36 emulator across every combination of style, `shortCriticalText`, large
+icon and actions: `hasPromotableCharacteristics()` is true with colorized and false without, and a
+`ProgressStyle` card carrying a chip is refused exactly like a `BigTextStyle` one. So the Live
+Update **cannot** be the neutral card the iOS references are — dropping colorized to get one
+silently costs the chip, the lock-screen pin and the top-of-shade slot, which is the whole feature.
+The lever is the colour, not whether there is one. The flat mustard every card used to be was
+`getTeamNotificationColor` (now deleted) missing on **every** match: it matched full country names
+with `contains` against `payload.team1Name`, which is a Cricbuzz short code ("RSA", "KENT"), so the
+gold was a fallback rather than a team colour. `TeamColorRegistry` replaces it — a plain object,
+safe from a Service, with a short-code alias table and a deterministic hash fallback — and the
+platform picks its own text colour against the fill. This is the one place the visual grammar's
+"team colour is never ink" rule is overridden by the platform, and `LiveUpdatePromotabilityTest`
+pins it.
+
+**`LiveUpdateContent` builds five surfaces and each has a different budget.** `subText` is the
+header (series · format), `title` the batting side's **whole** contribution plus its over figure
+(`"AUS 266 & 234/1 (56.4)"` — the side aggregate, never `score`, which is one innings of a Test),
+`text` the collapsed second line under a 48-character budget, `bigText` the expanded scoreboard
+capped at six lines, and `shortCriticalText` the status-bar chip, dropped entirely past 7
+characters. `bigText` is built in descending order of value — opposition total, striker,
+non-striker, bowler, recent balls, status — and truncated from the bottom, because the template
+ellipsises overflow rather than scrolling it.
+
+**The live payload carries a `situation` object, and `ignoreUnknownKeys` hid it for its whole
+life.** `liveSituation` (`match-sync/src/cricbuzz.js`) publishes the match state as numbers —
+`matchFormat`, `battingTeamIsTeam1` (compared by **team id** server-side), `runsScored`,
+`wicketsLost`, `ballsBowled`, `target`, `runsNeeded`, `oversRemaining`, and both run rates — and
+`MatchLiveDetailPayload` never declared it, so `AppJson.ignoreUnknownKeys = true` dropped it on
+every read. Meanwhile the device inferred the same facts from the cached list entry and from exact
+string equality between `score` and a side aggregate. `LiveSituation` now models it and is the
+authority where present; the string paths stay as the fallback for older rows. Every field is
+nullable and `liveSituation` can return null outright — absence must degrade, never read as zero.
+
+**The Live Update read the match cache under the wrong key for its whole life.**
+`LiveUpdateSources` used `"live"`; `MatchCacheService` is keyed `"Live"`. `cachedLiveMatch()`
+therefore returned null on every device for every match, and that single mismatch cost the card its
+series name, its **team crest** (`logoTeamName` joins through the cached match by team id) and its
+format at once — three unrelated-looking symptoms, one cause. The keys are now
+`MatchCacheService.LIVE` / `UPCOMING` / `RECENT` and every caller reads them; never write the
+literal.
 
 **The payload names the first-innings side, not the batting side.** `MatchLiveDetailPayload`'s
 `team1*` slots belong to whoever batted first, which is the wrong team for the whole of a second
-innings, and the payload never says who is batting. `battingSlot` (`LiveUpdateScore.kt`) finds it by
-matching the live `score` line against each side's latest innings — both are built from the same
-Cricbuzz totals, so the comparison is exact. Do not compare the names: `team1Name` is a short code
+innings, and the payload's *strings* never say who is batting. `battingSlot` (`LiveUpdateScore.kt`)
+reads `situation.battingTeamIsTeam1` first and falls back to matching the live `score` line against
+each side's latest innings — both are built from the same Cricbuzz totals, so that comparison is
+exact, but it is string equality and a formatting drift takes it out silently. Do not compare the names: `team1Name` is a short code
 ("EZONE", "RSAA") that matches no full team name, which is why every join onto the app's own teams
 goes by `teamId`.
 
