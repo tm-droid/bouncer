@@ -33,14 +33,18 @@ data class LiveUpdateContent(
     val title: String,
     /** Collapsed second line: the batting pair, or the bowler, or the status. */
     val text: String,
-    /** Expanded body, newline separated: opposition total, batters, bowler, recent balls, status. */
+    /** Expanded body for the promotable template, newline separated. Derived from [scoreboard]. */
     val bigText: String,
+    /** The same facts as fields, for the custom-layout card. Both renderings read from this. */
+    val scoreboard: LiveUpdateScoreboard,
     /** Status-bar chip text. Null when there is no score short enough to be worth a chip. */
     val shortCriticalText: String?,
     /** Team whose brand colour tints the notification. Blank when unknown. */
     val accentTeamName: String,
     /** Team whose logo becomes the large icon, or null when it cannot be resolved. */
     val logoTeamName: String?,
+    /** The other side's logo, drawn only by the custom layout. Null when it cannot be resolved. */
+    val opponentLogoTeamName: String?,
     val isComplete: Boolean,
 )
 
@@ -77,19 +81,24 @@ fun buildLiveUpdateContent(
 ): LiveUpdateContent {
     val battingSlot = battingSlot(payload)
     val liveScore = liveInningsScore(payload.score)
+    val scoreboard = scoreboardOf(payload, battingSlot)
 
     return LiveUpdateContent(
         matchId = matchId,
         subText = subText(match, payload.situation),
         title = scoreTitle(payload, battingSlot),
         text = secondaryLine(payload),
-        bigText = bigText(payload, battingSlot),
+        bigText = bigTextOf(scoreboard),
+        scoreboard = scoreboard,
         shortCriticalText = liveScore?.takeIf { it.length <= SHORT_CRITICAL_MAX },
         accentTeamName = battingSlot?.let { slotName(payload, it) }
             ?: payload.situation?.battingTeamName?.takeIf { it.isNotBlank() }
             ?: match?.teams?.firstOrNull()?.name
             ?: "",
         logoTeamName = battingSlot?.let { slot -> matchTeamNameForSlot(payload, match, slot) },
+        opponentLogoTeamName = battingSlot
+            ?.let { if (it == 0) 1 else 0 }
+            ?.let { slot -> matchTeamNameForSlot(payload, match, slot) },
         isComplete = isComplete(match, payload.status),
     )
 }

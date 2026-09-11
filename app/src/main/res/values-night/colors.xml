@@ -51,4 +51,9 @@
     <!-- Matches DarkBg in ui/theme/v2/ColorTokensV2.kt so the pre-Compose frame and the first
          composed frame are the same colour. -->
     <color name="window_background">#0C1015</color>
+
+    <!-- Notification-only neutrals; see the comment in values/colors.xml. -->
+    <color name="notif_text_primary">#E8EAED</color>
+    <color name="notif_text_secondary">#9AA0A6</color>
+    <color name="notif_divider">#33FFFFFF</color>
 </resources>

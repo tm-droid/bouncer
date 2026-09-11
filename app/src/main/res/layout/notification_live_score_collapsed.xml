@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The collapsed Live Update card. Same contract as notification_live_score.xml.
+
+  The platform clips a collapsed custom content view hard, so this is deliberately two lines: the
+  scoreline with both sides, and the batting pair. Anything more is cut, not scrolled.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+
+    <ImageView
+        android:id="@+id/batting_logo"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:scaleType="fitCenter"
+        android:contentDescription="@null" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="8dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/collapsed_score"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:fontFeatureSettings="tnum"
+            android:textColor="@color/notif_text_primary" />
+
+        <TextView
+            android:id="@+id/collapsed_detail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="@color/notif_text_secondary" />
+    </LinearLayout>
+</LinearLayout>

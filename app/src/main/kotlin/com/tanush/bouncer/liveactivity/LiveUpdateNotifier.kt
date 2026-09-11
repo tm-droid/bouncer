@@ -50,12 +50,24 @@ import com.tanush.bouncer.utils.NotificationPermission
  * `hasPromotableCharacteristics()` actually turns on, measured on a stock API 36 emulator across
  * every combination of style, `shortCriticalText`, large icon and actions: colorized present is
  * true, colorized absent is false, and nothing else moves the verdict — a `ProgressStyle` card
- * with a chip and no colorized is refused just as a `BigTextStyle` one is. Dropping it to get the
- * neutral card the design references use silently costs the chip, the lock-screen pin and the
- * top-of-shade slot. So the lever on appearance is the **colour**, not whether there is one: the
- * flat mustard this replaced was `getTeamNotificationColor` missing on every match, because it
- * matched full country names against the payload's Cricbuzz short codes. Now it is the batting
- * side's brand colour and the platform picks its own text colour against it.
+ * with a chip and no colorized is refused just as a `BigTextStyle` one is. So the lever on
+ * appearance is the **colour**, not whether there is one: the flat mustard this replaced was
+ * `getTeamNotificationColor` missing on every match, because it matched full country names against
+ * the payload's Cricbuzz short codes.
+ *
+ * **There are two cards, chosen by what the device can actually do.** A promoted notification may
+ * not carry `RemoteViews` — measured the same way, and it is absolute: `setCustomContentView`,
+ * `setCustomBigContentView`, either of them alongside a style, and `DecoratedCustomViewStyle` all
+ * make `hasPromotableCharacteristics()` false. So a designed layout and promotion cannot coexist,
+ * and a template card is one TextView of left-aligned text with no column for the figures and no
+ * second crest.
+ *
+ * The resolution is that promotion is **not available on most of the install base**: it is Android
+ * 16, `minSdk` is 26, and even an API 36 device can report `canPostPromotedNotifications() == false`
+ * (the stock emulator does). Where it is available the template card is worth its constraints,
+ * because the chip, the lock-screen pin and the top-of-shade slot are the feature. Where it is not,
+ * the template buys *nothing* and costs the design, so [LiveUpdateScoreCard] renders the real
+ * layout instead. Nobody is worse off than a single-path build, on either side of the line.
  */
 class LiveUpdateNotifier(private val context: Context) {
 
@@ -93,36 +105,68 @@ class LiveUpdateNotifier(private val context: Context) {
         Build.VERSION.SDK_INT >= PROMOTED_MIN_SDK &&
             NotificationManagerCompat.from(context).canPostPromotedNotifications()
 
-    fun build(content: LiveUpdateContent, largeIcon: Bitmap?): Notification {
+    /**
+     * [largeIcon] is the batting side's crest and [opponentIcon] the other side's. Only the custom
+     * layout draws the second one; the template has a single icon slot.
+     */
+    /**
+     * [largeIcon] is the batting side's crest and [opponentIcon] the other side's. Only the custom
+     * layout draws the second one; the promoted template has a single icon slot.
+     *
+     * Everything the two cards share is set first, and the fork below is exactly what they disagree
+     * on — which is small, and worth keeping visible in one place.
+     */
+    fun build(
+        content: LiveUpdateContent,
+        largeIcon: Bitmap?,
+        opponentIcon: Bitmap? = null,
+    ): Notification {
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_ball)
             .setSubText(content.subText)
+            // Set on both paths: the custom-view card falls back to these if the system ever
+            // declines its RemoteViews, and they are what a screen reader reads either way.
             .setContentTitle(content.title)
             .setContentText(content.text)
-            .setShortCriticalText(content.shortCriticalText)
-            .setLargeIcon(largeIcon)
             .setColor(accentColor(context, content.accentTeamName))
-            // Load-bearing for promotion; see the class comment. Not a style preference.
-            .setColorized(true)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            // Promotion is what puts this on the lock screen and in the status bar. It is dropped
-            // during quiet hours rather than the notification being withheld: the foreground
-            // service needs a notification to exist, so the honest lever is prominence, not
-            // presence.
-            .setRequestPromotedOngoing(!isQuietHoursActive())
             .setContentIntent(openMatchIntent(content.matchId))
             .setDeleteIntent(dismissIntent(content.matchId))
             .addAction(0, context.getString(R.string.live_update_action_scorecard), openMatchIntent(content.matchId))
             .addAction(0, context.getString(R.string.live_update_action_stop), stopIntent(content.matchId))
-        // An empty bigText would collapse the expanded card to the title alone, which is worse than
-        // the standard template's own expansion of the same two lines.
-        content.bigText.takeIf { it.isNotBlank() }?.let {
-            builder.setStyle(NotificationCompat.BigTextStyle().bigText(it))
+
+        if (canPromote()) {
+            builder
+                .setShortCriticalText(content.shortCriticalText)
+                .setLargeIcon(largeIcon)
+                // Load-bearing for promotion; see the class comment. Not a style preference.
+                .setColorized(true)
+                // Promotion is what puts this on the lock screen and in the status bar. It is
+                // dropped during quiet hours rather than the notification being withheld: the
+                // foreground service needs a notification to exist, so the honest lever is
+                // prominence, not presence.
+                .setRequestPromotedOngoing(!isQuietHoursActive())
+            // An empty bigText would collapse the expanded card to the title alone, which is worse
+            // than the standard template's own expansion of the same two lines.
+            content.bigText.takeIf { it.isNotBlank() }?.let {
+                builder.setStyle(NotificationCompat.BigTextStyle().bigText(it))
+            }
+        } else {
+            // `DecoratedCustomViewStyle` rather than a bare custom view: the system keeps drawing
+            // the header and the action buttons, so only the score region is ours and the card
+            // still matches the shade it sits in. Not colorized — colorized exists to buy
+            // promotion, which this path has already lost, and the references are neutral cards.
+            builder
+                .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+                .setCustomContentView(LiveUpdateScoreCard.collapsed(context, content, largeIcon))
+                .setCustomBigContentView(
+                    LiveUpdateScoreCard.expanded(context, content, largeIcon, opponentIcon),
+                )
         }
         return builder.build()
     }
@@ -131,9 +175,13 @@ class LiveUpdateNotifier(private val context: Context) {
      * Posts [content], or returns false when it must not be shown — notifications denied, or the
      * user swiped this match away.
      */
-    fun post(content: LiveUpdateContent, largeIcon: Bitmap?): Boolean {
+    fun post(content: LiveUpdateContent, largeIcon: Bitmap?, opponentIcon: Bitmap? = null): Boolean {
         if (LiveUpdateDismissals.isDismissed(content.matchId)) return false
-        return NotificationPermission.notify(context, liveUpdateNotificationId(content.matchId), build(content, largeIcon))
+        return NotificationPermission.notify(
+            context,
+            liveUpdateNotificationId(content.matchId),
+            build(content, largeIcon, opponentIcon),
+        )
     }
 
     fun cancel(matchId: String) {

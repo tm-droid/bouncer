@@ -323,9 +323,16 @@ class LiveUpdateContentTest {
         )
     }
 
-    /** The template ellipsises overflow rather than scrolling it, so the block is cut here. */
+    /**
+     * The template ellipsises overflow rather than scrolling it, so the block has a hard ceiling.
+     *
+     * With the batters capped at the two actually at the crease, a full payload produces exactly
+     * the ceiling — opposition, two batters, bowler, recent balls, status. This asserts the ceiling
+     * is never exceeded, which is the invariant; a payload that could exceed it would be losing the
+     * status line silently.
+     */
     @Test
-    fun `the expanded block is capped and keeps the most valuable lines`() {
+    fun `the expanded block never exceeds its line ceiling`() {
         val content = buildLiveUpdateContent(
             MATCH_ID,
             match(),
@@ -340,9 +347,10 @@ class LiveUpdateContentTest {
                 status = "Australia trail by 48 runs",
             ),
         )
-        assertEquals(6, content.bigText.lines().size)
-        assertEquals("ENG 348", content.bigText.lines().first())
-        assertFalse(content.bigText, content.bigText.contains("trail by 48"))
+        val lines = content.bigText.lines()
+        assertEquals(content.bigText, 6, lines.size)
+        assertEquals("ENG 348", lines.first())
+        assertEquals("Australia trail by 48 runs", lines.last())
     }
 
     /** Only the last over's worth, which is what the references show. */
@@ -389,6 +397,79 @@ class LiveUpdateContentTest {
             ),
         )
         assertTrue(content.bigText, content.bigText.endsWith("Need 66 runs from 10.3 overs · RRR 6.60"))
+    }
+
+    // ── Structured scoreboard ────────────────────────────────────────────────
+
+    /**
+     * The custom layout binds fields, not a paragraph, and the template's text is derived from the
+     * same fields. A figure that exists in one rendering and not the other is the drift this
+     * structure exists to stop.
+     */
+    @Test
+    fun `the scoreboard carries the figures as fields`() {
+        val board = buildLiveUpdateContent(
+            MATCH_ID,
+            match(),
+            payload(
+                batsmen = listOf(
+                    batsman("Labuschagne", "63", "103", striker = false),
+                    batsman("Warner", "95", "159", striker = true),
+                ),
+                bowler = ScrapedBowler("Cummins", "18.0", "4", "45", "2", "2.50"),
+                recentBalls = listOf("1", "4"),
+            ),
+        ).scoreboard
+
+        assertEquals("AUS", board.battingName)
+        assertEquals("266 & 234/1", board.battingScore)
+        assertEquals("56.4", board.battingOvers)
+        assertEquals("ENG", board.opponentName)
+        assertEquals("348", board.opponentScore)
+        assertEquals(listOf("Warner", "Labuschagne"), board.batters.map { it.name })
+        assertEquals("95 (159)", board.batters.first().figure)
+        assertTrue(board.batters.first().isStriker)
+        assertEquals("Cummins", board.bowler?.name)
+        assertEquals("2/45 (18.0)", board.bowler?.figure)
+        assertEquals(listOf("1", "4"), board.recentBalls)
+    }
+
+    /** Only two batters are at the crease; a payload listing more is a scrape artefact. */
+    @Test
+    fun `the scoreboard keeps at most two batters`() {
+        val board = buildLiveUpdateContent(
+            MATCH_ID,
+            match(),
+            payload(
+                batsmen = listOf(
+                    batsman("Warner", "95", "159", striker = true),
+                    batsman("Labuschagne", "63", "103", striker = false),
+                    batsman("Khawaja", "142", "233", striker = false),
+                ),
+            ),
+        ).scoreboard
+        assertEquals(2, board.batters.size)
+        assertFalse(board.batters.map { it.name }.toString(), board.batters.any { it.name == "Khawaja" })
+    }
+
+    /** The expanded text is a flattening of the scoreboard, not a second derivation of the payload. */
+    @Test
+    fun `the expanded text is derived from the scoreboard`() {
+        val content = buildLiveUpdateContent(
+            MATCH_ID,
+            match(),
+            payload(batsmen = listOf(batsman("Warner", "95", "159", striker = true))),
+        )
+        assertTrue(content.bigText, content.bigText.contains("Warner 95 (159)*"))
+        assertEquals("Warner", content.scoreboard.batters.single().name)
+    }
+
+    /** The other side's crest is only drawn by the custom layout, but it is resolved for both. */
+    @Test
+    fun `the opponent logo resolves to the side that is not batting`() {
+        val content = buildLiveUpdateContent(MATCH_ID, match(), payload())
+        assertEquals("Australia", content.logoTeamName)
+        assertEquals("England", content.opponentLogoTeamName)
     }
 
     // ── situation as the authority ───────────────────────────────────────────

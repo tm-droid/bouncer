@@ -64,4 +64,16 @@
     <!-- LEGACY COMPAT -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!--
+      Notification-only neutrals.
+
+      The `text_*` and `card_border` tokens above are tuned for the app's own gold-on-black
+      surfaces; inside the system notification shade, which is neutral grey, they read as gold
+      contamination — tan body text and an olive divider. A notification is drawn on the platform's
+      surface, not on ours, so it gets the platform's greys. Same key in values-night/.
+    -->
+    <color name="notif_text_primary">#1A1A1A</color>
+    <color name="notif_text_secondary">#5F6368</color>
+    <color name="notif_divider">#1F000000</color>
 </resources>

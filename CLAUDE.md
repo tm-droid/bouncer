@@ -166,15 +166,37 @@ allows exactly **one** line of text below the title, which is why the card it re
 batting pair and nothing else — no opposition total, no bowler, no target — while a bar counting
 balls bowled took a third of the height. None of the iOS Live Activities this is modelled on has a
 bar. `LiveUpdateProgress` and its test were deleted with it; do not reintroduce a bar without
-re-reading what it would displace.
+re-reading what it would displace. This constrains the **promoted** card only — the custom-layout
+card below has real views.
 
 **`setColorized(true)` is a promotion requirement, and it is the only flag that moves the verdict.**
 Measured on a stock API 36 emulator across every combination of style, `shortCriticalText`, large
 icon and actions: `hasPromotableCharacteristics()` is true with colorized and false without, and a
-`ProgressStyle` card carrying a chip is refused exactly like a `BigTextStyle` one. So the Live
-Update **cannot** be the neutral card the iOS references are — dropping colorized to get one
-silently costs the chip, the lock-screen pin and the top-of-shade slot, which is the whole feature.
-The lever is the colour, not whether there is one. The flat mustard every card used to be was
+`ProgressStyle` card carrying a chip is refused exactly like a `BigTextStyle` one. The lever on a
+promoted card is the colour, not whether there is one.
+
+**There are two cards, and the device picks.** `RemoteViews` disqualify promotion absolutely —
+measured the same way: `setCustomContentView`, `setCustomBigContentView`, either alongside a style,
+and `DecoratedCustomViewStyle` all return false. So a designed layout and a promoted card cannot
+coexist, and the promoted one is a single TextView of left-aligned text: no column for the figures,
+no second crest, no large numeral. But promotion is **unavailable to most of the install base** —
+it is Android 16, `minSdk` is 26, and even an API 36 device can report
+`canPostPromotedNotifications() == false` (the stock emulator does). Serving everyone the template
+therefore charged every pre-16 user the design and gave them nothing. `LiveUpdateNotifier.build`
+now branches on `canPromote()`: promotable devices get the `BigTextStyle` card and the chip;
+everyone else gets `LiveUpdateScoreCard`, the real layout
+(`res/layout/notification_live_score{,_collapsed}.xml`). Both render one
+`LiveUpdateScoreboard` — fields, not a paragraph — so a change to what the card says lands on both,
+and `LiveUpdateScoreCardTest` (androidTest) asserts the non-promotable branch actually takes the
+layout. Do not collapse this to one path without re-measuring; the docs were wrong about the
+colorized rule too.
+
+**A notification is drawn on the platform's surface, not on ours, so it uses the platform's greys.**
+`text_secondary` is `#C1B08D` and `card_border` `#33F3DB93` in `values-night` — correct against the
+app's gold-on-black surfaces, and inside the neutral system shade they render as tan body text and
+an olive divider, the same cast the Fall of Wickets card had. The notification layouts use
+`notif_text_primary` / `notif_text_secondary` / `notif_divider` instead, which are neutral in both
+files. The flat mustard every card used to be was
 `getTeamNotificationColor` (now deleted) missing on **every** match: it matched full country names
 with `contains` against `payload.team1Name`, which is a Cricbuzz short code ("RSA", "KENT"), so the
 gold was a fallback rather than a team colour. `TeamColorRegistry` replaces it — a plain object,

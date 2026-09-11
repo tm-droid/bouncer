@@ -48,9 +48,21 @@ fun placeholderContent(matchId: String, match: CricketMatch?, fallbackTitle: Str
             ?: fallbackTitle,
         text = match?.currentStatus?.takeIf { it.isNotBlank() } ?: fallbackTitle,
         bigText = "",
+        scoreboard = LiveUpdateScoreboard(
+            battingName = null,
+            battingScore = null,
+            battingOvers = null,
+            opponentName = null,
+            opponentScore = null,
+            batters = emptyList(),
+            bowler = null,
+            recentBalls = emptyList(),
+            statusLine = match?.currentStatus?.takeIf { it.isNotBlank() } ?: fallbackTitle,
+        ),
         shortCriticalText = null,
         accentTeamName = match?.teams?.firstOrNull()?.name.orEmpty(),
         logoTeamName = null,
+        opponentLogoTeamName = null,
         isComplete = false,
     )
 

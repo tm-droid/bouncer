@@ -45,9 +45,24 @@ class LiveUpdatePromotabilityTest {
             "Recent: 1 4 0 0 W 2",
             "Australia trail by 48 runs",
         ).joinToString("\n"),
+        scoreboard = LiveUpdateScoreboard(
+            battingName = "AUS",
+            battingScore = "266 & 234/1",
+            battingOvers = "56.4",
+            opponentName = "ENG",
+            opponentScore = "348",
+            batters = listOf(
+                LiveUpdateScoreboard.PlayerLine("Warner", "95 (159)", isStriker = true),
+                LiveUpdateScoreboard.PlayerLine("Labuschagne", "63 (103)"),
+            ),
+            bowler = LiveUpdateScoreboard.PlayerLine("Cummins", "2/45 (18.0)"),
+            recentBalls = listOf("1", "4", "0", "0", "W", "2"),
+            statusLine = "Australia trail by 48 runs",
+        ),
         shortCriticalText = "234/1",
         accentTeamName = "Australia",
         logoTeamName = "Australia",
+        opponentLogoTeamName = "England",
         isComplete = false,
     )
 
@@ -58,9 +73,21 @@ class LiveUpdatePromotabilityTest {
         notifier.ensureChannel()
     }
 
+    /**
+     * `build` returns the designed `RemoteViews` card where the device cannot promote, and every
+     * assertion below is about the promotable one. On a device that reports
+     * `canPostPromotedNotifications() == false` — which a stock API 36 emulator does — there is no
+     * promotable notification to check, so the class has nothing to say rather than something
+     * false.
+     */
+    private fun assumePromotionAvailable() {
+        assumeTrue("Live Updates are API 36+", Build.VERSION.SDK_INT >= PROMOTED_MIN_SDK)
+        assumeTrue("device cannot post promoted notifications", notifier.canPromote())
+    }
+
     @Test
     fun theLiveUpdateSatisfiesThePlatformsPromotionRules() {
-        assumeTrue("Live Updates are API 36+", Build.VERSION.SDK_INT >= PROMOTED_MIN_SDK)
+        assumePromotionAvailable()
         val notification = notifier.build(content, largeIcon = null)
         assertTrue(
             "the platform refused to treat this as promotable — check style, ongoing, and custom views",
@@ -71,6 +98,7 @@ class LiveUpdatePromotabilityTest {
     /** The single disqualifier the old stack tripped over. */
     @Test
     fun theLiveUpdateCarriesNoCustomRemoteViews() {
+        assumePromotionAvailable()
         val notification = notifier.build(content, largeIcon = null)
         assertNull(notification.contentView)
         assertNull(notification.bigContentView)
@@ -87,7 +115,7 @@ class LiveUpdatePromotabilityTest {
     fun theLiveUpdateIsOngoingAndRequestsPromotion() {
         val notification = notifier.build(content, largeIcon = null)
         assertTrue("must be ongoing", notification.flags and Notification.FLAG_ONGOING_EVENT != 0)
-        assumeTrue("promotion is API 36+", Build.VERSION.SDK_INT >= PROMOTED_MIN_SDK)
+        assumePromotionAvailable()
         assertTrue(
             "must request promotion",
             notification.extras.getBoolean(Notification.EXTRA_REQUEST_PROMOTED_ONGOING),
@@ -108,7 +136,7 @@ class LiveUpdatePromotabilityTest {
      */
     @Test
     fun thePlaceholderCardIsStillPromotable() {
-        assumeTrue("Live Updates are API 36+", Build.VERSION.SDK_INT >= PROMOTED_MIN_SDK)
+        assumePromotionAvailable()
         val placeholder = content.copy(bigText = "", shortCriticalText = null)
         assertTrue(notifier.build(placeholder, largeIcon = null).hasPromotableCharacteristics())
     }
@@ -116,6 +144,7 @@ class LiveUpdatePromotabilityTest {
     /** `BigTextStyle` is the promotable template this card relies on; a swap must be deliberate. */
     @Test
     fun theLiveUpdateUsesTheBigTextTemplate() {
+        assumePromotionAvailable()
         val notification = notifier.build(content, largeIcon = null)
         assertEquals(
             Notification.BigTextStyle::class.java.name,
@@ -138,6 +167,7 @@ class LiveUpdatePromotabilityTest {
      */
     @Test
     fun theLiveUpdateIsColorizedBecausePromotionRequiresIt() {
+        assumePromotionAvailable()
         val notification = notifier.build(content, largeIcon = null)
         assertTrue(notification.extras.getBoolean(Notification.EXTRA_COLORIZED))
     }

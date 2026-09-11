@@ -189,11 +189,14 @@ class LiveUpdateService : Service() {
             return
         }
 
+        // Both crests: the designed card draws the opposition's too, and the loader memoises, so a
+        // second lookup costs nothing after the first paint of a match.
         val logo = LiveUpdateLogoLoader.bitmapFor(applicationContext, content.logoTeamName)
+        val opponentLogo = LiveUpdateLogoLoader.bitmapFor(applicationContext, content.opponentLogoTeamName)
         if (matchId == anchorMatchId) {
-            enterForeground(matchId, notifier.build(content, logo))
+            enterForeground(matchId, notifier.build(content, logo, opponentLogo))
         } else {
-            notifier.post(content, logo)
+            notifier.post(content, logo, opponentLogo)
         }
     }
 
