@@ -507,14 +507,19 @@ export async function verifyLine(
     .replace("{batsman}", batsman);
 
   const verdict = await generateLine(prompt, {
-    // 64, not 16. Every provider in the chain is a reasoning model — groq runs gpt-oss-20b with
-    // `reasoning_effort: low` — and reasoning tokens come out of the same budget as the answer. At
-    // 16 the budget was spent before a PASS could be emitted, so groq returned an empty completion
-    // on the verify prompt while answering the generate prompt (maxTokens 100) perfectly well. With
-    // the other two providers on 402, verification then failed closed on every single ball: that is
-    // the whole of "match-sync wrote raw Cricbuzz text" (ANDROID-38), and generation was never the
-    // part that was broken.
-    maxTokens: 64,
+    // 256, not 16, and not 64. Every provider in the chain is a reasoning model — groq runs
+    // gpt-oss-20b with `reasoning_effort: low` — and reasoning tokens come out of the same budget as
+    // the answer. At 16 the budget was spent before a PASS could be emitted, so groq returned an
+    // empty completion on the verify prompt while answering the generate prompt (maxTokens 100)
+    // perfectly well; with the other two providers on 402, verification failed closed on every ball.
+    // That is the whole of "match-sync wrote raw Cricbuzz text" (ANDROID-38) — generation was never
+    // the broken part.
+    //
+    // 64 was measured in production on 2026-09-12 and is still not enough: one ball verified, the
+    // next returned `empty completion (length)` again. The verdict is four characters; the budget is
+    // sized by how long the model thinks before emitting them, which is not a quantity this file can
+    // predict. 256 leaves room for that and still costs only what is actually generated.
+    maxTokens: 256,
     temperature: 0,
     systemInstruction: VERIFY_SYSTEM_INSTRUCTION,
     log,

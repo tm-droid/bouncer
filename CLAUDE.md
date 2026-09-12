@@ -435,8 +435,10 @@ provider in the chain is a reasoning model — groq runs `openai/gpt-oss-20b` wi
 before a verdict was ever emitted, groq returned an *empty completion* on the verify prompt while
 answering the generate prompt (100) perfectly, and with cerebras and sambanova both on HTTP 402 the
 fact-check failed closed on every delivery. That is the whole of ANDROID-38 — 1,858 balls stored as
-raw Cricbuzz text — and generation was never the broken half. It is 64 now, pinned by
-`verification-scope.test.js`. An `empty completion` note carries its `finish_reason` for the same
+raw Cricbuzz text — and generation was never the broken half. It is 256 now, pinned by
+`verification-scope.test.js`. 64 was tried first and measured insufficient in production: one ball
+verified and the next returned `empty completion (length)` again. The verdict is four characters;
+the budget is sized by how long the model thinks before emitting them. An `empty completion` note carries its `finish_reason` for the same
 reason: `length` (a spent budget) and `stop` (a model that answered nothing) need opposite fixes.
 
 **Never state a figure for a partially-stored over.** `overTotalRuns`/`isMaidenOver` require six
