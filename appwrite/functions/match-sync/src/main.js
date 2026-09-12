@@ -68,6 +68,7 @@ let modelLoadFailed = false;   // retry on the next cold start, not every minute
 // matches (and idle nights) cost no LLM calls. TTL covers ~2 missed 90s client heartbeats.
 const PRESENCE_FILE = "active-viewers";
 const VIEWER_TTL_MS = 4 * 60 * 1000;
+const PRESENCE_RETRY_DELAY_MS = 250;
 
 // Per-match per-run bounds (control LLM cost + stay within function timeout).
 const SCAN_NEWEST = 30; // how many newest commentary items to look at
@@ -413,6 +414,10 @@ async function handleRun({ req, res, log, error }) {
         // minute does not read as twelve independent failures.
         if (e?.blocked) {
           summary[matchId] = "blocked";
+        } else if (isUpstreamNetworkError(e)) {
+          // Cricbuzz timing out from this container is one upstream condition, not sixteen
+          // independent defects. Counted per run below, the same shape `blocked` already uses.
+          summary[matchId] = "unreachable";
         } else {
           reportError(e, { matchId, operation: "sync_match" });
           summary[matchId] = "error";
@@ -435,6 +440,15 @@ async function handleRun({ req, res, log, error }) {
 
   // One event per throttled run, carrying what the host actually said — the body snippet is the
   // thing that was missing when ANDROID-35 had to be diagnosed from status codes alone.
+  const unreachableIds = Object.keys(summary).filter((id) => summary[id] === "unreachable");
+  if (unreachableIds.length > 0) {
+    error(`[UPSTREAM-UNREACHABLE] ${unreachableIds.length} match(es) failed to fetch this run`);
+    report("Cricbuzz is unreachable from this container — matches skipped", {
+      matches: unreachableIds.length,
+      matchIds: unreachableIds.join(","),
+    });
+  }
+
   const blockedIds = Object.keys(summary).filter((id) => summary[id] === "blocked");
   if (blockedIds.length > 0) {
     error(`[CRICBUZZ-BLOCKED] ${blockedIds.length} match(es) skipped this run`);
@@ -757,13 +771,52 @@ function winProbFor(detail, title, model) {
   };
 }
 
+// One retry on a 5xx before the gate gives up. A storage 500 is transient, and failing closed on
+// it costs the whole minute: every match drops to the 45-minute slow tier and the commentary tab
+// falls back to raw Cricbuzz text. A 404 is the ordinary pre-first-ping state and is not retried.
+async function readPresenceFile(storage, log) {
+  try {
+    return await storage.getFileDownload(BUCKET_ID, PRESENCE_FILE);
+  } catch (e) {
+    const code = Number(e?.code);
+    if (!(code >= 500 && code < 600)) throw e;
+    log(`active-viewers read failed with ${code} — retrying once`);
+    await new Promise((resolve) => setTimeout(resolve, PRESENCE_RETRY_DELAY_MS));
+    return storage.getFileDownload(BUCKET_ID, PRESENCE_FILE);
+  }
+}
+
+// A transport failure reaching Cricbuzz: DNS, TCP timeout, unreachable route, or undici's
+// `TypeError: fetch failed` wrapper around any of them. Deliberately narrow — an HTTP status or a
+// parse failure is ours to fix and must keep its own event.
+const NETWORK_ERROR_CODES = new Set([
+  "ETIMEDOUT",
+  "ENETUNREACH",
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "EAI_AGAIN",
+  "ENOTFOUND",
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_HEADERS_TIMEOUT",
+]);
+
+function isUpstreamNetworkError(e) {
+  if (!e) return false;
+  if (e.name === "TimeoutError" || e.name === "AbortError") return true;
+  for (let cur = e, depth = 0; cur && depth < 5; cur = cur.cause, depth += 1) {
+    if (NETWORK_ERROR_CODES.has(cur.code)) return true;
+    if (Array.isArray(cur.errors) && cur.errors.some((inner) => NETWORK_ERROR_CODES.has(inner?.code))) return true;
+  }
+  return e instanceof TypeError && /fetch failed/i.test(e.message ?? "");
+}
+
 // Read the presence map written by bouncer-match-presence and return the set of matchIds
 // with a viewer seen within VIEWER_TTL_MS. Any failure (missing file, parse error) is
 // treated as "no active viewers" — the gate fails closed so we never generate blind.
 async function activeViewerIds({ storage, log, error }) {
   const now = Date.now();
   try {
-    const map = parseJsonFile(await storage.getFileDownload(BUCKET_ID, PRESENCE_FILE));
+    const map = parseJsonFile(await readPresenceFile(storage, log));
     if (!map || typeof map !== "object" || Array.isArray(map)) return new Set();
     const fresh = Object.entries(map)
       .filter(([, ts]) => typeof ts === "number" && now - ts <= VIEWER_TTL_MS)

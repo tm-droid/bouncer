@@ -88,7 +88,10 @@ test("a provider that fails is asked once per line, not once per chain traversal
   // that hides the one attempt that mattered.
   assert.deepEqual(
     attempts.filter((a) => a.startsWith("groq:")),
-    ["groq: HTTP 429"],
+    // The body is deliberately part of the note: a 429 with "rate limited" is a busy provider and a
+    // 429 with a quota message is a dead one, and the status alone cannot tell them apart. This
+    // expectation predates that and had been failing since providerErrorDetail landed.
+    ["groq: HTTP 429 rate limited"],
     "groq accounts for itself exactly once"
   );
 });

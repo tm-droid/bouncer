@@ -322,7 +322,11 @@ export async function generateLine(
         if (used) used.provider = provider.name;
         return content;
       }
-      note(provider.name, "empty completion");
+      // The finish reason is the diagnosis: `length` means the budget ran out before any content
+      // survived, `stop` means the model genuinely answered with nothing. Opposite fixes, and the
+      // bare "empty completion" string could not tell them apart.
+      const finish = data.choices?.[0]?.finish_reason;
+      note(provider.name, `empty completion${finish ? ` (${finish})` : ""}`);
     } catch (e) {
       error?.(`${provider.name} error: ${e?.message}`);
       note(provider.name, e?.message ?? "threw");
@@ -503,7 +507,14 @@ export async function verifyLine(
     .replace("{batsman}", batsman);
 
   const verdict = await generateLine(prompt, {
-    maxTokens: 16,
+    // 64, not 16. Every provider in the chain is a reasoning model — groq runs gpt-oss-20b with
+    // `reasoning_effort: low` — and reasoning tokens come out of the same budget as the answer. At
+    // 16 the budget was spent before a PASS could be emitted, so groq returned an empty completion
+    // on the verify prompt while answering the generate prompt (maxTokens 100) perfectly well. With
+    // the other two providers on 402, verification then failed closed on every single ball: that is
+    // the whole of "match-sync wrote raw Cricbuzz text" (ANDROID-38), and generation was never the
+    // part that was broken.
+    maxTokens: 64,
     temperature: 0,
     systemInstruction: VERIFY_SYSTEM_INSTRUCTION,
     log,

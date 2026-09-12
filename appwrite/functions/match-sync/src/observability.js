@@ -35,6 +35,9 @@ export function isEnabled() {
   return Boolean(process.env.SENTRY_DSN);
 }
 
+const UNTAGGED_KEYS = new Set(["attempts", "matchIds", "summary", "reason"]);
+const MAX_TAG_LENGTH = 64;
+
 /** Report a degradation with structured context. Safe to call when Sentry is disabled. */
 export function report(message, context = {}, level = "warning") {
   if (!isEnabled()) return;
@@ -42,7 +45,14 @@ export function report(message, context = {}, level = "warning") {
     scope.setLevel(level);
     scope.setContext("match-sync", context);
     for (const [key, value] of Object.entries(context)) {
-      if (typeof value === "string" || typeof value === "number") scope.setTag(key, String(value));
+      if (typeof value !== "string" && typeof value !== "number") continue;
+      const text = String(value);
+      // A tag is an index, not a payload. `attempts` is a joined free-text provider log that is
+      // near-unique per ball, and tagging it gave the highest-volume issue in the project an
+      // unbounded-cardinality tag. The value stays in the context above, where it is searchable
+      // without being indexed.
+      if (UNTAGGED_KEYS.has(key) || text.length > MAX_TAG_LENGTH) continue;
+      scope.setTag(key, text);
     }
     Sentry.captureMessage(message);
   });

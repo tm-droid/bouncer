@@ -117,10 +117,43 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
             if (type == "ConnectException" && value.contains("sentry.io")) return true
             if (type == "SocketTimeoutException") return true
             if (type == "SocketException") return true
+
+            // 4. Upstream conditions that are real but repeat per request: an unreachable backend
+            //    and a 5xx from one. These are not dropped — the first one in each window is sent
+            //    with its full detail — but a phone on a dead connection re-issues the same call on
+            //    a six-second poll loop, and the twentieth identical event costs quota and evicts
+            //    the breadcrumb ring without adding a fact. Throttled, not suppressed.
+            if (type in throttledExceptionTypes && !allowThrottled("$type|${value.take(40)}")) {
+                return true
+            }
         }
 
         return false
     }
+
+    /**
+     * True when this key has not been seen within [throttleWindowMs]. Deliberately keyed on the
+     * message prefix as well as the type, so two different hosts failing do not hide each other.
+     */
+    private fun allowThrottled(key: String, nowMs: Long = System.currentTimeMillis()): Boolean {
+        var allow = false
+        throttleState.compute(key) { _, previous ->
+            if (previous != null && nowMs - previous < throttleWindowMs) return@compute previous
+            allow = true
+            nowMs
+        }
+        return allow
+    }
+
+    /** Exception types that are real but repeat per request while the condition lasts. */
+    private val throttledExceptionTypes = setOf(
+        "SentryHttpClientException",
+        "ConnectException",
+    )
+
+    private val throttleWindowMs = 5 * 60_000L
+
+    private val throttleState = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
     private fun describeEvent(event: SentryEvent): String {
         val first = event.exceptions?.firstOrNull()

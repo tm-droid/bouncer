@@ -43,6 +43,10 @@ object PrefsRegistry {
         // Highest server-side `fetched_at` already pulled, so each sync asks only for rows added
         // since. Zero means "never synced" and triggers a page-capped backfill.
         const val LAST_ROW_FETCHED_AT = "highlights_last_row_fetched_at"
+
+        // Timestamp of the last page run, recorded whether or not the backlog drained. Paces the
+        // drain itself; LAST_FULL_SYNC_AT still paces the steady state.
+        const val LAST_PAGE_RUN_AT = "highlights_last_page_run_at"
     }
 
     object ReadGuard {

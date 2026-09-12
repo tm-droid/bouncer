@@ -3,6 +3,11 @@ package com.tanush.bouncer.data
 object CacheConfig {
     const val AI_CACHE_TTL_MS = 3_600_000L       // 1 hour
     const val HIGHLIGHTS_FRESHNESS_MS = 3_600_000L // 1 hour
+    // Spacing between two *page runs* while a backlog is still draining. The 1-hour freshness
+    // marker is only recorded once the drain finishes, so without this every match-detail open
+    // issued another full page run and a single one of those can reach
+    // READ_GUARD_MAX_READS_PER_MINUTE on its own — pausing DB_READ app-wide for five minutes.
+    const val HIGHLIGHTS_DRAIN_INTERVAL_MS = 300_000L // 5 minutes
     // Sentinel for Room DB rows that should never expire (completed-match commentary).
     // Long.MAX_VALUE > any cutoffMs query → always returned by getCommentary().
     const val AI_CACHE_PERMANENT_TIMESTAMP = Long.MAX_VALUE

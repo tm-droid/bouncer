@@ -1,6 +1,7 @@
 package com.tanush.bouncer.services
 
 import com.tanush.bouncer.data.remote.AppwriteClient
+import com.tanush.bouncer.data.remote.FunctionOutcome
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import com.tanush.bouncer.utils.sentryCaptureThrottled
 import io.sentry.SentryLevel
@@ -25,17 +26,22 @@ object MatchPresenceReporter {
     suspend fun ping(matchId: String): Boolean {
         if (matchId.isBlank()) return false
         return try {
-            val response = AppwriteClient.executeFunction(
+            // Detailed, not `executeFunction`: that flattens a latched EXECUTIONS guard, an
+            // uninitialised SDK, a FAILED execution and a 4xx/5xx into one null, and the event this
+            // path raises then could not say which. The server side is healthy far more often than
+            // not, so the outcome class is the whole diagnosis.
+            val outcome = AppwriteClient.executeFunctionDetailed(
                 FUNCTION_ID,
                 JSONObject().put("matchId", matchId).toString()
             )
-            if (response == null) {
-                // null covers both the guard-blocked and the not-initialized path; executeFunction
-                // reports which one it was, so this only has to say the gate is not being fed.
+            if (outcome !is FunctionOutcome.Success) {
                 sentryCaptureThrottled(
                     key = "presence.ping.unavailable",
                     message = "Match presence ping returned nothing — match-sync will treat this match as unwatched",
-                    data = mapOf("matchId" to matchId)
+                    data = buildMap {
+                        put("matchId", matchId)
+                        put("outcome", outcomeLabel(outcome))
+                    }
                 )
                 false
             } else {
@@ -57,5 +63,15 @@ object MatchPresenceReporter {
             )
             false
         }
+    }
+
+    /**
+     * Names the failure without carrying a body: an HTTP status is the actionable half, and the
+     * response body can hold match text that has no business being a Sentry tag.
+     */
+    private fun outcomeLabel(outcome: FunctionOutcome): String = when (outcome) {
+        is FunctionOutcome.HttpError -> "http_${outcome.statusCode}"
+        FunctionOutcome.Unavailable -> "unavailable"
+        is FunctionOutcome.Success -> "success"
     }
 }

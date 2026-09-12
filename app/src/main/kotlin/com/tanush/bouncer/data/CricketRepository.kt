@@ -6,6 +6,7 @@ import android.util.Log
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.local.entities.MatchEntity
 import com.tanush.bouncer.data.remote.AppwriteClient
+import com.tanush.bouncer.data.remote.AppwriteReadGuard
 import com.tanush.bouncer.network.models.SanwebMatchesListResponse
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
@@ -18,6 +19,9 @@ import com.tanush.bouncer.utils.sentryBreadcrumb
 
 object CricketRepository {
     private const val TAG = "CricketRepository"
+
+    /** Storage read failed before any specific cause could be established. */
+    private const val REASON_UNKNOWN = "unknown"
     private const val MILLIS_PER_SECOND = 1000L
 
     private val matchesCache = MatchesResponseCache.shared
@@ -42,7 +46,8 @@ object CricketRepository {
         matchesCache.get(type)?.let { return AppResult.Success(it) }
         sentryBreadcrumb("network.api", "Fetching matches", data = mapOf("type" to type))
 
-        val stored = readMatchesFromStorage(type)
+        val read = readMatchesFromStorage(type)
+        val stored = (read as? StorageRead.Ok)?.value
         if (stored == null) {
             // UnknownException rather than NetworkException: `downloadFile` also returns null when
             // the read guard is latched on a 402, and telling the user to check their connection
@@ -50,14 +55,23 @@ object CricketRepository {
             val error = AppException.UnknownException(
                 "No match list available from Appwrite Storage for $type"
             )
-            Log.e(TAG, "Error fetching matches for type: $type", error)
+            val reason = (read as? StorageRead.Failed)?.reason ?: REASON_UNKNOWN
+            Log.e(TAG, "Error fetching matches for type: $type ($reason)", error)
             sentryBreadcrumb(
                 "network.api",
                 "Error fetching matches",
                 SentryLevel.ERROR,
-                mapOf("type" to type, "error" to error.message)
+                mapOf("type" to type, "error" to error.message, "reason" to reason)
             )
-            Sentry.captureException(error)
+            // The five ways this can fail — uninitialised SDK, unconfigured endpoint, a latched
+            // BANDWIDTH guard, a missing file, unparseable JSON — reach the user as the same empty
+            // screen, and used to reach Sentry as the same single message. Only the tag separates
+            // "we are rate-limiting ourselves" from "the server never wrote the file".
+            Sentry.withScope { scope ->
+                scope.setTag("storage_read_reason", reason)
+                scope.setTag("matches_type", type)
+                Sentry.captureException(error)
+            }
             Sentry.metrics().count("repository.getMatches.error", 1.0)
             return AppResult.Error(error)
         }
@@ -90,28 +104,50 @@ object CricketRepository {
         val isFresh: Boolean,
     )
 
-    private suspend fun readMatchesFromStorage(type: String): StoredMatches? {
+    /** A read that failed carries why: a bare null cannot distinguish five unrelated causes. */
+    private sealed interface StorageRead {
+        data class Ok(val value: StoredMatches) : StorageRead
+        data class Failed(val reason: String) : StorageRead
+    }
+
+    private suspend fun readMatchesFromStorage(type: String): StorageRead {
         return try {
             val fileId = "$type-matches"
             // The HTTP cache is bounded by the same age this method then reports on, so a body that
             // would only be judged stale is not re-downloaded.
             val maxAgeMs = CacheConfig.matchStorageMaxAgeMs(type)
             val maxAgeSeconds = (maxAgeMs / MILLIS_PER_SECOND).toInt()
-            val bytes = AppwriteClient.downloadFile("cricket-stats", fileId, maxAgeSeconds) ?: return null
+            val bytes = AppwriteClient.downloadFile("cricket-stats", fileId, maxAgeSeconds)
+                ?: return StorageRead.Failed(downloadFailureReason())
             val json = org.json.JSONObject(String(bytes))
             val fetchedAt = json.getLong("fetchedAt")
             val ageMs = System.currentTimeMillis() - fetchedAt
             val dataJson = json.getJSONObject("data").toString()
-            StoredMatches(
-                value = AppJson.decodeFromString<SanwebMatchesListResponse>(dataJson),
-                ageMs = ageMs,
-                isFresh = ageMs <= maxAgeMs,
+            StorageRead.Ok(
+                StoredMatches(
+                    value = AppJson.decodeFromString<SanwebMatchesListResponse>(dataJson),
+                    ageMs = ageMs,
+                    isFresh = ageMs <= maxAgeMs,
+                )
             )
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.w(TAG, "readMatchesFromStorage failed for $type", e)
-            null
+            StorageRead.Failed("parse_${e.javaClass.simpleName}")
+        }
+    }
+
+    /**
+     * Why [AppwriteClient.downloadFile] answered null. Read after the fact and with
+     * [AppwriteReadGuard.peek], which counts nothing — asking must not itself consume budget.
+     */
+    private fun downloadFailureReason(): String {
+        if (!AppwriteClient.isReady) return "client_not_ready"
+        return when (AppwriteReadGuard.peek(AppwriteReadGuard.Quota.BANDWIDTH)) {
+            AppwriteReadGuard.BlockReason.BREAKER_OPEN -> "bandwidth_breaker_open"
+            AppwriteReadGuard.BlockReason.RATE_CAPPED -> "bandwidth_rate_capped"
+            null -> "download_failed"
         }
     }
 

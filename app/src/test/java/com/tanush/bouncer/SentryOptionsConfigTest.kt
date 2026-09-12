@@ -57,6 +57,25 @@ class SentryOptionsConfigTest {
         assertTrue(config.shouldDropEvent(event))
     }
 
+    // ── Throttled upstream conditions ────────────────────────────────────────
+
+    @Test
+    fun `first SentryHttpClientException in a window is kept, the repeat is dropped`() {
+        val first = buildEvent("SentryHttpClientException" to "HTTP Client Error with status code: 504")
+        val repeat = buildEvent("SentryHttpClientException" to "HTTP Client Error with status code: 504")
+        assertFalse(config.shouldDropEvent(first))
+        assertTrue(config.shouldDropEvent(repeat))
+    }
+
+    @Test
+    fun `a different upstream failure is not hidden by another's throttle`() {
+        val appwrite = buildEvent("ConnectException" to "Failed to connect to sgp.cloud.appwrite.io/151.101.3.52:443")
+        val other = buildEvent("ConnectException" to "Failed to connect to api.cricbuzz.com/1.2.3.4:443")
+        assertFalse(config.shouldDropEvent(appwrite))
+        assertFalse(config.shouldDropEvent(other))
+        assertTrue(config.shouldDropEvent(appwrite))
+    }
+
     // ── Network noise filters ────────────────────────────────────────────────
 
     @Test

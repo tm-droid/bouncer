@@ -34,6 +34,13 @@ interface HighlightsSyncMarker {
      */
     fun lastRowFetchedAt(): Long
     fun recordRowFetchedAt(value: Long)
+
+    /**
+     * Last time a page run was issued at all, drained or not. [lastFullSyncAtMs] only advances on a
+     * completed drain, so it cannot pace the drain itself.
+     */
+    fun lastPageRunAtMs(): Long
+    fun recordPageRun(nowMs: Long)
 }
 
 /** [HighlightsSyncMarker] over the app's main preference store — survives process death. */
@@ -53,6 +60,13 @@ class PrefsHighlightsSyncMarker(context: Context) : HighlightsSyncMarker {
     override fun recordRowFetchedAt(value: Long) {
         prefs.putLong(PrefsRegistry.Highlights.LAST_ROW_FETCHED_AT, value)
     }
+
+    override fun lastPageRunAtMs(): Long =
+        prefs.getLong(PrefsRegistry.Highlights.LAST_PAGE_RUN_AT, 0L)
+
+    override fun recordPageRun(nowMs: Long) {
+        prefs.putLong(PrefsRegistry.Highlights.LAST_PAGE_RUN_AT, nowMs)
+    }
 }
 
 class HighlightsRepository(
@@ -62,6 +76,24 @@ class HighlightsRepository(
 ) {
     private val TAG = "HighlightsRepository"
     private val FRESHNESS_MS = CacheConfig.HIGHLIGHTS_FRESHNESS_MS
+    private val drainIntervalMs = CacheConfig.HIGHLIGHTS_DRAIN_INTERVAL_MS
+
+    /**
+     * Why this call must not issue a page run, or null when it may.
+     *
+     * Two windows, and both are load-bearing. The hourly one paces the steady state. The drain one
+     * exists because a run that stopped on the page cap deliberately leaves the hourly marker unset,
+     * so without it every match-detail open issued another MAX_PAGES_PER_RUN × PAGE_SIZE burst of
+     * billed reads — enough on its own to trip the read guard's per-minute cap and pause every
+     * DB_READ in the app for five minutes (ANDROID-44). The backlog still drains, one run per
+     * interval.
+     */
+    private fun syncSkipReason(marker: HighlightsSyncMarker?, now: Long): String? {
+        if (marker == null) return null
+        if (now - marker.lastFullSyncAtMs() < FRESHNESS_MS) return "Highlights sync throttled"
+        if (now - marker.lastPageRunAtMs() < drainIntervalMs) return "Highlights drain paced"
+        return null
+    }
 
     suspend fun fetchForMatch(bouncerMatchId: String): AppResult<List<HighlightEntity>> {
         return AppResult.runCatchingSuspend {
@@ -79,10 +111,12 @@ class HighlightsRepository(
                 // case) never writes a row for its id, so its cache stays empty forever and every
                 // open re-syncs — billing an org read per row returned.
                 val marker = syncMarker
-                if (marker != null && now - marker.lastFullSyncAtMs() < FRESHNESS_MS) {
-                    Log.d(TAG, "Highlights sync throttled; UI served from Room for $bouncerMatchId")
+                val skip = syncSkipReason(marker, now)
+                if (skip != null) {
+                    Log.d(TAG, "$skip; UI served from Room for $bouncerMatchId")
                     return@withContext emptyList()
                 }
+                marker?.recordPageRun(now)
 
                 val since = marker?.lastRowFetchedAt() ?: 0L
                 Log.d(TAG, "Syncing highlights newer than $since for match $bouncerMatchId")

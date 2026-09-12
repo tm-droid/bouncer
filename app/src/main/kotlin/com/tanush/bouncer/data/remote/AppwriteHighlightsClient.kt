@@ -79,11 +79,21 @@ object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient"
         if (cursorId != null) add(Query.cursorAfter(cursorId))
     }
 
-    private const val PAGE_SIZE = 100
+    // 50, not 100. Appwrite bills one read per row returned and `recordSuccess` counts them, so a
+    // run costs MAX_PAGES_PER_RUN × PAGE_SIZE against CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE
+    // of 200. At 100 × 3 one drain run spent 300 and tripped the cap on its own, pausing DB_READ
+    // app-wide for five minutes; at 100 × 2 it spent the entire minute budget and left nothing for
+    // the reads the open screen needs. 50 × 2 drains at the same rows-per-hour once paced, with
+    // headroom for everything else.
+    private const val PAGE_SIZE = 50
 
     // Bounds one call. A first-run backfill drains across consecutive calls via hasMore rather
     // than fetching an unbounded table in one go.
-    private const val MAX_PAGES_PER_RUN = 3
+    //
+    // 2, not 3: Appwrite bills per row returned, so a run costs MAX_PAGES_PER_RUN × PAGE_SIZE
+    // billed reads. At 3 that is 300 against CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE of 200 —
+    // a single drain run tripped the cap and paused DB_READ app-wide for five minutes.
+    private const val MAX_PAGES_PER_RUN = 2
 
     private const val FIELD_FETCHED_AT = "fetched_at"
 

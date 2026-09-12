@@ -185,6 +185,18 @@ object AppwriteReadGuard {
     }
 
     /**
+     * Why [quota] would refuse an operation right now, or null if it would proceed. Counts nothing
+     * and never consumes a probe, so it is safe to call purely to explain a failure after the fact
+     * — which is the one thing a caller holding a null result cannot otherwise do.
+     */
+    fun peek(quota: Quota = Quota.DB_READ): BlockReason? = synchronized(lock) {
+        val b = breakers.getValue(quota)
+        if (b.open) return BlockReason.BREAKER_OPEN
+        if (nowMs() < b.rateCapUntilMs) return BlockReason.RATE_CAPPED
+        return null
+    }
+
+    /**
      * Call before every billed operation. Returns null when it may proceed (and counts it toward
      * [quota]'s rate windows), or the [BlockReason] when it must be skipped.
      */
