@@ -4,30 +4,40 @@ import com.tanush.bouncer.services.WORKER_MAX_RETRIES
 import com.tanush.bouncer.services.backoffDelayMs
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.models.PointsTableEntry
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 
 /**
- * Scrapes tournament points table from CricBuzz.
+ * Scrapes tournament points tables from Cricbuzz.
+ *
+ * Rewritten because the screen was empty on every series, for three independent reasons at once:
+ *
+ * 1. The URL had no series slug. `/cricket-series/{id}/points-table` answers **200 with no points
+ *    table in it**; only `/cricket-series/{id}/{slug}/points-table` carries the data. Navigation
+ *    passes the id alone, so the slug is read off the unslugged page, which links to its own
+ *    slugged self.
+ * 2. The primary parser selected `<table>` rows. The page is App Router and has no `<table>` at all.
+ * 3. The fallback read `__NEXT_DATA__`, which App Router pages do not emit — the same trap
+ *    [PlayerProfileRsc] was written to escape.
+ *
+ * Nothing threw through any of it: an empty table reads as "this series has no standings".
  */
 class PointsTableScraper {
 
     companion object {
         private const val TAG = "PointsTableScraper"
         private const val MAX_RETRIES = WORKER_MAX_RETRIES
+        private const val TIMEOUT_MS = 10_000
     }
 
-    /**
-     * Fetch points table for a given series.
-     * URL pattern: https://www.cricbuzz.com/cricket-series/{seriesId}/{slug}/points-table
-     */
     suspend fun fetchPointsTable(seriesId: String): List<PointsTableEntry> = withContext(Dispatchers.IO) {
         Sentry.addBreadcrumb(Breadcrumb().apply {
             category = "network.points_table"
@@ -39,49 +49,7 @@ class PointsTableScraper {
 
         for (attempt in 1..MAX_RETRIES) {
             try {
-                val url = "${CricBuzzUrls.BASE}/cricket-series/$seriesId/points-table"
-                val doc = ScrapeFetcher.get(url, randomUserAgent(), 10_000)
-
-                val entries = mutableListOf<PointsTableEntry>()
-
-                // Parse the table rows — Cricbuzz uses cb-srs-pnts structure
-                val tableRows = doc.select("table.cb-srs-pnts tbody tr, table.table tbody tr, .cb-col-100 table tr")
-                var position = 1
-
-                for (row in tableRows) {
-                    val cells = row.select("td")
-                    if (cells.size < 7) continue
-
-                    val teamName = cells[0].text().trim()
-                    if (teamName.isEmpty() || teamName.equals("Team", ignoreCase = true)) continue
-
-                    try {
-                        val entry = PointsTableEntry(
-                            position = position,
-                            teamName = teamName,
-                            teamAcronym = TeamAcronymManager.getAcronym(teamName),
-                            matches = cells.getOrNull(1)?.text()?.trim()?.toIntOrNull() ?: 0,
-                            won = cells.getOrNull(2)?.text()?.trim()?.toIntOrNull() ?: 0,
-                            lost = cells.getOrNull(3)?.text()?.trim()?.toIntOrNull() ?: 0,
-                            tied = cells.getOrNull(4)?.text()?.trim()?.toIntOrNull() ?: 0,
-                            noResult = cells.getOrNull(5)?.text()?.trim()?.toIntOrNull() ?: 0,
-                            points = cells.getOrNull(6)?.text()?.trim()?.toIntOrNull() ?: 0,
-                            netRunRate = cells.getOrNull(7)?.text()?.trim()?.toDoubleOrNull() ?: 0.0,
-                        )
-                        entries.add(entry)
-                        position++
-                    } catch (e: Exception) {
-                        Sentry.captureException(e)
-                    }
-                }
-
-                // If structured table failed, try Next.js data
-                if (entries.isEmpty()) {
-                    return@withContext parseFromNextJsData(doc.html(), seriesId)
-                }
-
-                return@withContext entries
-
+                return@withContext fetchOnce(seriesId)
             } catch (e: SocketTimeoutException) {
                 lastException = e
             } catch (e: UnknownHostException) {
@@ -98,56 +66,89 @@ class PointsTableScraper {
         emptyList()
     }
 
-    /**
-     * Fallback: parse points data from embedded __NEXT_DATA__ JSON.
-     */
-    private fun parseFromNextJsData(html: String, seriesId: String): List<PointsTableEntry> {
-        try {
-            val regex = Regex("""<script id="__NEXT_DATA__" type="application/json">(.*?)</script>""", RegexOption.DOT_MATCHES_ALL)
-            val match = regex.find(html) ?: return emptyList()
-            val json = com.google.gson.JsonParser.parseString(match.groupValues[1]).asJsonObject
-            val pageProps = json.getAsJsonObject("props")?.getAsJsonObject("pageProps") ?: return emptyList()
+    private fun fetchOnce(seriesId: String): List<PointsTableEntry> {
+        val landingUrl = "${CricBuzzUrls.BASE}/cricket-series/$seriesId/points-table"
+        val landing = ScrapeFetcher.get(landingUrl, randomUserAgent(), TIMEOUT_MS)
 
-            // Navigate the JSON tree for points table data
-            val pointsData = pageProps.getAsJsonArray("pointsTable")
-                ?: pageProps.getAsJsonObject("data")?.getAsJsonArray("pointsTable")
-                ?: return emptyList()
+        // The unslugged page is a real 200 with no standings on it, so parse it only to find the
+        // slugged URL. If it already carries a table (Cricbuzz has changed its mind before), use it.
+        val direct = parsePointsTableFlight(landing.html())
+        if (direct.isNotEmpty()) return direct
 
-            val entries = mutableListOf<PointsTableEntry>()
-            var position = 1
-
-            for (groupElement in pointsData) {
-                val group = groupElement.asJsonObject
-                val tableArray = group.getAsJsonArray("pointsTableInfo") ?: continue
-
-                for (teamElement in tableArray) {
-                    val team = teamElement.asJsonObject
-                    val teamInfo = team.getAsJsonObject("teamInfo") ?: continue
-
-                    val teamName = teamInfo.get("name")?.asString ?: continue
-                    entries.add(
-                        PointsTableEntry(
-                            position = position,
-                            teamName = teamName,
-                            teamAcronym = teamInfo.get("shortName")?.asString
-                                ?: TeamAcronymManager.getAcronym(teamName),
-                            matches = team.get("matchesPlayed")?.asInt ?: 0,
-                            won = team.get("matchesWon")?.asInt ?: 0,
-                            lost = team.get("matchesLost")?.asInt ?: 0,
-                            tied = team.get("matchesTied")?.asInt ?: 0,
-                            noResult = team.get("noResult")?.asInt ?: 0,
-                            points = team.get("points")?.asInt ?: 0,
-                            netRunRate = team.get("nrr")?.asDouble ?: 0.0,
-                        )
-                    )
-                    position++
-                }
-            }
-
-            return entries
-        } catch (e: Exception) {
-            Sentry.captureException(e)
+        val slugged = sluggedPointsTableUrl(landing.html(), seriesId) ?: run {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "network.points_table"
+                message = "No slugged points-table link on $landingUrl"
+                level = SentryLevel.WARNING
+            })
             return emptyList()
         }
+
+        return parsePointsTableFlight(ScrapeFetcher.get(slugged, randomUserAgent(), TIMEOUT_MS).html())
     }
 }
+
+/**
+ * The `/cricket-series/{id}/{slug}/points-table` URL the unslugged page points at, or null.
+ *
+ * The links live in the flight stream rather than in `<a>` elements, so this reads the markup
+ * rather than selecting on the parsed document.
+ */
+internal fun sluggedPointsTableUrl(html: String, seriesId: String): String? {
+    val pattern = Regex("""/cricket-series/${Regex.escape(seriesId)}/([a-z0-9\-]+)/points-table""")
+    val slug = pattern.find(html)?.groupValues?.get(1) ?: return null
+    return "${CricBuzzUrls.BASE}/cricket-series/$seriesId/$slug/points-table"
+}
+
+/** Every standings row on the page, in the order Cricbuzz lists them. */
+internal fun parsePointsTableFlight(html: String): List<PointsTableEntry> {
+    val entries = mutableListOf<PointsTableEntry>()
+    forEachNextFlightPayload(html) { data ->
+        runCatching { collectPointsTableGroups(data, entries) }
+            .onFailure { Sentry.captureException(Exception("Unparseable points-table segment", it)) }
+    }
+    return entries
+}
+
+/** Walks the flight payload for any object holding a `pointsTableInfo` array. */
+private fun collectPointsTableGroups(element: JsonElement, into: MutableList<PointsTableEntry>) {
+    if (element.isJsonObject) {
+        val obj = element.asJsonObject
+        obj.getAsJsonArray("pointsTableInfo")?.forEach { row ->
+            if (row.isJsonObject) parsePointsTableRow(row.asJsonObject, into.size + 1)?.let(into::add)
+        }
+        obj.keySet().forEach { collectPointsTableGroups(obj.get(it), into) }
+    } else if (element.isJsonArray) {
+        element.asJsonArray.forEach { collectPointsTableGroups(it, into) }
+    }
+}
+
+private fun parsePointsTableRow(row: JsonObject, position: Int): PointsTableEntry? {
+    // `teamName` on this row is the short code ("GAW"); the full name is `teamFullName`.
+    val name = row.get("teamFullName")?.asString?.takeIf { it.isNotBlank() } ?: return null
+    val shortName = row.get("teamName")?.asString?.takeIf { it.isNotBlank() }
+    val imageId = row.get("teamImageId")?.asString?.takeIf { it.isNotBlank() }
+
+    return PointsTableEntry(
+        position = position,
+        teamName = name,
+        teamAcronym = shortName ?: TeamAcronymManager.getAcronym(name),
+        teamId = row.get("teamId")?.asString ?: "",
+        logoUrl = imageId?.let { cricbuzzTeamLogoUrl(it) },
+        matches = row.intOr("matchesPlayed"),
+        won = row.intOr("matchesWon"),
+        lost = row.intOr("matchesLost"),
+        tied = row.intOr("matchesTied"),
+        noResult = row.intOr("noRes"),
+        // Cricbuzz writes the rate signed, "+1.029", which parses only as a Double.
+        netRunRate = row.get("nrr")?.asString?.toDoubleOrNull() ?: 0.0,
+        points = row.intOr("points"),
+        recentForm = row.getAsJsonArray("form")?.mapNotNull {
+            runCatching { it.asString }.getOrNull()
+        } ?: emptyList(),
+        qualified = row.get("teamQualifyStatus")?.asString.equals("Q", ignoreCase = true),
+    )
+}
+
+private fun JsonObject.intOr(key: String, fallback: Int = 0): Int =
+    runCatching { get(key)?.asInt }.getOrNull() ?: fallback

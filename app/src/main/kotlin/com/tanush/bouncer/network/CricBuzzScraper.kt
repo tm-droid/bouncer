@@ -292,6 +292,15 @@ class CricBuzzScraper {
         }.distinctBy { it.id }
     }
 
+    /**
+     * Every match on a list page's flight stream.
+     *
+     * `internal` so a fixture can exercise it without a fetch: the fields this reads from
+     * `matchInfo.team1/2` — the team's id and its `imageId` — are invisible to any test that can
+     * only reach the parser through the network path.
+     */
+    internal fun parseMatchListHtml(html: String): List<CricketMatch> = parseNextJsData(html)
+
     private fun parseNextJsData(html: String): List<CricketMatch> {
         val matches = mutableListOf<CricketMatch>()
         forEachNextFlightPayload(html) { data ->
@@ -329,6 +338,19 @@ class CricBuzzScraper {
         }
     }
 
+    /** Both sides, each with the id and the crest its own slot of the payload carries. */
+    private fun parseTeams(
+        info: JsonObject,
+        team1: String,
+        team2: String,
+        scoreFields: MatchScoreFields,
+    ): List<CricketMatch.Team> = listOf(
+        cricketTeam(team1, teamIdOf(info, "team1"), scoreFields.team1Score,
+            scoreFields.team1Overs, scoreFields.team1IsBatting, teamImageIdOf(info, "team1")),
+        cricketTeam(team2, teamIdOf(info, "team2"), scoreFields.team2Score,
+            scoreFields.team2Overs, scoreFields.team2IsBatting, teamImageIdOf(info, "team2")),
+    )
+
     private fun parseMatchObject(obj: JsonObject): CricketMatch? {
         try {
             if (!obj.has("matchInfo")) return null
@@ -352,12 +374,7 @@ class CricBuzzScraper {
 
             val scoreFields = parseMatchScoreFields(obj, info)
 
-            val teams = listOf(
-                cricketTeam(team1, teamIdOf(info, "team1"), scoreFields.team1Score,
-                    scoreFields.team1Overs, scoreFields.team1IsBatting),
-                cricketTeam(team2, teamIdOf(info, "team2"), scoreFields.team2Score,
-                    scoreFields.team2Overs, scoreFields.team2IsBatting)
-            )
+            val teams = parseTeams(info, team1, team2, scoreFields)
 
             val matchScore = buildMatchScore(scoreFields)
 

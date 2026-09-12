@@ -84,3 +84,7 @@ appwrite/functions/*/node_modules/
 
 # Session-scratch workflow scripts from the Workflow tool — not project config.
 .claude/workflows/
+
+# Python bytecode from tools/
+__pycache__/
+*.pyc

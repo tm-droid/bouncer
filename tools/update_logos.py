@@ -1,130 +1,196 @@
-import json
-import re
-import os
-import sys
+"""Refresh the bundled team branding assets from Cricbuzz.
 
-# Paths
-team_logos_path = 'app/src/main/assets/TeamLogos.json'
-data_files = [
-    'international_teams.json',
-    'league_teams.json',
-    'domestic_teams.json',
-    'women_teams.json'
+Writes `app/src/main/assets/TeamLogos.json` (team name -> crest URL) and
+`app/src/main/assets/TeamAcronyms.json` (team name -> short code).
+
+This script used to read four `*_teams.json` dumps committed at the repo root and never touched the
+network, so the daily workflow that ran it produced "No changes to commit" on every fire for five
+months while Cricbuzz added 89 teams and changed 87 image ids. The dumps were one-shot RapidAPI
+`teams/v1/*` responses; Cricbuzz's own team pages serve the same objects, with the same ids against
+the same CDN, for no key and no quota.
+
+Two rules, both learned from outages elsewhere in this project:
+
+* **Merge, never shrink.** A team is only ever added or updated. 36 sides in the current asset are
+  no longer listed by Cricbuzz, and a fixture from an old season still names them.
+* **Fail loudly.** A truncated corpus must never overwrite a good one, and silence is what let the
+  old script idle for five months.
+"""
+
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.request
+
+TEAM_PAGES = [
+    "https://www.cricbuzz.com/cricket-team",
+    "https://www.cricbuzz.com/cricket-team/domestic",
+    "https://www.cricbuzz.com/cricket-team/league",
+    "https://www.cricbuzz.com/cricket-team/women",
 ]
 
-# Manual mapping for team names that differ between TeamLogos.json and API data
-NAME_MAPPING = {
-    "Hong Kong": "Hong Kong, China",
-    "Hong Kong U19": "Hong Kong, China U19",
-    "Hong Kong A": "Hong Kong, China A",
-    "Hong Kong Women": "Hong Kong, China Women",
-    "KwaZulu-Natal Inland": "KwaZulu-Natal Inland - Tuskers",
-    "North West": "North West - Eastvaal Renault Dragons",
-    "Namibia U19": "Namibia  U19",  # Note: Double space in API data
-}
+LOGOS_PATH = "app/src/main/assets/TeamLogos.json"
+ACRONYMS_PATH = "app/src/main/assets/TeamAcronyms.json"
+
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+)
+
+# Cricbuzz listed 975 teams across the four pages when this was written. A run that finds far fewer
+# has hit a block page or a markup change, and must not be allowed to rewrite the assets.
+MIN_EXPECTED_TEAMS = 500
+
+# Mirrors cricbuzzTeamLogoUrl in app/src/main/kotlin/com/tanush/bouncer/network/CricbuzzImages.kt.
+# The trailing filename is decorative — Cricbuzz serves the same bytes for any slug — and the size
+# lives in the path. Keep the two in step: CricbuzzTeamLogoUrlParityTest compares them.
+LOGO_URL = "https://static.cricbuzz.com/a/img/v1/720x540/i1/c{image_id}/i.jpg"
+
+
+def unescape_flight(html):
+    """The RSC flight stream as readable JSON text.
+
+    Cricbuzz ships its page data inside `self.__next_f.push("...")` JS string literals, so every
+    quote in the JSON arrives backslash-escaped.
+    """
+    return html.replace('\\\\"', "\x00").replace('\\"', '"')
+
+
+def _match_bracket(text, open_idx):
+    """Index of the `]` closing the `[` at open_idx, or -1. String-aware, so a `]` in a team name
+    cannot end the array early."""
+    depth = 0
+    in_string = False
+    escaped = False
+    for i in range(open_idx, len(text)):
+        char = text[i]
+        if escaped:
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+            continue
+        if char == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if char == "[":
+            depth += 1
+        elif char == "]":
+            depth -= 1
+            if depth == 0:
+                return i
+    return -1
+
+
+# A team object as Cricbuzz serialises it. Read by shape rather than by enclosing key: the team
+# pages nest the real list under `teamsList` keyed by category ("League Teams"), while the short
+# navigation list sits under `teamList`, and matching on the key found the nav list and stopped.
+TEAM_OBJECT = re.compile(
+    r'\{"teamId":(?P<team_id>\d+),'
+    r'"teamName":"(?P<name>[^"]+)",'
+    r'"teamSName":"(?P<short_name>[^"]*)",'
+    r'"imageId":(?P<image_id>\d+)'
+)
+
+
+def parse_team_list(html):
+    """Every team object the page carries, keyed by team name.
+
+    The header rows Cricbuzz puts at the top of each list ({"teamName": "League Teams"}) carry no
+    id and no image, so the shape match skips them for free.
+    """
+    text = unescape_flight(html)
+    teams = {}
+    for match in TEAM_OBJECT.finditer(text):
+        teams[match.group("name")] = {
+            "imageId": match.group("image_id"),
+            "shortName": match.group("short_name"),
+        }
+    return teams
+
+
+def fetch(url):
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    with urllib.request.urlopen(request, timeout=45) as response:
+        if response.status != 200:
+            raise RuntimeError(f"HTTP {response.status} from {url}")
+        return response.read().decode("utf-8", "replace")
+
+
+def load_json(path):
+    if not os.path.exists(path):
+        return {}
+    with open(path, "r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def save_json(path, data):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
+
+
+def merge(existing, incoming, value_of):
+    """Apply incoming values onto existing, adding and updating but never deleting.
+
+    Returns (merged, added, updated). Existing key order is preserved so a diff shows only what
+    actually changed.
+    """
+    merged = dict(existing)
+    added = []
+    updated = []
+    for name, team in sorted(incoming.items()):
+        value = value_of(team)
+        if not value:
+            continue
+        if name not in merged:
+            merged[name] = value
+            added.append(name)
+        elif merged[name] != value:
+            merged[name] = value
+            updated.append(name)
+    return merged, added, updated
+
 
 def main():
-    # Load TeamLogos.json
-    try:
-        with open(team_logos_path, 'r', encoding='utf-8') as f:
-            team_logos = json.load(f)
-    except FileNotFoundError:
-        print(f"Error: {team_logos_path} not found.")
-        sys.exit(1)
-    except json.JSONDecodeError as e:
-        print(f"Error: Failed to parse {team_logos_path}: {e}")
-        sys.exit(1)
-
-    # Build mapping from downloaded data
-    team_image_map = {}
-
-    for file_path in data_files:
-        if not os.path.exists(file_path):
-            print(f"Warning: {file_path} not found, skipping.")
-            continue
-            
+    teams = {}
+    for url in TEAM_PAGES:
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                # The structure is { "list": [ ... ] }
-                if 'list' in data:
-                    for item in data['list']:
-                        if 'teamName' in item and 'imageId' in item:
-                            team_image_map[item['teamName']] = item['imageId']
-        except json.JSONDecodeError as e:
-            print(f"Warning: Failed to parse {file_path}: {e}, skipping.")
-            continue
-        except Exception as e:
-            print(f"Warning: Error reading {file_path}: {e}, skipping.")
-            continue
+            page_teams = parse_team_list(fetch(url))
+        except (urllib.error.URLError, RuntimeError, TimeoutError) as error:
+            print(f"Error: failed to fetch {url}: {error}")
+            sys.exit(1)
+        print(f"{url}: {len(page_teams)} teams")
+        teams.update(page_teams)
 
-    print(f"Loaded {len(team_image_map)} teams from API data.")
-
-    if len(team_image_map) == 0:
-        print("No team data loaded. Exiting without changes.")
-        sys.exit(0)
-
-    # Update TeamLogos.json
-    updated_count = 0
-    not_found_count = 0
-
-    # Regex to find the ID in the URL
-    # Matches .../i1/{id}/{filename}.jpg
-    url_pattern = re.compile(r'(.*\/)([a-zA-Z0-9]+)(\/[^\/]+\.jpg)$')
-
-    for team_name, url in team_logos.items():
-        # Check direct match or mapped match
-        api_team_name = team_name
-        if team_name in NAME_MAPPING:
-            api_team_name = NAME_MAPPING[team_name]
-            
-        if api_team_name in team_image_map:
-            new_id = str(team_image_map[api_team_name])
-            
-            match = url_pattern.match(url)
-            if match:
-                prefix = match.group(1)
-                old_id = match.group(2)
-                suffix = match.group(3)
-                
-                # Only update if the ID is different
-                new_url = f"{prefix}c{new_id}{suffix}"
-                if new_url != url:
-                    team_logos[team_name] = new_url
-                    updated_count += 1
-            else:
-                print(f"Warning: Could not parse URL for {team_name}: {url}")
-        else:
-            print(f"Team not found in API data: {team_name}")
-            not_found_count += 1
-
-    print(f"Updated {updated_count} URLs.")
-    print(f"Teams not found in API data: {not_found_count}")
-
-    # Add new teams found in API data but missing from TeamLogos.json
-    added_count = 0
-    for team_name, image_id in team_image_map.items():
-        if team_name not in team_logos:
-            # Construct URL
-            # Slugify: lowercase, replace non-alphanumeric with hyphens
-            slug = re.sub(r'[^a-z0-9]+', '-', team_name.lower()).strip('-')
-            new_url = f"https://static.cricbuzz.com/a/img/v1/720x540/i1/c{image_id}/{slug}.jpg"
-            
-            team_logos[team_name] = new_url
-            added_count += 1
-            
-    print(f"Added {added_count} new teams.")
-
-    # Save the updated file
-    try:
-        os.makedirs(os.path.dirname(team_logos_path), exist_ok=True)
-        with open(team_logos_path, 'w', encoding='utf-8') as f:
-            json.dump(team_logos, f, indent=2, ensure_ascii=False)
-        print(f"Successfully saved changes to {team_logos_path}")
-
-    except Exception as e:
-        print(f"Error: Failed to save files: {e}")
+    print(f"Union: {len(teams)} teams")
+    if len(teams) < MIN_EXPECTED_TEAMS:
+        print(
+            f"Error: only {len(teams)} teams found, expected at least {MIN_EXPECTED_TEAMS}. "
+            "Refusing to overwrite the assets with a truncated corpus."
+        )
         sys.exit(1)
+
+    logos, logos_added, logos_updated = merge(
+        load_json(LOGOS_PATH), teams, lambda t: LOGO_URL.format(image_id=t["imageId"])
+    )
+    acronyms, acronyms_added, acronyms_updated = merge(
+        load_json(ACRONYMS_PATH), teams, lambda t: t["shortName"]
+    )
+
+    save_json(LOGOS_PATH, logos)
+    save_json(ACRONYMS_PATH, acronyms)
+
+    print(f"{LOGOS_PATH}: {len(logos)} entries ({len(logos_added)} added, {len(logos_updated)} updated)")
+    print(f"{ACRONYMS_PATH}: {len(acronyms)} entries ({len(acronyms_added)} added, {len(acronyms_updated)} updated)")
+    if logos_added:
+        print("Added: " + ", ".join(logos_added[:10]) + ("..." if len(logos_added) > 10 else ""))
+
 
 if __name__ == "__main__":
     main()

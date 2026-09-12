@@ -21,6 +21,9 @@ jobs:
         with:
           python-version: '3.x'
 
+      # The script exits non-zero if a page is unreachable or the corpus comes back short, which
+      # fails the job rather than committing a truncated asset. The version this replaced fetched
+      # nothing at all and reported "No changes to commit" on every run for five months.
       - name: Run update_logos.py
         run: python tools/update_logos.py
 
@@ -28,11 +31,11 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add app/src/main/assets/TeamLogos.json
+          git add app/src/main/assets/TeamLogos.json app/src/main/assets/TeamAcronyms.json
           # Check if there are changes to commit
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Auto-update TeamLogos.json"
+            git commit -m "Auto-update team logos and acronyms"
             git push
           fi

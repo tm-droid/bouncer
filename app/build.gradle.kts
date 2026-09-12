@@ -207,6 +207,13 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
         inputs.files(rootProject.file("appwrite/functions/match-sync/src/cricbuzz.js"))
             .withPropertyName("cricbuzzScorecardParitySource")
             .withPathSensitivity(PathSensitivity.RELATIVE)
+
+        // CricbuzzTeamListParityTest asserts the Kotlin team-list reading and tools/update_logos.py
+        // pull the same teams and build the same crest URL from one captured page. Same reasoning
+        // again: undeclared, editing the script leaves the task UP-TO-DATE and the parity never runs.
+        inputs.files(rootProject.file("tools/update_logos.py"))
+            .withPropertyName("teamLogoSyncParitySource")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
     }
 
     // MigrationTestHelper loads the exported Room schemas from the instrumentation APK's assets.

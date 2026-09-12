@@ -12,6 +12,10 @@ data class PointsTableEntry(
     val position: Int,
     val teamName: String,
     val teamAcronym: String,
+    /** Cricbuzz's own team id, so a row can be joined onto a team without comparing names. */
+    val teamId: String = "",
+    /** The crest from Cricbuzz's `teamImageId`, or null to fall back to the bundled map. */
+    val logoUrl: String? = null,
     val matches: Int,
     val won: Int,
     val lost: Int,

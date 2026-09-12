@@ -39,7 +39,8 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 private fun PointsTableEntry.toSeriesTeam() = SeriesTeam(
     name = teamName,
     shortName = teamAcronym,
-    logo = TeamLogoManager.getLogoUrl(teamName) ?: "",
+    // The scraped row carries Cricbuzz's own crest; the bundled map is only the fallback.
+    logo = logoUrl ?: TeamLogoManager.getLogoUrl(teamName) ?: "",
     played = matches,
     won = won,
     lost = lost,

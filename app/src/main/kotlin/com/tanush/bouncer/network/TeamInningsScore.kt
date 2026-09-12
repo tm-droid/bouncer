@@ -65,6 +65,29 @@ internal fun teamInningsScore(scoreObj: JsonObject, key: String, multiDay: Boole
 internal fun teamIdOf(info: JsonObject, key: String): String =
     info.getAsJsonObject(key)?.get("teamId")?.asString ?: ""
 
+/**
+ * Cricbuzz's image id for one side of a fixture, or "" when the payload does not carry one.
+ *
+ * `matchInfo.team1/2` carries `imageId` alongside `teamId` and `teamName` on the live, upcoming and
+ * recent lists alike. It was read off the wire and dropped for as long as the parser existed, so
+ * every crest came from the bundled map instead — which is why a team Cricbuzz added after the map
+ * was generated showed no crest in the app while showing one on Cricbuzz.
+ */
+internal fun teamImageIdOf(info: JsonObject, key: String): String =
+    info.getAsJsonObject(key)?.get("imageId")?.asString ?: ""
+
+/**
+ * The crest for this side: Cricbuzz's own image id where the payload carries one, the bundled map
+ * otherwise.
+ *
+ * The payload wins because the map is a snapshot. It cannot hold a team added since it was built,
+ * and it points at a stale image for any team whose id has changed since — two failures that look
+ * identical on screen and neither of which the map can fix on its own.
+ */
+private fun teamLogoUrl(name: String, imageId: String): String? =
+    imageId.takeIf { it.isNotBlank() }?.let { cricbuzzTeamLogoUrl(it) }
+        ?: TeamLogoManager.getLogoUrl(name)
+
 /** One side of a fixture as the app models it, with the branding the managers hold for its name. */
 internal fun cricketTeam(
     name: String,
@@ -72,7 +95,8 @@ internal fun cricketTeam(
     score: String,
     overs: String,
     isBatting: Boolean,
+    imageId: String = "",
 ): CricketMatch.Team = CricketMatch.Team(
-    name, score, "", isBatting, TeamLogoManager.getLogoUrl(name),
+    name, score, "", isBatting, teamLogoUrl(name, imageId),
     TeamAcronymManager.getAcronym(name), overs, id,
 )
