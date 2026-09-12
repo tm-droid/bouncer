@@ -25,6 +25,7 @@ import {
   liveScoresUrl,
   scorecardUrl,
   fetchHtml,
+  findCommentaryGaps,
   parseBallOutcome,
   parseCommentary,
   parseLiveDetail,
@@ -348,7 +349,12 @@ async function handleRun({ req, res, log, error }) {
   // list. So the two are now separated: every live match gets a probability, only viewed matches
   // get commentary and a detail row.
   const activeViewers = await activeViewerIds({ storage, log, error });
-  const allLive = matches.filter((m) => m && m.id).slice(0, MAX_MATCHES);
+  const eligible = matches.filter((m) => m && m.id);
+  const allLive = eligible.slice(0, MAX_MATCHES);
+  // The cap is kept as-is; what was wrong is that it was invisible. Only `allLive.length` was ever
+  // logged, and that number can never exceed MAX_MATCHES — so the one figure that would reveal the
+  // cap binding was the one the cap had already censored.
+  const dropped = eligible.slice(MAX_MATCHES);
   const live = allLive.filter((m) => activeViewers.has(String(m.id)));
   if (allLive.length === 0) {
     log(`No live matches — writing ${Object.keys(prematch).length} pre-match entries only`);
@@ -386,9 +392,25 @@ async function handleRun({ req, res, log, error }) {
   );
   const commentaryMatches = commentaryMatchSet(allLive, viewed, slowTier);
   log(
-    `${allLive.length} live, ${live.length} with viewers, ${slowTier.size} on the slow tier, ` +
+    `${allLive.length} live (${dropped.length} dropped by MAX_MATCHES of ${eligible.length}), ` +
+      `${live.length} with viewers, ${slowTier.size} on the slow tier, ` +
       `${commentaryMatches.size} storing commentary`
   );
+  // Only when it actually binds. A run that fits under the cap stays silent.
+  if (dropped.length > 0) {
+    // `viewed` is built from allLive, i.e. AFTER the slice, so a watched match beyond position
+    // MAX_MATCHES is invisible to the viewer gate entirely. That is the case worth waking up for,
+    // and a bare count would not distinguish it. activeViewers is already in hand, so this is free.
+    const droppedIds = dropped.map((m) => String(m.id));
+    const droppedWithViewers = droppedIds.filter((id) => activeViewers.has(id));
+    report("MAX_MATCHES dropped live matches — they get no commentary, detail row or win probability", {
+      cap: MAX_MATCHES,
+      eligible: eligible.length,
+      dropped: dropped.length,
+      droppedIds: droppedIds.join(","),
+      droppedWithViewers: droppedWithViewers.join(","),
+    }, droppedWithViewers.length > 0 ? "error" : "warning");
+  }
 
   // Process matches in parallel so per-ball LLM latency doesn't serialize across matches.
   await Promise.allSettled(
@@ -942,6 +964,10 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
 
   let written = 0;
   let rewritten = 0;
+  // Every delivery this run writes, oldest first, for the gap check after the loop. Only what we
+  // write: the check must never query the table for what came before, because that is billed reads
+  // on the quota that caused the July 402.
+  const writtenBalls = [];
   let newWatermark = watermark;
   // The watermark may only advance over a CONTIGUOUS run of handled items. Once one ball fails to
   // write, nothing after it may raise the mark, or that ball falls permanently below it and is
@@ -1058,6 +1084,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
       );
       advance(itemTs);
       written++;
+      writtenBalls.push({ innings: item.innings ?? fallbackInnings, ball });
     } catch (e) {
       // 409 = row already exists (race / watermark behind): it is durably written, so advance.
       if (e?.code === 409) advance(itemTs);
@@ -1076,6 +1103,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
   // itself — which also works for a match that has no detail row, i.e. every match outside the
   // detail tier.
   if (newWatermark > watermark) watermarkByMatch.set(matchId, newWatermark);
+  reportCommentaryGaps({ matchId, writtenBalls, error });
   log(`Match ${matchId}: ${written} new commentary rows (${rewritten} rewritten)`);
   return { status: { commentaryWritten: written }, winProb };
 }
@@ -1192,3 +1220,24 @@ async function commentaryWatermark({ db, matchId, error }) {
   }
 }
 
+
+/**
+ * Say out loud when the upstream feed skipped deliveries.
+ *
+ * Warning, not error, and no recovery attempted: this is Cricbuzz's behaviour, not ours, and the
+ * deliveries are unreachable once they leave the live page's 20-item window. What was missing before
+ * was any signal at all — the watermark absorbed the hole and the commentary tab showed a short over
+ * that looked exactly like a real one. See `findCommentaryGaps` for the measured case.
+ */
+function reportCommentaryGaps({ matchId, writtenBalls, error }) {
+  for (const gap of findCommentaryGaps(writtenBalls)) {
+    error(`[GAP] ${matchId} innings ${gap.innings}: ${gap.after} -> ${gap.before}, ${gap.missing} missing`);
+    report("Cricbuzz skipped deliveries — commentary has a hole that cannot be backfilled", {
+      matchId,
+      innings: gap.innings,
+      after: gap.after,
+      before: gap.before,
+      missing: gap.missing,
+    });
+  }
+}

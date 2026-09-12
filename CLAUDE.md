@@ -483,9 +483,53 @@ fixtures used and why they never caught this.
 
 **Server-side observability (`match-sync/src/observability.js`):** `@sentry/node`, initialized per container from `SENTRY_DSN` and flushed before every return (the container freezes on return, so an unflushed queue is lost). Reports: raw-text passthrough with the per-provider reasons from `generateLine`'s `attempts`, commentary write failures, a viewer-gated match that produced nothing, an unreadable `active-viewers` file (a 404 is normal and stays quiet), and read-budget 402s. Setting `PROBE_SOURCES=1` turns one execution into an upstream reachability probe (status + bytes + markup markers for Cricinfo and Cricbuzz, from inside the Appwrite container) and returns without syncing — that is the only way to answer whether Cricinfo is reachable server-side, which is a different question from whether it is reachable from a laptop or a phone.
 
-**Viewer gate:** `MatchDetailViewModel` pings `bouncer-match-presence` every 90s while a match is open and **not over** — gated on `isMatchOver(match, liveStatus)`, never on `match.isLive`, which is a frozen list snapshot (same staleness class as `5b86664`). A dead heartbeat means every sync logs "0 with viewers", only the 45-minute slow tier writes, and the tab falls back to raw Cricbuzz text; `MatchPresenceReporter.ping` therefore reports failures to Sentry instead of swallowing them.
+**The slow tier is an LLM budget, not a fetch cadence — and the real ball-loss mechanism is the
+upstream window.** `handleRun` does `Promise.allSettled(allLive.map(...))`: **every** live match has
+its Cricbuzz live page fetched and every new delivery stored, on every one-minute run.
+`commentaryMatchSet` caps storage at 16 but `MAX_MATCHES` is 12, so that slice never drops anything;
+`slowTier` feeds only `commentaryCapFor`, the 10/1/0 **rewrite** budget. `slow-sync-state` looks
+stale (entries 30+ minutes old while those matches sync every minute) because it is refreshed only
+for matches that were on the tier — that is not evidence of a 45-minute fetch cadence, and it was
+misread as one.
 
-**Appwrite Storage bucket `cricket-stats`:** read-only from Android via `AppwriteClient.downloadFile(bucketId, fileId)`. Four files: `team-stats` (win-rate model written by `train-win-probability`), `h2h-stats` (H2H stats for 650+ team pairs, written by same function), `active-series` (active **and archived** series, read by `SeriesSyncWorker`), `player-index` (name → Cricbuzz profile id, written and read by `bouncer-player-search`). Bucket is written only by Appwrite cloud functions.
+What actually loses deliveries is that **the live page is a 20-item window**, about two overs —
+measured on three live pages, `commText=20` across 55 `self.__next_f.push` chunks. Normally a 20×
+margin at a one-minute cadence. But on 2026-09-12 Cricbuzz published nothing for match 161777 for
+**thirteen minutes** (match-sync ran every minute throughout, logging `0 new commentary rows`), then
+republished a backlog that jumped `12.5` straight to `13.4`. 13.1–13.3 never appeared on the page and
+are absent from the table. The watermark absorbed the hole and the tab rendered a three-ball over
+indistinguishable from a real one. `findCommentaryGaps` (`cricbuzz.js`) now reports these to Sentry;
+it deliberately does not count the source over's tail, because whether that ball was captured by an
+earlier run is unknowable from one batch. **There is no backfill**: `/live-cricket-full-commentary/{id}`
+is client-rendered and yields zero deliveries server-side, `/cricket-full-commentary/{id}` 404s and
+`/cricket-commentary/{id}` 307s back to the live page. Do not re-investigate recovery without new
+evidence.
+
+**`MAX_MATCHES = 12` silently drops live matches, and hides them from the viewer gate.** `allLive` is
+`matches.slice(0, MAX_MATCHES)` in Cricbuzz's list order, and anything past position 12 gets no
+commentary, no detail row and no win probability. Worse, `live` (the viewer set) is derived **after**
+the slice, so a viewer watching match 13 is invisible to the viewer gate entirely. The run log used
+to print only `allLive.length`, which can never exceed the cap — the cap censored the one number that
+would reveal it. It now logs the pre-slice count too and reports to Sentry when it binds, at `error`
+level if any dropped match had a viewer. The cap itself is unchanged; raising it is read-budget
+arithmetic, not a one-line edit.
+
+**Viewer gate:** `MatchDetailViewModel` pings `bouncer-match-presence` every 90s while a match is open and **not over** — gated on `isMatchOver(match, liveStatus)`, never on `match.isLive`, which is a frozen list snapshot (same staleness class as `5b86664`). A dead heartbeat means every sync logs "0 with viewers" and the tab falls back to raw Cricbuzz text — but it does **not** stop deliveries being stored: the slow tier gates the LLM rewrite budget alone (see below); `MatchPresenceReporter.ping` therefore reports failures to Sentry instead of swallowing them.
+
+**Appwrite Storage bucket `cricket-stats`:** read-only from Android via `AppwriteClient.downloadFile(bucketId, fileId)`; written only by Appwrite cloud functions. It is **not** four files — measured 2026-09-12 it holds fifteen, and most are inter-function state rather than app data:
+
+| File | Owner | What it is |
+|---|---|---|
+| `team-stats`, `h2h-stats` | `train-win-probability` | win-rate model; H2H for 650+ team pairs |
+| `active-series` | `poll-live-matches` | active **and archived** series, read by `SeriesSyncWorker` |
+| `live-matches`, `recent-matches`, `upcoming-matches`, `live-count`, `poll-state` | `poll-live-matches` | the match lists `match-sync` runs off, plus its own cursor//hash state |
+| `live-winprob`, `slow-sync-state` | `match-sync` | published probabilities; the per-match slow-tier clock |
+| `active-viewers` | `match-presence` | `{matchId: epochMs}`, the viewer gate |
+| `player-index` | `player-search` | name → Cricbuzz profile id |
+| `news-cache`, `news-body-{storyId}` | `news-sync` | headline index (4h TTL); one article body per opened story |
+| `rate-limit-offenders` | — | legacy, unread |
+
+**Deleting from this bucket is how you break a different feature silently, so select by `startsWith("$id", …)` and never by `search`.** Storage search is fuzzy: measured against the live bucket, `search=news-body` also returns **`news-cache`**, while `startsWith($id, "news-body-")` returns exactly the bodies. `bouncer-news-sync` prunes `news-body-*` past `BODY_RETENTION_MS` (14 days) on its **headline-refresh path only** — that path is already capped at ~6 runs/day by the 4h TTL, so the sweep needs no schedule of its own — and re-checks the prefix on every candidate before deleting, because a query-semantics surprise must not be able to become a deletion.
 
 **Room DB:** currently at schema version 13. New migrations: add `MIGRATION_N_(N+1)` in `BouncerDatabase.kt` + bump `version` in `@Database`.
 

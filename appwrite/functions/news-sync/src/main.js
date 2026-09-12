@@ -1,8 +1,15 @@
-import { Client, Storage } from "node-appwrite";
+import { Client, Query, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { parseJsonFile } from "./storageJson.js";
 import { CACHE_TTL_MS, cacheAgeMs, isFresh, staleFallback } from "./newsResult.js";
-import { bodyFileId, extractParagraphs, shapeHint } from "./articleBody.js";
+import {
+  BODY_ID_PREFIX,
+  BODY_PRUNE_MAX,
+  bodyFileId,
+  extractParagraphs,
+  selectBodiesToPrune,
+  shapeHint,
+} from "./articleBody.js";
 
 const NEWS_CACHE_FILE_ID = "news-cache";
 
@@ -22,25 +29,43 @@ const rapidApiHeaders = (key) => ({
 /**
  * The story id this request is asking for, or null for the headline index.
  *
- * The device sends `{"storyId": 140155}`; the scheduled/headline path sends an empty body. A body
- * that is not JSON at all is treated as "no story id" rather than as an error, because that is what
- * every caller of the headline path has always sent.
+ * The device sends `{"storyId": 140155}` for a body and an EMPTY STRING for headlines
+ * (`CricbuzzNewsRepository.fetchHeadlines` → `executeFunctionDetailed(FUNCTION_ID, "")`).
+ *
+ * **`req.bodyJson` is a getter that throws on an empty body** — it is `JSON.parse(req.bodyRaw)`
+ * inside the Appwrite runtime, so reading it at all on the headline path raised
+ * `SyntaxError: Unexpected end of JSON input` and the whole function answered 500. `??` cannot help:
+ * the throw happens on property access, before any operator sees a value. Every read of it is
+ * therefore wrapped, and the raw body is parsed by hand as the fallback. Anything unparseable means
+ * "no story id", which is the headline path — never an error, because that is what every caller of
+ * it has always sent.
  */
 function requestedStoryId(req) {
-  const raw = req?.bodyJson ?? safeParse(req?.body);
+  const raw = bodyObject(req);
   const id = raw?.storyId;
   if (typeof id === "number" && Number.isFinite(id)) return String(Math.trunc(id));
   if (typeof id === "string" && /^\d+$/.test(id)) return id;
   return null;
 }
 
-function safeParse(body) {
-  if (!body || typeof body !== "string") return null;
+/** The request body as an object, or null. Never throws, whatever the runtime hands us. */
+export function bodyObject(req) {
   try {
-    return JSON.parse(body);
+    const parsed = req?.bodyJson;
+    if (parsed && typeof parsed === "object") return parsed;
   } catch {
-    return null;
+    // Empty or malformed body — fall through to the raw forms below.
   }
+  for (const raw of [req?.bodyRaw, req?.body]) {
+    if (!raw || typeof raw !== "string") continue;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") return parsed;
+    } catch {
+      // Not JSON. Headline path.
+    }
+  }
+  return null;
 }
 
 export default async ({ req, res, log, error }) => {
@@ -136,6 +161,12 @@ export default async ({ req, res, log, error }) => {
     error(`Failed to write news cache: ${e?.message}`);
   }
 
+  // Retention sweep rides the headline refresh rather than a schedule of its own. The 4-hour TTL
+  // above already caps this path at ~6 runs a day, which is the right cadence for a sweep and costs
+  // no extra function and no extra executions. It is deliberately NOT on the article-body path:
+  // that one is a user waiting for an article to open.
+  await pruneArticleBodies({ storage, STATS_BUCKET_ID, log, error });
+
   return res.json(newsJson);
 };
 
@@ -221,4 +252,38 @@ async function serveArticleBody({ storyId, storage, STATS_BUCKET_ID, RAPIDAPI_KE
   }
 
   return res.json({ storyId, paragraphs });
+}
+
+/**
+ * Delete cached bodies past their retention.
+ *
+ * Every failure is swallowed after logging. A sweep is a guest on a news response and must never be
+ * able to fail one — the caller has the headlines in hand by the time this runs.
+ */
+async function pruneArticleBodies({ storage, STATS_BUCKET_ID, log, error }) {
+  try {
+    // startsWith on $id, never `search` — see BODY_ID_PREFIX. Oldest first, so a backlog drains in
+    // the order that matters and the cap below always takes the most deserving candidates.
+    const listed = await storage.listFiles(STATS_BUCKET_ID, [
+      Query.startsWith("$id", BODY_ID_PREFIX),
+      Query.orderAsc("$createdAt"),
+      Query.limit(BODY_PRUNE_MAX),
+    ]);
+
+    const doomed = selectBodiesToPrune(listed?.files, Date.now());
+    if (doomed.length === 0) return;
+
+    let deleted = 0;
+    for (const file of doomed) {
+      try {
+        await storage.deleteFile(STATS_BUCKET_ID, file.$id);
+        deleted++;
+      } catch (e) {
+        error(`Failed to prune ${file.$id}: ${e?.message}`);
+      }
+    }
+    log(`Pruned ${deleted} cached article bodies older than retention`);
+  } catch (e) {
+    error(`Article body prune failed: ${e?.message}`);
+  }
 }

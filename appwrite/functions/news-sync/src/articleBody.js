@@ -7,8 +7,57 @@
 // text. Moving it here puts the body behind a permanent cache and a single parser that a fixture
 // test can pin.
 
-/** File id for one story's cached body. Stories are immutable, so this never expires. */
-export const bodyFileId = (storyId) => `news-body-${storyId}`;
+/** File id for one story's cached body. */
+export const bodyFileId = (storyId) => `${BODY_ID_PREFIX}${storyId}`;
+
+/**
+ * The prefix every cached body carries, and the ONLY safe way to select one for deletion.
+ *
+ * `cricket-stats` is a shared bucket. Alongside the bodies it holds `news-cache`, `team-stats`,
+ * `h2h-stats`, `active-series`, `player-index`, `live-matches`, `live-winprob`, `slow-sync-state`,
+ * `active-viewers`, `poll-state`, `recent-matches`, `upcoming-matches`, `live-count` and
+ * `rate-limit-offenders` — every one of them load-bearing for a different feature, and a wrong
+ * delete here is a silent outage somewhere else.
+ *
+ * Measured against the live bucket on 2026-09-12: `startsWith($id, "news-body-")` returns exactly
+ * the bodies, while `search=news-body` ALSO returns `news-cache`. Storage search is fuzzy. Select
+ * with `startsWith` on `$id`, and re-check the prefix on every candidate before deleting it.
+ */
+export const BODY_ID_PREFIX = "news-body-";
+
+/** How long a cached body is kept. Matches `match-commentary-prune`'s retention, for the same
+ *  reason: the data is cheap to re-fetch (one RapidAPI call, which re-caches it) and interest in a
+ *  news story decays. Retention here is a cost knob, never a correctness one. */
+export const BODY_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
+
+/** Most deletions one sweep will do. A backlog drains over several sweeps, as in the commentary
+ *  prune — a sweep is a guest on a news request and must not become the slow part of it. */
+export const BODY_PRUNE_MAX = 50;
+
+/**
+ * Which of `files` to delete, given the clock.
+ *
+ * Pure so the rule that protects every other file in the bucket is testable without a Storage
+ * client. Three independent conditions, and a file must pass all of them:
+ *
+ *   1. its `$id` really starts with [BODY_ID_PREFIX] — belt and braces behind the query, because a
+ *      query-semantics surprise must not be able to become a deletion;
+ *   2. its `$createdAt` parses — an unreadable age is NOT an old age, and defaulting the other way
+ *      would delete a file precisely when we understand it least;
+ *   3. it is older than [BODY_RETENTION_MS].
+ */
+export function selectBodiesToPrune(files, now, {
+  retentionMs = BODY_RETENTION_MS,
+  max = BODY_PRUNE_MAX,
+} = {}) {
+  return (Array.isArray(files) ? files : [])
+    .filter((f) => typeof f?.$id === "string" && f.$id.startsWith(BODY_ID_PREFIX))
+    .filter((f) => {
+      const createdAt = new Date(f?.$createdAt ?? NaN).getTime();
+      return Number.isFinite(createdAt) && now - createdAt > retentionMs;
+    })
+    .slice(0, max);
+}
 
 /**
  * Ordered body paragraphs from a Cricbuzz `news/v1/detail/{id}` payload.

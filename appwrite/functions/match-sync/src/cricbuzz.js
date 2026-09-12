@@ -175,6 +175,78 @@ export function ballMetricOf(raw) {
   return null;
 }
 
+/**
+ * Deliveries the upstream feed skipped, given the balls one run is about to write.
+ *
+ * Cricbuzz's live page carries a window of 20 commentary items — about two overs, measured on three
+ * live pages on 2026-09-12. At the one-minute sync cadence that is a wide margin. It stops being one
+ * when Cricbuzz itself stalls: on 2026-09-12 match 161777 published nothing for thirteen minutes
+ * (match-sync ran every minute throughout and logged `0 new commentary rows`), then republished a
+ * backlog that jumped from `12.5` straight to `13.4`. Deliveries 13.1, 13.2 and 13.3 never appeared
+ * on the page at all and are absent from the table.
+ *
+ * Nothing noticed. The watermark advanced over the hole and the commentary tab rendered over 13 with
+ * three balls, which is indistinguishable from an over that genuinely had three. Those deliveries
+ * cannot be recovered — the "Full Commentary" tab at `/live-cricket-full-commentary/{id}` is
+ * client-rendered and carries zero deliveries server-side — so the only thing worth doing is saying
+ * so out loud.
+ *
+ * @param balls `{ innings, ball }` in the order they are written, i.e. OLDEST first.
+ * @returns `[{ innings, after, before, missing }]`, one entry per hole.
+ */
+export function findCommentaryGaps(balls) {
+  const gaps = [];
+  let previous = null;
+
+  for (const entry of Array.isArray(balls) ? balls : []) {
+    const metric = ballMetricOf(entry?.ball);
+    const innings = entry?.innings ?? null;
+
+    // A label with no over structure (The Hundred's `Ball 72`) has no "next ball" to predict, so it
+    // can neither open nor close a gap. Reset rather than guess.
+    if (!metric || metric.over === null) { previous = null; continue; }
+    // An innings boundary is not a gap, and neither is the first ball after a cold container.
+    if (!previous || previous.innings !== innings) {
+      previous = { innings, metric };
+      continue;
+    }
+
+    const missing = deliveriesBetween(previous.metric, metric);
+    if (missing > 0) {
+      gaps.push({ innings, after: previous.metric.label, before: metric.label, missing });
+    }
+    // Advance on any forward move, gap or not. Staying put would re-report the same hole against
+    // every later ball in the over.
+    if (missing >= 0) previous = { innings, metric };
+  }
+  return gaps;
+}
+
+/**
+ * Legal deliveries missing between two ball labels, or 0 when they are contiguous.
+ *
+ * Returns -1 for a label that does not move forward. A wide or a no-ball REPEATS the previous label
+ * rather than advancing it, and Cricbuzz also republishes earlier deliveries with fresh timestamps
+ * (over 12 of match 161777 was written twice) — neither is a gap, and treating a repeat as one would
+ * make this fire on every extra bowled.
+ *
+ * **The tail of the source over is deliberately not counted**, and this is the one judgement call in
+ * here. Going `12.5 → 13.4` this reports 3 (13.1–13.3), not 4: whether 12.6 is missing is
+ * unknowable from one run's batch, because an earlier run may already hold it — which is exactly
+ * what happened in the real case, where 12.6 was written seventeen minutes before 12.5 was
+ * republished. An over can also legitimately end early when the innings does. Undercounting by the
+ * one ball at the seam is the right trade against reporting a hole that is not there.
+ */
+function deliveriesBetween(from, to) {
+  if (to.over === from.over) return to.ball > from.ball ? to.ball - from.ball - 1 : -1;
+  if (to.over < from.over) return -1;
+  const wholeOvers = (to.over - from.over - 1) * BALLS_PER_OVER;
+  return wholeOvers + (to.ball - 1);
+}
+
+/** Legal deliveries in an over — used only to size an over that was skipped in full. */
+const BALLS_PER_OVER = 6;
+
 // Returns newest-first, de-duplicated by timestamp: [{ timestamp, commText, ballMetric, innings }]
 export function parseCommentary(html) {
   const results = [];
