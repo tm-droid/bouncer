@@ -57,8 +57,16 @@ object CricketConstants {
     const val PHASE_DEATH_WEAK_FACTOR = 0.72
 
     // --- Commentary / timeline defaults ---
+    //
+    // These size the near-duplicate test for progressive commentary updates: Cricbuzz publishes a
+    // delivery, then republishes it with more description appended, and the pass keeps the fuller
+    // one. The ratio is 1.0 — a STRICT prefix — because that is the actual shape of an update, and
+    // because a partial-prefix match is not evidence of anything. At 0.4 the floor below did the
+    // deciding: for any line under ~37 characters, prefixLen bottomed out at 15, which is the width
+    // of "Tymal Mills to " — so every short delivery in an over matched the one long line in it and
+    // was deleted. Over 18 of ETPL match 169380 rendered as two balls of six.
     const val DEDUP_MIN_LENGTH = 15
-    const val DEDUP_PREFIX_RATIO = 0.4
+    const val DEDUP_PREFIX_RATIO = 1.0
 
     // --- MatchFormat enum ---
     enum class MatchFormat { T20, T10, HUNDRED, ODI, TEST, UNKNOWN }

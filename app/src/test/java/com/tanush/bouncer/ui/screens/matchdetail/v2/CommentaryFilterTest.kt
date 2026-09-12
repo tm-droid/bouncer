@@ -168,6 +168,10 @@ class CommentaryFilterTest {
     fun `dedup keeps the event attached to the line it belongs to`() {
         // The progressive-update pass rewrites the text it keeps, so the verdict has to travel with
         // it. Cricbuzz sends the same ball twice, the longer one wins, and it is the boundary.
+        //
+        // Neither entry carries a `ball` column — this is the on-device scrape fallback shape — so
+        // the dedup key comes from the `40.5` in the prose. That fallback is why filterCommentary
+        // reads the column *first* and the text second, rather than one or the other.
         val entries = listOf(
             CommentaryEntry("40.5: Albert drives.", TimelineEventType.FOUR),
             CommentaryEntry(fourProse, TimelineEventType.FOUR),
@@ -176,4 +180,38 @@ class CommentaryFilterTest {
         assertEquals(1, boundaries.size)
         assertEquals(TimelineEventType.FOUR, boundaries.single().event)
     }
+
+    // ── The sparse-over regression ───────────────────────────────────────────
+
+    @Test
+    fun `an over of raw passthrough rows keeps every delivery under All`() {
+        // Over 18 of ETPL match 169380, verbatim from match-commentary on 2026-09-12. All six rows
+        // are ai_generated = false, so none carries a ball prefix in its text, and three of them
+        // are byte-identical. The tab rendered this as 18.4 and 18.1 alone: pass 1 keyed on the
+        // line text and collapsed the identical ones, then pass 2 compared across ball numbers on
+        // a 15-character prefix — "Tymal Mills to " — and deleted every short delivery in favour of
+        // the one long line, which is always the wicket or the boundary.
+        val over = rawOver18()
+        assertEquals(over, filterCommentary(over, CommentaryFilter.ALL))
+    }
+
+    @Test
+    fun `the chips still narrow that over to its wicket`() {
+        // The chips must keep working on rows the dedup pass no longer touches.
+        val wickets = filterCommentary(rawOver18(), CommentaryFilter.WICKETS)
+        assertEquals(1, wickets.size)
+        assertEquals("18.1", wickets.single().ball)
+    }
+
+    private fun rawOver18() = listOf(
+        raw("18.1", "Tymal Mills to Ashwin, out Lbw!! Ashwin lbw b Tymal Mills 1(2)", TimelineEventType.WICKET),
+        raw("18.2", "Tymal Mills to Matthew Hollard, no run", TimelineEventType.OTHER),
+        raw("18.3", "Tymal Mills to Matthew Hollard, no run", TimelineEventType.OTHER),
+        raw("18.4", "Tymal Mills to Matthew Hollard, 1 run, to short mid-wicket", TimelineEventType.OTHER),
+        raw("18.5", "Tymal Mills to Shankar, 1 run, to point", TimelineEventType.OTHER),
+        raw("18.6", "Tymal Mills to Matthew Hollard, no run", TimelineEventType.OTHER),
+    )
+
+    private fun raw(ball: String, text: String, event: TimelineEventType) =
+        CommentaryEntry(text = text, event = event, ball = ball)
 }

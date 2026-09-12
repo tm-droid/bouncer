@@ -260,15 +260,22 @@ class TimelineEventExtractorTest {
     @Test
     fun `deduplicateByBall keeps the longest progressive update per ball`() {
         val result = TimelineEventExtractor.deduplicateByBall(dedupFixture)
-        // 18.3 and 18.4 are absent on purpose. Their comparison forms — "bumrah to maxwell, six over
-        // long on" and "bumrah to maxwell, 1 run" — share a 15-character prefix with 18.2's, and pass
-        // 2 treats a shared prefix as a near-duplicate regardless of ball number. That is
-        // DEDUP_MIN_LENGTH = 15 being short enough to collide on "<bowler> to <batter>, ", which is
-        // pre-existing behaviour this perf change must not alter, not something introduced here.
+        // Only 18.1 collapses, and only because its two entries are the same delivery: the longer
+        // is a strict extension of the shorter. Every other ball survives.
+        //
+        // 18.3 and 18.4 used to be absent here, and the assertion said so as though it were the
+        // contract. It was not — it was the bug. Pass 2 compared lines across ball numbers, and with
+        // the old 0.4 ratio the effective prefix was 15 characters, the width of
+        // "<bowler> to <bat". So "bumrah to maxwell, six over long on" read as a duplicate of
+        // "bumrah to maxwell, four, driven through the covers" and was deleted. In production that
+        // rendered a six-ball over as one or two deliveries, always the longest lines in it — the
+        // wickets and the boundaries.
         assertEquals(
             listOf(
                 "18.1 Bumrah to Maxwell, no run, beaten outside off stump",
                 "18.2 Bumrah to Maxwell, FOUR, driven through the covers",
+                "18.3 Bumrah to Maxwell, SIX over long on",
+                "18.4 Bumrah to Maxwell, 1 run",
                 "Drinks break on the field",
                 "18.5 Bumrah to Green, WICKET! caught behind",
                 "104.3 Ashwin to Root, defended solidly back down the ground",
@@ -304,13 +311,27 @@ class TimelineEventExtractorTest {
     }
 
     @Test
-    fun `deduplicateByBall drops a near-duplicate prefix pair`() {
+    fun `deduplicateByBall drops a near-duplicate prefix pair for one ball`() {
+        val lines = listOf(
+            "1.1 Starc to Rohit, defended back down the ground with soft hands",
+            "1.1 Starc to Rohit, defended back down the ground",
+        )
+        // One delivery, published twice — the shorter is a truncated version of the fuller line.
+        assertEquals(
+            listOf("1.1 Starc to Rohit, defended back down the ground with soft hands"),
+            TimelineEventExtractor.deduplicateByBall(lines),
+        )
+    }
+
+    @Test
+    fun `deduplicateByBall keeps near-identical lines that are different deliveries`() {
+        // 1.1 and 2.1 read almost the same because the same bowler beat the same batter twice.
+        // Different balls are different deliveries; nothing about shared prose says otherwise.
         val lines = listOf(
             "1.1 Starc to Rohit, defended back down the ground with soft hands",
             "2.1 Starc to Rohit, defended back down the ground",
         )
-        // Same delivery text under different ball numbers — the shorter is a truncated duplicate.
-        assertEquals(1, TimelineEventExtractor.deduplicateByBall(lines).size)
+        assertEquals(2, TimelineEventExtractor.deduplicateByBall(lines).size)
     }
 
     @Test
@@ -324,13 +345,55 @@ class TimelineEventExtractorTest {
     @Test
     fun `deduplicateByBall handles a full commentary block`() {
         // 40 lines is roughly one render, and the size at which the old inner-loop Regex
-        // construction cost ~1500 compilations. Every line shares the "Bowler to Batter, " opening,
-        // so pass 2 removes each entry as soon as it meets an equal-or-longer follower and only the
-        // last survives. Aggressive, but pre-existing — this group must not move it.
+        // construction cost ~1500 compilations. Every line shares the "Bowler to Batter, " opening
+        // and every line is a different delivery, so all 40 must survive. This used to assert a
+        // single survivor — 40 deliveries collapsing to one on a shared 15-character opening is the
+        // clearest statement of the bug that emptied the commentary tab.
         val many = (1..40).map { "${it / 6}.${it % 6 + 1} Bowler to Batter, delivery number $it" }
+        assertEquals(many, TimelineEventExtractor.deduplicateByBall(many))
+    }
+
+    @Test
+    fun `deduplicateByBall keeps every delivery of an over of raw passthrough rows`() {
+        // The real over 18 of ETPL match 169380, as bouncer-match-sync stored it: raw Cricbuzz
+        // text with no ball prefix in the line, because the LLM rewrite budget did not reach it.
+        // Three deliveries are byte-identical, and all six survive only because the ball column —
+        // not the prose — is the dedup key. The screenshot that opened this bug showed 18.4 and
+        // 18.1 and nothing else.
+        val over = listOf(
+            "18.1" to "Tymal Mills to Ashwin, out Lbw!! Ashwin lbw b Tymal Mills 1(2)",
+            "18.2" to "Tymal Mills to Matthew Hollard, no run",
+            "18.3" to "Tymal Mills to Matthew Hollard, no run",
+            "18.4" to "Tymal Mills to Matthew Hollard, 1 run, to short mid-wicket",
+            "18.5" to "Tymal Mills to Shankar, 1 run, to point",
+            "18.6" to "Tymal Mills to Matthew Hollard, no run",
+        )
+        val result = TimelineEventExtractor.deduplicateByBall(
+            over,
+            textOf = { it.second },
+            withText = { entry, text -> entry.first to text },
+            ballOf = { it.first },
+        )
+        assertEquals(over, result)
+    }
+
+    @Test
+    fun `deduplicateByBall still collapses a repeated ball in a passthrough over`() {
+        // A wide and then the legal delivery share a ball number but are separate events, while the
+        // progressive republish of one of them is not. Longest per ball wins.
+        val rows = listOf(
+            "18.1" to "Tymal Mills to Ashwin, wide",
+            "18.1" to "Tymal Mills to Ashwin, wide down the leg side, called immediately",
+        )
+        val result = TimelineEventExtractor.deduplicateByBall(
+            rows,
+            textOf = { it.second },
+            withText = { entry, text -> entry.first to text },
+            ballOf = { it.first },
+        )
         assertEquals(
-            listOf("6.5 Bowler to Batter, delivery number 40"),
-            TimelineEventExtractor.deduplicateByBall(many),
+            listOf("18.1" to "Tymal Mills to Ashwin, wide down the leg side, called immediately"),
+            result,
         )
     }
 }

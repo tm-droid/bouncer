@@ -444,12 +444,30 @@ reason: `length` (a spent budget) and `stop` (a model that answered nothing) nee
 **Never state a figure for a partially-stored over.** `overTotalRuns`/`isMaidenOver` require six
 legal deliveries present. One stored dot ball rendered as "Over 89 · MAIDEN · 0 runs".
 
-**The commentary `ball` column is the over number.** `CommentaryEntry.ball` comes straight off the
-`match-commentary` row. The tab used to regex a leading `40.4` out of the prose, which only exists
-on lines the AI chain rewrote: the passthrough branch (`ai_generated = false`) writes raw Cricbuzz
-text unprefixed, and that is the dominant path in production, so the over and ball number were
-absent from most rows. It is also the only thing that carries The Hundred's `Ball 72`, which no
-over-shaped regex can match.
+**The commentary `ball` column is the over-and-ball label, and it is the only trustworthy one.**
+`CommentaryEntry.ball` comes straight off the `match-commentary` row, where `match-sync` writes
+`ballMetric.label` — `"19.2"`, or The Hundred's `"Ball 72"` (pinned by the smoke probes at
+`match-sync/src/main.js`). Anything that wants the ball number must read this column. Regexing a
+leading `40.4` out of the prose does not work: that prefix exists only on lines the AI chain
+rewrote, and the passthrough branch (`ai_generated = false`) writes raw Cricbuzz text unprefixed,
+which is the dominant path in production. No over-shaped regex can match The Hundred either.
+
+**Deduplication that reads the ball out of the prose deletes most of the innings.**
+`TimelineEventExtractor.deduplicateByBall` used to key both of its passes on
+`ballNumberOf(text)`, so on raw passthrough rows every delivery in an over looked like one
+unnumbered line. Pass 1 then keyed on the text itself — collapsing the three separate balls that
+are all `"Tymal Mills to Matthew Hollard, no run"` into one — and pass 2 compared lines *across*
+ball numbers with a prefix floor of `DEDUP_MIN_LENGTH` = 15 characters, which is the width of
+`"Tymal Mills to "`. Every short delivery was therefore judged a duplicate of the one long line in
+its over, and the long line is always the wicket or the boundary. Over 18 of ETPL match 169380
+rendered as two balls of six while the "This Over" chips above it (which come from the live-detail
+over summary, not this feed) showed all six. Three unit tests asserted that collapse as though it
+were the contract, describing it as "pre-existing behaviour this perf change must not alter". It
+was the bug. `deduplicateByBall` now takes a `ballOf` accessor — `CommentaryParsing` passes the
+`ball` column — pass 2 compares only within one ball, and `DEDUP_PREFIX_RATIO` is `1.0`, a strict
+prefix, which is the actual shape of a progressive republish. **Check a dedup change against an
+over of raw passthrough rows, never against distinctly-worded AI prose**, which is what the old
+fixtures used and why they never caught this.
 
 **Player profile cache (global):** `PlayerCacheWorker` checks `AppwritePlayerProfilesClient` before scraping Cricbuzz. First device that scrapes a player pushes to Appwrite (`player-profiles` table, `bouncer-db`); all subsequent devices get a cache hit. Row ID = `entity.playerId` (Room format: `virat_kohli`).
 

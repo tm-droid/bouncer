@@ -943,13 +943,20 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
   let written = 0;
   let rewritten = 0;
   let newWatermark = watermark;
+  // The watermark may only advance over a CONTIGUOUS run of handled items. Once one ball fails to
+  // write, nothing after it may raise the mark, or that ball falls permanently below it and is
+  // never retried — the loop is ascending, so the next success would otherwise carry the mark
+  // straight past the failure. The comment above has always claimed this; only now does the code do
+  // it. `advance` is what enforces it.
+  let contiguous = true;
+  const advance = (itemTs) => { if (contiguous) newWatermark = itemTs; };
   for (const item of fresh) {
     const rowId = docId(`${matchId}:${item.timestamp}`);
     const itemTs = Number(item.timestamp);
 
     // Skipped items are still "processed" — advance past them or they are re-examined forever.
     const classified = classifyCommentaryItem(item);
-    if (!classified) { newWatermark = itemTs; continue; }
+    if (!classified) { advance(itemTs); continue; }
     const { clean, ball } = classified;
 
     let line = clean;
@@ -1010,7 +1017,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
         });
       }
     }
-    if (!line) { newWatermark = itemTs; continue; }
+    if (!line) { advance(itemTs); continue; }
 
     // Classified from `clean` — the RAW Cricbuzz text — NOT from `line`. By this point `line` is
     // broadcast prose in which a four reads "races away to the rope", so the event is no longer
@@ -1049,12 +1056,15 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
         },
         READ_ANY
       );
-      newWatermark = itemTs;
+      advance(itemTs);
       written++;
     } catch (e) {
       // 409 = row already exists (race / watermark behind): it is durably written, so advance.
-      if (e?.code === 409) newWatermark = itemTs;
+      if (e?.code === 409) advance(itemTs);
       else {
+        // A real write failure closes the watermark for the rest of this pass, so the next run
+        // starts from this ball instead of skipping it forever.
+        contiguous = false;
         error(`Commentary write failed (${matchId}/${ball}): ${e?.message}`);
         reportError(e, { matchId, ball, operation: "commentary_write" });
       }

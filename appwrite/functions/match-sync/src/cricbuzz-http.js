@@ -103,12 +103,49 @@ export function isBlockStatus(status) {
   return status === 403 || status === 429;
 }
 
+/**
+ * True for a failure that never reached Cricbuzz: DNS, connect, or the abort on our own timeout.
+ *
+ * These are worth one retry because the request had no effect — nothing was served, nothing was
+ * counted, and the host did not say anything. An HTTP status is the opposite: the host answered,
+ * and 403/429 in particular is it telling us to stop. Retrying that is what BLOCK_BACKOFF_MS exists
+ * to prevent, so this deliberately keys on the transport error and never on a status.
+ *
+ * `TypeError: fetch failed` is undici's wrapper; the cause carries the real code. ANDROID-3D is the
+ * ETIMEDOUT form — 272 events, every one of which skipped that match for that minute.
+ */
+const RETRYABLE_CAUSES = new Set([
+  "ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "ENETUNREACH", "EAI_AGAIN", "UND_ERR_CONNECT_TIMEOUT",
+]);
+
+function isRetryableTransportError(e) {
+  if (e?.name === "TimeoutError" || e?.name === "AbortError") return true;
+  const codes = [e?.code, e?.cause?.code, ...(e?.cause?.errors ?? []).map((inner) => inner?.code)];
+  return codes.some((code) => code && RETRYABLE_CAUSES.has(code));
+}
+
+/** Attempts per fetchHtml call: the original plus one retry. */
+export const MAX_FETCH_ATTEMPTS = 2;
+
 export async function fetchHtml(url, timeoutMs = 12_000) {
   const now = Date.now();
   if (now < blockedUntil) throw new CricbuzzBlockedError(blockedUntil - now);
 
-  await takeSlot();
-  const resp = await fetch(url, { headers: browserHeaders(), signal: AbortSignal.timeout(timeoutMs) });
+  // One retry, and only for a transport failure. syncMatch issues two of these per match inside
+  // Promise.all and main.js runs up to MAX_MATCHES of those inside Promise.allSettled, so the
+  // attempt count is multiplied by the whole fan-out — two is what keeps a bad minute clear of the
+  // 300s function timeout. The retry goes back through takeSlot(), so the container-wide 350ms
+  // spacing still holds and a retry storm cannot become a burst.
+  let resp;
+  for (let attempt = 1; ; attempt++) {
+    await takeSlot();
+    try {
+      resp = await fetch(url, { headers: browserHeaders(), signal: AbortSignal.timeout(timeoutMs) });
+      break;
+    } catch (e) {
+      if (attempt >= MAX_FETCH_ATTEMPTS || !isRetryableTransportError(e)) throw e;
+    }
+  }
   if (resp.ok) return resp.text();
 
   // Read the body on failure — permanently, not just while investigating. The 403 that started

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   BLOCK_BACKOFF_MS,
   CricbuzzBlockedError,
+  MAX_FETCH_ATTEMPTS,
   MIN_REQUEST_GAP_MS,
   fetchHtml,
   isBlockStatus,
@@ -111,4 +112,80 @@ test("isBlockStatus covers exactly 403 and 429", () => {
 
 test("the backoff window is the documented 90 seconds", () => {
   assert.equal(BLOCK_BACKOFF_MS, 90_000);
+});
+
+// ── Transport retry (ANDROID-3D) ────────────────────────────────────────────
+//
+// `connect ETIMEDOUT 23.0.220.165:443` reaching Cricbuzz from the Appwrite container skipped that
+// match for that minute, 272 times. The request never reached the host, so one retry is free of any
+// politeness question — unlike a 403, which is the host answering.
+
+/** undici's shape: a TypeError wrapping an AggregateError of per-address connect errors. */
+const connectFailure = (code) => {
+  const err = new TypeError("fetch failed");
+  err.cause = Object.assign(new Error(`connect ${code} 23.0.220.165:443`), { code });
+  return err;
+};
+
+test("retries once after a connect timeout and returns the retry's body", async () => {
+  await withStubbedFetch(
+    (_u, _o, n) => { if (n === 1) throw connectFailure("ETIMEDOUT"); return ok("recovered"); },
+    async (calls) => {
+      assert.equal(await fetchHtml("https://www.cricbuzz.com/x"), "recovered");
+      assert.equal(calls.length, 2);
+    },
+  );
+});
+
+test("retries a connect error reported inside an AggregateError", async () => {
+  await withStubbedFetch(
+    (_u, _o, n) => {
+      if (n > 1) return ok("recovered");
+      const err = new TypeError("fetch failed");
+      err.cause = Object.assign(new AggregateError([]), {
+        errors: [{ code: "ENETUNREACH" }, { code: "ETIMEDOUT" }],
+      });
+      throw err;
+    },
+    async (calls) => {
+      assert.equal(await fetchHtml("https://www.cricbuzz.com/x"), "recovered");
+      assert.equal(calls.length, 2);
+    },
+  );
+});
+
+test("gives up after one retry rather than looping", async () => {
+  await withStubbedFetch(() => { throw connectFailure("ETIMEDOUT"); }, async (calls) => {
+    // The original transport error is rethrown unchanged; the code is on its cause, as undici
+    // reports it, which is also where isRetryableTransportError reads it from.
+    const err = await fetchHtml("https://www.cricbuzz.com/x").catch((e) => e);
+    assert.equal(err.cause.code, "ETIMEDOUT");
+    assert.equal(calls.length, MAX_FETCH_ATTEMPTS);
+  });
+});
+
+test("never retries an HTTP status — a 403 is the host saying stop", async () => {
+  await withStubbedFetch(() => fail(403), async (calls) => {
+    await assert.rejects(() => fetchHtml("https://www.cricbuzz.com/x"), /HTTP 403/);
+    assert.equal(calls.length, 1);
+  });
+});
+
+test("a non-transport error is not retried", async () => {
+  await withStubbedFetch(() => { throw new TypeError("Invalid URL"); }, async (calls) => {
+    await assert.rejects(() => fetchHtml("https://www.cricbuzz.com/x"), /Invalid URL/);
+    assert.equal(calls.length, 1);
+  });
+});
+
+test("the retry queues on the shared slot rather than bursting", async () => {
+  await withStubbedFetch(
+    (_u, _o, n) => { if (n === 1) throw connectFailure("ECONNRESET"); return ok(); },
+    async () => {
+      const started = Date.now();
+      await fetchHtml("https://www.cricbuzz.com/x");
+      // Two slots taken, so the second waits out MIN_REQUEST_GAP_MS behind the first.
+      assert.ok(Date.now() - started >= MIN_REQUEST_GAP_MS, "retry skipped the request spacing");
+    },
+  );
 });

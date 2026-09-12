@@ -12,6 +12,7 @@ import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.utils.BallMetric
 import com.tanush.bouncer.utils.TimelineEventExtractor
 import com.tanush.bouncer.utils.ballMetricOfLine
+import com.tanush.bouncer.utils.ballNumberOf
 import java.util.Locale
 
 // ── Commentary parsing helpers (pure; rendering lives in CommentaryTabV2.kt) ──
@@ -176,10 +177,21 @@ internal fun filterCommentary(
 ): List<CommentaryEntry> {
     // The generic overload carries `event` through a pass that rewrites the text; the per-line
     // cleanup that used to run here first is exactly what deduplicateByBall's own normalize does.
+    //
+    // `ballOf` is the `ball` COLUMN first, and the prose only where there is no column. The default
+    // accessor is prose-only: it regexes a `40.4` off the head of the line, which exists solely on
+    // rows the AI chain rewrote. A raw Cricbuzz passthrough row (`ai_generated = false`, the common
+    // case) has no prefix, so every delivery in an over looked like one unnumbered line to both
+    // dedup passes and only the longest — the wicket or the boundary — survived.
+    //
+    // The prose fallback is not decoration: an entry from the on-device scrape fallback has no
+    // column at all and carries its number in the text, which is the case the default was written
+    // for.
     val cleaned = TimelineEventExtractor.deduplicateByBall(
         commentary,
         textOf = { it.text },
         withText = { entry, text -> entry.copy(text = text) },
+        ballOf = { entry -> entry.ball?.takeIf { it.isNotBlank() } ?: ballNumberOf(entry.text) },
     )
     if (selectedFilter == CommentaryFilter.ALL) return cleaned
     return cleaned.filter { entry ->

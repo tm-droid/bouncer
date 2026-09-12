@@ -73,7 +73,7 @@ class NewsViewModelTest {
             return result()
         }
 
-        override suspend fun fetchArticleBody(url: String): List<String> = emptyList()
+        override suspend fun fetchArticleBody(storyId: Long, articleUrl: String): List<String> = emptyList()
     }
 
     /** Let the ViewModel's launched work run without advancing into the 4-hour auto-refresh. */

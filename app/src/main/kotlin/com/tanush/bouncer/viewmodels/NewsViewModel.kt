@@ -94,7 +94,9 @@ class NewsViewModel(
     private val _articleBodyError = MutableStateFlow<String?>(null)
     val articleBodyError: StateFlow<String?> = _articleBodyError.asStateFlow()
 
-    private var lastArticleUrl: String? = null
+    /** What [retryArticleBody] re-requests: the story id the server keys the body on, and the URL
+     *  the fallback scrape needs. Both, because either source alone can be the one that failed. */
+    private var lastArticleRef: Pair<Long, String>? = null
 
     private var pollingJob: Job? = null
     private var lastFetchTime: Long = 0L
@@ -220,7 +222,7 @@ class NewsViewModel(
         _selectedArticle.value = article
         _articleBody.value = emptyList()
         _articleBodyError.value = null
-        fetchArticleBody(article.articleUrl)
+        fetchArticleBody(article.id, article.articleUrl)
     }
 
     fun clearSelectedArticle() {
@@ -230,33 +232,33 @@ class NewsViewModel(
     }
 
     fun retryArticleBody() {
-        val url = lastArticleUrl ?: return
+        val (storyId, url) = lastArticleRef ?: return
         _articleBodyError.value = null
-        fetchArticleBody(url)
+        fetchArticleBody(storyId, url)
     }
 
-    private fun fetchArticleBody(url: String) {
-        lastArticleUrl = url
+    private fun fetchArticleBody(storyId: Long, url: String) {
+        lastArticleRef = storyId to url
         viewModelScope.launch(bouncerExceptionHandler) {
             _isLoadingArticle.value = true
             try {
-                val paragraphs = repository.fetchArticleBody(url)
+                val paragraphs = repository.fetchArticleBody(storyId, url)
                 _articleBody.value = paragraphs
                 Sentry.metrics().distribution("news.article.paragraphs", paragraphs.size.toDouble())
-                Log.d(TAG, "Scraped ${paragraphs.size} paragraphs for article")
+                Log.d(TAG, "Loaded ${paragraphs.size} paragraphs for article $storyId")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to scrape article body from $url", e)
+                Log.e(TAG, "Failed to load article body for $storyId", e)
                 breadcrumb(
-                    category = "scraping.error",
-                    message = "Failed to scrape article body",
+                    category = "news.error",
+                    message = "Failed to load article body",
                     level = SentryLevel.ERROR,
-                    data = mapOf("url" to url, "error_type" to e.javaClass.simpleName),
+                    data = mapOf("story_id" to storyId, "error_type" to e.javaClass.simpleName),
                 )
                 Sentry.captureException(e)
-                Sentry.metrics().count("news.article.scrape.error", 1.0)
-                Sentry.logger().error("Article scrape failed: %s", e.message ?: "unknown")
+                Sentry.metrics().count("news.article.body.error", 1.0)
+                Sentry.logger().error("Article body load failed: %s", e.message ?: "unknown")
                 _articleBodyError.value = "Rain delay — couldn't load this article. Check your connection and retry."
             } finally {
                 _isLoadingArticle.value = false

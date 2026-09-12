@@ -114,12 +114,13 @@ object TimelineEventExtractor {
         items: List<T>,
         textOf: (T) -> String,
         withText: (T, String) -> T,
+        ballOf: (T) -> String? = { ballNumberOf(textOf(it)) },
     ): List<T> {
         val normalized = items.mapNotNull { item ->
             val text = normalize(textOf(item)).replace(' ', ' ').replace(whitespaceRun, " ").trim()
             if (text.isBlank()) null else withText(item, text)
         }
-        return dropNearDuplicates(keepLongestPerBall(normalized, textOf), textOf)
+        return dropNearDuplicates(keepLongestPerBall(normalized, textOf, ballOf), textOf, ballOf)
     }
 
     /** True when [line] announces a dismissal and neither its outcome clause nor a veto denies it. */
@@ -215,11 +216,15 @@ private fun comparisonForm(line: String): String =
     line.lowercase().replace(leadingBallTokens, "").replace(leadingNumber, "")
 
 /** Pass 1: group by ball number, keep longest (most complete progressive update). */
-private fun <T> keepLongestPerBall(normalized: List<T>, textOf: (T) -> String): List<T> {
-    val bestByBall = longestPerBall(normalized, textOf)
+private fun <T> keepLongestPerBall(
+    normalized: List<T>,
+    textOf: (T) -> String,
+    ballOf: (T) -> String?,
+): List<T> {
+    val bestByBall = longestPerBall(normalized, textOf, ballOf)
     val seen = mutableSetOf<String>()
     return normalized.mapNotNull { item ->
-        val ball = ballNumberOf(textOf(item))
+        val ball = ballOf(item)
         // A line with no ball number dedupes against its own text instead.
         val key = ball ?: textOf(item).lowercase()
         when {
@@ -231,31 +236,59 @@ private fun <T> keepLongestPerBall(normalized: List<T>, textOf: (T) -> String): 
 }
 
 /** The most complete update seen for each ball number. */
-private fun <T> longestPerBall(items: List<T>, textOf: (T) -> String): Map<String, T> {
+private fun <T> longestPerBall(
+    items: List<T>,
+    textOf: (T) -> String,
+    ballOf: (T) -> String?,
+): Map<String, T> {
     val best = mutableMapOf<String, T>()
     for (item in items) {
-        val ball = ballNumberOf(textOf(item)) ?: continue
+        val ball = ballOf(item) ?: continue
         val existing = best[ball]
         if (existing == null || textOf(item).length > textOf(existing).length) best[ball] = item
     }
     return best
 }
 
-/** Pass 2: prefix dedup — keep only the longer of near-duplicate pairs. */
-private fun <T> dropNearDuplicates(items: List<T>, textOf: (T) -> String): List<T> {
+/**
+ * Pass 2: prefix dedup — keep only the longer of near-duplicate pairs, WITHIN one ball.
+ *
+ * Two lines carrying different ball numbers are different deliveries by definition and are never
+ * compared. Comparing across balls is what emptied the commentary tab: Cricbuzz passthrough text
+ * reads `"<Bowler> to <Batter>, …"`, [isNearDuplicate]'s prefix floor is 15 characters — about
+ * `"Tymal Mills to "` — and so every short delivery in an over was judged a duplicate of the one
+ * long line in it, which is always the wicket or the boundary. Over 18 of ETPL match 169380 went
+ * from six deliveries to two that way.
+ *
+ * Items with no ball number still compare against each other, which is the legacy scrape path: an
+ * on-device scraped line carries its number in the prose, and a genuine progressive update for one
+ * ball is what this pass exists to collapse.
+ */
+private fun <T> dropNearDuplicates(
+    items: List<T>,
+    textOf: (T) -> String,
+    ballOf: (T) -> String?,
+): List<T> {
     // Comparison forms built ONCE per line, not once per comparison.
     val compare = items.map { comparisonForm(textOf(it)) }
+    val balls = items.map(ballOf)
     val toRemove = mutableSetOf<Int>()
     for (i in compare.indices) {
-        if (i !in toRemove) markDuplicatesOf(i, compare, toRemove)
+        if (i !in toRemove) markDuplicatesOf(i, compare, balls, toRemove)
     }
     return items.filterIndexed { idx, _ -> idx !in toRemove }
 }
 
-/** Compare [i] against every later survivor, dropping whichever of the pair is shorter. */
-private fun markDuplicatesOf(i: Int, compare: List<String>, toRemove: MutableSet<Int>) {
+/** Compare [i] against every later survivor of the same ball, dropping the shorter of the pair. */
+private fun markDuplicatesOf(
+    i: Int,
+    compare: List<String>,
+    balls: List<String?>,
+    toRemove: MutableSet<Int>,
+) {
     for (j in i + 1 until compare.size) {
         if (j in toRemove) continue
+        if (balls[i] != balls[j]) continue
         if (isNearDuplicate(compare[i], compare[j])) {
             toRemove.add(if (compare[i].length <= compare[j].length) i else j)
         }
