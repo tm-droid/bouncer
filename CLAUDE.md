@@ -428,6 +428,17 @@ survives"), so every dismissal pattern fires on it. `classifyEvent` (`llm.js`) a
 statement that nobody was dismissed. `outcomeClause` lives in `llm.js`, which `cricbuzz.js` imports,
 because llm.js is vendored byte-identically into `generate-commentary`, which has no `cricbuzz.js`.
 
+**The verification call has its own token budget, and it is not the answer's length.** Every
+provider in the chain is a reasoning model — groq runs `openai/gpt-oss-20b` with
+`reasoning_effort: low` — and reasoning tokens come out of the same `max_tokens` as the reply. So
+`verifyLine`'s budget cannot be sized for the word "PASS": at `maxTokens: 16` the budget was spent
+before a verdict was ever emitted, groq returned an *empty completion* on the verify prompt while
+answering the generate prompt (100) perfectly, and with cerebras and sambanova both on HTTP 402 the
+fact-check failed closed on every delivery. That is the whole of ANDROID-38 — 1,858 balls stored as
+raw Cricbuzz text — and generation was never the broken half. It is 64 now, pinned by
+`verification-scope.test.js`. An `empty completion` note carries its `finish_reason` for the same
+reason: `length` (a spent budget) and `stop` (a model that answered nothing) need opposite fixes.
+
 **Never state a figure for a partially-stored over.** `overTotalRuns`/`isMaidenOver` require six
 legal deliveries present. One stored dot ball rendered as "Over 89 · MAIDEN · 0 runs".
 
