@@ -291,8 +291,9 @@ hardcoded sparklines as run-rate trends, a constant string as a "predictive engi
 the win probability relabelled as both an impact score and a model confidence. The only server-side
 model is win probability (`bouncer-win-probability`).
 
-Density target: Home shows **4–5 matches per screen**, measured against
-`other-apps/cricinfo|cricbuzz`. Those three reference apps and `design/stitch-mocks/` are the
+Density target: Home shows **4 matches per screen** (hero plus three rows, or four rows), measured
+against `other-apps/cricinfo|cricbuzz`. Five fit at 10dp `rowVertical` and read as cramped; the row
+is 14dp with 8dp between its lines. Those three reference apps and `design/stitch-mocks/` are the
 design spec; check a change against them before adding chrome.
 
 **Light mode is a first-class palette, and the legacy layer is bridged into it.** `BouncerThemeV2`

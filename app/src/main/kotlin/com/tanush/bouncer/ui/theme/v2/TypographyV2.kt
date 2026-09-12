@@ -64,11 +64,11 @@ data class BouncerTypographyV2(
         fontSize = 18.sp,
         lineHeight = 26.sp,
     ),
-    /** 16sp Medium — team names, player names */
+    /** 17sp Medium — team names, player names */
     val titleMedium: TextStyle = TextStyle(
         fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Medium,
-        fontSize = 16.sp,
+        fontSize = 17.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.15.sp,
     ),
@@ -136,20 +136,20 @@ data class BouncerTypographyV2(
         lineHeight = 16.sp,
         letterSpacing = 0.8.sp,
     ),
-    /** 22sp ExtraBold, tabular — compact match card scores */
+    /** 24sp ExtraBold, tabular — compact match card scores */
     val scoreLarge: TextStyle = TextStyle(
         fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.ExtraBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
+        fontSize = 24.sp,
+        lineHeight = 30.sp,
         fontFeatureSettings = TABULAR,
     ),
-    /** 16sp Bold, tabular — secondary scores, overs */
+    /** 18sp Bold, tabular — secondary scores, overs */
     val scoreMedium: TextStyle = TextStyle(
         fontFamily = BouncerFontFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 16.sp,
-        lineHeight = 22.sp,
+        fontSize = 18.sp,
+        lineHeight = 24.sp,
         fontFeatureSettings = TABULAR,
     ),
     /** 14sp Medium, tabular — stat figures, overs, run rates in tables and rows */

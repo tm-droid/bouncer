@@ -106,7 +106,7 @@ fun MatchCardV2(
                 isSubscribed = isSubscribed,
                 onSubscribeToggle = subscribeToggle,
             )
-            Spacer(Modifier.height(spacing.xs))
+            Spacer(Modifier.height(spacing.sm))
             MatchTeamRows(match = match, isLive = statusType == MatchStatusType.Live)
             MatchCardStatusLine(match = match)
         }
@@ -207,7 +207,7 @@ internal fun MatchTeamRows(match: CricketMatch, isLive: Boolean) {
     val reserveLogoSlot = match.teams.any { it.logoUrl != null }
     val yetToBat = isLive && match.teams.any { it.score.isNotBlank() }
     match.teams.take(2).forEachIndexed { index, team ->
-        if (index > 0) Spacer(Modifier.height(spacing.xs))
+        if (index > 0) Spacer(Modifier.height(spacing.sm))
         TeamRowV2(
             teamName = team.name,
             teamAcronym = team.acronym,
@@ -226,7 +226,7 @@ private fun MatchCardStatusLine(match: CricketMatch) {
     if (match.currentStatus.isBlank()) return
     val colors = BouncerThemeV2.colors
     val spacing = BouncerThemeV2.spacing
-    Spacer(Modifier.height(spacing.xs))
+    Spacer(Modifier.height(spacing.sm))
     Text(
         text = matchStatusText(match.currentStatus),
         style = BouncerThemeV2.typography.bodySmall,

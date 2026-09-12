@@ -29,14 +29,14 @@ data class BouncerSpacingV2(
     val xxxl: Dp = 48.dp,
 
     /**
-     * 10dp — vertical padding inside one list row (match, player, series).
+     * 14dp — vertical padding inside one list row (match, player, series).
      *
-     * Off the 4dp grid on purpose. A scores app is judged on how many scores fit on a screen:
-     * at the old geometry (16dp margin + 4dp gap + 16dp card padding) Home showed ~2.5 matches,
-     * against 4–5 in Cricbuzz and Cricinfo. Rows are separated by a divider, not by a gap, so
-     * this is the only vertical spend per row.
+     * A scores app is judged on how many scores fit on a screen: at the pre-August geometry (16dp
+     * margin + 4dp gap + 16dp card padding) Home showed ~2.5 matches, against 4–5 in Cricbuzz and
+     * Cricinfo. 10dp hit five but read as cramped — rows ran together because a divider, not a gap,
+     * is all that separates them — so this trades the fifth match for air around the fourth.
      */
-    val rowVertical: Dp = 10.dp,
+    val rowVertical: Dp = 14.dp,
     /** 16dp — between sections of one screen. Was [xl]; 24dp reads as a gap, not a break. */
     val sectionGap: Dp = 16.dp,
 )
