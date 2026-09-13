@@ -7,13 +7,11 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.tanush.bouncer.data.local.dao.AICacheDao
-import com.tanush.bouncer.data.local.dao.CommentaryDao
 import com.tanush.bouncer.data.local.dao.HighlightDao
 import com.tanush.bouncer.data.local.dao.MatchDao
 import com.tanush.bouncer.data.local.dao.PlayerCacheDao
 import com.tanush.bouncer.data.local.dao.SeriesCacheDao
 import com.tanush.bouncer.data.local.entities.AICommentaryCacheEntity
-import com.tanush.bouncer.data.local.entities.CommentaryEntity
 import com.tanush.bouncer.data.local.entities.HighlightEntity
 import com.tanush.bouncer.data.local.entities.MatchEntity
 import com.tanush.bouncer.data.local.entities.PlayerCacheEntity
@@ -22,19 +20,17 @@ import com.tanush.bouncer.data.local.entities.SeriesCacheEntity
 @Database(
     entities = [
         MatchEntity::class,
-        CommentaryEntity::class,
         PlayerCacheEntity::class,
         SeriesCacheEntity::class,
         AICommentaryCacheEntity::class,
         HighlightEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = true
 )
 abstract class BouncerDatabase : RoomDatabase() {
 
     abstract fun matchDao(): MatchDao
-    abstract fun commentaryDao(): CommentaryDao
     abstract fun playerCacheDao(): PlayerCacheDao
     abstract fun seriesCacheDao(): SeriesCacheDao
     abstract fun aiCacheDao(): AICacheDao
@@ -217,8 +213,23 @@ abstract class BouncerDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Drops `commentary`.
+         *
+         * Nothing in the app ever inserted into it: its DAO's insert and page queries had no
+         * caller, and the only use was the weekly cleanup deleting from an empty table (which
+         * MIGRATION_13_14 then indexed). Live commentary comes from the `match-commentary`
+         * Appwrite table. `IF EXISTS` so the statement is safe on every upgrade path.
+         */
+        internal val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP INDEX IF EXISTS idx_commentary_timestamp")
+                db.execSQL("DROP TABLE IF EXISTS commentary")
+            }
+        }
+
         // Add new migrations here; Room will apply them in order on upgrade.
-        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
 
         fun getInstance(context: Context): BouncerDatabase {
             return INSTANCE ?: synchronized(this) {

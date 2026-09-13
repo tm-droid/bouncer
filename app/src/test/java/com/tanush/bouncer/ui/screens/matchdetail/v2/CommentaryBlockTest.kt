@@ -128,4 +128,42 @@ class CommentaryBlockTest {
         assertEquals(1, blocks.size)
         assertEquals(null, blocks.single().overNumber)
     }
+
+    // ── Lazy-list keys ───────────────────────────────────────────────────────
+
+    private fun allKeys(keys: List<CommentaryBlockKeys>) = keys.flatMap { listOf(it.innings, it.over) + it.balls }
+
+    @Test
+    fun `an existing row keeps its key when a newer ball arrives above it`() {
+        val before = listOf(ball("12.3", innings = 1), ball("12.2", innings = 1), ball("12.1", innings = 1))
+        val after = listOf(ball("12.4", innings = 1)) + before
+        val keysBefore = commentaryItemKeys(buildCommentaryBlocks(before)).flatMap { it.balls }
+        val keysAfter = commentaryItemKeys(buildCommentaryBlocks(after)).flatMap { it.balls }
+        assertEquals(keysBefore, keysAfter.drop(1))
+    }
+
+    @Test
+    fun `an existing row keeps its key when a new over opens above it`() {
+        val before = listOf(ball("12.6", innings = 1), ball("12.5", innings = 1))
+        val after = listOf(ball("13.1", innings = 1)) + before
+        val oldBlockBefore = commentaryItemKeys(buildCommentaryBlocks(before)).single()
+        val oldBlockAfter = commentaryItemKeys(buildCommentaryBlocks(after)).last()
+        assertEquals(oldBlockBefore, oldBlockAfter)
+    }
+
+    @Test
+    fun `repeated labels and repeated non-delivery text never produce a duplicate key`() {
+        // ANDROID-40: a duplicate lazy-list key throws. Same label twice in one innings (a
+        // republished line), the same over number in two innings, and two identical notes.
+        val feed = listOf(
+            ball("12.1", innings = 3),
+            CommentaryEntry("Drinks on the field.", null, ball = null, innings = 3).parseBall(),
+            ball("12.1", innings = 1, text = "republished"),
+            ball("12.1", innings = 1),
+            CommentaryEntry("Drinks on the field.", null, ball = null, innings = 1).parseBall(),
+            CommentaryEntry("Drinks on the field.", null, ball = null, innings = 1).parseBall(),
+        )
+        val keys = allKeys(commentaryItemKeys(buildCommentaryBlocks(feed)))
+        assertEquals(keys.size, keys.toSet().size)
+    }
 }

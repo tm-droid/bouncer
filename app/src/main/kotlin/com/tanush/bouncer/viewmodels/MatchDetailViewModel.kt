@@ -24,6 +24,7 @@ import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
 import com.tanush.bouncer.data.remote.ProductionLiveDetailSource
 import com.tanush.bouncer.data.remote.H2HPair
 import com.tanush.bouncer.data.remote.H2HRepository
+import com.tanush.bouncer.data.remote.RealtimeLifecycleController
 import com.tanush.bouncer.data.remote.WinProbabilityStore
 import com.tanush.bouncer.network.CricBuzzUrls
 import com.tanush.bouncer.services.MatchPresenceReporter
@@ -41,6 +42,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -183,6 +185,10 @@ class MatchDetailViewModel(
         // filled. Inlined for the same reason as the loop itself: detekt's TooManyFunctions.
         viewModelScope.launch(bouncerExceptionHandler) {
             while (isActive && !isMatchOver(match, _uiState.value.liveStatus)) {
+                // Suspends while backgrounded: a ping is a billed execution and a refresh a Storage
+                // download, and neither can reach a screen nobody is looking at. The ViewModel
+                // outlives a backgrounded activity, so without this the loop ran until the process died.
+                RealtimeLifecycleController.foreground.first { it }
                 MatchPresenceReporter.ping(match.id)
                 WinProbabilityStore.refresh()
                 WinProbabilityStore.probabilityFor(match.id)?.alignedTo(match.teams)?.let { probability ->
@@ -389,11 +395,15 @@ class MatchDetailViewModel(
         typewriterJob?.cancel()
         typewriterJob = viewModelScope.launch(bouncerExceptionHandler) {
             _streamingCommentary.value = ""
+            // Word by word, not character by character: an 18 ms per-character emit recomposed the
+            // Overview ~55 times a second for the length of every line.
+            val words = ev.commentary.split(' ')
             val sb = StringBuilder(ev.commentary.length)
-            for (ch in ev.commentary) {
-                sb.append(ch)
+            words.forEachIndexed { index, word ->
+                if (index > 0) sb.append(' ')
+                sb.append(word)
                 _streamingCommentary.value = sb.toString()
-                delay(TYPEWRITER_CHAR_DELAY_MS)
+                delay(TYPEWRITER_WORD_DELAY_MS)
             }
             delay(TYPEWRITER_HOLD_MS)
             _streamingCommentary.value = ""
@@ -466,7 +476,7 @@ class MatchDetailViewModel(
     }
 
     companion object {
-        private const val TYPEWRITER_CHAR_DELAY_MS = 18L
+        private const val TYPEWRITER_WORD_DELAY_MS = 70L
         private const val TYPEWRITER_HOLD_MS = 1500L
         private const val MILESTONE_BANNER_MS = 15_000L
         // Re-ping well within match-sync's 4-min VIEWER_TTL_MS so ~2 dropped pings still count.

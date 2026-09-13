@@ -20,26 +20,20 @@ compose-bom = "2026.06.01"
 navigation-compose = "2.9.8"
 
 # ── Networking ─────────────────────────────────────────────────────────────────
-retrofit = "3.0.0"
 okhttp = "5.4.0"
 coil = "2.7.0"
 jsoup = "1.22.2"
 appwrite = "25.1.0"
-ktor = "3.5.0"
 
 # ── Serialization & Logging ───────────────────────────────────────────────────
 gson = "2.13.2"
 kotlinx-serialization = "1.11.0"
 kotlinx-coroutines = "1.11.0"
-kotlin-logging = "7.0.13"
 
 # ── UI & Layout ────────────────────────────────────────────────────────────────
 palette = "1.0.0"
-window = "1.5.1"
-material3-window-size = "1.4.0"
 work = "2.11.2"
 datastore = "1.2.1"
-play-app-update = "2.1.0"
 
 # ── Glance ─────────────────────────────────────────────────────────────────────
 glance = "1.1.1"
@@ -49,7 +43,6 @@ room = "2.8.4"
 ksp = "2.3.9"
 
 # ── Paging ────────────────────────────────────────────────────────────────────
-paging = "3.5.0"
 
 # ── Firebase ──────────────────────────────────────────────────────────────────
 firebase-bom = "33.7.0"
@@ -62,10 +55,6 @@ leakcanary = "2.14"
 car-app = "1.7.0"
 
 # ── Security overrides (explicit patched versions for vulnerable transitive deps)
-commons-lang3 = "3.20.0"
-bouncycastle = "1.84"
-jose4j = "0.9.6"
-jdom2 = "2.0.6.1"
 
 # ── Testing ────────────────────────────────────────────────────────────────────
 junit = "4.13.2"
@@ -90,42 +79,33 @@ compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
-compose-ui-text-google-fonts = { module = "androidx.compose.ui:ui-text-google-fonts" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
 compose-material = { module = "androidx.compose.material:material" }
 compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation-compose" }
 
 # ── Networking ─────────────────────────────────────────────────────────────────
-retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
-retrofit-converter-kotlinx = { module = "com.squareup.retrofit2:converter-kotlinx-serialization", version.ref = "retrofit" }
 okhttp-logging = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 appwrite = { module = "io.appwrite:sdk-for-android", version.ref = "appwrite" }
-ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 
 # ── UI & Layout ────────────────────────────────────────────────────────────────
 palette = { module = "androidx.palette:palette", version.ref = "palette" }
-window = { module = "androidx.window:window", version.ref = "window" }
-material3-windowsizeclass = { module = "androidx.compose.material3:material3-window-size-class", version.ref = "material3-window-size" }
 work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastore" }
-play-app-update-ktx = { module = "com.google.android.play:app-update-ktx", version.ref = "play-app-update" }
 
 # ── Glance ─────────────────────────────────────────────────────────────────────
 glance = { module = "androidx.glance:glance", version.ref = "glance" }
 glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
-glance-material3 = { module = "androidx.glance:glance-material3", version.ref = "glance" }
 
 # ── Serialization & Logging ───────────────────────────────────────────────────
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
-kotlin-logging-android = { module = "io.github.oshai:kotlin-logging-android", version.ref = "kotlin-logging" }
 
 # ── Room ───────────────────────────────────────────────────────────────────────
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
@@ -133,8 +113,6 @@ room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 
 # ── Paging ────────────────────────────────────────────────────────────────────
-paging-runtime = { module = "androidx.paging:paging-runtime", version.ref = "paging" }
-paging-compose = { module = "androidx.paging:paging-compose", version.ref = "paging" }
 
 # ── Firebase ──────────────────────────────────────────────────────────────────
 firebase-bom-lib = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
@@ -148,11 +126,6 @@ leakcanary = { module = "com.squareup.leakcanary:leakcanary-android", version.re
 car-app = { module = "androidx.car.app:app", version.ref = "car-app" }
 
 # ── Security overrides ─────────────────────────────────────────────────────────
-commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang3" }
-bouncycastle-prov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
-bouncycastle-pkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
-jose4j = { module = "org.bitbucket.b_c:jose4j", version.ref = "jose4j" }
-jdom2 = { module = "org.jdom:jdom2", version.ref = "jdom2" }
 
 # ── Testing ────────────────────────────────────────────────────────────────────
 json = { module = "org.json:json", version = "20260522" }

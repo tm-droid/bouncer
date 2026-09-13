@@ -40,7 +40,26 @@ object ScrapeFetcher {
         userAgent: String,
         @Suppress("UNUSED_PARAMETER") timeoutMs: Int = 0,
         headers: Map<String, String> = emptyMap(),
-    ): Document {
+    ): Document =
+        // baseUri matters: Jsoup resolves relative hrefs against it, and the scrapers rely on
+        // absUrl() for match and player links.
+        Jsoup.parse(getString(url, userAgent, timeoutMs, headers), url)
+
+    /**
+     * GETs [url] and returns the raw body, for callers that only read embedded script data.
+     *
+     * The flight-payload parsers (`self.__next_f.push` chunks) work on a string. Going through [get]
+     * built a full DOM of a several-hundred-KB page and then serialised it straight back with
+     * `doc.html()` — two passes over the page for nothing, on the Live tab's six-second poll. The
+     * parsers' tests already run against raw captured markup, which is exactly this body.
+     */
+    @Throws(IOException::class)
+    fun getString(
+        url: String,
+        userAgent: String,
+        @Suppress("UNUSED_PARAMETER") timeoutMs: Int = 0,
+        headers: Map<String, String> = emptyMap(),
+    ): String {
         val request = Request.Builder()
             .url(url)
             .header("User-Agent", userAgent)
@@ -51,10 +70,7 @@ object ScrapeFetcher {
             if (!response.isSuccessful) {
                 throw IOException("HTTP ${response.code} fetching $url")
             }
-            val body = response.body?.string() ?: throw IOException("Empty body fetching $url")
-            // baseUri matters: Jsoup resolves relative hrefs against it, and the scrapers rely on
-            // absUrl() for match and player links.
-            return Jsoup.parse(body, url)
+            return response.body?.string() ?: throw IOException("Empty body fetching $url")
         }
     }
 }

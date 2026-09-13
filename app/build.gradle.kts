@@ -222,6 +222,12 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
     // broken migration but is only a missing asset path.
     sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
 
+    // The app ships English strings only; without this every library's translations (AndroidX,
+    // Material, Play services, Car App) are bundled for locales the UI never renders.
+    androidResources {
+        localeFilters += "en"
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -250,13 +256,6 @@ ksp {
 }
 
 dependencies {
-    // Avoid duplicate logging artifacts
-    modules {
-        module("io.github.oshai:kotlin-logging-android-debug") {
-            replacedBy("io.github.oshai:kotlin-logging-android", "Use the main artifact")
-        }
-    }
-
     // AndroidX Core — Stable aligned versions prevent runtime crashes
     implementation(libs.core.ktx)
     implementation(libs.core.splashscreen)
@@ -272,7 +271,6 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
-    implementation(libs.compose.ui.text.google.fonts)
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.extended)
 
@@ -280,12 +278,9 @@ dependencies {
     implementation(libs.navigation.compose)
 
     // Networking
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.converter.kotlinx)
-    // Gson used to arrive transitively through converter-gson. It is declared explicitly now
-    // because the scrapers still use its JSON *tree* API (JsonObject/JsonParser) to walk
-    // Cricbuzz's flight payloads. That usage is not reflective over app classes, so unlike the
-    // Gson binding it replaced, it needs no ProGuard keep rules.
+    // The scrapers use Gson's JSON *tree* API (JsonObject/JsonParser) to walk Cricbuzz's flight
+    // payloads. It is not reflective over app classes, so it needs no ProGuard keep rules. It is
+    // not a removable duplicate of kotlinx.serialization: the Appwrite SDK depends on Gson itself.
     implementation(libs.gson)
     implementation(libs.okhttp.logging)
     implementation(libs.coil.compose)
@@ -294,32 +289,22 @@ dependencies {
 
     // UI & Layout
     implementation(libs.palette)
-    implementation(libs.window)
-    implementation(libs.material3.windowsizeclass)
     implementation(libs.work.runtime.ktx)
     implementation(libs.datastore.preferences)
-    implementation(libs.play.app.update.ktx)
 
     // Glance Widgets
     implementation(libs.glance)
     implementation(libs.glance.appwidget)
-    implementation(libs.glance.material3)
 
     // Core Engine
-    implementation(libs.ktor.client.cio)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlin.logging.android)
 
     // Room (offline cache)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
-
-    // Paging 3
-    implementation(libs.paging.runtime)
-    implementation(libs.paging.compose)
 
     // Firebase (requires google-services.json from Firebase Console to activate)
     implementation(platform(libs.firebase.bom.lib))
@@ -329,13 +314,10 @@ dependencies {
     // Car App (Android Auto)
     implementation(libs.car.app)
 
-    // Security: explicit declarations at patched versions so Dependabot closes CVE alerts
-    // (#25 commons-lang3, #29 jdom2, #31 jose4j, #34/#35/#36 bouncycastle)
-    implementation(libs.commons.lang3)
-    implementation(libs.bouncycastle.prov)
-    implementation(libs.bouncycastle.pkix)
-    implementation(libs.jose4j)
-    implementation(libs.jdom2)
+    // Security pins (#25 commons-lang3, #29 jdom2, #31 jose4j, #34/#35/#36 bouncycastle) live in
+    // `configurations.all { resolutionStrategy.force }` below, which reaches every transitive use.
+    // They used to be `implementation` dependencies too — nothing in the app imports them, and that
+    // shipped ~1.24 MB of BouncyCastle (mostly post-quantum lookup tables) in every release.
 
     // Testing
     testImplementation(libs.junit)

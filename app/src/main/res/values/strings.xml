@@ -3,7 +3,6 @@
     <string name="live_match_widget_description">Real-time cricket updates and live match scores.</string>
     <string name="bouncer_glance_widget_description">Live cricket scores at a glance</string>
     <string name="bouncer_lock_widget_description">Quick cricket score updates on your lock screen</string>
-    <string name="widget_app_name" translatable="false">Bouncer</string>
     <string name="widget_configuration_title">Configure Widget</string>
     <string name="countdown_widget_description">Upcoming match countdown and schedule highlights.</string>
     <string name="title_stats_detail">Statistics Details</string>
@@ -15,11 +14,9 @@
     <string name="tab_info">Match Info</string>
     
     <!-- Actions -->
-    <string name="action_clear">Clear All</string>
 
     <!-- Accessibility -->
     <string name="cd_notifications">Manage notifications</string>
-    <string name="cd_settings">Open app settings</string>
 
     <!-- Notification Settings -->
 
@@ -37,7 +34,6 @@
     <string name="home_empty_title">No matches found</string>
     <string name="home_empty_subtitle">Try changing your filters or pull to refresh</string>
     <string name="section_matches">Matches</string>
-    <string name="action_see_all">See All</string>
     <string name="cd_search">Search</string>
     <string name="cd_filter_category">Filter by competition</string>
     <string name="home_all_matches">All matches</string>
@@ -112,8 +108,6 @@
     <!-- Current and required run rate. Standard cricket abbreviations, said the same in Hindi. -->
     <string name="stat_crr_value" translatable="false">CRR: %1$s</string>
     <string name="stat_rrr_value" translatable="false">RRR: %1$s</string>
-    <string name="stat_crr" translatable="false">CRR</string>
-    <string name="stat_rrr" translatable="false">RRR</string>
 
     <string name="match_info_title">Match Information</string>
     <string name="match_info_series">Series</string>
@@ -283,10 +277,6 @@
     <string name="news_pull_down_to_refresh_and_try">Pull down to refresh and try again</string>
     <string name="news_the_live_news_source_is_unavailable">The live news source is unavailable. Pull down to try again.</string>
     <string name="news_this_story_may_have_expired_head">This story may have expired. Head back for the latest headlines.</string>
-    <string name="notification_four">FOUR! 💛</string>
-    <string name="notification_ongoing_live_match_score_updates">Ongoing live match score updates</string>
-    <string name="notification_six">SIX! 💜</string>
-    <string name="notification_wicket">WICKET! 🔴</string>
     <string name="notifications_no_notifications_yet">No notifications yet</string>
     <string name="notifications_subscribe_to_matches_with_the_bell">Subscribe to matches with the bell icon to get alerts</string>
     <string name="comparison_over_by_over">Over-by-Over Comparison</string>

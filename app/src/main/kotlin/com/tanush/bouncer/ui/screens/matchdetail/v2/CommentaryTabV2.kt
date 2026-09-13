@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -59,6 +60,8 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.TimelineEventExtractor
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Contextual empty state — a quiet feed reads differently at stumps vs. pre-match. */
 @Composable
@@ -121,12 +124,16 @@ fun CommentaryTabV2(
     // cannot silently turn every filter into "All".
     val filterLabels = CommentaryFilter.entries.map { stringResource(it.labelRes) }
 
-    val filteredCommentary = remember(commentary, selectedFilter) {
-        filterCommentary(commentary, selectedFilter)
-    }
-
-    val blocks = remember(filteredCommentary) {
-        buildCommentaryBlocks(filteredCommentary.map { it.parseBall() })
+    // Filtering, regex ball parsing and block building over up to 500 rows re-ran on the main thread
+    // for every live update. They run on Default now; the first frame is still built synchronously
+    // so the tab never opens empty, and later updates keep showing the previous feed until the new
+    // one is ready.
+    val feed by produceState(
+        initialValue = remember { buildCommentaryFeed(commentary, selectedFilter) },
+        commentary,
+        selectedFilter,
+    ) {
+        value = withContext(Dispatchers.Default) { buildCommentaryFeed(commentary, selectedFilter) }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -145,7 +152,7 @@ fun CommentaryTabV2(
             contentPadding = PaddingValues(vertical = spacing.md),
         ) {
             commentaryFeedItems(
-                blocks = blocks,
+                feed = feed,
                 recentBalls = recentBalls,
                 selectedFilter = selectedFilter,
                 spacing = spacing,
@@ -160,7 +167,7 @@ fun CommentaryTabV2(
 }
 
 private fun LazyListScope.commentaryFeedItems(
-    blocks: List<CommentaryBlock>,
+    feed: CommentaryFeed,
     recentBalls: List<String>,
     selectedFilter: CommentaryFilter,
     spacing: BouncerSpacingV2,
@@ -173,21 +180,22 @@ private fun LazyListScope.commentaryFeedItems(
     }
 
     val showOverCards = selectedFilter == CommentaryFilter.ALL
-    // Keys carry the block index, never the scraped label alone: two innings of the same match
-    // hold the same over numbers, and a duplicate key throws (ANDROID-40).
-    blocks.forEachIndexed { blockIndex, block ->
+    // Keys come from commentaryItemKeys: stable across live updates, unique by construction
+    // (a duplicate key throws, ANDROID-40).
+    feed.blocks.forEachIndexed { blockIndex, block ->
+        val keys = feed.keys[blockIndex]
         if (block.startsInnings) {
-            item(key = "inns_$blockIndex") { InningsDivider(block.innings) }
+            item(key = keys.innings) { InningsDivider(block.innings) }
         }
         // An over card is a statement about an over, so it is drawn only where the feed is showing
         // whole overs. A filtered view holds one ball of each, and a card over it would read as a
         // claim about the other five.
         if (showOverCards && block.overNumber != null) {
-            item(key = "sep_${blockIndex}_${block.overNumber}") {
+            item(key = keys.over) {
                 OverSeparatorCard(overNumber = block.overNumber, balls = block.balls)
             }
         }
-        items(block.balls.size, key = { "ball_${blockIndex}_$it" }) { idx ->
+        items(block.balls.size, key = { keys.balls[it] }) { idx ->
             val ball = block.balls[idx]
             // Non-deliveries (session notes, weather) carry no ball label and get no pill.
             if (ball.ballLabel == null) {

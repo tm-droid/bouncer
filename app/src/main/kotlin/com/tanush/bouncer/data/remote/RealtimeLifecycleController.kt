@@ -9,6 +9,9 @@ import com.tanush.bouncer.utils.sentryBreadcrumb
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -40,6 +43,16 @@ object RealtimeLifecycleController {
     private var running = true
     private var pauseJob: Job? = null
 
+    private val _foreground = MutableStateFlow(true)
+
+    /**
+     * False once the app has been in the background past the grace period, true again on return.
+     * The same boundary as the socket pause, for loops that bill per tick (the match-detail presence
+     * heartbeat) and should not keep firing for a screen nobody can see. True until [attach] has
+     * observed a background, so code running without an Application (unit tests) is unaffected.
+     */
+    val foreground: StateFlow<Boolean> = _foreground.asStateFlow()
+
     /**
      * Register an app-lifetime subscription. [start] must be idempotent — the clients guard with
      * `subscriptionStarted`, which [AppwriteTableClient.stop] resets so a restart takes effect.
@@ -66,6 +79,7 @@ object RealtimeLifecycleController {
         // Cancels a pending pause, so a rotation or a quick app-switch never tears the sockets down.
         pauseJob?.cancel()
         pauseJob = null
+        _foreground.value = true
         if (running) return
         running = true
         managed.forEach { entry ->
@@ -86,6 +100,7 @@ object RealtimeLifecycleController {
                 // Re-check: the app may have come back during the grace period.
                 if (startedActivities > 0 || !running) return@synchronized
                 running = false
+                _foreground.value = false
                 managed.forEach { entry ->
                     runCatching { entry.stop() }.onFailure {
                         Log.w(TAG, "Realtime stop failed for ${entry.name}: ${it.message}")

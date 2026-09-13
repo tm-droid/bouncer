@@ -9,6 +9,12 @@ import com.tanush.bouncer.R
  * The app typeface: IBM Plex Sans, bundled in `res/font` (SIL OFL, licence in
  * `assets/licenses/ibm-plex-sans-OFL.txt`).
  *
+ * The TTFs are subset to Latin (U+0000-024F, Latin Extended Additional, combining marks, general
+ * punctuation, currency, arrows, math, geometric shapes) with every OpenType feature kept and hinting
+ * dropped: 806 KB down to 272 KB. Anything outside those ranges (Cyrillic, Greek, Devanagari) falls
+ * back to the system font, which is what it did for scripts Plex never covered. To regenerate from
+ * the upstream files, run `pyftsubset` with those `--unicodes`, `--layout-features='*' --no-hinting`.
+ *
  * This used to be Inter fetched through the Google Play downloadable-font provider. Two problems: Inter
  * is the face every generated interface defaults to, and a downloadable font falls back to Roboto
  * silently whenever the provider is slow or absent, so the app never reliably rendered in the face it

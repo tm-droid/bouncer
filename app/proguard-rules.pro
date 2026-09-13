@@ -2,34 +2,19 @@
 # Bouncer — ProGuard / R8 Rules
 # ──────────────────────────────────────────────────────────────────────────────
 
-# ── Retrofit ──────────────────────────────────────────────────────────────────
--keepattributes Signature
--keepattributes *Annotation*
-
-# Retrofit does reflection on generic parameters. InnerClasses is required to use
-# Signature and EnclosingMethod is required to use InnerClasses.
+# ── Reflection attributes ─────────────────────────────────────────────────────
+# Retrofit is gone; these attributes stay because Gson (Appwrite SDK) and kotlinx.serialization
+# read generic signatures and annotations at runtime.
 -keepattributes Signature, InnerClasses, EnclosingMethod
-
-# Retrofit does reflection on method and parameter annotations.
+-keepattributes *Annotation*
 -keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
-
-# Keep annotation default values (e.g., retrofit2.http.Field.encoded).
 -keepattributes AnnotationDefault
-
-# Retain service method parameters when optimizing.
--keepclassmembers,allowshrinking,allowobfuscation interface * {
-    @retrofit2.http.* <methods>;
-}
 
 # Ignore annotation used for build tooling.
 -dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
 
 # Ignore JSR 305 annotations for embedding nullability information.
 -dontwarn javax.annotation.**
-
-# Top-level functions that can only be used by Kotlin.
--dontwarn retrofit2.KotlinExtensions
--dontwarn retrofit2.KotlinExtensions$*
 
 # ── Gson ──────────────────────────────────────────────────────────────────────
 # Only the JSON *tree* API is still used (JsonObject/JsonParser, in the scrapers). That is not

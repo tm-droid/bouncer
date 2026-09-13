@@ -54,8 +54,10 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
         // Keep traces enabled so AI/LLM and performance spans are retained.
         options.setTracesSampleRate(if (isDebugBuild) 1.0 else 0.2)
 
-        // Session Replay: capture all debug sessions, sample production sessions.
-        options.sessionReplay.setOnErrorSampleRate(1.0)
+        // Session Replay: capture all debug sessions, sample production sessions. The on-error rate
+        // decides which sessions keep the rolling screenshot buffer running in the background, so
+        // 1.0 meant every production session paid that CPU and battery cost waiting for an error.
+        options.sessionReplay.setOnErrorSampleRate(if (isDebugBuild) 1.0 else 0.25)
         options.sessionReplay.setSessionSampleRate(if (isDebugBuild) 1.0 else 0.1)
         options.sessionReplay.setMaskAllText(true)
         options.sessionReplay.setMaskAllImages(true)

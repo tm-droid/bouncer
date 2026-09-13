@@ -68,14 +68,14 @@ class PointsTableScraper {
 
     private fun fetchOnce(seriesId: String): List<PointsTableEntry> {
         val landingUrl = "${CricBuzzUrls.BASE}/cricket-series/$seriesId/points-table"
-        val landing = ScrapeFetcher.get(landingUrl, randomUserAgent(), TIMEOUT_MS)
+        val landing = ScrapeFetcher.getString(landingUrl, randomUserAgent(), TIMEOUT_MS)
 
         // The unslugged page is a real 200 with no standings on it, so parse it only to find the
         // slugged URL. If it already carries a table (Cricbuzz has changed its mind before), use it.
-        val direct = parsePointsTableFlight(landing.html())
+        val direct = parsePointsTableFlight(landing)
         if (direct.isNotEmpty()) return direct
 
-        val slugged = sluggedPointsTableUrl(landing.html(), seriesId) ?: run {
+        val slugged = sluggedPointsTableUrl(landing, seriesId) ?: run {
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.points_table"
                 message = "No slugged points-table link on $landingUrl"
@@ -84,7 +84,7 @@ class PointsTableScraper {
             return emptyList()
         }
 
-        return parsePointsTableFlight(ScrapeFetcher.get(slugged, randomUserAgent(), TIMEOUT_MS).html())
+        return parsePointsTableFlight(ScrapeFetcher.getString(slugged, randomUserAgent(), TIMEOUT_MS))
     }
 }
 

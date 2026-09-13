@@ -1,14 +1,11 @@
 package com.tanush.bouncer.ui.components.glass
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,7 +15,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
@@ -35,7 +31,6 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
  * @param borderOpacity Opacity of the border (0.0-1.0)
  * @param useGoldBorder Whether to use gold accent border instead of white
  * @param showNoiseOverlay Whether to show the subtle noise texture overlay
- * @param showPulse Loading pulse animation (subtle breathing effect)
  * @param contentPadding Padding inside the card
  * @param content Content to display inside the card
  */
@@ -46,25 +41,12 @@ fun GlassCard(
     borderOpacity: Float = GlassOpacity.BORDER,
     useGoldBorder: Boolean = true,
     showNoiseOverlay: Boolean = true,
-    showPulse: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(BouncerDesignSystem.dimens.spacing.md),
     content: @Composable BoxScope.() -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
     
-    // Pulse animation
-    val infiniteTransition = rememberInfiniteTransition(label = "glass_pulse")
-    val alphaPulse by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (showPulse) 0.85f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "alpha_pulse"
-    )
-
     // Use the refined gold gradient for premium cards
     val gradientBorder = if (useGoldBorder) {
         colors.goldGradient
@@ -80,7 +62,6 @@ fun GlassCard(
     
     Box(
         modifier = modifier
-            .graphicsLayer { alpha = alphaPulse }
             .clip(shape)
             .background(colors.glassSurface) // Use the new semantic glass surface
             .border(width = 1.dp, brush = gradientBorder, shape = shape)
@@ -212,119 +193,6 @@ fun EtchedGoldBox(
 }
 
 /**
- * Hero-style glass card with team gradient background.
- * Used for main match score displays.
- */
-@Composable
-fun GlassCardHero(
-    modifier: Modifier = Modifier,
-    leftTeamColor: Color? = null,
-    rightTeamColor: Color? = null,
-    shape: Shape = BouncerDesignSystem.shapes.glassCardHero,
-    showNoiseOverlay: Boolean = true,
-    showPulse: Boolean = false,
-    contentPadding: PaddingValues = PaddingValues(0.dp),
-    content: @Composable BoxScope.() -> Unit
-) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
-    
-    // Pulse animation
-    val infiniteTransition = rememberInfiniteTransition(label = "hero_pulse")
-    val alphaPulse by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (showPulse) 0.9f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "alpha_pulse_hero"
-    )
-
-    Box(
-        modifier = modifier
-            .graphicsLayer { alpha = alphaPulse }
-            .clip(shape)
-            .background(colors.glassSurface)
-            .border(
-                width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        hierarchy.secondary.primary.copy(alpha = 0.3f),
-                        hierarchy.secondary.primary.copy(alpha = 0.1f)
-                    )
-                ),
-                shape = shape
-            )
-    ) {
-        // Team color gradient backgrounds
-        if (leftTeamColor != null || rightTeamColor != null) {
-            Row(modifier = Modifier.matchParentSize()) {
-                // Left team background
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    (leftTeamColor ?: colors.goldPrimary).copy(alpha = 0.15f),
-                                    Color.Transparent
-                                ),
-                                start = Offset(0f, 0f),
-                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                            )
-                        )
-                )
-                // Right team background
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    (rightTeamColor ?: colors.goldPrimary).copy(alpha = 0.15f)
-                                ),
-                                start = Offset(0f, 0f),
-                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                            )
-                        )
-                )
-            }
-        }
-        
-        // Premium Etched Gold Inner Border (top only)
-        val edgeLift = BouncerThemeV2.colors.highlight.copy(alpha = 0.1f)
-        Canvas(modifier = Modifier.matchParentSize()) {
-            val strokeWidth = 1.dp.toPx()
-            drawLine(
-                color = edgeLift,
-                start = Offset(20.dp.toPx(), 0f),
-                end = Offset(size.width - 20.dp.toPx(), 0f),
-                strokeWidth = strokeWidth
-            )
-        }
-        
-        // Noise texture overlay
-        if (showNoiseOverlay) {
-            NoiseOverlay(
-                modifier = Modifier.matchParentSize(),
-                density = 0.15f,
-                opacity = 0.04f
-            )
-        }
-        
-        // Content
-        Box(
-            modifier = Modifier.padding(contentPadding),
-            content = content
-        )
-    }
-}
-
-/**
  * Noise texture overlay for glass surfaces.
  * Creates a subtle noise effect using Canvas with random dots.
  *
@@ -337,23 +205,9 @@ fun NoiseOverlay(
     modifier: Modifier = Modifier,
     density: Float = 0.15f,
     opacity: Float = 0.04f,
-    isAnimated: Boolean = true
 ) {
-    // Subtle breathing effect for the noise texture to make it feel alive
-    val infiniteTransition = rememberInfiniteTransition(label = "noiseBreathing")
-    val breathingOpacity by if (isAnimated) {
-        infiniteTransition.animateFloat(
-            initialValue = opacity * 0.7f,
-            targetValue = opacity * 1.3f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(4000, easing = LinearOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "opacity"
-        )
-    } else {
-        remember { mutableFloatStateOf(opacity) }
-    }
+    // Static. It used to "breathe" on a 4 s infinite loop, which redrew up to 500 circles every
+    // frame for every card on screen, forever — decoration, not state (see the motion rule).
 
     // Generate stable noise points based on a seed
     val noisePoints = remember {
@@ -377,7 +231,7 @@ fun NoiseOverlay(
             val y = yRatio * size.height
             
             drawCircle(
-                color = noiseLift.copy(alpha = breathingOpacity * brightness),
+                color = noiseLift.copy(alpha = opacity * brightness),
                 radius = 0.5f,
                 center = Offset(x, y)
             )
@@ -394,27 +248,12 @@ fun GlassBloomBackground(
     modifier: Modifier = Modifier,
     bloomColor: Color? = null,
     bloomOpacity: Float = 0.15f,
-    isAnimated: Boolean = true,
     content: @Composable BoxScope.() -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
     val bloom = bloomColor ?: colors.goldPrimary
-    
-    // Breathing effect for the gold bloom to make the background feel alive
-    val infiniteTransition = rememberInfiniteTransition(label = "bloomBreathing")
-    val currentBloomAlpha by if (isAnimated) {
-        infiniteTransition.animateFloat(
-            initialValue = bloomOpacity * 0.8f,
-            targetValue = bloomOpacity * 1.2f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(6000, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "bloomAlpha"
-        )
-    } else {
-        remember { mutableFloatStateOf(bloomOpacity) }
-    }
+    // Static, for the same reason as NoiseOverlay: the 6 s breathing loop was ambient motion.
+    val currentBloomAlpha = bloomOpacity
     
     Box(
         modifier = modifier
@@ -446,7 +285,7 @@ fun GlassBloomBackground(
                 )
             },
         content = {
-            NoiseOverlay(modifier = Modifier.matchParentSize(), isAnimated = isAnimated)
+            NoiseOverlay(modifier = Modifier.matchParentSize())
             Box(modifier = Modifier.fillMaxSize(), content = content)
         }
     )

@@ -8,8 +8,10 @@ import com.tanush.bouncer.models.CricketMatch
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.util.Date
 
 /**
@@ -47,6 +49,8 @@ object MatchCacheService {
         ttlResolver = { status -> getCacheExpirationInterval(status) },
     )
     private var diskPrefs: android.content.SharedPreferences? = null
+    // Last list written per status. Read and written only under [mutex].
+    private val lastPersisted = mutableMapOf<String, List<CricketMatch>>()
 
     /**
      * Initialize disk persistence for offline support.
@@ -162,8 +166,9 @@ object MatchCacheService {
             Log.d(TAG, "Updating cache for $status with ${matches.size} matches")
             cache.put(status, matches)
         
-            // Persist to disk for offline access (non-blocking)
-            saveToDisk(status, matches)
+            // Persist to disk for offline access. Off the caller's thread: the Live tab calls this
+            // from viewModelScope (Main) on every 6 s poll, and encoding the list is the cost.
+            withContext(Dispatchers.Default) { saveToDisk(status, matches) }
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -185,6 +190,7 @@ object MatchCacheService {
             Log.d(TAG, "Clearing all cached data")
             cache.clear()
             diskPrefs?.edit()?.clear()?.apply()
+            lastPersisted.clear()
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -208,11 +214,14 @@ object MatchCacheService {
     private fun saveToDisk(status: String, matches: List<CricketMatch>) {
         try {
             val prefs = diskPrefs ?: return
-            val json = AppJson.encodeToString(matches)
-            prefs.edit()
-                .putString("matches_$status", json)
-                .putLong("timestamp_$status", Date().time)
-                .apply()
+            val editor = prefs.edit().putLong("timestamp_$status", Date().time)
+            // Most polls return the list unchanged. The timestamp must still move (loadFromDisk
+            // judges freshness by it), but re-encoding and rewriting an identical blob is waste.
+            if (lastPersisted[status] != matches) {
+                editor.putString("matches_$status", AppJson.encodeToString(matches))
+                lastPersisted[status] = matches
+            }
+            editor.apply()
         } catch (e: Exception) {
             Log.w(TAG, "Failed to persist matches to disk for $status", e)
             Sentry.captureException(e)

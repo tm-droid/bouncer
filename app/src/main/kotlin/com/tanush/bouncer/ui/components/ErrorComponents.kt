@@ -1,11 +1,6 @@
 package com.tanush.bouncer.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -22,7 +17,6 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -32,7 +26,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.R
-import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.StatusWarning
 
 // The legacy ErrorState/LoadingState/RetryingOverlay/AutoRetryHandler/SuccessSnackbar
@@ -44,21 +37,9 @@ fun NetworkStatusBanner(
     isOffline: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val pulse by if (BouncerMotion.reducedMotionEnabled) {
-        // Static banner under reduced motion — the warning color still signals state.
-        androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
-    } else {
-        rememberInfiniteTransition(label = "networkPulse").animateFloat(
-            initialValue = 0.7f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1000),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "networkPulse"
-        )
-    }
-
+    // Static: the enter/exit animation reports the state change; the warning colour holds it. The
+    // pulse this replaced was an infinite transition created outside AnimatedVisibility, so it ran
+    // on Home even while the device was online and the banner was not shown.
     AnimatedVisibility(
         visible = isOffline,
         enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
@@ -70,8 +51,8 @@ fun NetworkStatusBanner(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            StatusWarning.copy(alpha = 0.9f * pulse),
-                            StatusWarning.copy(alpha = 0.95f * pulse)
+                            StatusWarning.copy(alpha = 0.9f),
+                            StatusWarning.copy(alpha = 0.95f)
                         )
                     )
                 )

@@ -23,7 +23,6 @@ class DatabaseCleanupWorker(
             val db = BouncerDatabase.getInstance(applicationContext)
             val now = System.currentTimeMillis()
             db.matchDao().deleteOlderThan(now - MATCH_RETENTION_MS)
-            db.commentaryDao().deleteOlderThan(now - COMMENTARY_RETENTION_MS)
             db.playerCacheDao().deleteOlderThan(now - PLAYER_CACHE_RETENTION_MS)
             db.highlightDao().deleteOlderThan(now - HIGHLIGHTS_RETENTION_MS)
             db.seriesCacheDao().deleteOlderThan(now - SERIES_CACHE_RETENTION_MS)
@@ -40,7 +39,6 @@ class DatabaseCleanupWorker(
 
     companion object {
         private val MATCH_RETENTION_MS            = 7L  * 24 * 3_600_000
-        private val COMMENTARY_RETENTION_MS       = 7L  * 24 * 3_600_000
         private val PLAYER_CACHE_RETENTION_MS     = 7L  * 24 * 3_600_000
         private val HIGHLIGHTS_RETENTION_MS       = 14L * 24 * 3_600_000
         private val SERIES_CACHE_RETENTION_MS     = 30L * 24 * 3_600_000

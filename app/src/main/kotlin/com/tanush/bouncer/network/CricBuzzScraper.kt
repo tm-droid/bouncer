@@ -210,8 +210,7 @@ class CricBuzzScraper {
 
         for (attempt in 1..MAX_RETRIES) {
             try {
-                val doc = ScrapeFetcher.get(url, randomUserAgent(), LIST_TIMEOUT_MS)
-                val matches = parseNextJsData(doc.html())
+                val matches = parseNextJsData(ScrapeFetcher.getString(url, randomUserAgent(), LIST_TIMEOUT_MS))
                 val filteredMatches = filterMatches(matches, matchState)
                 Log.d(TAG, "Found ${matches.size} total matches, filtered down to ${filteredMatches.size} for state: $matchState")
 

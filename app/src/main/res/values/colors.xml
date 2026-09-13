@@ -55,7 +55,7 @@
     <color name="window_background">#FAFAFA</color>
 
     <!--
-        The splash stays dark in both modes, deliberately: ic_launcher_foreground.png is a
+        The splash stays dark in both modes, deliberately: ic_launcher_foreground is a
         predominantly opaque black mark, so on a light plate it renders as a black square rather
         than a logo. Fixing that means redrawing the asset, not re-qualifying this colour.
     -->

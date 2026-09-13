@@ -217,4 +217,32 @@ class MigrationTest {
         )
         db.close()
     }
+
+    @Test
+    fun migrate14to15_dropsTheNeverWrittenCommentaryTableAndLeavesTheRest() {
+        val v14 = helper.createDatabase("test-db-14", 14)
+        v14.execSQL(
+            "INSERT INTO series_cache (seriesId, name, category, startDate, endDate, lastUpdated) " +
+                "VALUES ('s1', 'Indian Premier League 2026', 'LEAGUE', '', '', 100)"
+        )
+        v14.close()
+
+        val db = helper.runMigrationsAndValidate(
+            "test-db-14", 15, true,
+            BouncerDatabase.MIGRATION_14_15
+        )
+
+        val gone = db.query(
+            "SELECT COUNT(*) FROM sqlite_master WHERE name IN ('commentary', 'idx_commentary_timestamp')"
+        )
+        gone.moveToFirst()
+        assertEquals("the commentary table and its index must be dropped", 0, gone.getInt(0))
+        gone.close()
+
+        val series = db.query("SELECT name FROM series_cache")
+        series.moveToFirst()
+        assertEquals("Indian Premier League 2026", series.getString(0))
+        series.close()
+        db.close()
+    }
 }
