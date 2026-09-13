@@ -12,19 +12,18 @@ const FILE_IDS = { live: "live-matches", recent: "recent-matches", upcoming: "up
 // Tracks the last-written content hash per type so an unchanged list is not rewritten every
 // minute. One small download replaces three large uploads.
 const STATE_FILE_ID = "poll-state";
+let stateMemo = null; // warm-container copy of the last poll-state read or written
 
 // A skipped write freezes the file's `fetchedAt`, and devices reject a file older than their own
 // staleness bound — so every type must still be refreshed periodically even when unchanged.
 //
-// Defaults are deliberately conservative at 120s, which is inside the 150s bound that ALREADY
-// SHIPPED clients apply to every type. Android updates roll out over days, so raising the
-// upcoming/recent floor before that release has propagated would make old installs reject those
-// files and fall through to the Vercel API — trading an Appwrite bill for a Vercel one.
-//
-// Once the release carrying CacheConfig.matchStorageMaxAgeMs (live 180s / others 900s) is out,
-// raise the static floor to 600000 via the function's env vars. No redeploy needed.
+// Live stays at 120s, inside the device's 180s bound (CacheConfig.LIVE_STORAGE_MAX_AGE_MS). The
+// static floor is 600s, inside the 900s bound every current build applies to recent/upcoming; no
+// shipped build falls back to the Vercel API any more, so the older 150s bound no longer binds.
+// Each unchanged rewrite is a delete plus a multipart create, which is most of this bucket's POST
+// bandwidth.
 const REFRESH_FLOOR_LIVE_MS = Number(process.env.REFRESH_FLOOR_LIVE_MS) || 120_000;
-const REFRESH_FLOOR_STATIC_MS = Number(process.env.REFRESH_FLOOR_STATIC_MS) || 120_000;
+const REFRESH_FLOOR_STATIC_MS = Number(process.env.REFRESH_FLOOR_STATIC_MS) || 600_000;
 const REFRESH_FLOOR_MS = {
   live: REFRESH_FLOOR_LIVE_MS,
   recent: REFRESH_FLOOR_STATIC_MS,
@@ -54,10 +53,16 @@ export default async ({ req, res, log, error }) => {
   const storage = new Storage(client);
 
   // Previous content hashes. Missing/corrupt state just means every type is rewritten this run.
-  let prevState = {};
-  try {
-    prevState = parseJsonFile(await storage.getFileDownload(BUCKET_ID, STATE_FILE_ID)) ?? {};
-  } catch { /* first run */ }
+  //
+  // This function is poll-state's only writer, so a warm container reuses what it last wrote and
+  // downloads the file only on a cold start.
+  let prevState = stateMemo;
+  if (!prevState) {
+    prevState = {};
+    try {
+      prevState = parseJsonFile(await storage.getFileDownload(BUCKET_ID, STATE_FILE_ID)) ?? {};
+    } catch { /* first run */ }
+  }
 
   // Fetch all three types in parallel to minimize total write-time spread
   const types = ["live", "recent", "upcoming"];
@@ -113,6 +118,54 @@ export default async ({ req, res, log, error }) => {
     }
   }
 
+  // Check if live match count changed and send FCM topic message if so
+  const liveResult = settled[0]; // "live" is index 0
+  if (liveResult.status === "fulfilled") {
+    try {
+      // Use in-memory data directly — no self-read needed
+      const liveData = liveResult.value?.data;
+      const newLiveCount = liveData?.matches?.length ?? liveData?.count ?? 0;
+
+      // Stored as JSON because the bucket's allowedFileExtensions is ["json"]. It was previously
+      // written as `live-count.txt`, which Appwrite rejected; the throw was swallowed by the catch
+      // below, so prevCount was ALWAYS 0 and this branch fired an FCM topic push every single
+      // minute that any match was live.
+      //
+      // The count now rides in poll-state, which this run has already downloaded. Reading the
+      // separate `live-count` file every minute was a second download per run for one integer; it
+      // is read only once, to migrate a state file written before `liveCount` existed.
+      let prevCount = 0;
+      if (typeof prevState.liveCount === "number") {
+        prevCount = prevState.liveCount;
+      } else {
+        try {
+          const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, "live-count"));
+          // Tolerate a bare number in case a legacy body ever landed.
+          prevCount = (typeof parsed === "number" ? parsed : parsed?.count) || 0;
+        } catch { /* first run, or legacy non-JSON body */ }
+      }
+      if (newLiveCount !== prevCount) {
+        log(`Live match count changed: ${prevCount} → ${newLiveCount}`);
+
+        // Send FCM BEFORE recording the count so a timeout or throw can't update it without notifying
+        const saJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+        const projectId = process.env.FIREBASE_PROJECT_ID;
+        if (saJson && projectId) {
+          await sendFcmTopicMessage(
+            "cricket-live-updates",
+            { type: newLiveCount > prevCount ? "MATCH_STARTED" : "MATCH_ENDED", liveCount: String(newLiveCount) },
+            saJson, projectId, error
+          );
+        }
+      }
+      nextState.liveCount = newLiveCount;
+    } catch (e) {
+      error(`FCM state-change check failed: ${e?.message}`);
+    }
+  }
+
+  await syncSeries({ storage, prevState, nextState, now, log, error });
+
   if (JSON.stringify(nextState) !== JSON.stringify(prevState)) {
     try {
       await storage.deleteFile(BUCKET_ID, STATE_FILE_ID).catch(() => {});
@@ -126,83 +179,76 @@ export default async ({ req, res, log, error }) => {
       error(`poll-state write failed: ${e?.message}`);
     }
   }
+  // Memory is authoritative for the life of the container even if the upload failed; the file
+  // exists for the next cold start.
+  stateMemo = nextState;
 
-  // Check if live match count changed and send FCM topic message if so
-  const liveResult = settled[0]; // "live" is index 0
-  if (liveResult.status === "fulfilled") {
-    try {
-      // Use in-memory data directly — no self-read needed
-      const liveData = liveResult.value?.data;
-      const newLiveCount = liveData?.matches?.length ?? liveData?.count ?? 0;
+  return res.json(results);
+};
 
-      // Stored as JSON because the bucket's allowedFileExtensions is ["json"]. It was previously
-      // written as `live-count.txt`, which Appwrite rejected; the throw was swallowed by the catch
-      // below, so prevCount was ALWAYS 0 and this branch fired an FCM topic push every single
-      // minute that any match was live.
-      let prevCount = 0;
-      try {
-        const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, "live-count"));
-        // Tolerate a bare number in case a legacy body ever landed.
-        prevCount = (typeof parsed === "number" ? parsed : parsed?.count) || 0;
-      } catch { /* first run, or legacy non-JSON body */ }
+const SERIES_REFRESH_MS = 24 * 3600 * 1000;
+// A failed or empty scrape retries after this, not on the next one-minute run: each retry downloads
+// the whole corpus again for the archive merge.
+const SERIES_RETRY_MS = 3600 * 1000;
 
-      if (newLiveCount !== prevCount) {
-        log(`Live match count changed: ${prevCount} → ${newLiveCount}`);
+/**
+ * Series sync: scrape Cricbuzz at most once per 24h server-side (replaces N per-device daily scrapes).
+ *
+ * Freshness is decided from `poll-state`, never by downloading `active-series`. That file is ~58 KB
+ * and used to be downloaded on every one-minute run purely to read its `fetchedAt` — about 83 MB a
+ * day, roughly half of the project's whole bandwidth meter, to answer "no" 1,439 times out of 1,440.
+ * The corpus is downloaded only when a refresh is actually due, because the archive merge needs it.
+ * Never throws.
+ */
+export async function syncSeries({ storage, prevState, nextState, now, log, error, fetchActive = fetchActiveSeries, fetchPage = fetchHtml }) {
+  const nextAttemptAt = Math.max(
+    (prevState.seriesFetchedAt ?? 0) + SERIES_REFRESH_MS,
+    prevState.seriesRetryAt ?? 0,
+  );
+  // A state file from before these fields existed has neither, so the first run falls through,
+  // downloads once, and adopts the file's own `fetchedAt` below.
+  const hasClock = prevState.seriesFetchedAt != null || prevState.seriesRetryAt != null;
+  if (hasClock && now < nextAttemptAt) return "fresh";
 
-        // Send FCM BEFORE writing live-count so a timeout can't update count without notifying
-        const saJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-        const projectId = process.env.FIREBASE_PROJECT_ID;
-        if (saJson && projectId) {
-          await sendFcmTopicMessage(
-            "cricket-live-updates",
-            { type: newLiveCount > prevCount ? "MATCH_STARTED" : "MATCH_ENDED", liveCount: String(newLiveCount) },
-            saJson, projectId, error
-          );
-        }
-
-        await storage.deleteFile(BUCKET_ID, "live-count").catch(() => {});
-        await storage.createFile(BUCKET_ID, "live-count",
-          InputFile.fromBuffer(Buffer.from(JSON.stringify({ count: newLiveCount }), "utf8"), "live-count.json"),
-          ["read(\"any\")"]
-        );
-      }
-    } catch (e) {
-      error(`FCM state-change check failed: ${e?.message}`);
-    }
-  }
-
-  // Series sync: scrape Cricbuzz at most once per 24h server-side (replaces N per-device daily scrapes)
   try {
     let prevJson = null;
     try {
       prevJson = parseJsonFile(await storage.getFileDownload(BUCKET_ID, "active-series"));
     } catch { /* missing or parse error — treat as stale */ }
-    const seriesFresh = (Date.now() - (prevJson?.fetchedAt ?? 0)) < 24 * 3600 * 1000;
 
-    if (!seriesFresh) {
-      const active = await fetchActiveSeries();
-      const merged = await mergeArchiveSeries(active, prevJson, log, error);
-      if (merged.series.length > 0) {
-        const payload = JSON.stringify({
-          data: merged.series,
-          fetchedAt: Date.now(),
-          archiveCursor: merged.cursor,
-        });
-        await storage.deleteFile(BUCKET_ID, "active-series").catch(() => {});
-        await storage.createFile(
-          BUCKET_ID, "active-series",
-          InputFile.fromBuffer(Buffer.from(payload, "utf8"), "active-series.json"),
-          ["read(\"any\")"]
-        );
-        log(`Updated active-series (${merged.series.length} series, archive cursor ${merged.cursor})`);
-      }
+    if (prevJson?.fetchedAt && now - prevJson.fetchedAt < SERIES_REFRESH_MS) {
+      nextState.seriesFetchedAt = prevJson.fetchedAt;
+      delete nextState.seriesRetryAt;
+      return "adopted";
     }
-  } catch (e) {
-    error(`Series sync failed: ${e?.message}`);
-  }
 
-  return res.json(results);
-};
+    const active = await fetchActive();
+    const merged = await mergeArchiveSeries(active, prevJson, log, error, fetchPage);
+    if (merged.series.length === 0) {
+      nextState.seriesRetryAt = now + SERIES_RETRY_MS;
+      return "empty";
+    }
+    const payload = JSON.stringify({
+      data: merged.series,
+      fetchedAt: now,
+      archiveCursor: merged.cursor,
+    });
+    await storage.deleteFile(BUCKET_ID, "active-series").catch(() => {});
+    await storage.createFile(
+      BUCKET_ID, "active-series",
+      InputFile.fromBuffer(Buffer.from(payload, "utf8"), "active-series.json"),
+      ["read(\"any\")"]
+    );
+    nextState.seriesFetchedAt = now;
+    delete nextState.seriesRetryAt;
+    log(`Updated active-series (${merged.series.length} series, archive cursor ${merged.cursor})`);
+    return "updated";
+  } catch (e) {
+    nextState.seriesRetryAt = now + SERIES_RETRY_MS;
+    error(`Series sync failed: ${e?.message}`);
+    return "error";
+  }
+}
 
 /**
  * Stamp each upcoming fixture with Cricbuzz's `matchFormat`, scraping only when something is new.

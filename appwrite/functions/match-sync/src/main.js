@@ -141,6 +141,21 @@ let readsThisRun = 0;
 // purpose — commentary only ever arrives newest-after-oldest — while costing 1 read instead of 30.
 // Correctness never depended on either: writes use a deterministic rowId plus a 409 backstop.
 const watermarkByMatch = new Map();
+
+// Last body written per row, per warm container, so an unchanged snapshot is not rewritten. Between
+// overs, at drinks, at lunch and in a rain delay the live page does not move, yet every viewed
+// match paid a detail write and a scorecard write (4-9 KB, plus the full document echoed back)
+// every minute regardless. A cold container writes once, which is the safe direction. Pruned with
+// the watermark.
+const lastDetailBody = new Map();
+const lastScorecardBody = new Map();
+let lastWinProbBody = null;
+
+// `upcoming-matches` feeds pre-match priors only, and a fixture list does not change minute to
+// minute; one download per 10 minutes instead of one per run.
+const UPCOMING_TTL_MS = 10 * 60 * 1000;
+let upcomingCache = null; // { fixtures, fetchedAt }
+
 const isBudget402 = (e) => e?.code === 402 || e?.type === "limit_databases_reads_exceeded";
 
 const docId = (s) => createHash("sha256").update(s).digest("hex").slice(0, 36);
@@ -371,6 +386,9 @@ async function handleRun({ req, res, log, error }) {
   for (const id of watermarkByMatch.keys()) {
     if (!liveIds.has(id)) watermarkByMatch.delete(id);
   }
+  for (const cache of [lastDetailBody, lastScorecardBody]) {
+    for (const id of cache.keys()) if (!liveIds.has(id)) cache.delete(id);
+  }
   const summary = {};
   // Seeded with the pre-match entries so a fixture that has not started still has a number.
   // A live entry for the same id overwrites it, which is the right precedence: a position beats a
@@ -549,12 +567,22 @@ export function commentaryMatchSet(allLive, viewed, slowTier) {
  * (treating unreadable as "nothing is due") would silently disable it exactly like the
  * already-parsed-JSON bug disabled the viewer gate.
  */
+//
+// This function is the file's only writer, so a warm container already holds what the file says:
+// it is downloaded once per cold container, not once a minute. A small download still costs ~2 MB
+// a day in per-request overhead at this cadence.
+let slowStateMemo = null;
+
 async function readSlowState({ storage, error }) {
+  if (slowStateMemo) return slowStateMemo;
   try {
     const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, SLOW_STATE_FILE));
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    slowStateMemo = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    return slowStateMemo;
   } catch (e) {
     if (e?.code !== 404) error(`Could not read ${SLOW_STATE_FILE} (${e?.message}) — treating every match as due`);
+    // A 404 is a real empty clock and can be remembered; any other failure retries next run.
+    if (e?.code === 404) slowStateMemo = {};
     return {};
   }
 }
@@ -571,6 +599,7 @@ async function writeSlowState({ storage, state, previous, log, error }) {
       InputFile.fromBuffer(Buffer.from(payload, "utf8"), "slow-sync-state.json"),
       READ_ANY
     );
+    slowStateMemo = state;
     log(`Wrote ${SLOW_STATE_FILE} (${Object.keys(state).length} matches)`);
   } catch (e) {
     // Non-fatal: losing the clock costs one extra slow pass, never a wrong one.
@@ -586,6 +615,10 @@ async function writeSlowState({ storage, state, previous, log, error }) {
  * download regardless of how many cards are on screen.
  */
 async function writeWinProbFile({ storage, winProb, log, error }) {
+  // The device's freshness is its own TTL, never `updatedAt`, so an unchanged table need not be
+  // re-uploaded; a cold container always writes once.
+  const body = JSON.stringify(winProb);
+  if (body === lastWinProbBody) return;
   try {
     const payload = JSON.stringify({ version: 1, updatedAt: Date.now(), matches: winProb });
     await storage.deleteFile(BUCKET_ID, WINPROB_FILE).catch(() => {});
@@ -595,6 +628,7 @@ async function writeWinProbFile({ storage, winProb, log, error }) {
       InputFile.fromBuffer(Buffer.from(payload, "utf8"), "live-winprob.json"),
       READ_ANY
     );
+    lastWinProbBody = body;
     log(`Wrote ${WINPROB_FILE} (${Object.keys(winProb).length} matches)`);
   } catch (e) {
     // Non-fatal: commentary and detail rows are already written, and a stale probability file is
@@ -636,8 +670,13 @@ async function prematchEntries({ storage, model, log, error }) {
   if (!model) return entries;
   let fixtures = [];
   try {
-    const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, UPCOMING_FILE));
-    fixtures = parsed?.data?.matches ?? [];
+    if (upcomingCache && Date.now() - upcomingCache.fetchedAt < UPCOMING_TTL_MS) {
+      fixtures = upcomingCache.fixtures;
+    } else {
+      const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, UPCOMING_FILE));
+      fixtures = parsed?.data?.matches ?? [];
+      upcomingCache = { fixtures, fetchedAt: Date.now() };
+    }
   } catch (e) {
     if (e?.code !== 404) error(`Could not read ${UPCOMING_FILE} (${e?.message}) — no pre-match this run`);
     return entries;
@@ -1119,12 +1158,17 @@ async function upsertDetail({ db, matchId, detail, error }) {
     payload: JSON.stringify({ ...detail, scorecard: undefined }),
     updated_at: new Date().toISOString(),
   };
+  // `updated_at` is excluded from the comparison — it differs every run by construction, and no
+  // reader uses it as a freshness signal.
+  if (lastDetailBody.get(matchId) === data.payload) return;
   try {
     await db.updateDocument(DB_ID, DETAIL_COL, rowId, data);
+    lastDetailBody.set(matchId, data.payload);
   } catch (e) {
     if (e?.code === 404) {
       try {
         await db.createDocument(DB_ID, DETAIL_COL, rowId, data, READ_ANY);
+        lastDetailBody.set(matchId, data.payload);
       } catch (e2) {
         if (e2?.code !== 409) error(`Detail create failed (${matchId}): ${e2?.message}`);
       }
@@ -1144,12 +1188,15 @@ async function upsertScorecard({ db, matchId, scorecard, error }) {
     scorecard: JSON.stringify(scorecard),
     updated_at: new Date().toISOString(),
   };
+  if (lastScorecardBody.get(matchId) === data.scorecard) return;
   try {
     await db.updateDocument(DB_ID, SCORECARD_COL, rowId, data);
+    lastScorecardBody.set(matchId, data.scorecard);
   } catch (e) {
     if (e?.code === 404) {
       try {
         await db.createDocument(DB_ID, SCORECARD_COL, rowId, data, READ_ANY);
+        lastScorecardBody.set(matchId, data.scorecard);
       } catch (e2) {
         if (e2?.code !== 409) error(`Scorecard create failed (${matchId}): ${e2?.message}`);
       }
