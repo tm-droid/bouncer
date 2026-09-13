@@ -62,6 +62,8 @@ import com.tanush.bouncer.ui.components.v2.ShimmerPlayerHeader
 import com.tanush.bouncer.ui.components.v2.ShimmerStatGrid
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import java.util.Locale
+import kotlinx.coroutines.CancellationException
+import io.sentry.Sentry
 
 private enum class LoadState { Loading, Success, Error }
 
@@ -88,18 +90,27 @@ fun PlayerDetailScreenV2(
     var loadState by remember { mutableStateOf(LoadState.Loading) }
     var retryCount by remember { mutableIntStateOf(0) }
 
-    // Warm the global player-profiles cache (Room + Appwrite) in the background. The worker
-    // dedupes (7-day skip) and pulls Appwrite before scraping, so it's cheap to fire on open.
-    LaunchedEffect(playerName) {
-        PlayerCacheWorker.enqueueFor(context, playerName)
-    }
-
     LaunchedEffect(playerName, retryCount) {
         loadState = LoadState.Loading
         val scraped = PlayerProfileScraper.scrapeProfile(playerName)
         if (scraped != null) {
             profile = scraped
             loadState = LoadState.Success
+            // Warm the global player-profiles cache (Room + Appwrite) from this scrape rather than a
+            // worker that would search and scrape the same player again.
+            // A cache failure must not fail the screen that already has its profile.
+            try {
+                PlayerCacheWorker.storeProfile(
+                    context,
+                    PlayerCacheWorker.playerIdFor(playerName),
+                    scraped,
+                    teamName = scraped.country,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+            }
             // Auto-select first format that has stats
             val firstAvailable = formats.firstOrNull { scraped.stats.containsKey(it) }
             if (firstAvailable != null) selectedFormat = firstAvailable

@@ -13,7 +13,7 @@ object TimelineEventExtractor {
      *
      * The previous version matched bare `\bBOWLED\b` and `\bCATCH\b`, so ordinary descriptive
      * commentary — "bowled a beauty, no run", "a good catch attempt, dropped" — produced a WICKET
-     * event, and [com.tanush.bouncer.services.LiveCommentaryManager] fires a user-facing
+     * event, and the Activity feed (LiveActivityViewModel) fires a user-facing
      * "Wicket!" push notification off exactly that. It compensated with a list of phrases to
      * strip ("MID-WICKET", "OVER THE WICKET", ...), which can only ever chase false positives
      * that have already been observed.

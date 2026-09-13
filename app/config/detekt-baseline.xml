@@ -95,7 +95,6 @@
     <ID>CyclomaticComplexMethod:InteractionAccessibility.kt$HapticController$fun execute(pattern: HapticPattern)</ID>
     <ID>CyclomaticComplexMethod:InteractiveWidgetComponents.kt$@Composable fun MatchStatusChip( modifier: GlanceModifier = GlanceModifier, status: MatchStatus, customText: String? = null )</ID>
     <ID>CyclomaticComplexMethod:InteractiveWidgetComponents.kt$@Composable fun PowerplayIndicator( modifier: GlanceModifier = GlanceModifier, currentPowerplay: PowerplayPhase, oversInPhase: Float, totalOversInPhase: Float )</ID>
-    <ID>CyclomaticComplexMethod:LiveCommentaryManager.kt$LiveCommentaryManager$private suspend fun getBestCommentary( cricbuzzUrl: String, cricinfoUrl: String, keyNames: List&lt;String&gt;, isMatchComplete: Boolean ): String</ID>
     <ID>CyclomaticComplexMethod:LiveMatchWidgetProvider.kt$LiveMatchWidgetProvider$private suspend fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int)</ID>
     <ID>CyclomaticComplexMethod:LiveScoringGraphCard.kt$@Composable fun LiveScoringGraphCard( scoringData: LiveScoringData, modifier: Modifier = Modifier, )</ID>
     <ID>CyclomaticComplexMethod:MainAppContainer.kt$private fun handleExternalDeepLink( deepLinkUri: String, navController: NavHostController, availableMatches: List&lt;CricketMatch&gt;, onMatchClick: (CricketMatch) -&gt; Unit ): Boolean</ID>
@@ -304,7 +303,6 @@
     <ID>MaxLineLength:HighlightDao.kt$HighlightDao$@Query("SELECT * FROM highlights WHERE matchedBouncerMatchId = :bouncerMatchId AND fetchedAt &gt;= :freshnessCutoff ORDER BY type DESC, fetchedAt DESC LIMIT 50")</ID>
     <ID>MaxLineLength:HistoricalStatsCard.kt$color = if (isLeading) hierarchy.secondary.primary.copy(alpha = 0.1f) else colors.glassBorder.copy(alpha = 0.1f)</ID>
     <ID>MaxLineLength:IntelligenceFeedScreenV2.kt$Text(alert.title, style = typography.titleSmall, fontWeight = FontWeight.Bold, color = colors.onSurface, modifier = Modifier.weight(1f))</ID>
-    <ID>MaxLineLength:LiveCommentaryManager.kt$LiveCommentaryManager$private val summarizer: suspend (List&lt;String&gt;, String, Int) -&gt; String = { lines, matchId, over -&gt; CommentaryFusionService().summarizeOversWithAI(lines, matchId, over) }</ID>
     <ID>MaxLineLength:MatchContextMenuSheet.kt$leadingContent = { Icon(if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = null) }</ID>
     <ID>MaxLineLength:MatchProjectionsTest.kt$MatchProjectionsTest$assertEquals(143, MatchProjections.projectedScore(currentRuns = 143, ballsBowled = T20_INNINGS_BALLS, totalBalls = T20_INNINGS_BALLS))</ID>
     <ID>MaxLineLength:MatchProjectionsTest.kt$MatchProjectionsTest$assertNull(MatchProjections.requiredRunRate(target = 150, currentRuns = 80, ballsBowled = T20_INNINGS_BALLS, totalBalls = T20_INNINGS_BALLS))</ID>
@@ -364,7 +362,6 @@
     <ID>TooManyFunctions:FavoritesScreen.kt$com.tanush.bouncer.ui.screens.FavoritesScreen.kt</ID>
     <ID>TooManyFunctions:InteractionAccessibility.kt$com.tanush.bouncer.ui.accessibility.InteractionAccessibility.kt</ID>
     <ID>TooManyFunctions:InteractiveWidgetComponents.kt$com.tanush.bouncer.ui.widgets.InteractiveWidgetComponents.kt</ID>
-    <ID>TooManyFunctions:LiveCommentaryManager.kt$LiveCommentaryManager</ID>
     <ID>TooManyFunctions:PlayerProfileScraper.kt$PlayerProfileScraper</ID>
     <ID>TooManyFunctions:RichNotificationBuilder.kt$RichNotificationBuilder</ID>
     <ID>TooManyFunctions:SearchRepository.kt$SearchRepository</ID>

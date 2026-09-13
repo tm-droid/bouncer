@@ -92,17 +92,7 @@ class PlayerCacheWorker(
             return Result.success()
         }
 
-        val entity = PlayerCacheEntity(
-            playerId = playerId,
-            name = profile.name,
-            country = profile.country,
-            role = profile.role,
-            teamName = firstResult.country,
-            statsJson = serializeStats(profile.stats)
-        )
-
-        db.playerCacheDao().upsert(entity)
-        AppwritePlayerProfilesClient.pushProfile(entity)
+        storeProfile(context, playerId, profile, teamName = firstResult.country)
 
         Log.d(TAG, "Cached player profile for '${profile.name}'")
         sentryBreadcrumb("player_cache", "Cached player '${profile.name}' successfully")
@@ -112,31 +102,6 @@ class PlayerCacheWorker(
 
     private fun retryOrFail(): Result =
         if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
-
-    private fun serializeStats(stats: Map<String, com.tanush.bouncer.models.FormatStats>): String {
-        val root = JSONObject()
-        for ((format, fs) in stats) {
-            val obj = JSONObject()
-            obj.put("matches", fs.matches)
-            obj.put("innings", fs.innings)
-            obj.put("runs", fs.runs)
-            obj.put("highScore", fs.highScore)
-            obj.put("average", fs.average)
-            obj.put("strikeRate", fs.strikeRate)
-            obj.put("hundreds", fs.hundreds)
-            obj.put("fifties", fs.fifties)
-            obj.put("fours", fs.fours)
-            obj.put("sixes", fs.sixes)
-            obj.put("wickets", fs.wickets)
-            obj.put("bowlingAverage", fs.bowlingAverage)
-            obj.put("economy", fs.economy)
-            obj.put("bestBowling", fs.bestBowling)
-            obj.put("fiveWickets", fs.fiveWickets)
-            obj.put("catches", fs.catches)
-            root.put(format, obj)
-        }
-        return root.toString()
-    }
 
     companion object {
         const val TAG = "PlayerCacheWorker"
@@ -164,6 +129,64 @@ class PlayerCacheWorker(
             )
 
             WorkerLogger.enqueued("player_cache", "One-time work enqueued for '$playerName'")
+        }
+
+        /**
+         * Writes a scraped profile to Room and mirrors it to the global Appwrite cache.
+         *
+         * The detail screen scrapes the full profile to render it, and used to enqueue this worker
+         * on open as well — which, on an Appwrite miss, searched and scraped the same player a
+         * second time. The screen now hands its own result here instead. Skips the write when Room
+         * already holds a copy younger than [FRESH_MS], which is the worker's own dedupe window.
+         */
+        suspend fun storeProfile(
+            context: Context,
+            playerId: String,
+            profile: com.tanush.bouncer.models.PlayerProfile,
+            teamName: String,
+        ) {
+            val dao = BouncerDatabase.getInstance(context).playerCacheDao()
+            val lastUpdated = dao.getLastUpdated(playerId)
+            if (lastUpdated != null && System.currentTimeMillis() - lastUpdated < FRESH_MS) return
+            val entity = PlayerCacheEntity(
+                playerId = playerId,
+                name = profile.name,
+                country = profile.country,
+                role = profile.role,
+                teamName = teamName,
+                statsJson = serializeStats(profile.stats)
+            )
+            dao.upsert(entity)
+            AppwritePlayerProfilesClient.pushProfile(entity)
+        }
+
+        fun playerIdFor(playerName: String): String = playerName.lowercase().replace(" ", "_")
+
+        private const val FRESH_MS = 7L * 24 * 60 * 60 * 1000
+
+        private fun serializeStats(stats: Map<String, com.tanush.bouncer.models.FormatStats>): String {
+            val root = JSONObject()
+            for ((format, fs) in stats) {
+                val obj = JSONObject()
+                obj.put("matches", fs.matches)
+                obj.put("innings", fs.innings)
+                obj.put("runs", fs.runs)
+                obj.put("highScore", fs.highScore)
+                obj.put("average", fs.average)
+                obj.put("strikeRate", fs.strikeRate)
+                obj.put("hundreds", fs.hundreds)
+                obj.put("fifties", fs.fifties)
+                obj.put("fours", fs.fours)
+                obj.put("sixes", fs.sixes)
+                obj.put("wickets", fs.wickets)
+                obj.put("bowlingAverage", fs.bowlingAverage)
+                obj.put("economy", fs.economy)
+                obj.put("bestBowling", fs.bestBowling)
+                obj.put("fiveWickets", fs.fiveWickets)
+                obj.put("catches", fs.catches)
+                root.put(format, obj)
+            }
+            return root.toString()
         }
     }
 }
