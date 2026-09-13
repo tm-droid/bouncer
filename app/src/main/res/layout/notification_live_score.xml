@@ -64,7 +64,8 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:fontFeatureSettings="tnum"
-                android:textColor="@color/notif_text_primary" />
+                android:textColor="@color/notif_text_primary"
+                tools:ignore="UnusedAttribute" />
 
             <TextView
                 android:id="@+id/batting_overs"
@@ -102,7 +103,8 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:fontFeatureSettings="tnum"
-                android:textColor="@color/notif_text_secondary" />
+                android:textColor="@color/notif_text_secondary"
+                tools:ignore="UnusedAttribute" />
         </LinearLayout>
 
         <ImageView
@@ -148,7 +150,8 @@
             android:textSize="14sp"
             android:textStyle="bold"
             android:fontFeatureSettings="tnum"
-            android:textColor="@color/notif_text_primary" />
+            android:textColor="@color/notif_text_primary"
+            tools:ignore="UnusedAttribute" />
     </LinearLayout>
 
     <LinearLayout
@@ -176,7 +179,8 @@
             android:layout_marginStart="8dp"
             android:textSize="14sp"
             android:fontFeatureSettings="tnum"
-            android:textColor="@color/notif_text_secondary" />
+            android:textColor="@color/notif_text_secondary"
+            tools:ignore="UnusedAttribute" />
     </LinearLayout>
 
     <LinearLayout
@@ -204,7 +208,8 @@
             android:layout_marginStart="8dp"
             android:textSize="13sp"
             android:fontFeatureSettings="tnum"
-            android:textColor="@color/notif_text_secondary" />
+            android:textColor="@color/notif_text_secondary"
+            tools:ignore="UnusedAttribute" />
     </LinearLayout>
 
     <TextView

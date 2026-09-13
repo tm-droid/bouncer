@@ -6,6 +6,7 @@
   scoreline with both sides, and the batting pair. Anything more is cut, not scrolled.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
@@ -36,7 +37,8 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:fontFeatureSettings="tnum"
-            android:textColor="@color/notif_text_primary" />
+            android:textColor="@color/notif_text_primary"
+            tools:ignore="UnusedAttribute" />
 
         <TextView
             android:id="@+id/collapsed_detail"
