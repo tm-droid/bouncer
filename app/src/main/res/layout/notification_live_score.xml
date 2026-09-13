@@ -27,6 +27,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:baselineAligned="false"
         android:gravity="center_vertical">
 
         <ImageView
@@ -130,7 +131,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:baselineAligned="true">
+        android:baselineAligned="false">
 
         <TextView
             android:id="@+id/batter1_name"
@@ -160,7 +161,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:orientation="horizontal"
-        android:baselineAligned="true">
+        android:baselineAligned="false">
 
         <TextView
             android:id="@+id/batter2_name"
@@ -189,7 +190,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:orientation="horizontal"
-        android:baselineAligned="true">
+        android:baselineAligned="false">
 
         <TextView
             android:id="@+id/bowler_name"

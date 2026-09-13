@@ -80,7 +80,6 @@ class LiveUpdateNotifier(private val context: Context) {
      * to.
      */
     fun ensureChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.deleteNotificationChannel(RETIRED_CHANNEL_ID)
         manager.createNotificationChannel(
