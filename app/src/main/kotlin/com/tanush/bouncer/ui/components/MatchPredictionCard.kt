@@ -454,7 +454,7 @@ private fun PredictionFactorRow(
     val colors = BouncerDesignSystem.colors
     val favoringTeam = if (factor.impact > 0) team1Name else team2Name
     val impactColor = if (factor.impact > 0) colors.statusInfo else hierarchy.secondary.primary
-    val impactStrength = abs(factor.impact)
+    val impactStrength = abs(factor.impact).coerceIn(Float.MIN_VALUE, 1f - Float.MIN_VALUE)
     
     Row(
         modifier = Modifier.fillMaxWidth(),
