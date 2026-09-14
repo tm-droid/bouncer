@@ -1,5 +1,9 @@
 package com.tanush.bouncer.ui.screens
 
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.Crossfade
@@ -57,8 +61,9 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 @Composable
 fun SeriesListScreen(
     onSeriesClick: (String) -> Unit,
-    onBackClick: () -> Unit,
     viewModel: SeriesListViewModel = viewModel(),
+    // Null on the Series tab, which has no back destination.
+    onBackClick: (() -> Unit)? = null,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -75,7 +80,7 @@ fun SeriesListScreen(
 
     Scaffold(
         topBar = {
-            BouncerTopBarV2(title = stringResource(R.string.series_series), showBack = true, onBack = onBackClick)
+            BouncerTopBarV2(title = stringResource(R.string.series_series), showBack = onBackClick != null, onBack = onBackClick)
         },
         containerColor = colors.background,
     ) { innerPadding ->
@@ -226,6 +231,27 @@ internal fun seriesLabelOf(series: Series): String {
     return if (series.isWomens) "$category · Women" else category
 }
 
+/**
+ * "7 Aug 2026 – 20 Sep 2026" from the series' start and end.
+ *
+ * Cricbuzz sends both as epoch-millisecond strings, which the card used to print verbatim. A value
+ * that is not a number is shown as it came, and a missing end shows the start alone.
+ */
+internal fun seriesDatesOf(series: Series, zone: ZoneId = ZoneId.systemDefault()): String {
+    fun format(raw: String): String = raw.toLongOrNull()
+        ?.let { SERIES_DATE.format(Instant.ofEpochMilli(it).atZone(zone)) }
+        ?: raw
+    val start = format(series.startDate)
+    val end = format(series.endDate)
+    return when {
+        start.isEmpty() -> ""
+        end.isEmpty() || end == start -> start
+        else -> "$start – $end"
+    }
+}
+
+private val SERIES_DATE = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
+
 @Composable
 private fun SeriesCard(series: Series, onClick: () -> Unit) {
     val colors = BouncerThemeV2.colors
@@ -273,9 +299,10 @@ private fun SeriesCard(series: Series, onClick: () -> Unit) {
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (series.startDate.isNotEmpty()) {
+                val dates = seriesDatesOf(series)
+                if (dates.isNotEmpty()) {
                     Text(
-                        series.startDate,
+                        dates,
                         style = typography.bodySmall,
                         color = colors.textSecondary,
                     )

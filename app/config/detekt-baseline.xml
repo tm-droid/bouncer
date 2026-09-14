@@ -4,7 +4,6 @@
   <CurrentIssues>
     <ID>CognitiveComplexMethod:AICacheService.kt$AICacheService$suspend fun getCommentary(key: String): String?</ID>
     <ID>CognitiveComplexMethod:AchievementsScreenV2.kt$@Composable private fun AchievementCard(title: String, description: String, isUnlocked: Boolean)</ID>
-    <ID>CognitiveComplexMethod:AllMatchesScreenV2.kt$@Composable fun AllMatchesScreenV2( viewModel: LiveActivityViewModel, onMatchClick: (CricketMatch) -&gt; Unit, )</ID>
     <ID>CognitiveComplexMethod:AppearanceScreenV2.kt$@Composable private fun ThemeOptionCard( icon: ImageVector, label: String, isSelected: Boolean, onClick: () -&gt; Unit, modifier: Modifier = Modifier, )</ID>
     <ID>CognitiveComplexMethod:AppwritePlayerProfilesClient.kt$AppwritePlayerProfilesClient$suspend fun pullProfile(playerId: String): PlayerCacheEntity?</ID>
     <ID>CognitiveComplexMethod:BatsmanMilestoneCard.kt$@Composable fun BatsmanMilestoneCard( milestoneInfo: BatsmanMilestoneInfo, modifier: Modifier = Modifier, onShare: (() -&gt; Unit)? = null, )</ID>
@@ -165,7 +164,6 @@
     <ID>ImplicitDefaultLocale:SeriesStandingsCard.kt$String.format("%.2f", team.netRunRate)</ID>
     <ID>LongMethod:AboutScreenV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AboutScreenV2(onBackClick: () -&gt; Unit)</ID>
     <ID>LongMethod:AchievementsScreenV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AchievementsScreenV2( unlockedAchievements: Set&lt;AchievementKind&gt;, onBackClick: () -&gt; Unit, )</ID>
-    <ID>LongMethod:AllMatchesScreenV2.kt$@Composable fun AllMatchesScreenV2( viewModel: LiveActivityViewModel, onMatchClick: (CricketMatch) -&gt; Unit, )</ID>
     <ID>LongMethod:AppearanceScreenV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppearanceScreenV2( onBackClick: () -&gt; Unit, currentMode: ThemeModeV2, onModeChanged: (ThemeModeV2) -&gt; Unit, )</ID>
     <ID>LongMethod:BackgroundSkins.kt$@Composable private fun TeamColorsBackground( skin: BackgroundSkin.TeamColors, modifier: Modifier = Modifier )</ID>
     <ID>LongMethod:BatsmanMilestoneCard.kt$@Composable fun BatsmanMilestoneCard( milestoneInfo: BatsmanMilestoneInfo, modifier: Modifier = Modifier, onShare: (() -&gt; Unit)? = null, )</ID>
@@ -228,7 +226,6 @@
     <ID>LongMethod:MatchPhasesCard.kt$@Composable private fun MomentumSummary( phases: List&lt;MatchPhaseData&gt;, team1Name: String, team2Name: String, team1Color: Color, team2Color: Color )</ID>
     <ID>LongMethod:MatchPhasesCard.kt$@Composable private fun PhaseRow( phase: MatchPhaseData, phaseNumber: Int, team1Name: String, team2Name: String, team1Color: Color, team2Color: Color, isLast: Boolean )</ID>
     <ID>LongMethod:MatchPredictionCard.kt$@Composable fun MatchPredictionCard( predictionInfo: MatchPredictionInfo, modifier: Modifier = Modifier )</ID>
-    <ID>LongMethod:MoreScreenV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MoreScreenV2( onSettingsClick: () -&gt; Unit, onStatsClick: () -&gt; Unit, onAchievementsClick: () -&gt; Unit, onActivityClick: () -&gt; Unit, onAboutClick: () -&gt; Unit, onDevToolsClick: () -&gt; Unit, onNewsClick: () -&gt; Unit = {}, onAppearanceClick: () -&gt; Unit = {}, onSeriesClick: () -&gt; Unit = {}, )</ID>
     <ID>LongMethod:NewsDetailScreenV2.kt$@Composable fun NewsDetailScreenV2( viewModel: NewsViewModel, onBack: () -&gt; Unit, )</ID>
     <ID>LongMethod:NewsScreenV2.kt$@Composable fun NewsScreenV2( viewModel: NewsViewModel, onArticleClick: (NewsArticleData) -&gt; Unit, )</ID>
     <ID>LongMethod:NotificationsScreen.kt$@Composable private fun NotificationRow(item: NotificationItem)</ID>

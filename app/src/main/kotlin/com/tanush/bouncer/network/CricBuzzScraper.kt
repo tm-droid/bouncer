@@ -199,7 +199,6 @@ class CricBuzzScraper {
         private const val DETAILS_TIMEOUT_MS = 10000
         private const val COMMENTARY_TIMEOUT_MS = 12000
         private const val SCORECARD_TIMEOUT_MS = 15000
-        private const val UPCOMING_STATE = "Upcoming"
 
         private val consecutiveEmptyParses = java.util.concurrent.atomic.AtomicInteger(0)
     }
@@ -299,20 +298,13 @@ class CricBuzzScraper {
      * `matchInfo.team1/2` — the team's id and its `imageId` — are invisible to any test that can
      * only reach the parser through the network path.
      */
-    internal fun parseMatchListHtml(
-        html: String,
-        nowMs: Long = System.currentTimeMillis(),
-    ): List<CricketMatch> = parseNextJsData(html, nowMs)
+    internal fun parseMatchListHtml(html: String): List<CricketMatch> = parseNextJsData(html)
 
-    /** [filterMatches] for tests, which cannot reach it through the fetch. */
-    internal fun matchesForState(matches: List<CricketMatch>, state: String): List<CricketMatch> =
-        filterMatches(matches, state)
-
-    private fun parseNextJsData(html: String, nowMs: Long = System.currentTimeMillis()): List<CricketMatch> {
+    private fun parseNextJsData(html: String): List<CricketMatch> {
         val matches = mutableListOf<CricketMatch>()
         forEachNextFlightPayload(html) { data ->
             try {
-                matches.addAll(findMatchesInJson(data, nowMs))
+                matches.addAll(findMatchesInJson(data))
             } catch (e: Exception) {
                 Log.d(TAG, "Skipping unparseable Next.js data segment", e)
             }
@@ -320,79 +312,17 @@ class CricBuzzScraper {
         return matches
     }
 
-    private fun findMatchesInJson(element: JsonElement, nowMs: Long): List<CricketMatch> = when {
-        element.isJsonObject -> matchesInObject(element.asJsonObject, nowMs)
-        element.isJsonArray -> element.asJsonArray.flatMap { findMatchesInJson(it, nowMs) }
-        else -> emptyList()
-    }
-
-    private fun matchesInObject(obj: JsonObject, nowMs: Long): List<CricketMatch> {
-        val matchInfo = obj.get("matchInfo")
-        val here = when {
-            matchInfo == null -> emptyList()
-            matchInfo.isJsonArray -> matchInfo.asJsonArray
-                .filter { it.isJsonObject }
-                .mapNotNull { parseScheduleFixture(obj, it.asJsonObject, nowMs) }
-            else -> listOfNotNull(parseMatchObject(obj))
+    private fun findMatchesInJson(element: JsonElement): List<CricketMatch> {
+        val matches = mutableListOf<CricketMatch>()
+        if (element.isJsonObject) {
+            val obj = element.asJsonObject
+            parseMatchObject(obj)?.let { matches.add(it) }
+            obj.keySet().forEach { matches.addAll(findMatchesInJson(obj.get(it))) }
+        } else if (element.isJsonArray) {
+            element.asJsonArray.forEach { matches.addAll(findMatchesInJson(it)) }
         }
-        // A schedule entry's fixtures were read above; walking into them again would hand each one
-        // to parseMatchObject, which cannot read them.
-        val nested = obj.entrySet()
-            .filterNot { (key, value) -> key == "matchInfo" && value.isJsonArray }
-            .flatMap { (_, value) -> findMatchesInJson(value, nowMs) }
-        return here + nested
+        return matches
     }
-
-    /**
-     * One fixture from a schedule page's `matchScheduleList` entry, or null when it has started.
-     *
-     * Cricbuzz's `live-scores/upcoming-matches` page stopped carrying upcoming fixtures: measured on
-     * 2026-09-14 its flight stream held only the live ticker, every match on it Complete or at an
-     * innings break, so the Upcoming filter correctly rejected all ~90 and the tab was empty. The
-     * fixtures are on the schedule page, in a different shape — `matchInfo` is an array under a
-     * series entry, and there is no `status` or `state`, because nothing has happened yet.
-     *
-     * A fixture whose start time has passed is dropped: it is either live, and on the Live list, or
-     * delayed, and still on the Live list's page. Keeping it would list the match twice.
-     */
-    private fun parseScheduleFixture(entry: JsonObject, info: JsonObject, nowMs: Long): CricketMatch? {
-        val matchId = info.get("matchId")?.asString ?: return null
-        val team1 = info.getAsJsonObject("team1")?.get("teamName")?.asString ?: return null
-        val team2 = info.getAsJsonObject("team2")?.get("teamName")?.asString ?: return null
-        val startMs = info.get("startDate")?.asString?.toLongOrNull()?.takeIf { it > nowMs } ?: return null
-
-        val seriesName = entry.stringOrEmpty("seriesName")
-        val matchDesc = info.stringOrEmpty("matchDesc")
-        val competitionType = classifyCompetitionType(seriesName, matchDesc)
-        val start = MatchStartTime.of(startMs)
-        return CricketMatch(
-            id = matchId,
-            seriesId = info.stringOrEmpty("seriesId").ifBlank { entry.stringOrEmpty("seriesId") },
-            matchTitle = "$team1 vs $team2",
-            matchType = mapMatchFormat(info.stringOrEmpty("matchFormat")).ifBlank {
-                determineMatchType("$team1 vs $team2 $matchDesc")
-            },
-            status = start.statusLine,
-            teams = listOf(
-                cricketTeam(team1, teamIdOf(info, "team1"), "", "", false, teamImageIdOf(info, "team1")),
-                cricketTeam(team2, teamIdOf(info, "team2"), "", "", false, teamImageIdOf(info, "team2")),
-            ),
-            venue = parseVenue(info),
-            date = start.date,
-            matchTime = start.time,
-            score = buildMatchScore(MatchScoreFields.EMPTY),
-            currentStatus = start.statusLine,
-            info = UPCOMING_STATE,
-            category = competitionType,
-            gender = if (entry.stringOrEmpty("seriesCategory") == "Women") "Women" else "Men",
-            competitionType = competitionType,
-            seriesName = seriesName,
-            matchDesc = matchDesc,
-            startDateMs = startMs,
-        )
-    }
-
-    private fun JsonObject.stringOrEmpty(key: String): String = get(key)?.asString ?: ""
 
     private data class MatchScoreFields(
         val team1Score: String,

@@ -39,6 +39,9 @@ object MatchCacheService {
     private const val TAG = "MatchCacheService"
     private const val DISK_PREF_NAME = "match_cache_disk"
     private const val DISK_CACHE_MAX_AGE_MS = 3_600_000L // 1 hour for offline data
+    // Deliberately outside DISK_CACHE_MAX_AGE_MS: fixtures stay valid until they start, and each
+    // entry's own start time is what expires it. See [lastKnownUpcoming].
+    private const val LAST_KNOWN_UPCOMING_KEY = "matches_upcoming_last_known"
     
     private val mutex = Mutex()
     // Shared in-memory tier scaffolding (lock + eviction). The per-status TTL lives in the
@@ -209,6 +212,22 @@ object MatchCacheService {
         }
     }
     
+    /**
+     * The last non-empty Upcoming list this device saw, minus every fixture that has started.
+     *
+     * Cricbuzz's Upcoming page is sometimes genuinely empty — it shows "Nothing to show" while
+     * fixtures exist — and the `upcoming-matches` Storage file cannot stand in: it is overwritten with
+     * the same empty list and its entries carry no start time. Empty on a fresh install.
+     */
+    suspend fun lastKnownUpcoming(nowMs: Long = System.currentTimeMillis()): List<CricketMatch> = mutex.withLock {
+        val json = diskPrefs?.getString(LAST_KNOWN_UPCOMING_KEY, null) ?: return@withLock emptyList()
+        upcomingStillAhead(json, nowMs) ?: run {
+            Log.w(TAG, "Unreadable last-known Upcoming list")
+            Sentry.captureMessage("match_cache: unreadable last-known Upcoming list", SentryLevel.WARNING)
+            emptyList()
+        }
+    }
+
     // ── Disk persistence helpers ──
     
     private fun saveToDisk(status: String, matches: List<CricketMatch>) {
@@ -218,7 +237,9 @@ object MatchCacheService {
             // Most polls return the list unchanged. The timestamp must still move (loadFromDisk
             // judges freshness by it), but re-encoding and rewriting an identical blob is waste.
             if (lastPersisted[status] != matches) {
-                editor.putString("matches_$status", AppJson.encodeToString(matches))
+                val json = AppJson.encodeToString(matches)
+                editor.putString("matches_$status", json)
+                if (status == UPCOMING && matches.isNotEmpty()) editor.putString(LAST_KNOWN_UPCOMING_KEY, json)
                 lastPersisted[status] = matches
             }
             editor.apply()
@@ -250,3 +271,12 @@ object MatchCacheService {
         }
     }
 }
+
+/**
+ * Fixtures from a stored Upcoming list that start after [nowMs], or null when [json] cannot be read.
+ * A fixture with no start time is dropped: nothing could ever expire it.
+ */
+internal fun upcomingStillAhead(json: String, nowMs: Long): List<CricketMatch>? =
+    runCatching { AppJson.decodeFromString<List<CricketMatch>>(json) }
+        .getOrNull()
+        ?.filter { match -> match.startDateMs?.let { it > nowMs } == true }

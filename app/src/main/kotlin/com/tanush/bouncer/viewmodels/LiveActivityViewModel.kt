@@ -589,10 +589,19 @@ class LiveActivityViewModel(
     fun getProbabilityEventsForMatch(matchId: String): List<ProbabilityEvent> =
         _probabilityEvents.value[matchId].orEmpty()
 
+    private suspend fun fetchListFor(status: String): List<CricketMatch> {
+        val fetched = matchRepository.fetchLiveMatches(CricBuzzUrls.urlForStatus(status), status).distinctBy { it.id }
+        Sentry.metrics().gauge("live.matches.count", fetched.size.toDouble())
+        if (status != MatchCacheService.UPCOMING || fetched.isNotEmpty()) return fetched
+        // Cricbuzz's Upcoming page is sometimes empty while fixtures exist. That is their state, not a
+        // failure, so it breadcrumbs rather than reports.
+        return MatchCacheService.lastKnownUpcoming().also {
+            breadcrumb("match.upcoming", "Upcoming empty upstream; serving ${it.size} last-known fixtures")
+        }
+    }
+
     private suspend fun updateMatches(status: String) {
-        val url = CricBuzzUrls.urlForStatus(status)
-        val distinctMatches = matchRepository.fetchLiveMatches(url, status).distinctBy { it.id }
-        Sentry.metrics().gauge("live.matches.count", distinctMatches.size.toDouble())
+        val distinctMatches = fetchListFor(status)
         Sentry.metrics().count("live.poll.success", 1.0)
 
         // Win probability is computed server-side by bouncer-match-sync and published as one

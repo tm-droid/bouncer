@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
@@ -65,15 +64,12 @@ fun MoreScreenV2(
     onDevToolsClick: () -> Unit,
     onNewsClick: () -> Unit = {},
     onAppearanceClick: () -> Unit = {},
-    onSeriesClick: () -> Unit = {},
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    data class ExploreItem(val icon: ImageVector, val label: String, val onClick: () -> Unit)
-
-    val exploreItems = remember(onStatsClick, onAchievementsClick, onActivityClick, onSeriesClick) {
+    val exploreItems = remember(onStatsClick, onAchievementsClick, onActivityClick) {
         listOf(
             ExploreItem(Icons.Default.BarChart, "Stats", onStatsClick),
             // Was wired to onStatsClick — the tile said "Trophies" and opened Stats. It now goes
@@ -82,7 +78,6 @@ fun MoreScreenV2(
             ExploreItem(Icons.Default.EmojiEvents, "Trophies", onAchievementsClick),
             ExploreItem(Icons.Default.SportsCricket, "Achievements", onAchievementsClick),
             ExploreItem(Icons.Default.Timeline, "Activity", onActivityClick),
-            ExploreItem(Icons.Default.DateRange, "Series", onSeriesClick),
         )
     }
 
@@ -96,40 +91,14 @@ fun MoreScreenV2(
                 .padding(padding),
             contentPadding = PaddingValues(bottom = spacing.xxl),
         ) {
-            // Explore section
             item(key = "explore_header") {
                 SectionHeaderV2(
                     title = stringResource(R.string.more_explore),
                     modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.sm),
                 )
             }
-            item(key = "explore_grid") {
-                // Inline 2-column grid using Row
-                val rows = exploreItems.chunked(2)
-                Column(
-                    modifier = Modifier.padding(horizontal = spacing.lg),
-                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
-                ) {
-                    rows.forEach { row ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-                        ) {
-                            row.forEach { item ->
-                                ExploreCard(
-                                    icon = item.icon,
-                                    label = item.label,
-                                    onClick = item.onClick,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                            if (row.size == 1) Spacer(Modifier.weight(1f))
-                        }
-                    }
-                }
-            }
+            item(key = "explore_grid") { ExploreGrid(exploreItems) }
 
-            // Settings section
             item(key = "settings_header") {
                 Spacer(Modifier.height(spacing.lg))
                 SectionHeaderV2(
@@ -138,45 +107,14 @@ fun MoreScreenV2(
                 )
             }
             item(key = "settings_list") {
-                Column(
-                    modifier = Modifier.padding(horizontal = spacing.lg),
-                ) {
-                    SettingsItemV2(
-                        icon = Icons.Default.Settings,
-                        title = stringResource(R.string.common_settings),
-                        subtitle = stringResource(R.string.more_preferences_and_notifications),
-                        trailing = SettingsTrailing.Navigation,
-                        onClick = onSettingsClick,
-                    )
-                    SettingsItemV2(
-                        icon = Icons.Default.Palette,
-                        title = stringResource(R.string.common_appearance),
-                        subtitle = stringResource(R.string.more_theme_and_display),
-                        trailing = SettingsTrailing.Navigation,
-                        onClick = onAppearanceClick,
-                    )
-                    SettingsItemV2(
-                        icon = Icons.Default.Info,
-                        title = stringResource(R.string.common_about),
-                        subtitle = stringResource(R.string.more_version_licenses_and_credits),
-                        trailing = SettingsTrailing.Navigation,
-                        onClick = onAboutClick,
-                    )
-                    // Debug builds only. This row shipped in release, and the screen behind it
-                    // led with an "Echo" button wired to a placeholder MCP client.
-                    if (BuildConfig.DEBUG) {
-                        SettingsItemV2(
-                            icon = Icons.Default.Build,
-                            title = stringResource(R.string.more_dev_tools),
-                            subtitle = stringResource(R.string.more_diagnostics_and_debug),
-                            trailing = SettingsTrailing.Navigation,
-                            onClick = onDevToolsClick,
-                        )
-                    }
-                }
+                SettingsList(
+                    onSettingsClick = onSettingsClick,
+                    onAppearanceClick = onAppearanceClick,
+                    onAboutClick = onAboutClick,
+                    onDevToolsClick = onDevToolsClick,
+                )
             }
 
-            // Version footer
             item(key = "version") {
                 Spacer(Modifier.height(spacing.xl))
                 Text(
@@ -187,6 +125,78 @@ fun MoreScreenV2(
                     textAlign = TextAlign.Center,
                 )
             }
+        }
+    }
+}
+
+private data class ExploreItem(val icon: ImageVector, val label: String, val onClick: () -> Unit)
+
+@Composable
+private fun ExploreGrid(items: List<ExploreItem>) {
+    val spacing = BouncerThemeV2.spacing
+    // Inline 2-column grid using Row
+    Column(
+        modifier = Modifier.padding(horizontal = spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(spacing.sm),
+    ) {
+        items.chunked(2).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+            ) {
+                row.forEach { item ->
+                    ExploreCard(
+                        icon = item.icon,
+                        label = item.label,
+                        onClick = item.onClick,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsList(
+    onSettingsClick: () -> Unit,
+    onAppearanceClick: () -> Unit,
+    onAboutClick: () -> Unit,
+    onDevToolsClick: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(horizontal = BouncerThemeV2.spacing.lg)) {
+        SettingsItemV2(
+            icon = Icons.Default.Settings,
+            title = stringResource(R.string.common_settings),
+            subtitle = stringResource(R.string.more_preferences_and_notifications),
+            trailing = SettingsTrailing.Navigation,
+            onClick = onSettingsClick,
+        )
+        SettingsItemV2(
+            icon = Icons.Default.Palette,
+            title = stringResource(R.string.common_appearance),
+            subtitle = stringResource(R.string.more_theme_and_display),
+            trailing = SettingsTrailing.Navigation,
+            onClick = onAppearanceClick,
+        )
+        SettingsItemV2(
+            icon = Icons.Default.Info,
+            title = stringResource(R.string.common_about),
+            subtitle = stringResource(R.string.more_version_licenses_and_credits),
+            trailing = SettingsTrailing.Navigation,
+            onClick = onAboutClick,
+        )
+        // Debug builds only. This row shipped in release, and the screen behind it
+        // led with an "Echo" button wired to a placeholder MCP client.
+        if (BuildConfig.DEBUG) {
+            SettingsItemV2(
+                icon = Icons.Default.Build,
+                title = stringResource(R.string.more_dev_tools),
+                subtitle = stringResource(R.string.more_diagnostics_and_debug),
+                trailing = SettingsTrailing.Navigation,
+                onClick = onDevToolsClick,
+            )
         }
     }
 }

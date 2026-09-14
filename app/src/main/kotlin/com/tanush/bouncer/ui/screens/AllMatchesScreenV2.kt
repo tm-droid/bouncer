@@ -40,43 +40,31 @@ import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.viewmodels.LoadingState
 
 /**
- * AllMatchesScreenV2 — Dedicated match list tab.
- * Two filter rows (status + format), series-grouped match cards, date separators.
+ * AllMatchesScreenV2 — the full match list, pushed from Home's "All matches" link.
+ * Two filter rows (status + format) over a flat list of match cards.
  */
 @Composable
 fun AllMatchesScreenV2(
     viewModel: LiveActivityViewModel,
     onMatchClick: (CricketMatch) -> Unit,
+    onBackClick: () -> Unit,
 ) {
     val selectedStatus by viewModel.selectedStatus.collectAsStateWithLifecycle()
-    val selectedCompetitionType by viewModel.selectedCompetitionType.collectAsStateWithLifecycle()
     val currentMatches by viewModel.currentMatches.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val loadingState by viewModel.loadingState.collectAsStateWithLifecycle()
-    val isOffline = rememberIsOffline()
-
-    val spacing = BouncerThemeV2.spacing
-
     val selectedFormat by viewModel.selectedFormat.collectAsStateWithLifecycle()
-
-    // Status chips
-    val statusOptions = listOf("Live", "Upcoming", "Recent")
-    // Format chips
-    val formatOptions = listOf("All", "T20", "ODI", "Test", "First Class")
+    val isOffline = rememberIsOffline()
 
     // Apply local format filter (memoized — list recomposes on live score ticks)
     val filteredMatches = remember(currentMatches, selectedFormat) {
         if (selectedFormat == "All") {
             currentMatches
         } else {
-            currentMatches.filter {
-                it.matchType.contains(selectedFormat, ignoreCase = true)
-            }
+            currentMatches.filter { it.matchType.contains(selectedFormat, ignoreCase = true) }
         }
     }
-
-    // No grouping — card already displays match/series info
 
     // Refresh failed while content is on screen: keep the stale list, say so.
     val snackbarHostState = remember { SnackbarHostState() }
@@ -89,7 +77,7 @@ fun AllMatchesScreenV2(
     Scaffold(
         topBar = {
             Column {
-                BouncerTopBarV2(title = stringResource(R.string.common_matches))
+                BouncerTopBarV2(title = stringResource(R.string.common_matches), showBack = true, onBack = onBackClick)
                 NetworkStatusBanner(isOffline = isOffline)
             }
         },
@@ -101,81 +89,103 @@ fun AllMatchesScreenV2(
             onRefresh = { viewModel.refreshMatches() },
             modifier = Modifier.padding(innerPadding),
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().bouncerScreenBackground(),
-                contentPadding = PaddingValues(vertical = spacing.md),
-            ) {
-                // Status filter
-                item(key = "status_filter") {
-                    FilterChipRowV2(
-                        items = statusOptions,
-                        selectedItem = mapStatusToChip(selectedStatus),
-                        onItemSelected = { chip ->
-                            viewModel.setAndFetchMatches(chip)
-                        },
-                    )
-                    Spacer(Modifier.height(spacing.xs))
-                }
+            AllMatchesList(
+                state = AllMatchesListState(
+                    selectedStatus = selectedStatus,
+                    selectedFormat = selectedFormat,
+                    matches = filteredMatches,
+                    showSkeleton = isLoading && currentMatches.isEmpty(),
+                    showEmpty = filteredMatches.isEmpty() && !isLoading,
+                    error = loadingState as? LoadingState.Error,
+                ),
+                onStatusSelected = { viewModel.setAndFetchMatches(it) },
+                onFormatSelected = { viewModel.setFormat(it) },
+                onRetry = { viewModel.refreshMatches() },
+                onMatchClick = onMatchClick,
+            )
+        }
+    }
+}
 
-                // Format filter
-                item(key = "format_filter") {
-                    FilterChipRowV2(
-                        items = formatOptions,
-                        selectedItem = selectedFormat,
-                        onItemSelected = { viewModel.setFormat(it) },
-                    )
-                    Spacer(Modifier.height(spacing.md))
-                }
+private val STATUS_OPTIONS = listOf("Live", "Upcoming", "Recent")
+private val FORMAT_OPTIONS = listOf("All", "T20", "ODI", "Test", "First Class")
 
-                // Loading
-                if (isLoading && currentMatches.isEmpty()) {
-                    items(4, key = { "shimmer_$it" }) {
-                        ShimmerMatchCard(
-                            modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
-                        )
-                    }
-                    return@LazyColumn
-                }
+private data class AllMatchesListState(
+    val selectedStatus: String,
+    val selectedFormat: String,
+    val matches: List<CricketMatch>,
+    val showSkeleton: Boolean,
+    val showEmpty: Boolean,
+    val error: LoadingState.Error?,
+)
 
-                // Empty or error
-                if (filteredMatches.isEmpty() && !isLoading) {
-                    item(key = "empty") {
-                        val errorState = loadingState as? LoadingState.Error
-                        if (errorState != null) {
-                            EmptyStateV2(
-                                title = stringResource(R.string.matches_couldnt_load),
-                                subtitle = errorState.message,
-                                icon = Icons.Outlined.CloudOff,
-                                onRetry = { viewModel.refreshMatches() },
-                            )
-                        } else {
-                            EmptyStateV2(
-                                title = stringResource(R.string.matches_none),
-                                subtitle = if (selectedFormat == "All") "No matches found" else "No $selectedFormat matches found",
-                                icon = Icons.Outlined.SportsCricket,
-                            )
-                        }
-                    }
-                    return@LazyColumn
-                }
+@Composable
+private fun AllMatchesList(
+    state: AllMatchesListState,
+    onStatusSelected: (String) -> Unit,
+    onFormatSelected: (String) -> Unit,
+    onRetry: () -> Unit,
+    onMatchClick: (CricketMatch) -> Unit,
+) {
+    val spacing = BouncerThemeV2.spacing
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().bouncerScreenBackground(),
+        contentPadding = PaddingValues(vertical = spacing.md),
+    ) {
+        item(key = "status_filter") {
+            FilterChipRowV2(
+                items = STATUS_OPTIONS,
+                selectedItem = mapStatusToChip(state.selectedStatus),
+                onItemSelected = onStatusSelected,
+            )
+            Spacer(Modifier.height(spacing.xs))
+        }
+        item(key = "format_filter") {
+            FilterChipRowV2(
+                items = FORMAT_OPTIONS,
+                selectedItem = state.selectedFormat,
+                onItemSelected = onFormatSelected,
+            )
+            Spacer(Modifier.height(spacing.md))
+        }
 
-                // Match list (flat — card already shows series/match info)
-                items(filteredMatches, key = { "match_${it.id}" }) { match ->
+        when {
+            state.showSkeleton -> items(4, key = { "shimmer_$it" }) {
+                ShimmerMatchCard(modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs))
+            }
+            state.showEmpty -> item(key = "empty") {
+                AllMatchesEmptyState(error = state.error, selectedFormat = state.selectedFormat, onRetry = onRetry)
+            }
+            else -> {
+                // Flat — the card already shows series/match info
+                items(state.matches, key = { "match_${it.id}" }) { match ->
                     MatchCardV2(
                         match = match,
                         onClick = { onMatchClick(match) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateItem(),
+                        modifier = Modifier.fillMaxWidth().animateItem(),
                     )
                 }
-
-                // Bottom spacing
-                item(key = "bottom_spacer") {
-                    Spacer(Modifier.height(80.dp))
-                }
+                item(key = "bottom_spacer") { Spacer(Modifier.height(80.dp)) }
             }
         }
+    }
+}
+
+@Composable
+private fun AllMatchesEmptyState(error: LoadingState.Error?, selectedFormat: String, onRetry: () -> Unit) {
+    if (error != null) {
+        EmptyStateV2(
+            title = stringResource(R.string.matches_couldnt_load),
+            subtitle = error.message,
+            icon = Icons.Outlined.CloudOff,
+            onRetry = onRetry,
+        )
+    } else {
+        EmptyStateV2(
+            title = stringResource(R.string.matches_none),
+            subtitle = if (selectedFormat == "All") "No matches found" else "No $selectedFormat matches found",
+            icon = Icons.Outlined.SportsCricket,
+        )
     }
 }
 

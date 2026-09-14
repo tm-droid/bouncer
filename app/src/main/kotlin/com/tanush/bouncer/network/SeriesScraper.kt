@@ -2,6 +2,8 @@ package com.tanush.bouncer.network
 
 import com.tanush.bouncer.services.WORKER_MAX_RETRIES
 import com.tanush.bouncer.services.backoffDelayMs
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
 import com.tanush.bouncer.models.Series
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -21,7 +23,9 @@ class SeriesScraper {
     companion object {
         private const val TAG = "SeriesScraper"
         private const val MAX_RETRIES = WORKER_MAX_RETRIES
-        private const val SERIES_LIST_URL = "${CricBuzzUrls.BASE}/cricket-schedule/series"
+        // `/cricket-schedule/series` (no suffix) carries only the site-wide live ticker, so every
+        // strategy below returned nothing on it and the Series screen said "No series found".
+        private const val SERIES_LIST_URL = "${CricBuzzUrls.BASE}/cricket-schedule/series/all"
     }
 
     /**
@@ -40,7 +44,10 @@ class SeriesScraper {
             try {
                 val doc = ScrapeFetcher.get(SERIES_LIST_URL, randomUserAgent(), 10_000)
 
-                // Try Next.js __NEXT_DATA__ first
+                val scheduled = parseSeriesListHtml(doc.html())
+                if (scheduled.isNotEmpty()) return@withContext scheduled
+
+                // Legacy Pages Router shape, kept as a fallback
                 val nextDataSeries = parseFromNextJsData(doc.html())
                 if (nextDataSeries.isNotEmpty()) return@withContext nextDataSeries
 
@@ -87,6 +94,28 @@ class SeriesScraper {
     }
 
     /**
+     * Every series in the page's App Router flight stream: `seriesScheduleData` is a list of month
+     * groups, each `{date, series: [{id, name, startDt, endDt}]}`. `internal` for the fixture test.
+     */
+    internal fun parseSeriesListHtml(html: String): List<Series> {
+        val result = linkedMapOf<String, Series>()
+        forEachNextFlightPayload(html) { payload ->
+            findScheduleGroups(payload).forEach { group ->
+                seriesOfGroups(group).forEach { result.putIfAbsent(it.id, it) }
+            }
+        }
+        return result.values.toList()
+    }
+
+    private fun findScheduleGroups(element: JsonElement): List<JsonArray> = when {
+        element.isJsonObject -> element.asJsonObject.entrySet().flatMap { (key, value) ->
+            if (key == "seriesScheduleData" && value.isJsonArray) listOf(value.asJsonArray) else findScheduleGroups(value)
+        }
+        element.isJsonArray -> element.asJsonArray.flatMap { findScheduleGroups(it) }
+        else -> emptyList()
+    }
+
+    /**
      * Parse series list from embedded __NEXT_DATA__ JSON.
      */
     private fun parseFromNextJsData(html: String): List<Series> {
@@ -100,37 +129,30 @@ class SeriesScraper {
                 ?: pageProps.getAsJsonArray("content")
                 ?: return emptyList()
 
-            val result = mutableListOf<Series>()
-
-            for (groupElement in seriesData) {
-                val group = groupElement.asJsonObject
-                val seriesArray = group.getAsJsonArray("series") ?: continue
-
-                for (seriesElement in seriesArray) {
-                    val s = seriesElement.asJsonObject
-                    val id = s.get("id")?.asString ?: s.get("seriesId")?.asString ?: continue
-                    val name = s.get("name")?.asString ?: s.get("seriesName")?.asString ?: continue
-
-                    // This is the path that actually runs in production (the HTML scrape below is
-                    // only a fallback), and it used to classify nothing at all — every series came
-                    // back INTERNATIONAL, so the Women and League filters had nothing to match.
-                    result.add(
-                        Series(
-                            id = id,
-                            name = name,
-                            startDate = s.get("startDt")?.asString ?: "",
-                            endDate = s.get("endDt")?.asString ?: "",
-                            category = seriesCategoryOf(name),
-                            isWomens = isWomensSeries(name),
-                        )
-                    )
-                }
-            }
-
-            return result
+            return seriesOfGroups(seriesData)
         } catch (e: Exception) {
             Sentry.captureException(e)
             return emptyList()
         }
     }
+
+    private fun seriesOfGroups(groups: JsonArray): List<Series> = groups
+        .filter { it.isJsonObject }
+        .flatMap { group -> group.asJsonObject.getAsJsonArray("series")?.toList().orEmpty() }
+        .filter { it.isJsonObject }
+        .mapNotNull { element ->
+            val s = element.asJsonObject
+            val id = s.get("id")?.asString ?: s.get("seriesId")?.asString ?: return@mapNotNull null
+            val name = s.get("name")?.asString ?: s.get("seriesName")?.asString ?: return@mapNotNull null
+            // The category is classified here because this is the path that runs in production; it
+            // used to leave every series INTERNATIONAL, so the Women and League filters matched nothing.
+            Series(
+                id = id,
+                name = name,
+                startDate = s.get("startDt")?.asString ?: "",
+                endDate = s.get("endDt")?.asString ?: "",
+                category = seriesCategoryOf(name),
+                isWomens = isWomensSeries(name),
+            )
+        }
 }

@@ -3,14 +3,14 @@ package com.tanush.bouncer.ui.components.v2
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Newspaper
-import androidx.compose.material.icons.filled.SportsCricket
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Newspaper
-import androidx.compose.material.icons.outlined.SportsCricket
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -23,7 +23,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
- * Material 3 bottom navigation bar — 4 tabs (Home, Matches, News, More).
+ * Material 3 bottom navigation bar — 4 tabs (Home, Series, News, More).
+ *
+ * There is no Matches tab: Home lists every match (All/Live/Upcoming/Recent), and its "All matches"
+ * link opens the full list as a pushed screen.
  */
 
 data class BottomNavItemV2(
@@ -35,7 +38,7 @@ data class BottomNavItemV2(
 
 val bottomNavItemsV2 = listOf(
     BottomNavItemV2("home", "Home", Icons.Filled.Home, Icons.Outlined.Home),
-    BottomNavItemV2("all_matches", "Matches", Icons.Filled.SportsCricket, Icons.Outlined.SportsCricket),
+    BottomNavItemV2("series", "Series", Icons.Filled.DateRange, Icons.Outlined.DateRange),
     BottomNavItemV2("news", "News", Icons.Filled.Newspaper, Icons.Outlined.Newspaper),
     BottomNavItemV2("more", "More", Icons.Filled.MoreHoriz, Icons.Outlined.MoreHoriz),
 )
@@ -80,24 +83,23 @@ fun BottomNavBarV2(
     }
 }
 
-private fun isTabActive(currentRoute: String?, tabRoute: String): Boolean {
-    if (currentRoute == null) return tabRoute == "home"
-    if (currentRoute == tabRoute) return true
-    // "More" tab should stay active for its child routes
-    if (tabRoute == "more") {
-        return currentRoute in setOf(
-            "stats", "trophy-room", "stats_overview", "settings",
-            "appearance", "about", "devtools", "achievements",
-            "ar-tracking", "activity-feed",
-        ) || currentRoute.startsWith("player/")
-    }
-    // "Matches" tab for match detail routes
-    if (tabRoute == "all_matches") {
-        return currentRoute.startsWith("match/")
-    }
-    // "News" tab for news detail
-    if (tabRoute == "news") {
-        return currentRoute.startsWith("news/")
-    }
-    return false
+private val MORE_CHILD_ROUTES = setOf(
+    "stats", "trophy-room", "stats_overview", "settings",
+    "appearance", "about", "devtools", "achievements",
+    "ar-tracking", "activity-feed",
+)
+
+// Child routes that keep a tab highlighted. Home owns match detail and the full match list it links
+// to; Series owns series detail and points tables.
+private val TAB_CHILDREN: Map<String, (String) -> Boolean> = mapOf(
+    "home" to { route -> route.startsWith("match/") || route == "all_matches" },
+    "series" to { route -> route.startsWith("series/") || route.startsWith("points-table/") },
+    "news" to { route -> route.startsWith("news/") },
+    "more" to { route -> route in MORE_CHILD_ROUTES || route.startsWith("player/") },
+)
+
+private fun isTabActive(currentRoute: String?, tabRoute: String): Boolean = when (currentRoute) {
+    null -> tabRoute == "home"
+    tabRoute -> true
+    else -> TAB_CHILDREN[tabRoute]?.invoke(currentRoute) == true
 }

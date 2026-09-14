@@ -284,7 +284,8 @@ private fun handleExternalDeepLink(
 
     when (topLevel) {
         "home" -> navController.navigateToTab(BouncerScreen.Home.route)
-        "matches", "all_matches" -> navController.navigateToTab(BouncerScreen.Matches.route)
+        "matches", "all_matches" -> navController.navigateForward(BouncerScreen.Matches.route)
+        "series" -> navController.navigateToTab(BouncerScreen.SeriesList.route)
         "favorites", "favourites" -> navController.navigateToTab(BouncerScreen.Favorites.route)
         "stats" -> navController.navigateForward(BouncerScreen.Stats.route)
         "more" -> navController.navigateToTab(BouncerScreen.More.route)
@@ -298,7 +299,7 @@ private fun handleExternalDeepLink(
             if (deepLinkMatchId != null) {
                 navController.navigateForward(BouncerScreen.MatchDetail.createRoute(deepLinkMatchId))
             } else {
-                navController.navigateToTab(BouncerScreen.Matches.route)
+                navController.navigateToTab(BouncerScreen.Home.route)
             }
         }
         else -> return false

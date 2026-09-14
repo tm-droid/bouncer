@@ -21,7 +21,7 @@ sealed class BouncerScreen(val route: String) {
     /** Home tab - Live matches, featured content */
     data object Home : BouncerScreen("home")
 
-    /** All Matches tab - Complete match listings */
+    /** All Matches - complete match listings, pushed from Home's "All matches" link (not a tab) */
     data object Matches : BouncerScreen("all_matches")
 
     /** Favourites - saved teams and matches (deep-link route, not a bottom tab) */
@@ -210,7 +210,7 @@ sealed class BouncerScreen(val route: String) {
         /**
          * All primary tab routes for bottom navigation.
          */
-        val primaryTabs = listOf(Home, Matches, News, More)
+        val primaryTabs = listOf(Home, SeriesList, News, More)
 
         /**
          * Routes that should highlight the "More" tab when active.
@@ -225,7 +225,6 @@ sealed class BouncerScreen(val route: String) {
             Achievements.route,
             ActivityFeed.route,
             Search.route,
-            SeriesList.route,
             PlayerComparison.route,
             Notifications.route,
         )
@@ -247,11 +246,12 @@ sealed class BouncerScreen(val route: String) {
                 route in primaryTabs.map { it.route } -> route
                 route.startsWith("news/") -> News.route
                 isMoreChildRoute(route) -> More.route
-                route.startsWith("match/") -> Matches.route
+                route == Matches.route -> Home.route
+                route.startsWith("match/") -> Home.route
                 route.startsWith("player/") -> More.route
                 route.startsWith("team/") -> More.route
-                route.startsWith("series/") -> More.route
-                route.startsWith("points-table/") -> More.route
+                route.startsWith("series/") -> SeriesList.route
+                route.startsWith("points-table/") -> SeriesList.route
                 else -> Home.route
             }
         }

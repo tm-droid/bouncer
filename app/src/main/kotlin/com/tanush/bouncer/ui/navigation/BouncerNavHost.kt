@@ -113,7 +113,7 @@ private fun NavGraphBuilder.primaryTabDestinations(
             viewModel = liveActivityViewModel,
             onMatchClick = onMatchClick,
             onMoreMatchesClick = {
-                navController.navigateToTab(BouncerScreen.Matches.route)
+                navController.navigateForward(BouncerScreen.Matches.route)
             },
             onAchievementsClick = {
                 navController.navigateForward(BouncerScreen.Stats.route)
@@ -130,17 +130,27 @@ private fun NavGraphBuilder.primaryTabDestinations(
         )
     }
 
-    // All Matches Tab
+    // All Matches — pushed from Home's "All matches" link; Home already lists every match.
+    composable(BouncerScreen.Matches.route) {
+        AllMatchesScreenV2(
+            viewModel = liveActivityViewModel,
+            onMatchClick = onMatchClick,
+            onBackClick = { navController.popBackStack() },
+        )
+    }
+
+    // Series Tab
     composable(
-        BouncerScreen.Matches.route,
+        BouncerScreen.SeriesList.route,
         enterTransition = { BouncerMotion.Transitions.tabEnter() },
         exitTransition = { BouncerMotion.Transitions.tabExit() },
         popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
         popExitTransition = { BouncerMotion.Transitions.tabExit() }
     ) {
-        AllMatchesScreenV2(
-            viewModel = liveActivityViewModel,
-            onMatchClick = onMatchClick
+        SeriesListScreen(
+            onSeriesClick = { seriesId ->
+                navController.navigateForward(BouncerScreen.SeriesDetail.createRoute(seriesId))
+            },
         )
     }
 
@@ -237,9 +247,6 @@ private fun NavGraphBuilder.primaryTabDestinations(
             onAppearanceClick = {
                 navController.navigateForward(BouncerScreen.Appearance.route)
             },
-            onSeriesClick = {
-                navController.navigateForward(BouncerScreen.SeriesList.route)
-            }
         )
     }
 }
@@ -378,16 +385,6 @@ private fun NavGraphBuilder.moreChildDestinations(
         )
     }
 
-    // Series List
-    composable(BouncerScreen.SeriesList.route) {
-        SeriesListScreen(
-            onSeriesClick = { seriesId ->
-                navController.navigateForward(BouncerScreen.SeriesDetail.createRoute(seriesId))
-            },
-            onBackClick = { navController.popBackStack() }
-        )
-    }
-
     // Player Comparison
     composable(BouncerScreen.PlayerComparison.route) {
         PlayerComparisonScreen(
@@ -480,7 +477,7 @@ private fun NavGraphBuilder.matchDeepLinkDestination(
         // Reject blank or implausibly long IDs (deep-link injection guard)
         val matchId = rawMatchId?.takeIf { it.isNotBlank() && it.length <= 64 }
             ?: run {
-                LaunchedEffect(Unit) { navController.navigateToTab(BouncerScreen.Matches.route) }
+                LaunchedEffect(Unit) { navController.navigateToTab(BouncerScreen.Home.route) }
                 return@composable
             }
 
@@ -503,7 +500,7 @@ private fun NavGraphBuilder.matchDeepLinkDestination(
             }
             // Fetch done and the id resolved nowhere — genuinely unknown match.
             else -> LaunchedEffect(Unit) {
-                navController.navigateToTab(BouncerScreen.Matches.route)
+                navController.navigateToTab(BouncerScreen.Home.route)
             }
         }
     }
