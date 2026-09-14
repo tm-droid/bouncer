@@ -27,6 +27,11 @@ interface HighlightDao {
     @Query("SELECT * FROM highlights ORDER BY fetchedAt DESC LIMIT 1000")
     suspend fun queryAllRecent(): List<HighlightEntity>
 
+    // Rows stored before their match was in the `matches` table. They are re-scored when that table
+    // fills, since ingest scored them against whatever it held at the time.
+    @Query("SELECT * FROM highlights WHERE matchedBouncerMatchId IS NULL ORDER BY fetchedAt DESC LIMIT 500")
+    suspend fun queryUnmatched(): List<HighlightEntity>
+
     @Query("SELECT iccMatchId FROM highlights WHERE matchedBouncerMatchId = :bouncerMatchId AND iccMatchId IS NOT NULL LIMIT 1")
     suspend fun cachedIccMatchId(bouncerMatchId: String): String?
 

@@ -340,6 +340,15 @@ day/night via `cp(light, dark)`. The **splash stays dark in both modes on purpos
 `ic_launcher_foreground.png` is a mostly-opaque black mark, so a light plate renders a black square
 — hence `@color/splash_background` has no night variant.
 
+**Upcoming comes from the schedule page, not `live-scores/upcoming-matches`.** Since at least
+2026-09-14 that page carries only the live ticker — every `matchInfo` Complete or at a break — so
+the Upcoming filter correctly rejected all ~90 and the tab was empty. `CricBuzzUrls.UPCOMING_MATCHES`
+is `/cricket-schedule/upcoming-series/all`, where fixtures sit under `matchScheduleList` with
+`matchInfo` as an **array** and no `status`/`state`; `parseScheduleFixture` stamps a
+"Match starts at …" status (a PRE_MATCH marker) and drops fixtures whose start has passed. Pinned
+by `CricBuzzScheduleFixtureTest`. `poll-live-matches`' `CRICBUZZ_SCHEDULE_URL` still points at the
+dead page, and its Vercel upcoming input returned an empty list the same day.
+
 **Cricbuzz profile pages are App Router.** `/profiles/{id}/{slug}` carries no `__NEXT_DATA__` block — only `self.__next_f.push(...)` chunks — and the legacy Jsoup selectors (`cb-font-40`, `cb-plyr-inf`, `cb-plyr-thead`, …) match **zero** elements on it. Both of `PlayerProfileScraper`'s original strategies were therefore dead, and the fallback produced a profile with a name and every other field empty rather than an error. `PlayerProfileRsc` reads the flight stream via `forEachNextFlightPayload` — the same parser the match pages use — and runs first; the other two stay as fallbacks. Pinned by `PlayerProfileRscTest` against captured markup.
 
 **Scorecard player names are in a span, not the row's link.** A `div.grid.scorecard-bat-grid` /
@@ -542,7 +551,7 @@ arithmetic, not a one-line edit.
 
 **Deleting from this bucket is how you break a different feature silently, so select by `startsWith("$id", …)` and never by `search`.** Storage search is fuzzy: measured against the live bucket, `search=news-body` also returns **`news-cache`**, while `startsWith($id, "news-body-")` returns exactly the bodies. `bouncer-news-sync` prunes `news-body-*` past `BODY_RETENTION_MS` (14 days) on its **headline-refresh path only** — that path is already capped at ~6 runs/day by the 4h TTL, so the sweep needs no schedule of its own — and re-checks the prefix on every candidate before deleting, because a query-semantics surprise must not be able to become a deletion.
 
-**Room DB:** currently at schema version 15. v14→v15 dropped the `commentary` table, which nothing ever inserted into (live commentary is the `match-commentary` Appwrite table). The `matches` table is in the same state — read by highlight fuzzy-matching, written by nothing — so highlights are always stored unmatched; that is a missing write, not dead code. New migrations: add `MIGRATION_N_(N+1)` in `BouncerDatabase.kt` + bump `version` in `@Database`.
+**Room DB:** currently at schema version 15. v14→v15 dropped the `commentary` table, which nothing ever inserted into (live commentary is the `match-commentary` Appwrite table). The `matches` table exists only for highlight fuzzy-matching; `PlayedMatchIndex` writes it from the Live and Recent lists, and each Recent write re-scores highlights still stored unmatched. It was written by nothing until September 2026, which hid how loose `HighlightFuzzyMatcher` was: the first time it had rows, 154 of 400 highlights linked on a test device and every link was wrong (one shared team plus the league cleared the averaged threshold weeks apart). A contradicting date (>1 day) or a side below 0.92 similarity, or with a different qualifier ("Women", "A", "XI"), now vetoes outright — pinned by `HighlightFuzzyMatcherTest` with those real pairs. **Check a matcher change against rows from the device, not only fixtures.** New migrations: add `MIGRATION_N_(N+1)` in `BouncerDatabase.kt` + bump `version` in `@Database`.
 
 **No FTS.** `player_fts`, `series_fts` and `historical_match_fts` were dropped in v12→v13, along with `historical_match_cache` (nothing ever wrote to it). The FTS entities were `@Fts4` with **no `contentEntity`**, so Room created them with no sync triggers; the triggers that populated them existed only inside `MIGRATION_1_2`, which a fresh install never runs. Every install created after schema v1 was searching a permanently empty index, and only v1-upgraded devices worked — which made it look device-specific. `SeriesCacheDao`/`PlayerCacheDao` now use `LIKE` over the backing tables (a few hundred rows; FTS bought nothing) and that is also what makes acronym expansion work. Do not reintroduce an FTS index without `contentEntity`.
 

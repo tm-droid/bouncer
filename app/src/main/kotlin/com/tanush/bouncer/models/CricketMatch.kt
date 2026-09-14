@@ -98,6 +98,8 @@ data class CricketMatch(
     val seriesName: String = "",
     /** Cricbuzz `matchDesc`, e.g. "2nd Test" or "12th Match". Blank on lists cached before it was kept. */
     val matchDesc: String = "",
+    /** Cricbuzz `startDate`, epoch ms. Null on lists cached before it was kept. */
+    val startDateMs: Long? = null,
 ) {
     // Classified over BOTH status fields at once. Either field can be stale or terse on its own,
     // and precedence resolves the disagreement correctly: a stale status="Live" alongside a

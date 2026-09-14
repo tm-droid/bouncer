@@ -9,7 +9,9 @@ object CricBuzzUrls {
 
     const val LIVE_SCORES = "$BASE/cricket-match/live-scores"
     const val RECENT_MATCHES = "$BASE/cricket-match/live-scores/recent-matches"
-    const val UPCOMING_MATCHES = "$BASE/cricket-match/live-scores/upcoming-matches"
+    // Not `live-scores/upcoming-matches`: since at least 2026-09-14 that page carries only the live
+    // ticker (every match Complete or at a break) and no fixtures, so the Upcoming tab was empty.
+    const val UPCOMING_MATCHES = "$BASE/cricket-schedule/upcoming-series/all"
 
     fun liveScoresUrl(matchId: String) = "$BASE/live-cricket-scores/$matchId"
     fun scorecardUrl(matchId: String) = "$BASE/live-cricket-scorecard/$matchId"

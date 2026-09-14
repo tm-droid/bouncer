@@ -12,6 +12,7 @@ import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.data.prefs.PreferenceStore
 import com.tanush.bouncer.data.local.BouncerDatabase
+import com.tanush.bouncer.data.PlayedMatchIndex
 import com.tanush.bouncer.data.remote.AppwriteAICache
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
@@ -164,6 +165,7 @@ class BouncerApp : Application() {
         initializeSafely("AppwriteRealtime") {
             val database = BouncerDatabase.getInstance(this)
             val highlightsRepo = HighlightsRepository(database.highlightDao(), database.matchDao())
+            PlayedMatchIndex.initialize(highlightsRepo, applicationScope)
             val startHighlights = {
                 AppwriteHighlightsClient.startRealtimeSubscription(
                     scope = applicationScope,

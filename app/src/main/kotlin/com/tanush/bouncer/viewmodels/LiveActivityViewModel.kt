@@ -13,6 +13,7 @@ import com.tanush.bouncer.utils.TimelineEventExtractor
 import com.tanush.bouncer.utils.bouncerExceptionHandler
 import com.tanush.bouncer.data.CricBuzzMatchRepository
 import com.tanush.bouncer.data.MatchRepository
+import com.tanush.bouncer.data.PlayedMatchIndex
 import com.tanush.bouncer.data.remote.LiveMatchDetailSource
 import com.tanush.bouncer.data.remote.ProductionLiveDetailSource
 import com.tanush.bouncer.data.remote.RealtimeLifecycleController
@@ -618,6 +619,7 @@ class LiveActivityViewModel(
         }
 
         MatchCacheService.updateCache(matchesWithProbability, status)
+        PlayedMatchIndex.record(status, distinctMatches)
         cachedMatches[status] = matchesWithProbability
 
         val selected = _selectedStatus.value

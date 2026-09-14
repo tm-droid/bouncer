@@ -8,8 +8,10 @@ import com.tanush.bouncer.data.local.dao.HighlightDao
 import com.tanush.bouncer.data.local.dao.MatchDao
 import com.tanush.bouncer.data.local.entities.HighlightEntity
 import com.tanush.bouncer.data.local.entities.MatchEntity
+import com.tanush.bouncer.data.local.entities.toMatchEntity
 import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
 import com.tanush.bouncer.data.remote.HighlightRow
+import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.services.HighlightFallbackUrlBuilder
 import com.tanush.bouncer.services.HighlightFuzzyMatcher
 import com.tanush.bouncer.data.prefs.BouncerPreferences
@@ -164,6 +166,30 @@ class HighlightsRepository(
             highlightDao.upsertAll(results)
             Log.d(TAG, "Upserted ${results.size} highlights; ${results.count { it.matchedBouncerMatchId != null }} matched")
             results
+        }
+    }
+
+    /**
+     * Writes [matches] to the `matches` table the fuzzy matcher reads, then optionally re-scores
+     * every highlight still stored without a match.
+     *
+     * Nothing wrote that table before this existed, so every highlight on every device was stored
+     * unmatched and no match's Highlights tab could show one. Writing it is not enough on its own:
+     * a row ingested before its match arrived (all existing rows, and a Realtime insert that lands
+     * before the first poll) was scored against an empty table and is never looked at again. That
+     * is what [rematch] is for.
+     */
+    suspend fun recordMatches(matches: List<CricketMatch>, rematch: Boolean) {
+        if (matches.isEmpty()) return
+        withContext(Dispatchers.IO) {
+            matchDao.upsertMatches(matches.map { it.toMatchEntity() })
+            if (!rematch) return@withContext
+            val unmatched = highlightDao.queryUnmatched()
+            if (unmatched.isEmpty()) return@withContext
+            val bouncerMatches = matchDao.getAllMatches().first()
+            val linked = unmatched.map { enrich(it, bouncerMatches) }.filter { it.matchedBouncerMatchId != null }
+            if (linked.isNotEmpty()) highlightDao.upsertAll(linked)
+            Log.d(TAG, "Re-matched ${linked.size} of ${unmatched.size} unmatched highlights")
         }
     }
 
