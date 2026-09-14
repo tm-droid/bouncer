@@ -51,6 +51,17 @@ cp local.properties.template local.properties  # Fill in secret keys (RAPIDAPI_K
 
 **Detekt:** `maxIssues: 0` is enforced. Pre-existing debt lives in `app/config/detekt-baseline.xml` (~533 entries) — new/modified code must be detekt-clean; never re-baseline files you touch. detekt 1.23.x cannot run on JDK 25 (`EnvironmentFacade` crash), so detekt tasks must run under JDK ≤21 via `-Dorg.gradle.java.home` (JBR 21 is installed at the path above). Regular builds use the default JDK.
 
+**Baseline profile:** `:baselineprofile` (Macrobenchmark) generates
+`app/src/release/generated/baselineProfiles/`, which ships in the release bundle and is installed by
+`profileinstaller`. Regenerate with a device or emulator attached (API 28+):
+`./gradlew :app:generateReleaseBaselineProfile`; `connectedBenchmarkReleaseAndroidTest` runs
+`StartupBenchmark` (no-compilation vs profile). The committed profile covers **cold start and
+onboarding only**: on the `bouncer_test` emulator every UiAutomator tap on onboarding's Skip is
+dropped (measured in the generator's logcat — clicked, never gone, three retries), so the Home and
+match-detail journeys never ran. A physical phone is the way to extend it. The generator must also
+keep the machine awake (`caffeinate -i`): a laptop sleeping mid-run leaves the test stuck at `0/3`
+indefinitely. `nonMinifiedRelease`/`benchmarkRelease` are in Sentry's `ignoredVariants`.
+
 **Release builds** require `sentry-cli` at `/opt/homebrew/bin/sentry-cli` (pinned in `sentry.properties`): `brew install getsentry/tools/sentry-cli`. Without it, `uploadSentryProguardMappingsRelease`/`sentryBundleSourcesRelease` fail.
 
 ## Architecture

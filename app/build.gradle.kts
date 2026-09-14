@@ -4,6 +4,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.baselineprofile)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
@@ -259,6 +260,9 @@ dependencies {
     // AndroidX Core — Stable aligned versions prevent runtime crashes
     implementation(libs.core.ktx)
     implementation(libs.core.splashscreen)
+    // Installs the bundled baseline profile on sideloaded and older installs; Play does it itself.
+    implementation(libs.profileinstaller)
+    baselineProfile(project(":baselineprofile"))
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.lifecycle.viewmodel.ktx)
@@ -367,7 +371,9 @@ sentry {
     // Skip ALL Sentry tasks (mapDebugSourceSetPaths, collectSources, bytecode transforms)
     // for debug builds.  Source context and proguard uploads are only useful in release;
     // running them in debug causes a 30+ minute hang when source files are on iCloud Drive.
-    ignoredVariants.set(setOf("debug"))
+    // nonMinifiedRelease/benchmarkRelease are created by the baseline-profile plugin to run the
+    // generator and benchmarks; they must not upload mappings or source bundles.
+    ignoredVariants.set(setOf("debug", "nonMinifiedRelease", "benchmarkRelease"))
 
     org.set("tanush-4w")
     projectName.set("android")

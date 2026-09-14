@@ -18,3 +18,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Bouncer"
 include(":app")
+include(":baselineprofile")
