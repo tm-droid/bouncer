@@ -16,7 +16,6 @@ import androidx.core.graphics.drawable.IconCompat
 import com.tanush.bouncer.R
 import com.tanush.bouncer.data.CricketRepository
 import com.tanush.bouncer.network.models.SanwebMatchSummary
-import io.sentry.Sentry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -45,9 +44,13 @@ class TabbedScoreScreen(carContext: CarContext) : Screen(carContext) {
         invalidate()
 
         CoroutineScope(Dispatchers.IO).launch {
-            CricketRepository.getMatches("live").onSuccess { liveMatches = it.matches }.onError { e -> Sentry.captureException(e) }
-            CricketRepository.getMatches("upcoming").onSuccess { upcomingMatches = it.matches }.onError { e -> Sentry.captureException(e) }
-            CricketRepository.getMatches("recent").onSuccess { allMatches = it.matches }.onError { e -> Sentry.captureException(e) }
+            // No captureException on the error paths: CricketRepository already reports the failure
+            // with the `storage_read_reason` and `matches_type` tags that say which of its five
+            // branches fired. A second, tagless capture of the same exception groups into the same
+            // Sentry issue and leaves those tags reading empty (ANDROID-4H).
+            CricketRepository.getMatches("live").onSuccess { liveMatches = it.matches }
+            CricketRepository.getMatches("upcoming").onSuccess { upcomingMatches = it.matches }
+            CricketRepository.getMatches("recent").onSuccess { allMatches = it.matches }
             loading = false
             invalidate()
         }

@@ -454,7 +454,10 @@ private fun PredictionFactorRow(
     val colors = BouncerDesignSystem.colors
     val favoringTeam = if (factor.impact > 0) team1Name else team2Name
     val impactColor = if (factor.impact > 0) colors.statusInfo else hierarchy.secondary.primary
-    val impactStrength = abs(factor.impact)
+    // Clamped, not trusted: `weight`/`fillMaxWidth` both reject a fraction outside 0..1, and the
+    // only producer (runRatePredictionFactors) already coerces to -1..1 — so this holds if a
+    // second producer appears.
+    val impactStrength = abs(factor.impact).coerceIn(0f, 1f)
     
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -467,31 +470,24 @@ private fun PredictionFactorRow(
             modifier = Modifier.weight(1f)
         )
         
-        // Impact indicator
-        Row(
+        // Impact indicator. A fraction fill, not a weight pair: Compose requires every weight to be
+        // strictly positive, and `impact` legitimately reaches 0f (CRR == RRR) and +/-1f (the clamp
+        // in runRatePredictionFactors). Each of those left one side of the old split at zero and
+        // threw `IllegalArgumentException: invalid weight` on the Overview tab (ANDROID-4K).
+        Box(
             modifier = Modifier
                 .width(80.dp)
                 .height(8.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(colors.glassSurface)
+                .background(colors.glassSurface),
+            contentAlignment = if (factor.impact < 0) Alignment.CenterStart else Alignment.CenterEnd
         ) {
-            if (factor.impact < 0) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .weight(impactStrength)
-                        .background(hierarchy.secondary.primary)
-                )
-                Spacer(modifier = Modifier.weight(1f - impactStrength))
-            } else {
-                Spacer(modifier = Modifier.weight(1f - impactStrength))
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .weight(impactStrength)
-                        .background(colors.statusInfo)
-                )
-            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(impactStrength)
+                    .fillMaxHeight()
+                    .background(impactColor)
+            )
         }
         
         Spacer(modifier = Modifier.width(8.dp))

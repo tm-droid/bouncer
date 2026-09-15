@@ -78,6 +78,10 @@ internal fun LazyListScope.overviewWinProbability(
                 ),
                 detail = runRateDetail(currentRunRate, requiredRunRate),
                 delta = probabilitySwing(probabilityHistory),
+                // Full names, not the acronyms above: the registry's alias table and its fuzzy
+                // match both work on names, and a three-letter code resolves to neither.
+                team1ColorKey = match.teams[0].name,
+                team2ColorKey = match.teams[1].name,
             )
         }
     }

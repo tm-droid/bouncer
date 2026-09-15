@@ -41,15 +41,13 @@ import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.BackgroundBase
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.LiveRed
-import com.tanush.bouncer.ui.theme.TeamColorRegistry
 import com.tanush.bouncer.ui.theme.TextMuted
 import com.tanush.bouncer.ui.theme.TextPrimary
 import com.tanush.bouncer.ui.theme.TextSecondary
-import com.tanush.bouncer.ui.theme.liftForContrast
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
-import com.tanush.bouncer.ui.theme.rememberTeamGround
+import com.tanush.bouncer.ui.theme.rememberSegmentColors
 
 /** What the number is a statement about, which changes both the label and whether it can move. */
 enum class WinProbabilityState { LIVE, PRE_MATCH, FINAL }
@@ -95,10 +93,6 @@ private val CardFill: Color
     @Composable @ReadOnlyComposable
     get() = BouncerThemeV2.colors.surface
 
-@Composable
-@ReadOnlyComposable
-private fun onCard(color: Color): Color = color.liftForContrast(CardFill, SEGMENT_MIN_CONTRAST)
-
 /**
  * Win probability as a divided bar rather than a single gauge.
  *
@@ -112,6 +106,13 @@ private fun onCard(color: Color): Color = color.liftForContrast(CardFill, SEGMEN
  *
  * @param team1Probability the first team's share of the whole, 0..1. With a draw present the three
  *   shares sum to one, so the second team's share is the remainder rather than the complement.
+ * @param team1ColorKey the full team name used to look up a brand colour, which is not the acronym
+ *   this card displays. Segments are team-coloured only when the registry knows BOTH sides:
+ *   `forTeam` otherwise hashes the name into a hue, which is colour that identifies nobody and is
+ *   what painted Amsterdam Flames magenta against Dublin Guardians blue here. `HeroMatchCard` has
+ *   gated on `isKnown` since the August pass and this card was missed, so the rule held on Home but
+ *   not on the match it belonged to. `isKnown` needs MIN_FUZZY_KEY = 4 characters before it will
+ *   fuzzy-match, so a three-letter code is never known unless the alias table lists it verbatim.
  */
 @Composable
 @Suppress("LongParameterList") // Each is a distinct thing the bar states; bundling them into a
@@ -125,6 +126,8 @@ fun PremiumWinProbabilityHero(
     state: WinProbabilityState = WinProbabilityState.LIVE,
     detail: String? = null,
     delta: Float? = null,
+    team1ColorKey: String = team1Name,
+    team2ColorKey: String = team2Name,
 ) {
     val draw = (drawProbability ?: 0f).coerceIn(0f, 1f)
     val team1 = team1Probability.coerceIn(0f, 1f - draw)
@@ -132,10 +135,9 @@ fun PremiumWinProbabilityHero(
 
     val animatedTeam1 by animateFloatAsState(team1, tween(900, easing = FastOutSlowInEasing), label = "team1")
     val animatedDraw by animateFloatAsState(draw, tween(900, easing = FastOutSlowInEasing), label = "draw")
-
-    val ground = rememberTeamGround()
-    val team1Color = onCard(TeamColorRegistry.forTeam(team1Name, ground).primary)
-    val team2Color = onCard(TeamColorRegistry.forTeam(team2Name, ground).primary)
+    val (team1Color, team2Color) = rememberSegmentColors(
+        team1ColorKey, team2ColorKey, CardFill, SEGMENT_MIN_CONTRAST,
+    )
     val percents = wholePercents(team1, draw, team2)
 
     Column(

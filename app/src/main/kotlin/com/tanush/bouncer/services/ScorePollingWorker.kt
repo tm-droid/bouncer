@@ -54,8 +54,10 @@ class ScorePollingWorker(
                 is AppResult.Success -> onPollSuccess(response.data)
                 is AppResult.Error -> {
                     Log.e(TAG, "Poll failed", response.exception)
+                    // Breadcrumb only. CricketRepository captured this exception already, tagged
+                    // with the reason the storage read failed; capturing it again here is an
+                    // untagged copy in the same Sentry issue (ANDROID-4H).
                     sentryBreadcrumb("score_polling", "Poll failed: ${response.exception.message}", SentryLevel.ERROR)
-                    Sentry.captureException(response.exception)
                     retryOrFail()
                 }
                 is AppResult.Loading -> retryOrFail()

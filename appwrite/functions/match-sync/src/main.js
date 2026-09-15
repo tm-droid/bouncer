@@ -410,7 +410,10 @@ async function handleRun({ req, res, log, error }) {
   );
   const commentaryMatches = commentaryMatchSet(allLive, viewed, slowTier);
   log(
-    `${allLive.length} live (${dropped.length} dropped by MAX_MATCHES of ${eligible.length}), ` +
+    // `eligible.length` is the PRE-slice count, not the cap — the old wording read as
+    // "MAX_MATCHES of 11" and so reported a cap of 11 when MAX_MATCHES is 12. Misnaming this
+    // number is the same failure the cap logging was added to fix.
+    `${allLive.length} of ${eligible.length} live synced (${dropped.length} dropped by MAX_MATCHES=${MAX_MATCHES}), ` +
       `${live.length} with viewers, ${slowTier.size} on the slow tier, ` +
       `${commentaryMatches.size} storing commentary`
   );

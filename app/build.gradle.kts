@@ -335,6 +335,12 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.room.testing)
+    // Compose layout contracts (a weight must be > 0, promotion rules, …) live in the
+    // framework, not in our code, so they can only be asserted by composing on a device.
+    // The BOM has to be repeated here: the `implementation` platform above does not reach the
+    // androidTest configuration, so ui-test-junit4 resolves with no version without it.
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
     debugImplementation(libs.leakcanary)

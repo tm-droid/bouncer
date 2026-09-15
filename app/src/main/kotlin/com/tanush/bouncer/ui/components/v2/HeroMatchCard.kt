@@ -23,9 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
-import com.tanush.bouncer.ui.theme.TeamColorRegistry
-import com.tanush.bouncer.ui.theme.liftForContrast
-import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
+import com.tanush.bouncer.ui.theme.rememberSegmentColors
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import kotlin.math.roundToInt
 
@@ -164,24 +162,17 @@ private fun HeroWinProbability(match: CricketMatch) {
 }
 
 /**
- * Team colours only when the registry actually knows both sides. Its fallback hashes a team name into
- * a hue, which is how an associate fixture ended up magenta against lime; colour that identifies no
- * one is decoration, so unknown sides get a strong and a faint neutral instead. Known colours are
- * lifted against the block fill: one that clears 3:1 on the app background can still read as an
- * empty bar here.
+ * Team colours only when the registry actually knows both sides — the shared rule, not a copy of
+ * it. `rememberSegmentColors` carries the reasoning and the neutral fallback; this card and the
+ * match-detail win-probability bar must not drift apart on it.
  */
 @Composable
-private fun winProbabilityColors(match: CricketMatch): Pair<Color, Color> {
-    val colors = BouncerThemeV2.colors
-    val homeName = match.teams[0].name
-    val awayName = match.teams[1].name
-    val palette = rememberMatchTeamPalette(homeName, awayName)
-    if (!TeamColorRegistry.isKnown(homeName) || !TeamColorRegistry.isKnown(awayName)) {
-        return colors.onSurface.copy(alpha = NEUTRAL_LEAD_ALPHA) to colors.textSecondary.copy(alpha = NEUTRAL_TRAIL_ALPHA)
-    }
-    return palette.home.primary.liftForContrast(colors.surface, SEGMENT_MIN_CONTRAST) to
-        palette.away.primary.liftForContrast(colors.surface, SEGMENT_MIN_CONTRAST)
-}
+private fun winProbabilityColors(match: CricketMatch): Pair<Color, Color> = rememberSegmentColors(
+    match.teams[0].name,
+    match.teams[1].name,
+    BouncerThemeV2.colors.surface,
+    SEGMENT_MIN_CONTRAST,
+)
 
 /** Probability shares are stored 0..1 and shown as whole percentages. */
 private const val WIN_PROB_PERCENT = 100f
@@ -192,5 +183,3 @@ private const val WIN_PROB_PERCENT = 100f
  */
 private const val SEGMENT_MIN_CONTRAST = 2.2f
 private const val DRAW_ALPHA = 0.5f
-private const val NEUTRAL_LEAD_ALPHA = 0.8f
-private const val NEUTRAL_TRAIL_ALPHA = 0.25f

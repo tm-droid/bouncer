@@ -59,7 +59,42 @@ const QUOTA_RESERVE = 10;
 // 2026-07-30. Counted on items RETURNED, not items written: in steady state everything returned is
 // already in `seenIds` and writes are legitimately zero.
 const DRY_SWEEP_ALERT = 3;
-let consecutiveDrySweeps = 0;
+
+// The counter is persisted, not held in module scope, and that is the whole reason this alert can
+// fire at all. It used to be `let consecutiveDrySweeps = 0` at module level: a sweep runs every 4
+// hours, so reaching 3 needs one container to survive ~12 hours. Appwrite recycles containers far
+// sooner, so the counter reset to 0 before it could ever reach the threshold and the warning was
+// unreachable. It stayed silent through 12 days of an empty upstream (2026-09-03 to 09-15).
+const DRY_SWEEP_FIELD = "dry_sweeps";
+const META_DOC_ID = "fetch-state";
+
+/** The stored consecutive-dry-sweep count, or 0 when there is no meta row (or no meta table). */
+async function readDrySweeps(db, dbId, colId, error) {
+  if (!colId) return 0;
+  try {
+    const doc = await db.getDocument(dbId, colId, META_DOC_ID);
+    return Number(doc?.[DRY_SWEEP_FIELD] ?? 0) || 0;
+  } catch (e) {
+    // A 404 is the ordinary first-run state and says nothing is wrong.
+    if (e?.code !== 404) error(`Failed to read ${DRY_SWEEP_FIELD}: ${e?.message}`);
+    return 0;
+  }
+}
+
+/** Store the count. Best-effort: losing it costs a delayed alert, never a highlight. */
+async function writeDrySweeps(db, dbId, colId, value, error) {
+  if (!colId) return;
+  const payload = { [DRY_SWEEP_FIELD]: value };
+  try {
+    await db.updateDocument(dbId, colId, META_DOC_ID, payload);
+  } catch (_) {
+    try {
+      await db.createDocument(dbId, colId, META_DOC_ID, payload);
+    } catch (e) {
+      error(`Failed to persist ${DRY_SWEEP_FIELD}: ${e?.message}`);
+    }
+  }
+}
 
 function rememberSeen(id) {
   if (seenIds.size >= MAX_SEEN) seenIds.clear(); // cheap bound; a reset only costs one re-write pass
@@ -160,7 +195,18 @@ export default async ({ req, res, log, error }) => {
   // ── Slot gate ───────────────────────────────────────────────────────────
   // Three runs in four do nothing and spend nothing. See the constants above for why this is not a
   // schedule change.
-  const dates = planDates(nowMs);
+  // A manual reachability probe: one execution fetches exactly the named date, whatever slot it
+  // lands on, and reports how many items that date returns. This is the only way to tell "upstream
+  // has published nothing recently" from "the plan, host or endpoint changed", because a laptop
+  // has no Highlightly key and the container's answer is the one that counts. Remember that an
+  // Appwrite function snapshots its environment per container, so SETTING and then REMOVING
+  // PROBE_DATE is two deployment rebuilds, not one.
+  const probeDate = (process.env.PROBE_DATE ?? "").trim();
+  if (probeDate && !/^\d{4}-\d{2}-\d{2}$/.test(probeDate)) {
+    error(`PROBE_DATE is not an ISO date: ${probeDate}`);
+    return await finish({ skipped: true, reason: "bad_probe_date" });
+  }
+  const dates = probeDate ? [probeDate] : planDates(nowMs);
   if (dates.length === 0) {
     // Logged rather than returning silently: three runs in four take this path, and an execution
     // with an empty log reads the same as a deployment that died before reaching any code.
@@ -220,16 +266,20 @@ export default async ({ req, res, log, error }) => {
   // Only a sweep that actually reached every date counts. One truncated by the quota reserve saw
   // less than the back-window, so its emptiness says nothing about upstream.
   if (sweep && fetchedDates === dates.length) {
-    consecutiveDrySweeps = highlights.length === 0 ? consecutiveDrySweeps + 1 : 0;
-    if (consecutiveDrySweeps >= DRY_SWEEP_ALERT) {
+    const previous = await readDrySweeps(db, HIGHLIGHTS_DB_ID, META_COL_ID, error);
+    let sweeps = highlights.length === 0 ? previous + 1 : 0;
+    if (sweeps >= DRY_SWEEP_ALERT) {
       report(
         "highlights-sync back-window has been empty for consecutive sweeps",
-        { sweeps: consecutiveDrySweeps, dates: dates.join(","), remaining: remaining ?? -1 },
+        { sweeps, dates: dates.join(","), remaining: remaining ?? -1 },
         "warning"
       );
       // Reset so the next event needs another full run of dry sweeps rather than firing every 4h.
-      consecutiveDrySweeps = 0;
+      sweeps = 0;
     }
+    // Written here rather than with the fetch-state payload below, because a dry run returns before
+    // reaching it — which is precisely the run whose count must survive.
+    await writeDrySweeps(db, HIGHLIGHTS_DB_ID, META_COL_ID, sweeps, error);
   }
 
   if (highlights.length === 0) {

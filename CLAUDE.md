@@ -108,7 +108,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 ```
 
 **Appwrite cloud functions** live in `appwrite/functions/` (Node.js, deployed via Appwrite CLI). `appwrite/appwrite.config.json` defines project-level config. Ten functions:
-- `highlights-sync` — 15-min schedule; syncs cricket highlight clips to Appwrite. **Only one run per hour does anything** (`minute < 15`), and only every 4th hour sweeps the 3-day back-window — Highlightly's plan allows 100 requests per rolling window and `*/15` alone would spend 96 on today. Never make it fetch on every run without raising that plan. Highlightly publishes a clip hours-to-days after its match, so a same-day-only query permanently loses whatever the lag exceeds; that is what the back-window exists for. Requires `HIGHLIGHTLY_API_KEY`, optional `SENTRY_DSN`. Deploy: `node appwrite/tools/deploy-function.mjs` fails here — the ~13 MB `--with-node-modules` archive is rejected by the CDN edge (`503 backend write error` in ~55 ms), so this one needs a chunked (5 MB) upload.
+- `highlights-sync` — 15-min schedule; syncs cricket highlight clips to Appwrite. **Only one run per hour does anything** (`minute < 15`), and only every 4th hour sweeps the 3-day back-window — Highlightly's plan allows 100 requests per rolling window and `*/15` alone would spend 96 on today. Never make it fetch on every run without raising that plan. Highlightly publishes a clip hours-to-days after its match, so a same-day-only query permanently loses whatever the lag exceeds; that is what the back-window exists for. Requires `HIGHLIGHTLY_API_KEY`, optional `SENTRY_DSN`. Deploy: the ~13 MB `--with-node-modules` archive is rejected whole by the CDN edge (`503 backend write error` in ~55 ms), so it must go up in 5 MB chunks — `node appwrite/tools/deploy-function.mjs` now does that itself and is the deploy path.
 - `generate-commentary` — on-demand; LLM commentary via OpenRouter (called by `CommentaryFusionService`)
 - `match-sync` — every-minute schedule; fetches live match HTML + scorecard → upserts `match-live-detail` → AI commentary → `match-commentary` (see detailed section below)
 - `news-sync` — on-demand; fetches cricket news from Cricbuzz via RapidAPI, caches to `cricket-stats` bucket (`news-cache` file, 4-hr TTL caps RapidAPI at ~6 calls/day). Requires `RAPIDAPI_KEY`.
@@ -276,7 +276,10 @@ the app read as generated rather than designed. Four rules, each written into th
   the top bar (which is the page colour with a hairline). Team colour only
   where it identifies a team as a *shape* (the Home hero's win-probability bar), **never as ink**, and only
   when `TeamColorRegistry.isKnown` is true for both sides: its hash fallback painted associate fixtures
-  magenta against lime. Dark-mode text greys are neutral, not cream/tan. Event colours
+  magenta against lime. That gate is **`rememberSegmentColors`** (`ui/theme/TeamSegmentColors.kt`) and
+  every proportional two-sided bar calls it — it lived inline in `HeroMatchCard` alone, so Home obeyed
+  the rule while the match-detail win-probability card painted Amsterdam Flames magenta against Dublin
+  Guardians blue. Do not re-inline it; a mirrored rule is not a pinned rule. Dark-mode text greys are neutral, not cream/tan. Event colours
   only on ball chips and commentary badges. `glassBorderHighlight`/`glassBorder` are **border**
   tokens — using them as a fill is what gave Fall of Wickets its olive cast.
 - **Numerals are tabular.** Scores repoll ~every 6s; proportional digits reflow the row on each

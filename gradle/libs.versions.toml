@@ -143,6 +143,7 @@ mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
+compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 
 
 [plugins]
