@@ -31,7 +31,7 @@ test("the viewer gate now budgets LLM rewrites, and only those", () => {
   const viewed = new Set(["watched"]);
   const slow = new Set(["unwatched"]);
   assert.equal(commentaryCapFor("watched", viewed, slow), 10);
-  assert.equal(commentaryCapFor("unwatched", viewed, slow), 1);
+  assert.equal(commentaryCapFor("unwatched", viewed, slow), 2);
   // Still 0 — but 0 rewrites, not 0 rows. The row is written with ai_generated: false.
   assert.equal(commentaryCapFor("idle", viewed, slow), 0);
 });

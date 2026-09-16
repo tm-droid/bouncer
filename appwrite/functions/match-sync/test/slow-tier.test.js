@@ -3,12 +3,13 @@ import assert from "node:assert/strict";
 import { selectSlowTier, nextSlowState, commentaryCapFor } from "../src/main.js";
 
 // READ_BUDGET_PER_RUN = 20, READ_HEADROOM_RESERVE = 5, READ_COST_PER_MATCH = 1,
-// SLOW_MAX_MATCHES_PER_RUN = 3, SLOW_TIER_INTERVAL_MS = 45 min, SLOW_MAX_NEW_PER_MATCH = 1.
+// SLOW_MAX_MATCHES_PER_RUN = 3, SLOW_TIER_INTERVAL_MS = 15 min, SLOW_MAX_NEW_PER_MATCH = 2.
 // Mirrored here rather than exported: a test that reads the constant it is checking cannot catch
-// a wrong constant. The interval and the per-pass cap are budget decisions against Groq's
-// 1000 req/day, not free parameters — see the derivation above the constants in main.js.
+// a wrong constant. The interval and the per-pass cap are budget decisions against the LLM chain's
+// daily request budget, not free parameters — see the derivation above the constants in main.js.
+// Re-derived 2026-09-16 when three Gemini rungs took that budget from ~1000/day to ~2500.
 const NOW = 1_785_500_000_000;
-const INTERVAL = 45 * 60 * 1000;
+const INTERVAL = 15 * 60 * 1000;
 const MAX_SLOW_PER_RUN = 3;
 const USABLE_FAST_SLOTS = 15; // 20 budget − 5 reserve
 
@@ -27,13 +28,12 @@ test("a match with no state entry is due on its first sighting, not one interval
 test("the interval holds a match back until it elapses", () => {
   const live = matches("144783");
   assert.deepEqual(select({ live, state: { "144783": NOW - 5 * 60 * 1000 } }), []);
-  // 15 and 30 minutes were both considered and both rejected on Groq headroom; a regression to
-  // either must fail here rather than quietly quadruple the daily LLM spend.
-  assert.deepEqual(select({ live, state: { "144783": NOW - 15 * 60 * 1000 } }), []);
-  assert.deepEqual(select({ live, state: { "144783": NOW - 30 * 60 * 1000 } }), []);
+  // 5 and 10 minutes are the regressions that matter now: each halving of the interval doubles the
+  // daily LLM spend, and the ladder has ~2500 calls/day, not an unlimited supply.
+  assert.deepEqual(select({ live, state: { "144783": NOW - 10 * 60 * 1000 } }), []);
   assert.deepEqual(select({ live, state: { "144783": NOW - INTERVAL + 1 } }), []);
   assert.deepEqual(select({ live, state: { "144783": NOW - INTERVAL } }), ["144783"]);
-  assert.deepEqual(select({ live, state: { "144783": NOW - 46 * 60 * 1000 } }), ["144783"]);
+  assert.deepEqual(select({ live, state: { "144783": NOW - 16 * 60 * 1000 } }), ["144783"]);
 });
 
 test("a match with a viewer belongs to the fast tier and is never taken by the slow one", () => {
@@ -92,12 +92,14 @@ test("a match that just ran is not due again on the next run", () => {
   assert.deepEqual(select({ live, state: after, now: NOW + INTERVAL }), ["144783"]);
 });
 
-test("the cap encodes the tier: 10 for a viewer, 1 for the slow tier, 0 otherwise", () => {
+test("the cap encodes the tier: 10 for a viewer, 2 for the slow tier, 0 otherwise", () => {
   const viewed = new Set(["watched"]);
   const slow = new Set(["unwatched"]);
   assert.equal(commentaryCapFor("watched", viewed, slow), 10, "fast tier is unchanged");
-  // One row a pass, not two: each row is an LLM call and Groq's daily cap is the binding limit.
-  assert.equal(commentaryCapFor("unwatched", viewed, slow), 1);
+  // Two rows a pass. Each row is one LLM call, so this number times the pass rate times the live
+  // match count is the daily spend — at 11 concurrent unwatched matches and a 15-minute interval,
+  // 2 is ~1400/day against a ~2500/day ladder and 3 would be ~2100. It is a budget, not a taste.
+  assert.equal(commentaryCapFor("unwatched", viewed, slow), 2);
   assert.equal(commentaryCapFor("idle", viewed, slow), 0, "0 means win-probability only, no writes");
   // A viewer arriving on a slow-tier match must promote it, never demote the fast tier.
   assert.equal(commentaryCapFor("both", new Set(["both"]), new Set(["both"])), 10);

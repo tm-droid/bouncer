@@ -98,18 +98,31 @@ const MAX_PREMATCH = 60;
 // gap reliably — so the last pass per match is persisted in Storage, which bills on a different
 // meter from the DB reads the 402 breaker protects.
 //
-// The binding constraint on these two numbers is NOT the Appwrite read budget — it is Groq's
-// 1000 requests/day, because every slow-tier row costs one LLM call and the fast tier draws from
-// the same daily pool. Measured 2026-07-30: the fast tier alone spent 267 calls in a single hour.
-// At 8 concurrent unwatched matches, one row a pass:
+// The binding constraint on these two numbers is NOT the Appwrite read budget — it is the LLM
+// chain's daily request budget, because every slow-tier row costs one call and the fast tier draws
+// from the same pool. The 45 min / 1 row pair was sized against groq alone at 1000/day:
 //
-//   15 min → 32 calls/hour → 768/day. One 07-30-style hour on top = 1035. Over cap.
+//   at 8 concurrent unwatched matches, one row a pass
+//   15 min → 32 calls/hour → 768/day. One 2026-07-30-style hour (267 calls) on top = 1035. Over.
 //   30 min → 16 calls/hour → 384/day. Leaves 616 — barely two such hours.
 //   45 min → 11 calls/hour → 256/day. Leaves 744 — about three such hours. Chosen.
 //
-// 07-30 is not known to be a ceiling, so the margin has to cover several of those hours, not one.
-const SLOW_TIER_INTERVAL_MS = 45 * 60 * 1000;
-const SLOW_MAX_NEW_PER_MATCH = 1;
+// Re-derived 2026-09-16, after three Gemini rungs took the ladder to ~2500 calls/day. What the old
+// numbers actually bought, measured on the live table: 998 commentary rows stored in an hour and
+// SIX of them rewritten — 0.6%. Eleven matches were live with no viewer, so `commentaryCapFor`
+// returned 0 for all of them and the slow tier's single 45-minute pass was the entire AI output of
+// the app. The tab was raw Cricbuzz text with a rounding error of commentary on top.
+//
+//   reserve 800/day for the fast tier — 07-30 is still not known to be a ceiling — leaving ~1700
+//   at 11 concurrent unwatched matches (today's live count; p90 is 10), 15 min → 44 passes/hour
+//   3 rows a pass → 132 calls/hour → 2112/day over ~16 hours with cricket on. Over.
+//   2 rows a pass →  88 calls/hour → 1408/day. Chosen.
+//
+// That is ~6x the rewrite rate per match and still only ~9% of deliveries: 11 matches bowling for
+// 16 hours is ~15,800 balls, so full coverage is not a budget away, it is an order of magnitude
+// away. Do not read this pair as "enough" — read it as what fits.
+const SLOW_TIER_INTERVAL_MS = 15 * 60 * 1000;
+const SLOW_MAX_NEW_PER_MATCH = 2;
 const SLOW_MAX_MATCHES_PER_RUN = 3;
 const SLOW_STATE_FILE = "slow-sync-state";
 // Reads out of READ_BUDGET_PER_RUN kept for the fast tier. The slow tier is admitted only if this
