@@ -755,6 +755,14 @@
                     "required": false,
                     "size": 8,
                     "array": false
+                },
+                {
+                    "key": "provider",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 48,
+                    "array": false,
+                    "default": null
                 }
             ],
             "indexes": [

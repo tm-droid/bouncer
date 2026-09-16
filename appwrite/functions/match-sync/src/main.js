@@ -557,6 +557,29 @@ async function handleRun({ req, res, log, error }) {
  * passthrough path already produced, and fully filterable, because `event`/`runs`/`extra` are
  * classified from the raw text either way.
  */
+/**
+ * Where a stored row's TEXT came from, as the two columns that record it.
+ *
+ * One function because `ai_generated` and `provider` describe the same fact, and two fields
+ * describing one fact drift — this file has a whole section on that. Derived from one input so
+ * they cannot disagree.
+ *
+ * `ai_generated` alone stops a question short. A false row is either a chain that failed (a defect)
+ * or a delivery this run had no rewrite budget for (a design decision, and by far the common case:
+ * measured 2026-09-16, ~97% of rows). Those need opposite responses and were indistinguishable in
+ * storage. So: a rung name means rewritten, `cricbuzz` means nobody tried, and
+ * `cricbuzz:<reason>` means somebody tried and failed — `providers_exhausted` if nobody answered,
+ * `verification_failed` if somebody did and was rejected. The ladder's real mix becomes a GROUP BY
+ * rather than a guess, which is the thing nobody could do while cerebras and sambanova were dead.
+ *
+ * @param generated `generateVerifiedLine`'s result, or null when it was never called.
+ */
+export function commentaryOrigin(generated) {
+  if (!generated) return { aiGenerated: false, provider: "cricbuzz" };
+  if (generated.line) return { aiGenerated: true, provider: generated.provider ?? "unknown" };
+  return { aiGenerated: false, provider: `cricbuzz:${generated.reason ?? "unknown"}` };
+}
+
 export function commentaryCapFor(matchId, viewed, slowTier) {
   if (viewed.has(matchId)) return MAX_NEW_PER_MATCH;
   if (slowTier.has(matchId)) return SLOW_MAX_NEW_PER_MATCH;
@@ -1048,9 +1071,9 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
     // read from the raw text regardless. "We wrote raw Cricbuzz text" and "we wrote generated
     // commentary" were previously the same event in the data and in the logs, so a dead provider
     // chain was indistinguishable from a working one.
-    let aiGenerated = false;
+    // Null until the rewrite is attempted; commentaryOrigin reads that as "no budget this run".
+    let generated = null;
     if (rewritten < commentaryCap) {
-      aiGenerated = true;
       // Ball-by-ball line → cinematic AI rewrite (mirror generateBallCommentary).
       const bowler = detail.bowler?.name ?? "";
       const batsman = detail.batsmen?.[0]?.name ?? "";
@@ -1068,7 +1091,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
       // Verified generation: the hallucination check that used to run on the device, where the
       // provider keys no longer live. A rejected line is a failed generation, not a usable one —
       // it falls through to raw text and is marked, rather than being written as if it were AI.
-      const generated = await generateVerifiedLine(prompt, {
+      generated = await generateVerifiedLine(prompt, {
         // Covers reasoning tokens as well as the line itself. gpt-oss emits its reasoning first
         // and only then the `content`; at 100 the budget was spent before a single word of
         // commentary was written and every call came back `empty completion`.
@@ -1089,7 +1112,6 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
         if (line && !line.startsWith(ball)) line = `${ball}: ${line}`;
         rewritten++;
       } else {
-        aiGenerated = false;
         error(`[PASSTHROUGH] ${matchId}/${ball} (${generated.reason}): writing raw Cricbuzz text — ${attempts.join("; ")}`);
         report("match-sync wrote raw Cricbuzz text — AI generation produced nothing usable", {
           matchId,
@@ -1118,6 +1140,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
     // recognised: the device draws no pill for an absent value and a fabricated dot ball is exactly
     // the bug these columns exist to end.
     const { runs, kind: extra } = parseBallOutcome(clean);
+    const { aiGenerated, provider } = commentaryOrigin(generated);
 
     try {
       await db.createDocument(
@@ -1131,6 +1154,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
           sort_key: item.timestamp,
           commentary: line,
           ai_generated: aiGenerated,
+          provider,
           created_at: new Date().toISOString(),
           event,
           ...(runs === null ? {} : { runs }),

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { commentaryCapFor, commentaryMatchSet } from "../src/main.js";
+import { commentaryCapFor, commentaryMatchSet, commentaryOrigin } from "../src/main.js";
 import { classifyEvent, outcomeClause } from "../src/llm.js";
 import { parseCommentary } from "../src/cricbuzz.js";
 
@@ -95,4 +95,58 @@ test("a missing innings is null, never a neighbour's number", () => {
     JSON.stringify({ c: [{ commText: "Suthar to Kumara, no run", timestamp: 1, ballMetric: "89.3" }] })
   )}])</script>`;
   assert.equal(parseCommentary(html)[0].innings, null);
+});
+
+// ── Where the text came from ──────────────────────────────────────────────────
+//
+// `ai_generated` was added so "is the stored commentary actually AI?" was answerable from storage
+// rather than inferred. It stops one question short: a false row is either a chain that failed or a
+// delivery with no rewrite budget, and those need opposite responses. `provider` closes that, and
+// is derived from the same input as `ai_generated` so the two can never disagree.
+
+test("origin: no rewrite budget is cricbuzz, and not a failure", () => {
+  // The common case by a distance — ~97% of rows on 2026-09-16. It must not look like a defect, or
+  // the signal that a defect produces is buried under it.
+  assert.deepEqual(commentaryOrigin(null), { aiGenerated: false, provider: "cricbuzz" });
+});
+
+test("origin: a rewritten row names the rung that wrote it", () => {
+  assert.deepEqual(
+    commentaryOrigin({ line: "19.2: Rahul takes it.", provider: "gemini-flash-lite", verified: true }),
+    { aiGenerated: true, provider: "gemini-flash-lite" }
+  );
+  assert.deepEqual(
+    commentaryOrigin({ line: "19.2: Rahul takes it.", provider: "groq" }),
+    { aiGenerated: true, provider: "groq" }
+  );
+});
+
+test("origin: a failed rewrite carries WHY, because the two reasons are different bugs", () => {
+  // providers_exhausted = nobody answered (keys, quota, network).
+  // verification_failed = somebody answered and was rejected as a hallucination.
+  // Same stored text either way, so without this they are one undifferentiated blob.
+  assert.deepEqual(
+    commentaryOrigin({ line: null, reason: "providers_exhausted" }),
+    { aiGenerated: false, provider: "cricbuzz:providers_exhausted" }
+  );
+  assert.deepEqual(
+    commentaryOrigin({ line: null, reason: "verification_failed" }),
+    { aiGenerated: false, provider: "cricbuzz:verification_failed" }
+  );
+});
+
+test("origin: the two columns never contradict each other", () => {
+  // The invariant the single function exists to hold: ai_generated is true exactly when provider
+  // names a rung, and false exactly when it names cricbuzz.
+  for (const g of [
+    null,
+    { line: "x", provider: "groq" },
+    { line: "x", provider: undefined },
+    { line: null, reason: "providers_exhausted" },
+    { line: null, reason: undefined },
+  ]) {
+    const { aiGenerated, provider } = commentaryOrigin(g);
+    assert.equal(aiGenerated, !provider.startsWith("cricbuzz"), `disagreement for ${JSON.stringify(g)}`);
+    assert.ok(provider.length <= 48, "must fit the column");
+  }
 });
