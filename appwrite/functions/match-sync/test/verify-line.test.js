@@ -8,7 +8,7 @@ import { generateVerifiedLine, verifyLine } from "../src/llm.js";
 // closed when no provider can answer, and distinguishing "nobody answered" from "the answer was
 // rejected". They run offline — no key is set, so every provider declines.
 
-const PROVIDER_KEYS = ["GROQ_API_KEY", "CEREBRAS_API_KEY", "SAMBANOVA_API_KEY"];
+const PROVIDER_KEYS = ["GROQ_API_KEY", "GEMINI_API_KEY", "CEREBRAS_API_KEY", "SAMBANOVA_API_KEY"];
 
 function withoutProviderKeys(run) {
   const saved = PROVIDER_KEYS.map((k) => [k, process.env[k]]);

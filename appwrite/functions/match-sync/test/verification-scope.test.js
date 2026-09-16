@@ -4,8 +4,10 @@
 //    the narrowing saves nothing; too shy and a wicket ships unverified. The cases below are the
 //    ones that actually bite: uppercase event markers versus the ordinary prose that contains the
 //    same letters ("outside off", "sixth", "fourth").
-// 2. deadProviders separates a provider that is permanently rate-limited from one that is briefly
-//    busy. It exists because that distinction was undetectable for an unknown period.
+// 2. deadProviders separates a provider that is permanently dead from one that is briefly busy.
+//    It exists because that distinction was undetectable for an unknown period. It counted 429
+//    alone until 2026-09-15, which is how Cerebras and SambaNova sat on 402 for six weeks without
+//    ever raising it — so the 402 cases below are the ones that matter most.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
@@ -63,6 +65,9 @@ test("a provider that 429s on every call is reported once, then not again", asyn
   process.env.GROQ_API_KEY = "k";
   delete process.env.CEREBRAS_API_KEY;
   delete process.env.SAMBANOVA_API_KEY;
+  // Three of the four live rungs read this one variable. Leaving it set makes "groq only" a lie on
+  // any machine that has a Gemini key, and the test would then measure the wrong chain.
+  delete process.env.GEMINI_API_KEY;
   globalThis.fetch = async () => new Response("Rate limit exceeded", { status: 429 });
   try {
     // Four calls is under the threshold — a burst must not be mistaken for a dead account.
@@ -73,11 +78,94 @@ test("a provider that 429s on every call is reported once, then not again", asyn
     const dead = deadProviders();
     assert.equal(dead.length, 1);
     assert.equal(dead[0].provider, "groq");
-    assert.equal(dead[0].calls, dead[0].rateLimited, "dead means 100% rate-limited, not merely mostly");
+    assert.equal(dead[0].calls, dead[0].failed, "dead means 100% failed, not merely mostly");
+    assert.equal(dead[0].status, 429, "the status rides along — 429 is wait, 402 is pay");
 
     // Self-throttled: a dead provider stays dead, and match-sync runs every minute.
     await generateVerifiedLine("p", {});
     assert.deepEqual(deadProviders(), [], "reported at most once per container");
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("a 402 is latched for the container — the provider is not called a second time", async () => {
+  resetProviderHealth();
+  const original = globalThis.fetch;
+  process.env.GROQ_API_KEY = "k";
+  delete process.env.CEREBRAS_API_KEY;
+  delete process.env.SAMBANOVA_API_KEY;
+  // Three of the four live rungs read this one variable. Leaving it set makes "groq only" a lie on
+  // any machine that has a Gemini key, and the test would then measure the wrong chain.
+  delete process.env.GEMINI_API_KEY;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return new Response(
+      JSON.stringify({ error: { code: "PAYMENT_METHOD_REQUIRED", message: "A payment method is required." } }),
+      { status: 402 },
+    );
+  };
+  try {
+    const first = [];
+    await generateVerifiedLine("p", { attempts: first });
+    assert.equal(calls, 1);
+    assert.match(first[0], /^groq: HTTP 402 PAYMENT_METHOD_REQUIRED/);
+
+    // The line that matters: `unavailable` is per-line, so without the container-scoped latch this
+    // would be a second doomed round trip, and one per delivery for as long as the account is unpaid.
+    const second = [];
+    await generateVerifiedLine("p", { attempts: second });
+    assert.equal(calls, 1, "a 402 provider is not asked again in this container");
+    assert.equal(
+      second[0],
+      "groq: HTTP 402 (latched for this container)",
+      "skipped, but still recorded — a chain that silently loses a rung is the original defect",
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("one 402 is conclusive — it does not wait for the call threshold", async () => {
+  resetProviderHealth();
+  const original = globalThis.fetch;
+  process.env.GROQ_API_KEY = "k";
+  delete process.env.CEREBRAS_API_KEY;
+  delete process.env.SAMBANOVA_API_KEY;
+  // Three of the four live rungs read this one variable. Leaving it set makes "groq only" a lie on
+  // any machine that has a Gemini key, and the test would then measure the wrong chain.
+  delete process.env.GEMINI_API_KEY;
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: { code: "payment_required" } }), { status: 402 });
+  try {
+    await generateVerifiedLine("p", {});
+    const dead = deadProviders();
+    assert.equal(dead.length, 1, "a latched provider can never reach minCalls — the ratio must not gate it");
+    assert.equal(dead[0].provider, "groq");
+    assert.equal(dead[0].status, 402);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("a 429 is not latched — the provider is asked again on the next line", async () => {
+  resetProviderHealth();
+  const original = globalThis.fetch;
+  process.env.GROQ_API_KEY = "k";
+  delete process.env.CEREBRAS_API_KEY;
+  delete process.env.SAMBANOVA_API_KEY;
+  // Three of the four live rungs read this one variable. Leaving it set makes "groq only" a lie on
+  // any machine that has a Gemini key, and the test would then measure the wrong chain.
+  delete process.env.GEMINI_API_KEY;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return new Response("Rate limit exceeded", { status: 429 });
+  };
+  try {
+    await generateVerifiedLine("p", {});
+    await generateVerifiedLine("p", {});
+    assert.equal(calls, 2, "a rate-limited provider recovers by the next ball and must be retried");
   } finally {
     globalThis.fetch = original;
   }
@@ -89,6 +177,9 @@ test("a provider that sometimes succeeds is busy, not dead", async () => {
   process.env.GROQ_API_KEY = "k";
   delete process.env.CEREBRAS_API_KEY;
   delete process.env.SAMBANOVA_API_KEY;
+  // Three of the four live rungs read this one variable. Leaving it set makes "groq only" a lie on
+  // any machine that has a Gemini key, and the test would then measure the wrong chain.
+  delete process.env.GEMINI_API_KEY;
   let n = 0;
   globalThis.fetch = async () =>
     ++n === 3
@@ -112,11 +203,15 @@ async function withGroqOnly(handler, body) {
     GROQ_API_KEY: process.env.GROQ_API_KEY,
     CEREBRAS_API_KEY: process.env.CEREBRAS_API_KEY,
     SAMBANOVA_API_KEY: process.env.SAMBANOVA_API_KEY,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   };
   const savedFetch = globalThis.fetch;
   process.env.GROQ_API_KEY = "test-key";
   delete process.env.CEREBRAS_API_KEY;
   delete process.env.SAMBANOVA_API_KEY;
+  // Three of the four live rungs read this one variable. Leaving it set makes "groq only" a lie on
+  // any machine that has a Gemini key, and the test would then measure the wrong chain.
+  delete process.env.GEMINI_API_KEY;
 
   const bodies = [];
   globalThis.fetch = async (_url, init) => {

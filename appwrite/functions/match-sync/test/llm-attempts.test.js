@@ -8,7 +8,7 @@ import { generateLine } from "../src/llm.js";
 // configured", "bad model id" and "rate limited" were the same event — none of them observable.
 // These tests pin the reason channel, not the network.
 
-const PROVIDER_KEYS = ["GROQ_API_KEY", "CEREBRAS_API_KEY", "SAMBANOVA_API_KEY"];
+const PROVIDER_KEYS = ["GROQ_API_KEY", "GEMINI_API_KEY", "CEREBRAS_API_KEY", "SAMBANOVA_API_KEY"];
 
 function withoutProviderKeys(run) {
   const saved = PROVIDER_KEYS.map((k) => [k, process.env[k]]);
@@ -29,10 +29,17 @@ test("with no keys configured, every provider records why it was skipped", async
     const line = await generateLine("18.5: Bumrah to Root, no run", { attempts });
 
     assert.equal(line, null, "no provider can answer without a key");
-    assert.equal(attempts.length, 3, "all three providers must account for themselves");
+    assert.equal(attempts.length, 4, "all four rungs must account for themselves");
     assert.deepEqual(
       attempts,
-      ["groq: no GROQ_API_KEY", "cerebras: no CEREBRAS_API_KEY", "sambanova: no SAMBANOVA_API_KEY"],
+      [
+        "groq: no GROQ_API_KEY",
+        // Three rungs, one key: the missing variable is named once per RUNG, not once per key.
+        // Collapsing them would hide which models the chain still believes it has.
+        "gemini-flash-lite: no GEMINI_API_KEY",
+        "gemini-3.6-flash: no GEMINI_API_KEY",
+        "gemini-3-flash-preview: no GEMINI_API_KEY",
+      ],
       "the reason must name the missing variable, not just say 'failed'"
     );
   });

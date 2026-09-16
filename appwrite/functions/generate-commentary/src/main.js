@@ -2,7 +2,7 @@ import { Client, Databases, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { createHash } from "crypto";
 
-import { deadProviders, generateVerifiedLine, isHighStakesBall, probeProviders, sanitize, stripPreamble } from "./llm.js";
+import { chainDepth, deadProviders, drainUnknownQuotaIds, generateVerifiedLine, isHighStakesBall, probeProviders, sanitize, stripPreamble } from "./llm.js";
 import {
   identify,
   checkRateLimit,
@@ -84,11 +84,32 @@ export default async (context) => {
     // accounts and, on a quiet day with no live match, is the ONLY thing talking to them. A
     // provider that has gone dead would otherwise wait for the next live match to be noticed.
     for (const d of deadProviders()) {
-      context.error?.(`[PROVIDER-DEAD] ${d.provider} rate-limited on ${d.rateLimited}/${d.calls} calls`);
-      report("A commentary provider is answering 429 to every request — likely dead, not busy", {
+      context.error?.(`[PROVIDER-DEAD] ${d.provider} failed ${d.failed}/${d.calls} calls, mostly HTTP ${d.status}`);
+      report("A commentary provider is failing every request — likely dead, not busy", {
         provider: d.provider,
         calls: d.calls,
-        rateLimited: d.rateLimited,
+        failed: d.failed,
+        status: String(d.status),
+      });
+    }
+    // Same reasoning one level up: on a quiet day this function is the only caller, so it is also
+    // the only place that would notice the chain has become too short to fact-check. Depth below 2
+    // means `generateVerifiedLine` has no second provider for its hallucination retry, so every
+    // verification FAIL degrades to raw text — invisible in any per-line record.
+    const { depth, rungs } = chainDepth();
+    if (depth < 2) {
+      const blocked = rungs.filter((r) => !r.reachable).map((r) => `${r.provider}: ${r.reason}`).join("; ");
+      context.error?.(`[CHAIN-DEPTH] only ${depth} reachable provider(s) — ${blocked}`);
+      report("Commentary provider chain is too short to fact-check — a verification FAIL now means raw text", {
+        depth: String(depth),
+        reachable: rungs.filter((r) => r.reachable).map((r) => r.provider).join(",") || "none",
+        blocked,
+      }, "error");
+    }
+    for (const quotaId of drainUnknownQuotaIds()) {
+      context.error?.(`[QUOTA-UNKNOWN] 429 named an unrecognised quota window: ${quotaId}`);
+      report("A provider 429 named a quota id this code cannot classify — the per-day latch may never fire", {
+        quotaId,
       });
     }
     await flushObservability();

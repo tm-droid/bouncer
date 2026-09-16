@@ -27,7 +27,7 @@ Each step wrapped in `initializeSafely()` block (try-catch + Sentry breadcrumb).
 
 **WidgetManager:** Syncs app widget state with FCM score_update messages + WorkManager polling
 
-**CommentaryFusionService:** Processes live commentary text → streams to OpenRouter API → returns LLM verdict on key moments
+**CommentaryFusionService:** Processes live commentary text → calls `bouncer-generate-commentary`, which runs the shared groq/Gemini provider ladder → returns LLM verdict on key moments. No OpenRouter, and no provider key on the device.
 
 **Deep linking:** Match details accessible via `app://bouncer/match/{matchId}` intent URLs (scheme `app`, host `bouncer`)
 

@@ -14,13 +14,25 @@ import { generateVerifiedLine } from "../src/llm.js";
 // container across executions, so a skip with any lifetime beyond the call would blacklist a
 // recovered provider until the container was recycled.
 
-const PROVIDER_KEYS = ["GROQ_API_KEY", "CEREBRAS_API_KEY", "SAMBANOVA_API_KEY"];
+const PROVIDER_KEYS = ["GROQ_API_KEY", "GEMINI_API_KEY"];
 
-function providerOf(url) {
-  if (url.includes("groq.com")) return "groq";
-  if (url.includes("cerebras.ai")) return "cerebras";
-  if (url.includes("sambanova.ai")) return "sambanova";
-  throw new Error(`unexpected provider url ${url}`);
+// Routing is by MODEL, not by URL, and that is now load-bearing: three of the four rungs post to
+// the same Gemini endpoint and are distinct only in the body. A url-based stub would collapse them
+// into one and quietly stop testing the fallback between them.
+const MODEL_TO_PROVIDER = {
+  "openai/gpt-oss-20b": "groq",
+  "gemini-3.5-flash-lite": "gemini-flash-lite",
+  "gemini-3.6-flash": "gemini-3.6-flash",
+  "gemini-3-flash-preview": "gemini-3-flash-preview",
+};
+
+const PROVIDER_ORDER = ["groq", "gemini-flash-lite", "gemini-3.6-flash", "gemini-3-flash-preview"];
+
+function providerOf(init) {
+  const model = JSON.parse(init?.body ?? "{}").model;
+  const name = MODEL_TO_PROVIDER[model];
+  if (!name) throw new Error(`unexpected provider model ${model}`);
+  return name;
 }
 
 function completion(text) {
@@ -41,11 +53,11 @@ async function withStubbedProviders(handler, body) {
   const savedFetch = globalThis.fetch;
   for (const k of PROVIDER_KEYS) process.env[k] = "test-key";
 
-  const calls = { groq: 0, cerebras: 0, sambanova: 0 };
-  globalThis.fetch = async (url) => {
-    const name = providerOf(String(url));
+  const calls = Object.fromEntries(PROVIDER_ORDER.map((n) => [n, 0]));
+  globalThis.fetch = async (url, init) => {
+    const name = providerOf(init);
     calls[name] += 1;
-    return handler(name, calls[name]);
+    return handler(name, calls[name], JSON.parse(init?.body ?? "{}"));
   };
 
   try {
@@ -62,11 +74,14 @@ async function withStubbedProviders(handler, body) {
 test("a provider that fails is asked once per line, not once per chain traversal", async () => {
   const attempts = [];
 
-  // groq and cerebras are down. sambanova generates, then rejects its own line — which forces the
-  // hallucination retry, so this one call exercises all four traversals.
+  // Every rung but the LAST is down. The last generates, then rejects its own line — which forces
+  // the hallucination retry, so this one call exercises all four traversals. It has to be the last
+  // rung: `generateVerifiedLine` retries with `exclude: [used.provider]`, so if anything sat below
+  // it the retry would succeed and this test would stop measuring re-asks.
+  const LAST = "gemini-3-flash-preview";
   const { result, calls } = await withStubbedProviders(
     (name, nth) => {
-      if (name !== "sambanova") return rateLimited();
+      if (name !== LAST) return rateLimited();
       return completion(nth === 1 ? "18.5: Bumrah bowls a jaffa." : "FAIL");
     },
     () =>
@@ -78,8 +93,9 @@ test("a provider that fails is asked once per line, not once per chain traversal
   );
 
   assert.equal(calls.groq, 1, "groq answered 429 on the generate — nothing after may re-ask it");
-  assert.equal(calls.cerebras, 1, "same for cerebras");
-  assert.equal(calls.sambanova, 2, "sambanova generated, then verified its own line");
+  assert.equal(calls["gemini-flash-lite"], 1, "same for the first Gemini rung");
+  assert.equal(calls["gemini-3.6-flash"], 1, "and the second");
+  assert.equal(calls[LAST], 2, "the last rung generated, then verified its own line");
 
   assert.equal(result.line, null);
   assert.equal(result.reason, "verification_failed", "the retry had no provider left to try");
@@ -110,5 +126,5 @@ test("the skip does not survive the call — a recovered provider is asked again
   );
 
   assert.equal(calls.groq, 2, "groq is asked again on the second line despite failing on the first");
-  assert.equal(calls.cerebras, 1, "only the first line had to fall through");
+  assert.equal(calls["gemini-flash-lite"], 1, "only the first line had to fall through");
 });

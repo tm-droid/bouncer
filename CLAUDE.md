@@ -109,7 +109,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 
 **Appwrite cloud functions** live in `appwrite/functions/` (Node.js, deployed via Appwrite CLI). `appwrite/appwrite.config.json` defines project-level config. Ten functions:
 - `highlights-sync` — 15-min schedule; syncs cricket highlight clips to Appwrite. **Only one run per hour does anything** (`minute < 15`), and only every 4th hour sweeps the 3-day back-window — Highlightly's plan allows 100 requests per rolling window and `*/15` alone would spend 96 on today. Never make it fetch on every run without raising that plan. Highlightly publishes a clip hours-to-days after its match, so a same-day-only query permanently loses whatever the lag exceeds; that is what the back-window exists for. Requires `HIGHLIGHTLY_API_KEY`, optional `SENTRY_DSN`. Deploy: the ~13 MB `--with-node-modules` archive is rejected whole by the CDN edge (`503 backend write error` in ~55 ms), so it must go up in 5 MB chunks — `node appwrite/tools/deploy-function.mjs` now does that itself and is the deploy path.
-- `generate-commentary` — on-demand; LLM commentary via OpenRouter (called by `CommentaryFusionService`)
+- `generate-commentary` — on-demand; LLM commentary via the shared groq/Gemini provider ladder in the vendored `llm.js` (called by `CommentaryFusionService`). It has never used OpenRouter.
 - `match-sync` — every-minute schedule; fetches live match HTML + scorecard → upserts `match-live-detail` → AI commentary → `match-commentary` (see detailed section below)
 - `news-sync` — on-demand; fetches cricket news from Cricbuzz via RapidAPI, caches to `cricket-stats` bucket (`news-cache` file, 4-hr TTL caps RapidAPI at ~6 calls/day). Requires `RAPIDAPI_KEY`.
 - `poll-live-matches` — scheduled; fetches live match data server-side. Also owns the `active-series` bucket file, which now holds a **superset of active plus archived** series: it walks `cricket-scorecard-archives/{year}` two pages per run, resuming from an `archiveCursor` stored in the file. Active-only meant a query for a competition out of season ("World Cup" for most of a four-year cycle) matched nothing anywhere in the app. A `CricbuzzBlockedError` aborts the walk and keeps the previous file — a truncated corpus must never overwrite a good one — and does not advance the cursor, so the next run retries that page.
@@ -468,6 +468,76 @@ verified and the next returned `empty completion (length)` again. The verdict is
 the budget is sized by how long the model thinks before emitting them. An `empty completion` note carries its `finish_reason` for the same
 reason: `length` (a spent budget) and `stop` (a model that answered nothing) need opposite fixes.
 
+**A 402 is account state, and it was being paid for on every ball while raising no alarm.** Measured
+2026-09-15 against the live keys: `GET /v1/models` returns **200** on all three providers and lists
+both configured model ids, while `POST /chat/completions` returns **402** on *every* model both
+accounts offer — Cerebras `{"type":"payment_required_error","param":"quota"}` (free trial spent),
+SambaNova `{"balance_units":0,"code":"PAYMENT_METHOD_REQUIRED"}` (no card). A model a key cannot
+reach answers **404 `model_not_found`**, which is what `c324d5b`, `82b467b` and `3bcf060` actually
+fixed; this is not that, and no model swap escapes it. Two consequences were being absorbed
+silently. (1) `unavailable` is scoped to one line on purpose — a 429 clears by the next ball — so a
+402 provider was re-asked on **every delivery**, two doomed round trips at a 15s timeout each, for
+six weeks. `paymentBlocked` (`llm.js`) is module-scoped for the opposite reason and holds for the
+container's life; the skip is still written to `attempts`, because a three-rung chain that quietly
+becomes one rung is the defect this file keeps repeating. (2) `deadProviders` counted **429 only**,
+so a provider failing 100% of calls with 402 landed in `calls`, never in the failure column, and
+could never reach `rateLimited === calls` — the aggregate alert built for exactly this outage was
+structurally blind to it. The tally now counts any non-200 and carries the dominant status, and a
+402 **skips the `DEAD_PROVIDER_MIN_CALLS` threshold entirely**: one 402 is conclusive where one 429
+is not, and once latched the provider can never be called enough times to clear a ratio. Pinned by
+the 402 cases in `verification-scope.test.js`.
+
+**The chain needs a second reachable provider, and credits alone do not give it one.** With cerebras
+and sambanova on 402 the chain was groq-only, and `generateVerifiedLine` retries a failed
+verification with `exclude: [used.provider]` — deliberately a *different* provider. Groq-only means
+that retry has nothing to call, returns null, and every verification FAIL becomes
+`reason: "verification_failed"` and a raw-text row. Paying for groq does not change that; it is
+structural. Groq's free tier is also 1,000 requests **per day** (`x-ratelimit-limit-requests`) and
+8,000 tokens per minute, against two groq calls per rewritten ball and four on a retry.
+
+**Gemini's free quota is per project PER MODEL, so one key buys three rungs.** The 429 body names
+it: `quotaId: "GenerateRequestsPerMinutePerProjectPerModel-FreeTier"`, with
+`quotaDimensions: {model}` and `quotaValue: "15"` (measured 2026-09-16; 500 RPD and 250k TPM read
+from AI Studio, which is now the only place they are published — `ai.google.dev`'s per-tier tables
+were replaced by "can be viewed in Google AI Studio"). The ladder is therefore groq +
+`gemini-3.5-flash-lite` + `gemini-3.6-flash` + `gemini-3-flash-preview` ≈ **2,500 calls/day**, all
+four probed against the real `SYSTEM_INSTRUCTION` on wicket/dot/six fixture balls before being
+added — the model list is not the set of models a key can call, and `gemini-2.5-flash-lite` proves
+it by appearing in `/v1/models` and answering 404 on a completion.
+
+Three traps, each of which looks like free capacity and is not. **An alias is not a bucket**:
+bursting `gemini-flash-lite-latest` returns `quotaDimensions: {"model":"gemini-3.5-flash-lite"}` —
+it bills what it resolves to. **A reasoning rung needs its own `tokenFloor`**: `gemini-3.6-flash` at
+`max_tokens: 512` returns `completion_tokens: 18` against `total_tokens: 717` and
+`finish_reason: length`, the gpt-oss trap one rung down, so those two rungs carry `tokenFloor: 2048`
+while flash-lite keeps the caller's 100. And **a per-day 429 is not a per-minute one** — `unavailable`
+is per-line because a rate limit clears by the next ball, which is true of the 15 RPM bucket and
+false of the 500 RPD one, so `dailyExhausted` latches until the Pacific reset. Only the per-minute
+quotaId has been observed; the per-day pattern is inferred, and `drainUnknownQuotaIds` reports any
+429 matching neither so the guess gets corrected from production rather than standing forever.
+
+Rejected rungs, so nobody re-adds them: `gemini-3.1-flash-lite` (fast and a separate bucket, but
+dropped "ramp" and invented "sharp bouncer" — a hallucination ships, where a timeout merely falls
+through), `gemini-3.7-flash` and `gemini-flash-latest` (16s timeout / 503 against a 15s
+`AbortSignal`), the Pro ids (429 on the first call), every `gemini-2.5-*` (404, "no longer available
+to new users"), and **OpenRouter's `:free` models**, which answered "temporarily rate-limited
+upstream" 429 on every call without even consuming the key's 50/day. Cerebras and sambanova left
+`PROVIDERS` for the same reason and stay in `probeProviders()` alone, which is how a funded account
+would still be noticed. Pinned by `provider-ladder.test.js` in both function dirs.
+
+**The chain is not capacity-starved, and never was.** Measured 2026-09-16 over 13 days of
+`match-commentary`: **94 `ai_generated = true` rows/day** on average and 367 on the busiest day —
+~11% of groq's 1,000/day on its own. The number that matters is the other one: **0.7-8.3% of stored
+commentary is AI-written**, so the tab is 91-99% raw Cricbuzz text. That is not an RPD problem. It
+is `commentaryCapFor` returning 0 for unviewed matches, the slow tier's 45 min × 1 rewrite, and
+verification failing closed on a one-rung chain. The extra rungs fix the third and pay for raising
+the first two — `SLOW_TIER_INTERVAL_MS` is 45 min *only* because 1,000/day was the whole budget
+(`main.js` records the 15-minute option being rejected at 768/day). Concurrency for that sizing,
+measured the same day over 312 hours: **mean 2.87 matches bowling at once, 4.28 while any cricket is
+on, p90 10, peak 13**, with 33% of hours having none. Count a match live only if it wrote a
+commentary row that hour — an open `match-live-detail` window says 7.06/19, because a Test holds its
+row open overnight.
+
 **Never state a figure for a partially-stored over.** `overTotalRuns`/`isMaidenOver` require six
 legal deliveries present. One stored dot ball rendered as "Over 89 · MAIDEN · 0 runs".
 
@@ -508,7 +578,7 @@ fixtures used and why they never caught this.
 
 **`bouncer-match-sync` Appwrite function:** scheduled `* * * * *`. Reads `live-matches.json` from `cricket-stats` bucket (written by `bouncer-poll-live-matches`); if file absent, returns 200 `{skipped:true}` (not an error). For each live match: fetches Cricbuzz live HTML + scorecard → upserts `match-live-detail` → writes EVERY new delivery to `match-commentary` → rewrites the oldest `commentaryCapFor` of them with the LLM. **Storage is not gated on a viewer; rewriting is.** It used to be the other way round, and a match nobody had open stored one ball per 45 minutes — so the commentary tab showed a sample of the match (overs missing outright, one boundary in an innings, a "recent" line hours old) rather than its commentary. `commentaryMatchSet` caps storage at 16 matches per run, viewers first; `commentaryCapFor` is 10 / 1 / 0 rewrites for viewed / slow-tier / idle. The watermark seeds from the newest `match-commentary` row (`limit(1)`, one billed read per cold container) and is no longer persisted to the detail row, because most live matches have no detail row. `innings` is stamped **per commentary item** from Cricbuzz's `inningsId`, falling back to the miniscore and then to the scorecard length — the old write-time stamp mislabelled an innings' tail as the next innings. Env vars: `APPWRITE_AI_CACHE_DB_ID`, `MATCH_COMMENTARY_COL_ID`, `MATCH_LIVE_DETAIL_COL_ID`, `MATCH_CACHE_BUCKET_ID`, `APPWRITE_API_KEY`, `GROQ_API_KEY` (+ fallbacks), `SENTRY_DSN` (optional — unset disables server-side reporting), `PROBE_SOURCES` (optional).
 
-**Server-side observability (`match-sync/src/observability.js`):** `@sentry/node`, initialized per container from `SENTRY_DSN` and flushed before every return (the container freezes on return, so an unflushed queue is lost). Reports: raw-text passthrough with the per-provider reasons from `generateLine`'s `attempts`, commentary write failures, a viewer-gated match that produced nothing, an unreadable `active-viewers` file (a 404 is normal and stays quiet), and read-budget 402s. Setting `PROBE_SOURCES=1` turns one execution into an upstream reachability probe (status + bytes + markup markers for Cricinfo and Cricbuzz, from inside the Appwrite container) and returns without syncing — that is the only way to answer whether Cricinfo is reachable server-side, which is a different question from whether it is reachable from a laptop or a phone.
+**Server-side observability (`match-sync/src/observability.js`):** `@sentry/node`, initialized per container from `SENTRY_DSN` and flushed before every return (the container freezes on return, so an unflushed queue is lost). Reports: raw-text passthrough with the per-provider reasons from `generateLine`'s `attempts`, commentary write failures, a viewer-gated match that produced nothing, an unreadable `active-viewers` file (a 404 is normal and stays quiet), read-budget 402s, **a provider chain with fewer than two reachable rungs** (error level — generation still works, so every other signal looks healthy while `generateVerifiedLine`'s retry has nobody to fall back to; this is the state that went six weeks unnoticed), and **a 429 naming a quota id the per-day latch cannot classify**. The last two are also reported by `generate-commentary`, which on a day with no live match is the only caller talking to the providers at all. Setting `PROBE_SOURCES=1` turns one execution into an upstream reachability probe (status + bytes + markup markers for Cricinfo and Cricbuzz, from inside the Appwrite container) and returns without syncing — that is the only way to answer whether Cricinfo is reachable server-side, which is a different question from whether it is reachable from a laptop or a phone.
 
 **The slow tier is an LLM budget, not a fetch cadence — and the real ball-loss mechanism is the
 upstream window.** `handleRun` does `Promise.allSettled(allLive.map(...))`: **every** live match has

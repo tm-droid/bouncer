@@ -32,7 +32,7 @@ import {
   parseScorecard,
   BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
-import { classifyEvent, deadProviders, generateVerifiedLine, isHighStakesBall, sanitize, stripPreamble } from "./llm.js";
+import { chainDepth, classifyEvent, deadProviders, drainUnknownQuotaIds, generateVerifiedLine, isHighStakesBall, sanitize, stripPreamble } from "./llm.js";
 import {
   initObservability,
   report,
@@ -512,6 +512,7 @@ async function handleRun({ req, res, log, error }) {
   });
 
   reportDeadProviders(error);
+  reportChainHealth(error);
 
   if (Date.now() < budget402UntilMs) {
     // A 402 surfaced mid-run: mark the whole execution failed so it's visible in the console.
@@ -1215,19 +1216,57 @@ async function upsertScorecard({ db, matchId, scorecard, error }) {
  * `attempts` already carries each individual 429, but per line and only on a 503, so a provider
  * that is permanently dead reads exactly like one that is briefly busy. That is not hypothetical:
  * SambaNova's model id had its quota withdrawn and answered 429 to literally every call, at zero
- * concurrency, and the only thing that ever said so was a load test. A 100% rate-limited ratio over
- * a meaningful number of calls is the one signal that separates the two.
+ * concurrency, and the only thing that ever said so was a load test. Then Cerebras and SambaNova
+ * both sat on 402 for six weeks and this alert could not see it, because the ratio was 429-only.
+ * A 100% failure ratio over a meaningful number of calls is the one signal that separates the two.
  *
  * Warning, not error: the chain is designed to survive a provider being gone, so this is a
  * degradation to investigate, not an outage. `deadProviders` self-throttles per container.
  */
 function reportDeadProviders(error) {
   for (const d of deadProviders()) {
-    error(`[PROVIDER-DEAD] ${d.provider} rate-limited on ${d.rateLimited}/${d.calls} calls — not load, check the model id and account`);
-    report("A commentary provider is answering 429 to every request — likely dead, not busy", {
+    error(`[PROVIDER-DEAD] ${d.provider} failed ${d.failed}/${d.calls} calls, mostly HTTP ${d.status} — not load, check the model id and account`);
+    report("A commentary provider is failing every request — likely dead, not busy", {
       provider: d.provider,
       calls: d.calls,
-      rateLimited: d.rateLimited,
+      failed: d.failed,
+      status: String(d.status),
+    });
+  }
+}
+
+/**
+ * Report the state of the chain itself, once per run.
+ *
+ * Two conditions, both of which were unobservable while they were doing damage.
+ *
+ * DEPTH. `generateVerifiedLine` retries a failed fact-check with `exclude: [used.provider]`, so a
+ * chain with one reachable rung cannot retry and every verification FAIL becomes a raw-text row.
+ * Each rung's own skip reason looks unremarkable in `attempts`; only the count is alarming, and
+ * nothing counted. That is how cerebras and sambanova sat at 402 for six weeks while the alerts
+ * stayed green. Error at depth 0 (nothing can be generated at all), error at 1 (generation works,
+ * verification is structurally broken), quiet at 2 or more.
+ *
+ * UNKNOWN QUOTA IDS. The per-day latch matches `/PerDay/i`, inferred from the per-minute id that
+ * WAS measured. If Google spells the daily one differently, the latch silently never fires and the
+ * rung is re-asked all day — so an unrecognised id is reported rather than assumed harmless. This
+ * is the one report here that exists to correct this code's own guess.
+ */
+function reportChainHealth(error) {
+  const { depth, rungs } = chainDepth();
+  if (depth < 2) {
+    const blocked = rungs.filter((r) => !r.reachable).map((r) => `${r.provider}: ${r.reason}`).join("; ");
+    error(`[CHAIN-DEPTH] only ${depth} reachable provider(s) — ${blocked}`);
+    report("Commentary provider chain is too short to fact-check — a verification FAIL now means raw text", {
+      depth: String(depth),
+      reachable: rungs.filter((r) => r.reachable).map((r) => r.provider).join(",") || "none",
+      blocked,
+    }, "error");
+  }
+  for (const quotaId of drainUnknownQuotaIds()) {
+    error(`[QUOTA-UNKNOWN] 429 named an unrecognised quota window: ${quotaId}`);
+    report("A provider 429 named a quota id this code cannot classify — the per-day latch may never fire", {
+      quotaId,
     });
   }
 }

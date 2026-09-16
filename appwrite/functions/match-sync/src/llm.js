@@ -31,16 +31,58 @@
 // the chain for an unknown period while looking, in `attempts`, exactly like a provider that was
 // merely busy. Swapped to DeepSeek-V3.1: 3/3 on the ball-prefix format contract and 3/3 self-verify
 // PASS on the fixture balls, ~13 RPM before its own 429, versus 0.
+// Gemini's OpenAI-compatible endpoint. Every Gemini rung posts here; only `model` differs, and
+// that is the whole point — see GEMINI_QUOTA_IS_PER_MODEL below.
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+
+// WHY THREE GEMINI RUNGS ON ONE KEY (measured 2026-09-16, live account)
+//
+// Gemini's free allowance is `GenerateRequestsPerMinutePerProjectPerModel-FreeTier` — the 429 body
+// names it, with `quotaDimensions: {model}` and `quotaValue: "15"`. Per project PER MODEL, so each
+// distinct model id is a distinct 15 RPM / 500 RPD bucket. Three ids is three allowances on one
+// key, which is how the chain gets back above one reachable provider without anyone paying.
+//
+// An alias is NOT a fourth bucket. Bursting `gemini-flash-lite-latest` returns
+// `quotaDimensions: {"model":"gemini-3.5-flash-lite"}` — it bills the model it resolves to. Same
+// for `gemini-flash-latest` and `gemini-pro-latest`. Adding one would look like free capacity and
+// deliver none.
+//
+// `tokenFloor` is not tuning either. 3.6-flash and 3-flash-preview are reasoning models: at
+// `max_tokens: 512` they returned `completion_tokens: 18` against `total_tokens: 717` and
+// `finish_reason: length` — ~490 tokens spent thinking before any prose. This is the gpt-oss trap
+// one rung down, and the fix is the same shape as `reasoning_effort` on groq: give the budget the
+// model actually needs. 3.5-flash-lite needs none of it and stays at the caller's 100.
+//
+// Rejected, so nobody re-adds them: `gemini-3.1-flash-lite` (fast, separate bucket, but dropped
+// "ramp" and invented "sharp bouncer" across two runs — a hallucination ships, where a timeout
+// merely falls through); `gemini-3.7-flash` and `gemini-flash-latest` (16s timeout / 503 against a
+// 15s AbortSignal); the Pro ids (429 on the very first call); every `gemini-2.5-*` (404 "no longer
+// available to new users"); and OpenRouter's `:free` models, which answered
+// "temporarily rate-limited upstream" 429 on every call without even consuming the key's 50/day.
+// A rung that is configured and never answers is the cerebras/sambanova defect, not a fallback.
 const PROVIDERS = [
   // `reasoning_effort: low` is load-bearing, not tuning: gpt-oss is a reasoning model and spends
   // the token budget on reasoning before it writes any `content`. At match-sync's per-ball
   // budget it returned `empty completion` every time — a 200 with nothing in it, which the
-  // chain correctly treats as a failed generation. Sent only to groq; Cerebras and SambaNova
-  // reject unknown body fields.
-  { name: "groq",      url: "https://api.groq.com/openai/v1/chat/completions",  model: "openai/gpt-oss-20b",          keyEnv: "GROQ_API_KEY", extraBody: { reasoning_effort: "low" } },
-  { name: "cerebras",  url: "https://api.cerebras.ai/v1/chat/completions",      model: "gpt-oss-120b",                keyEnv: "CEREBRAS_API_KEY" },
-  { name: "sambanova", url: "https://api.sambanova.ai/v1/chat/completions",     model: "DeepSeek-V3.1",               keyEnv: "SAMBANOVA_API_KEY" },
+  // chain correctly treats as a failed generation. Sent only to groq; the Gemini endpoint rejects
+  // it alongside its own `thinking_level`.
+  { name: "groq",                   account: "groq",   url: "https://api.groq.com/openai/v1/chat/completions", model: "openai/gpt-oss-20b",     keyEnv: "GROQ_API_KEY",   tokenFloor: 0,    extraBody: { reasoning_effort: "low" } },
+  { name: "gemini-flash-lite",      account: "gemini", url: GEMINI_URL,                                        model: "gemini-3.5-flash-lite",  keyEnv: "GEMINI_API_KEY", tokenFloor: 0 },
+  { name: "gemini-3.6-flash",       account: "gemini", url: GEMINI_URL,                                        model: "gemini-3.6-flash",       keyEnv: "GEMINI_API_KEY", tokenFloor: 2048 },
+  { name: "gemini-3-flash-preview", account: "gemini", url: GEMINI_URL,                                        model: "gemini-3-flash-preview", keyEnv: "GEMINI_API_KEY", tokenFloor: 2048 },
 ];
+
+// Not in the chain, still worth probing. Both answer 200 on `GET /v1/models` and 402 on every
+// completion (spent Cerebras trial, unfunded SambaNova), so calling them costs a doomed 15s round
+// trip per cold container and buys nothing — but `probeProviders` is exactly how a funded account
+// would be noticed, and dropping them from the probe too would make that unanswerable.
+const PROBE_ONLY_PROVIDERS = [
+  { name: "cerebras",  account: "cerebras",  url: "https://api.cerebras.ai/v1/chat/completions",  model: "gpt-oss-120b", keyEnv: "CEREBRAS_API_KEY" },
+  { name: "sambanova", account: "sambanova", url: "https://api.sambanova.ai/v1/chat/completions", model: "DeepSeek-V3.1", keyEnv: "SAMBANOVA_API_KEY" },
+];
+
+/** A provider's billing identity. Several rungs share one Gemini key, project and balance. */
+const accountOf = (provider) => provider.account ?? provider.name;
 
 
 /**
@@ -56,7 +98,7 @@ const PROVIDERS = [
  */
 export async function probeProviders() {
   const out = [];
-  for (const provider of PROVIDERS) {
+  for (const provider of [...PROVIDERS, ...PROBE_ONLY_PROVIDERS]) {
     const apiKey = process.env[provider.keyEnv];
     if (!apiKey) {
       out.push({ provider: provider.name, configured: provider.model, error: `no ${provider.keyEnv}` });
@@ -119,15 +161,157 @@ const DEAD_PROVIDER_MIN_CALLS = 5;
 // An Appwrite container is recycled often enough that a recovered provider clears on its own.
 const health = new Map();
 
-function noteHealth(name, outcome) {
-  const h = health.get(name) ?? { calls: 0, rateLimited: 0, reported: false };
+// Providers that answered 402, held for the container's life.
+//
+// This is module scope for the opposite reason to `unavailable` below. A 429 clears by the next
+// ball, so blacklisting on one is wrong. A 402 does not clear: it is account state — a spent free
+// trial (Cerebras answers `param: "quota"`) or an account with no payment method (SambaNova answers
+// `balance_units: 0`) — and it holds until someone opens a billing page. Measured 2026-09-15 on
+// both accounts: every model they list answered 402, including ones the chain has never used, so it
+// is not a model id and no fallback inside that provider reaches past it.
+//
+// Left per-line, as it was from 2026-08-04, the chain paid two doomed round trips — each with a 15s
+// `AbortSignal.timeout` — on every single delivery for six weeks.
+//
+// Keyed by ACCOUNT, not rung. Three Gemini rungs share one key, one project and one balance, so a
+// 402 from any of them is a statement about all three; latching only the rung that saw it would
+// leave the chain re-discovering the same dead account twice more per line.
+const paymentBlocked = new Set();
+
+// Providers whose PER-DAY quota is spent, held until that quota resets.
+//
+// The third kind of refusal, and the one the chain had no shape for. `unavailable` is per-line
+// because a rate limit clears by the next ball — true of Gemini's per-minute bucket (15 RPM,
+// retryDelay ~19s) and false of its per-day one, which holds until midnight Pacific. Treating the
+// daily one as transient re-asks a spent rung on every delivery for the rest of the day: the exact
+// cost `paymentBlocked` exists to stop, in a status that is not 402.
+//
+// Google states which it is. A 429 body carries
+// `details[].@type = "...QuotaFailure"` with `violations[].quotaId`, and the id spells out the
+// window: `GenerateRequestsPerMinutePerProjectPerModel-FreeTier` versus a PerDay sibling. Measured
+// 2026-09-16: the per-minute id is confirmed verbatim, with `quotaValue: "15"`. The per-day id has
+// NOT been seen — reaching it costs 500 calls — so `PER_DAY_QUOTA_RE` is an inference, and
+// `unrecognizedQuotaIds` below exists precisely so the real id is learned from production instead
+// of staying a guess.
+const dailyExhausted = new Map();
+
+// Quota ids seen on a 429 that match neither window. Drained once per container by the caller.
+const unknownQuotaIds = new Set();
+
+const PER_DAY_QUOTA_RE = /PerDay/i;
+const PER_MINUTE_QUOTA_RE = /PerMinute/i;
+
+/**
+ * Midnight Pacific, as an epoch. Google resets RPD quotas there, and a container that outlives the
+ * reset must start asking again rather than sitting out until it is recycled.
+ *
+ * Derived from the zone's own offset via `Intl` rather than a hardcoded -08:00, because the offset
+ * changes twice a year and a fixed one would be an hour wrong for half of every season.
+ */
+function nextPacificMidnight(now = Date.now()) {
+  const zone = "America/Los_Angeles";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: zone,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  }).formatToParts(new Date(now));
+  const get = (t) => Number(parts.find((x) => x.type === t)?.value);
+  // How far "now" is into the Pacific day, in ms. Adding the remainder lands on the next midnight.
+  const intoDay = ((get("hour") % 24) * 3600 + get("minute") * 60 + get("second")) * 1000;
+  return now + (86_400_000 - intoDay);
+}
+
+/**
+ * Classify a 429 body and, when it names a per-day quota, latch the rung until the reset.
+ *
+ * Returns the matched violation so the caller can put the numbers in `attempts` — a skip nobody can
+ * read is how the last two outages stayed invisible.
+ */
+function noteQuota429(providerName, parsedBody, now = Date.now()) {
+  const err = parsedBody?.error ?? parsedBody;
+  const details = Array.isArray(err?.details) ? err.details : [];
+  const failure = details.find((d) => String(d?.["@type"] ?? "").includes("QuotaFailure"));
+  const violation = failure?.violations?.[0];
+  const quotaId = violation?.quotaId;
+  if (!quotaId) return null;
+  if (PER_DAY_QUOTA_RE.test(quotaId)) {
+    dailyExhausted.set(providerName, nextPacificMidnight(now));
+    return { quotaId, quotaValue: violation?.quotaValue, window: "day" };
+  }
+  if (PER_MINUTE_QUOTA_RE.test(quotaId)) return { quotaId, quotaValue: violation?.quotaValue, window: "minute" };
+  // Neither window. Do NOT latch on a shape we do not understand — over-latching silently removes a
+  // working rung, which is worse than re-asking one that is busy.
+  unknownQuotaIds.add(quotaId);
+  return { quotaId, quotaValue: violation?.quotaValue, window: "unknown" };
+}
+
+/** True while this rung's per-day quota is still spent. Expired entries clear themselves. */
+function dailyQuotaSpent(providerName, now = Date.now()) {
+  const until = dailyExhausted.get(providerName);
+  if (until === undefined) return false;
+  if (now >= until) {
+    dailyExhausted.delete(providerName);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Rungs that could answer right now, and why each of the others could not.
+ *
+ * `generateVerifiedLine` retries a failed fact-check with `exclude: [used.provider]` — deliberately
+ * a DIFFERENT provider — so a chain with one reachable rung cannot retry at all, and every
+ * verification FAIL becomes a raw-text row. That is not a degraded state the caller can infer from
+ * anything else: each rung's own skip reason looks ordinary, and only the count is alarming. It ran
+ * that way for six weeks. The caller reports on `depth < 2`.
+ *
+ * `unavailable` is the per-line Set, passed in when there is one.
+ */
+export function chainDepth(unavailable, now = Date.now()) {
+  const rungs = PROVIDERS.map((provider) => {
+    if (!process.env[provider.keyEnv]) return { provider: provider.name, reachable: false, reason: `no ${provider.keyEnv}` };
+    if (paymentBlocked.has(accountOf(provider))) return { provider: provider.name, reachable: false, reason: "HTTP 402 (account)" };
+    if (dailyQuotaSpent(provider.name, now)) return { provider: provider.name, reachable: false, reason: "daily quota spent" };
+    if (unavailable?.has(provider.name)) return { provider: provider.name, reachable: false, reason: "failed earlier this line" };
+    return { provider: provider.name, reachable: true, reason: null };
+  });
+  return { depth: rungs.filter((r) => r.reachable).length, rungs };
+}
+
+/** Quota ids the classifier did not recognise. Drains, so the caller reports each one once. */
+export function drainUnknownQuotaIds() {
+  const out = [...unknownQuotaIds];
+  unknownQuotaIds.clear();
+  return out;
+}
+
+function noteHealth(name, outcome, status) {
+  const h = health.get(name) ?? { calls: 0, failed: 0, statuses: new Map(), reported: false };
   h.calls += 1;
-  if (outcome === "rate_limited") h.rateLimited += 1;
+  if (outcome !== "ok") {
+    h.failed += 1;
+    const key = status ?? "threw";
+    h.statuses.set(key, (h.statuses.get(key) ?? 0) + 1);
+  }
   health.set(name, h);
 }
 
 /**
- * Providers that have been asked enough times to judge and answered 429 to every single one.
+ * Providers that have been asked enough times to judge and failed every single one.
+ *
+ * The tally counted 429 alone until 2026-09-15, which left it blind to the exact outage it exists
+ * for. Cerebras and SambaNova answered 402 to 100% of calls for six weeks: every call landed in
+ * `calls` and none in the failure column, so the ratio never reached 1 and this alert never fired.
+ * The state was legible in every per-line `attempts` string and in no aggregate — which is the
+ * failure mode the comment above `health` describes, reproduced by the fix for it.
+ *
+ * Any non-200 counts now, and the dominant status rides along, because the statuses need opposite
+ * responses: 429 is wait, 402 is pay, 404 is a model id.
+ *
+ * A 402 skips the call threshold entirely. `minCalls` exists because one 429 cannot be told from
+ * bad luck in a burst — but one 402 can: it is the provider stating its account is unfunded, and
+ * `paymentBlocked` then stops the chain calling it a second time, so its `calls` can never reach
+ * the threshold. Requiring the ratio here would leave the alert exactly as blind as it was.
  *
  * Each is returned at most once per container (`reported`), because the caller reports on a
  * per-run basis and a dead provider stays dead — the signal is worth one event, not one a minute.
@@ -135,16 +319,21 @@ function noteHealth(name, outcome) {
 export function deadProviders(minCalls = DEAD_PROVIDER_MIN_CALLS) {
   const dead = [];
   for (const [name, h] of health) {
-    if (h.reported || h.calls < minCalls || h.rateLimited !== h.calls) continue;
+    if (h.reported) continue;
+    if (!h.statuses.has(402) && (h.calls < minCalls || h.failed !== h.calls)) continue;
     h.reported = true;
-    dead.push({ provider: name, calls: h.calls, rateLimited: h.rateLimited });
+    const [status] = [...h.statuses].sort((a, b) => b[1] - a[1])[0] ?? [null];
+    dead.push({ provider: name, calls: h.calls, failed: h.failed, status });
   }
   return dead;
 }
 
-/** Test seam — the tally is module state and would otherwise leak between cases. */
+/** Test seam — both tallies are module state and would otherwise leak between cases. */
 export function resetProviderHealth() {
   health.clear();
+  paymentBlocked.clear();
+  dailyExhausted.clear();
+  unknownQuotaIds.clear();
 }
 
 // Kept byte-identical to CommentaryFusionService.SYSTEM_INSTRUCTION. The same ball can be narrated
@@ -215,22 +404,26 @@ export function stripPreamble(text) {
  *
  * Never throws and never blocks the fallback: a body that cannot be read is simply no detail.
  */
-async function providerErrorDetail(resp) {
+async function readProviderError(resp) {
   try {
     const body = await resp.text();
-    if (!body) return "";
-    let parsed;
+    if (!body) return { parsed: null, detail: "" };
+    let parsed = null;
     try {
-      parsed = JSON.parse(body);
+      // Google wraps the error object in a one-element array on this endpoint; every other
+      // provider sends it bare. Unwrapping here keeps both the detail string and the quota
+      // classifier from having to know that.
+      const raw = JSON.parse(body);
+      parsed = Array.isArray(raw) ? raw[0] : raw;
     } catch {
-      return body.slice(0, PROVIDER_ERROR_DETAIL_MAX);
+      return { parsed: null, detail: body.slice(0, PROVIDER_ERROR_DETAIL_MAX) };
     }
     const err = parsed?.error ?? parsed;
     const code = err?.code ?? err?.type ?? "";
     const message = err?.message ?? "";
-    return [code, message].filter(Boolean).join(": ").slice(0, PROVIDER_ERROR_DETAIL_MAX);
+    return { parsed, detail: [code, message].filter(Boolean).join(": ").slice(0, PROVIDER_ERROR_DETAIL_MAX) };
   } catch {
-    return "";
+    return { parsed: null, detail: "" };
   }
 }
 
@@ -262,6 +455,10 @@ export async function generateLine(
     // Verification is not commentary: sending the broadcast-style system prompt with a
     // PASS/FAIL question is how a fact-checker starts narrating.
     systemInstruction = SYSTEM_INSTRUCTION,
+    // Reject a completion that stopped because the budget ran out mid-sentence. On by default
+    // because that is what a stored commentary line must never be; `verifyLine` turns it off, since
+    // its whole answer is the unpunctuated word PASS.
+    requireTerminated = true,
   } = {}
 ) {
   const note = (provider, reason) => attempts?.push(`${provider}: ${reason}`);
@@ -277,6 +474,21 @@ export async function generateLine(
 
   for (const provider of PROVIDERS) {
     if (exclude.includes(provider.name) || unavailable?.has(provider.name)) continue;
+    // Skipped without a call, but still written to `attempts`. Dropping it silently would shrink
+    // the record to the providers that were tried, and a three-rung chain that has quietly become
+    // one rung is the failure this file has been bitten by three times.
+    if (paymentBlocked.has(accountOf(provider))) {
+      // The account is only worth naming when it is not the rung — for groq the two are the same
+      // word, but "gemini-3.6-flash: HTTP 402 (gemini account latched…)" says the thing that
+      // matters: no other Gemini rung will answer either.
+      const scope = accountOf(provider) === provider.name ? "" : `${accountOf(provider)} account `;
+      note(provider.name, `HTTP 402 (${scope}latched for this container)`);
+      continue;
+    }
+    if (dailyQuotaSpent(provider.name)) {
+      note(provider.name, "daily quota spent (latched until the Pacific reset)");
+      continue;
+    }
     const apiKey = process.env[provider.keyEnv];
     if (!apiKey) {
       note(provider.name, `no ${provider.keyEnv}`);
@@ -293,7 +505,9 @@ export async function generateLine(
             { role: "system", content: systemInstruction },
             { role: "user", content: prompt },
           ],
-          max_tokens: maxTokens,
+          // A reasoning rung spends most of this before it writes a word, so the floor is a
+          // property of the model, not of the caller's appetite for output length.
+          max_tokens: Math.max(maxTokens, provider.tokenFloor ?? 0),
           temperature,
           ...(provider.extraBody ?? {}),
         }),
@@ -304,10 +518,15 @@ export async function generateLine(
         // and for one this key's tier cannot reach; a 402 may be a spent budget or an unpaid
         // account. Those need different actions, and the difference is only in the body — which is
         // exactly what "attempts: groq: HTTP 404" left out while the chain sat down for weeks.
-        const detail = await providerErrorDetail(resp);
+        const { parsed, detail } = await readProviderError(resp);
         error?.(`${provider.name} HTTP ${resp.status}${detail ? ` (${detail})` : ""}`);
-        note(provider.name, `HTTP ${resp.status}${detail ? ` ${detail}` : ""}`);
-        noteHealth(provider.name, resp.status === 429 ? "rate_limited" : "error");
+        noteHealth(provider.name, "error", resp.status);
+        // A 402 outlives the line and belongs to the account; see `paymentBlocked`.
+        if (resp.status === 402) paymentBlocked.add(accountOf(provider));
+        // A 429 is two different failures wearing one status. The body says which.
+        const quota = resp.status === 429 ? noteQuota429(provider.name, parsed) : null;
+        const quotaNote = quota ? ` [${quota.quotaId}=${quota.quotaValue ?? "?"} per ${quota.window}]` : "";
+        note(provider.name, `HTTP ${resp.status}${detail ? ` ${detail}` : ""}${quotaNote}`);
         unavailable?.add(provider.name);
         continue;
       }
@@ -317,6 +536,17 @@ export async function generateLine(
       noteHealth(provider.name, "ok");
       const data = await resp.json();
       const content = data.choices?.[0]?.message?.content?.trim();
+      const finishReason = data.choices?.[0]?.finish_reason;
+      // A budget that ran out mid-sentence is a failed generation, not a short one. Before this,
+      // only an EMPTY completion fell through, so a line severed at "…a brilliant 74 off" was
+      // stored and rendered exactly like a finished one. Measured on gemini-3.6-flash at
+      // max_tokens 512. Terminal punctuation is the cheap, language-agnostic test for "the model
+      // reached the end of its sentence"; `stop` alone is not, because a truncated reply reports
+      // `length` while a genuinely complete short reply reports `stop`.
+      if (content && requireTerminated && finishReason === "length" && !/[.!?"'\u2019\u201d]$/.test(content)) {
+        note(provider.name, `truncated mid-sentence (${content.length} chars, finish_reason length)`);
+        continue;
+      }
       if (content) {
         log?.(`Generated via ${provider.name}`);
         if (used) used.provider = provider.name;
@@ -325,8 +555,7 @@ export async function generateLine(
       // The finish reason is the diagnosis: `length` means the budget ran out before any content
       // survived, `stop` means the model genuinely answered with nothing. Opposite fixes, and the
       // bare "empty completion" string could not tell them apart.
-      const finish = data.choices?.[0]?.finish_reason;
-      note(provider.name, `empty completion${finish ? ` (${finish})` : ""}`);
+      note(provider.name, `empty completion${finishReason ? ` (${finishReason})` : ""}`);
     } catch (e) {
       error?.(`${provider.name} error: ${e?.message}`);
       note(provider.name, e?.message ?? "threw");
@@ -522,6 +751,9 @@ export async function verifyLine(
     maxTokens: 256,
     temperature: 0,
     systemInstruction: VERIFY_SYSTEM_INSTRUCTION,
+    // The verdict is the bare word PASS or FAIL — no terminal punctuation, by instruction. The
+    // truncation guard would throw away every correct verdict in the chain.
+    requireTerminated: false,
     log,
     error,
     attempts,

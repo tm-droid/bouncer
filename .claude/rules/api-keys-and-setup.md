@@ -19,7 +19,7 @@ If a feature needs a credential, it calls an Appwrite function that holds one. I
 
 | Secret | Home | Used by |
 |---|---|---|
-| `GROQ_API_KEY`, `CEREBRAS_API_KEY`, `SAMBANOVA_API_KEY` | Appwrite function env | `bouncer-generate-commentary` (device requests), `bouncer-match-sync` (cron) |
+| `GROQ_API_KEY`, `GEMINI_API_KEY`, `CEREBRAS_API_KEY`, `SAMBANOVA_API_KEY` | Appwrite function env | `bouncer-generate-commentary` (device requests), `bouncer-match-sync` (cron). Declared in `appwrite.config.json` and copied by `sync-provider-keys.mjs`. `GEMINI_API_KEY` backs **three** `PROVIDERS` rungs — the free quota is per project per model, so each model id is its own allowance. Cerebras and SambaNova answer 402 (unfunded accounts) and are no longer in the chain; their keys remain only so `probeProviders()` can still see them. |
 | `RAPIDAPI_KEY` | Appwrite function env | `bouncer-news-sync`, `bouncer-highlights-sync` |
 | `HIGHLIGHTLY_API_KEY` | Appwrite function env | `bouncer-highlights-sync` |
 | `APPWRITE_API_KEY` | Appwrite function env | every function; server-side only |

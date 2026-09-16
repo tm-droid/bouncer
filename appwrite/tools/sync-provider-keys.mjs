@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 //
-// Copy the three provider keys from the gitignored `local.properties` into a function's Appwrite
+// Copy the provider keys from the gitignored `local.properties` into a function's Appwrite
 // environment, over the REST API.
 //
 // Why a script rather than the Appwrite MCP or console: a variable's `value` comes back masked
@@ -18,7 +18,7 @@
 //   node sync-provider-keys.mjs --function bouncer-generate-commentary [--dry-run]
 //   node sync-provider-keys.mjs --function bouncer-generate-commentary --keys SENTRY_DSN
 //
-// `--keys` defaults to the three provider keys. Any name is accepted as long as `local.properties`
+// `--keys` defaults to the provider keys in `DEFAULT_KEYS`. Any name is accepted as long as `local.properties`
 // carries it, which is what makes this reusable for SENTRY_DSN — not a credential (a DSN can submit
 // events, not read them), but the same copy-from-local-properties problem.
 //
@@ -28,7 +28,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_KEYS = ["GROQ_API_KEY", "CEREBRAS_API_KEY", "SAMBANOVA_API_KEY"];
+const DEFAULT_KEYS = ["GROQ_API_KEY", "GEMINI_API_KEY", "CEREBRAS_API_KEY", "SAMBANOVA_API_KEY"];
 
 const argv = process.argv.slice(2);
 const dryRun = argv.includes("--dry-run");

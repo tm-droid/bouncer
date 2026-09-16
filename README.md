@@ -123,9 +123,9 @@ Fill in all values — see the table below.
 | Key | Description | Where to get it |
 |-----|-------------|----------------|
 | `RAPIDAPI_KEY` | Cricket data API (TeamDirectory, news) | RapidAPI → cricket-api-free-data |
-| `GROQ_API_KEY` | `llama-3.3-70b-versatile` (primary AI provider) | console.groq.com |
-| `CEREBRAS_API_KEY` | `gemma-4-31b` (failover #1) | cloud.cerebras.ai |
-| `SAMBANOVA_API_KEY` | `DeepSeek-V3.1` (failover #2) | cloud.sambanova.ai |
+| `GROQ_API_KEY` | `openai/gpt-oss-20b` (primary AI provider) | console.groq.com |
+| `CEREBRAS_API_KEY` | `gpt-oss-120b` (failover #1 — account unfunded, answering 402) | cloud.cerebras.ai |
+| `SAMBANOVA_API_KEY` | `DeepSeek-V3.1` (failover #2 — no payment method, answering 402) | cloud.sambanova.ai |
 | `APPWRITE_ENDPOINT` | Appwrite server base URL | Appwrite Console → Project settings |
 | `APPWRITE_PROJECT_ID` | Appwrite project ID | Appwrite Console → Project settings |
 | `APPWRITE_AI_CACHE_DB_ID` | Database for AI commentary cache | Appwrite Console → Databases |

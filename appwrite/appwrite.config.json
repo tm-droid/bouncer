@@ -122,6 +122,10 @@
                     "value": ""
                 },
                 {
+                    "key": "GEMINI_API_KEY",
+                    "value": ""
+                },
+                {
                     "key": "CEREBRAS_API_KEY",
                     "value": ""
                 },
@@ -243,6 +247,10 @@
                 },
                 {
                     "key": "GROQ_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "GEMINI_API_KEY",
                     "value": ""
                 },
                 {
