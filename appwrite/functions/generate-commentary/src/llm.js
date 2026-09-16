@@ -122,7 +122,15 @@ export async function probeProviders() {
       }
       let ids = [];
       try {
-        ids = (JSON.parse(body)?.data ?? []).map((m) => m?.id).filter(Boolean);
+        // Gemini answers with `models/gemini-3.5-flash-lite` where every other provider answers a
+        // bare id, so a raw `includes` reported `configuredIsListed: false` for all three Gemini
+        // rungs while they were working perfectly. That flag is the probe's whole purpose — it is
+        // how a wrong model id is told apart from a dead key — so a permanent false negative there
+        // makes the one diagnosis this function exists for unreadable.
+        ids = (JSON.parse(body)?.data ?? [])
+          .map((m) => m?.id)
+          .filter(Boolean)
+          .map((id) => id.replace(/^models\//, ""));
       } catch {
         ids = [];
       }

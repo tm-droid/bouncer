@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { chainDepth, drainUnknownQuotaIds, generateLine, resetProviderHealth, verifyLine } from "../src/llm.js";
+import { chainDepth, drainUnknownQuotaIds, generateLine, probeProviders, resetProviderHealth, verifyLine } from "../src/llm.js";
 
 // The ladder became four rungs on two accounts on 2026-09-16, when cerebras and sambanova were
 // dropped for answering 402 to every call and three Gemini model ids took their place. Gemini bills
@@ -224,6 +224,51 @@ test("chainDepth counts what could actually answer, and says why the rest cannot
     assert.equal(chainDepth(new Set(["groq", "gemini-3.6-flash"])).depth, 2);
   } finally {
     resetProviderHealth();
+    for (const [k, v] of saved) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+});
+
+test("the probe recognises a Gemini model id despite its models/ prefix", async () => {
+  // `configuredIsListed` is the whole point of probeProviders: it is how "my model id is wrong" is
+  // told apart from "my key is dead". Gemini returns `models/gemini-3.5-flash-lite` where every
+  // other provider returns a bare id, so a raw includes() reported false for all three Gemini rungs
+  // while they were answering 200 — a permanent false alarm sitting on the one diagnostic signal.
+  const saved = PROVIDER_KEYS.map((k) => [k, process.env[k]]);
+  const savedFetch = globalThis.fetch;
+  for (const k of PROVIDER_KEYS) process.env[k] = "test-key";
+
+  globalThis.fetch = async (url) =>
+    String(url).includes("generativelanguage")
+      ? new Response(
+          JSON.stringify({
+            data: [
+              { id: "models/gemini-3.5-flash-lite" },
+              { id: "models/gemini-3.6-flash" },
+              { id: "models/gemini-3-flash-preview" },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      : new Response(JSON.stringify({ data: [{ id: "openai/gpt-oss-20b" }] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+
+  try {
+    const byName = Object.fromEntries((await probeProviders()).map((p) => [p.provider, p]));
+    for (const rung of ["gemini-flash-lite", "gemini-3.6-flash", "gemini-3-flash-preview"]) {
+      assert.equal(byName[rung].configuredIsListed, true, `${rung} is listed and must be reported as listed`);
+    }
+    assert.equal(byName.groq.configuredIsListed, true, "a bare id must keep working");
+    assert.ok(
+      byName["gemini-flash-lite"].models.includes("gemini-3.5-flash-lite"),
+      "the reported list is normalised too, so it can be compared against PROVIDERS by eye"
+    );
+  } finally {
+    globalThis.fetch = savedFetch;
     for (const [k, v] of saved) {
       if (v === undefined) delete process.env[k];
       else process.env[k] = v;
