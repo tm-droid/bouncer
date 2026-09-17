@@ -395,34 +395,52 @@ export function parseBallRuns(text) {
  * The over being bowled, as the miniscore states it: its glyphs and its number. Null when the
  * miniscore carries nothing to read.
  *
- * `recentOvsStats` is the string behind Cricbuzz's own "this over" bar, and it is live. Measured on
- * match 143240 at 97.3 overs it read `1 0 W` — balls 97.1-97.3 — while the newest `overSummary` on
- * the same page was still over 97's `0 1 0 0 0 0`. At an over break it holds the over that has just
- * ended (`1 1 0 0 1 0` at 23 overs exactly), so the over it names is the one containing the last
- * ball bowled: 97.3 is over 98, 23.0 is over 23.
+ * `recentOvsStats` is the string behind Cricbuzz's own "this over" bar, and it is live. Sampled
+ * across three county matches on 2026-09-17 it is normally one over: `1` at 43.1, `0 1 0` at 42.3,
+ * `4 4` at 30.2, and at an over break the over that just ended (`1 0 0 0 0 0` at 44). But the same
+ * field also arrived as `...  | 0 4 0 0 0 1  | 0 0 2 1 0 W` at 118 — several overs joined by `|`.
+ *
+ * So the bar is not trusted to be one over. The ball count in `overs` says how many legal deliveries
+ * the over holds (97.3 → 3, 23 → 6), and exactly that many are taken from the end, counting only
+ * legal balls: a wide or no-ball is re-bowled, so `Wd 1` at x.1 is two glyphs and one ball. Extras
+ * immediately before the first of them belong to this over too, because the previous over always
+ * ends on a legal delivery.
  *
  * The Hundred writes `recentOvsStats: ""` and counts balls in `overs` (72, 100), so it gets no over
- * number, and an empty string falls back to the over summaries.
+ * number and no trimming, and an empty string falls back to the over summaries.
  */
 export function liveOverOf(ms) {
   const raw = typeof ms?.recentOvsStats === "string" ? ms.recentOvsStats : "";
-  // Defensive: should the bar ever join two overs, the over being bowled is the last segment.
-  const current = raw.split("|").pop().trim();
-  if (!current) return null;
-  const isHundred = ms.matchScoreDetails?.matchFormat === "HUN";
-  return {
-    balls: current.split(/\s+/).filter(Boolean),
-    over: isHundred ? null : overContaining(ms.overs),
-  };
+  const glyphs = raw.split(/[\s|]+/).filter((g) => g && g !== "...");
+  if (glyphs.length === 0) return null;
+  if (ms.matchScoreDetails?.matchFormat === "HUN") return { balls: glyphs, over: null };
+  const position = overPosition(ms.overs);
+  if (!position) return { balls: glyphs, over: null };
+  return { balls: lastLegalBalls(glyphs, position.balls), over: position.over };
 }
 
-/** The over holding the last ball bowled: 97.3 is over 98, 23 is over 23. Null before a ball. */
-function overContaining(overs) {
+/** 97.3 is 3 balls into over 98; 23 is over 23 complete. Null before a ball is bowled. */
+function overPosition(overs) {
   const n = Number(overs);
   if (!Number.isFinite(n) || n <= 0) return null;
   const whole = Math.floor(n);
-  const balls = Math.round((n - whole) * 10);
-  return balls > 0 ? whole + 1 : whole;
+  const part = Math.round((n - whole) * 10);
+  return part > 0 ? { over: whole + 1, balls: part } : { over: whole, balls: 6 };
+}
+
+// A wide or a no-ball is not one of the over's six: `Wd`, `Wd3`, `Nb`, `N1`. Byes and leg byes are.
+const ILLEGAL_DELIVERY = /^(?:WD\d*|NB|N\d+)$/i;
+
+/** The last `count` legal deliveries, with the extras bowled among and just before them. */
+function lastLegalBalls(glyphs, count) {
+  let legal = 0;
+  let start = glyphs.length;
+  while (start > 0 && legal < count) {
+    start--;
+    if (!ILLEGAL_DELIVERY.test(glyphs[start])) legal++;
+  }
+  while (start > 0 && ILLEGAL_DELIVERY.test(glyphs[start - 1])) start--;
+  return glyphs.slice(start);
 }
 
 /**

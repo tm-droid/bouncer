@@ -135,3 +135,37 @@ test("The Hundred counts balls in `overs`, so it gets no over number", () => {
   assert.deepEqual(detail.recentBalls, ["1", "0", "4"]);
   assert.equal(detail.recentBallsOver, null);
 });
+
+// Sampled 2026-09-17, match 143240 at 118 overs: the bar arrived holding several overs.
+test("a bar holding several overs yields only the over the ball count names", () => {
+  const detail = parseLiveDetail(
+    miniscoreHtml({ overs: 118, recentOvsStats: "...  | 0 4 0 0 0 1  | 0 0 2 1 0 W" })
+  );
+  assert.deepEqual(detail.recentBalls, ["0", "0", "2", "1", "0", "W"]);
+  assert.equal(detail.recentBallsOver, 118);
+});
+
+test("a rolling window with no separator is cut to the balls of this over", () => {
+  // 4.2: two balls into over 5, whatever else the bar still shows.
+  const detail = parseLiveDetail(miniscoreHtml({ overs: 4.2, recentOvsStats: "0 4 0 0 1 0" }));
+  assert.deepEqual(detail.recentBalls, ["1", "0"]);
+  assert.equal(detail.recentBallsOver, 5);
+});
+
+test("wides and no-balls are not counted as balls, and stay in their over", () => {
+  // 4.2 with a wide before the first ball and a no-ball between: four glyphs, two balls.
+  const detail = parseLiveDetail(miniscoreHtml({ overs: 4.2, recentOvsStats: "6 1 Wd 0 N1 4" }));
+  assert.deepEqual(detail.recentBalls, ["Wd", "0", "N1", "4"]);
+  assert.equal(detail.recentBallsOver, 5);
+});
+
+test("byes and leg byes are legal balls", () => {
+  const detail = parseLiveDetail(miniscoreHtml({ overs: 4.2, recentOvsStats: "1 B1 L4" }));
+  assert.deepEqual(detail.recentBalls, ["B1", "L4"]);
+});
+
+test("a complete over keeps all six balls and its extras", () => {
+  const detail = parseLiveDetail(miniscoreHtml({ overs: 5, recentOvsStats: "2 | 1 Wd3 0 0 4 W W" }));
+  assert.deepEqual(detail.recentBalls, ["1", "Wd3", "0", "0", "4", "W", "W"]);
+  assert.equal(detail.recentBallsOver, 5);
+});
