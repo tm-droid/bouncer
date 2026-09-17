@@ -80,3 +80,58 @@ test("no over summary anywhere is an absent over, not over zero", () => {
   assert.deepEqual(detail.recentBalls, []);
   assert.equal(detail.recentBallsOver, null);
 });
+
+// ── The miniscore's live bar ────────────────────────────────────────────────────────────────────
+//
+// `recentOvsStats` is the string behind Cricbuzz's own "this over" bar and it moves with every ball.
+// Values below are the ones measured on match 143240 at 97.3 overs.
+
+function miniscoreHtml(ms, commentaryList = []) {
+  return flightHtml({
+    miniscore: {
+      batsmanStriker: { batName: "Adam Hose", batRuns: 105 },
+      batsmanNonStriker: { batName: "Henry Cullen", batRuns: 12 },
+      inningsId: 2,
+      matchScoreDetails: { matchFormat: "TEST", inningsScoreList: [] },
+      ...ms,
+    },
+    commentaryList,
+  });
+}
+
+const over97Complete = {
+  commText: "Potts to Hose, no run",
+  ballMetric: 96.6,
+  timestamp: 1785340000000,
+  overSeparator: { timestamp: 1785340000000, overNumber: 97, overSummary: "0 1 0 0 0 0 " },
+};
+
+test("mid-over, the strip is the over being bowled, not the last one completed", () => {
+  const detail = parseLiveDetail(miniscoreHtml({ overs: 97.3, recentOvsStats: "1 0 W" }, [over97Complete]));
+  assert.deepEqual(detail.recentBalls, ["1", "0", "W"]);
+  assert.equal(detail.recentBallsOver, 98);
+});
+
+test("at an over break the bar holds the over that just ended, numbered as that over", () => {
+  const detail = parseLiveDetail(miniscoreHtml({ overs: 23, recentOvsStats: "1 1 0 0 1 0" }));
+  assert.deepEqual(detail.recentBalls, ["1", "1", "0", "0", "1", "0"]);
+  assert.equal(detail.recentBallsOver, 23);
+});
+
+test("an empty bar falls back to the newest over summary", () => {
+  const detail = parseLiveDetail(miniscoreHtml({ overs: 97, recentOvsStats: "" }, [over97Complete]));
+  assert.deepEqual(detail.recentBalls, ["0", "1", "0", "0", "0", "0"]);
+  assert.equal(detail.recentBallsOver, 97);
+});
+
+test("The Hundred counts balls in `overs`, so it gets no over number", () => {
+  const detail = parseLiveDetail(
+    miniscoreHtml({
+      overs: 72,
+      recentOvsStats: "1 0 4",
+      matchScoreDetails: { matchFormat: "HUN", inningsScoreList: [] },
+    })
+  );
+  assert.deepEqual(detail.recentBalls, ["1", "0", "4"]);
+  assert.equal(detail.recentBallsOver, null);
+});

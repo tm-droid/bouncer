@@ -27,10 +27,10 @@ data class MatchLiveDetailPayload(
     val batsmen: List<ScrapedBatsman> = emptyList(),
     val bowler: ScrapedBowler? = null,
     val recentBalls: List<String> = emptyList(),
-    // The over [recentBalls] describes, in Cricbuzz's own numbering: ball `48.6` closes over 49.
-    // Cricbuzz publishes an over summary only once the over ENDS, so this is never the over being
-    // bowled, and without the number the device cannot tell a summary of the over its feed is
-    // showing from a summary of the one before it. Null on an older row, which predates the field.
+    // The over [recentBalls] describes, in Cricbuzz's own numbering: balls 48.1-48.6 are over 49.
+    // Normally the over being bowled (the miniscore's live `recentOvsStats`); on a page without one,
+    // the last COMPLETED over. Without the number the device cannot tell those apart from the over
+    // its commentary feed is on. Null on an older row, and for The Hundred, which has no overs.
     val recentBallsOver: Int? = null,
     val score: String? = null,
     val team1Score: String? = null,

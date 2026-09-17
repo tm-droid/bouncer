@@ -10,17 +10,17 @@ internal const val UNKNOWN_BALL_GLYPH = "\u2013"
 private const val OVER_STRIP_SCAN = 40
 
 /**
- * The chips above the feed: the over being bowled, and its real number.
+ * The chips for the over being bowled, and its real number.
  *
- * Two sources, and the order between them is the whole point. `match-sync` publishes Cricbuzz's own
- * `overSummary`, which is authoritative — it writes `W1` for a run-out that completed a run, and the
- * prose never says so — but Cricbuzz hangs that summary off the delivery that ENDS an over, so it
- * describes a COMPLETED over and never the one in progress. Rendering it under a header reading
- * "This Over" showed the previous over's six balls above a feed showing this over's first three.
+ * Two sources. `match-sync` publishes Cricbuzz's miniscore `recentOvsStats` — the string behind
+ * Cricbuzz's own "this over" bar, live ball by ball, and authoritative: it writes `W1` for a run-out
+ * that completed a run, which the prose never states. The commentary feed is the other: it arrives
+ * per ball over Realtime, where the payload is rewritten about once a minute.
  *
- * So the summary is used only when [summaryOver] says it describes the same over the feed is on;
- * otherwise the feed's own deliveries are. Either way the strip carries the over number, because a
- * strip that cannot say which over it means is what let the mismatch go unnoticed.
+ * So the payload wins unless the feed has already moved on to a later over, and the strip always
+ * carries the over's number. The first version of this strip showed the last COMPLETED over's
+ * `overSummary` under a header reading "This Over", above a feed showing the next over — the number
+ * is what makes that kind of disagreement visible, and comparable.
  *
  * @param summary the payload's `recentBalls`.
  * @param summaryOver the payload's `recentBallsOver`; null on a row written before that field, and
@@ -32,12 +32,13 @@ internal fun buildOverStrip(
     summaryOver: Int?,
 ): OverStrip? {
     val live = newestOver(commentary)
-    if (live != null && summaryOver != null && summaryOver == live.overNumber && summary.isNotEmpty()) {
-        return OverStrip(summaryOver, summary)
+    val payloadCurrent = summaryOver != null && (live == null || summaryOver >= live.overNumber)
+    return when {
+        summary.isNotEmpty() && payloadCurrent -> OverStrip(summaryOver, summary)
+        live != null -> OverStrip(live.overNumber, live.glyphs)
+        summary.isNotEmpty() -> OverStrip(summaryOver, summary)
+        else -> null
     }
-    if (live != null) return OverStrip(live.overNumber, live.glyphs)
-    if (summary.isNotEmpty()) return OverStrip(summaryOver, summary)
-    return null
 }
 
 /** The strip's contents: the over's number, and its deliveries oldest-first. */

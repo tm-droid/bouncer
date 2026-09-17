@@ -392,7 +392,42 @@ export function parseBallRuns(text) {
 }
 
 /**
- * The most recently COMPLETED over: its glyphs and its number.
+ * The over being bowled, as the miniscore states it: its glyphs and its number. Null when the
+ * miniscore carries nothing to read.
+ *
+ * `recentOvsStats` is the string behind Cricbuzz's own "this over" bar, and it is live. Measured on
+ * match 143240 at 97.3 overs it read `1 0 W` — balls 97.1-97.3 — while the newest `overSummary` on
+ * the same page was still over 97's `0 1 0 0 0 0`. At an over break it holds the over that has just
+ * ended (`1 1 0 0 1 0` at 23 overs exactly), so the over it names is the one containing the last
+ * ball bowled: 97.3 is over 98, 23.0 is over 23.
+ *
+ * The Hundred writes `recentOvsStats: ""` and counts balls in `overs` (72, 100), so it gets no over
+ * number, and an empty string falls back to the over summaries.
+ */
+export function liveOverOf(ms) {
+  const raw = typeof ms?.recentOvsStats === "string" ? ms.recentOvsStats : "";
+  // Defensive: should the bar ever join two overs, the over being bowled is the last segment.
+  const current = raw.split("|").pop().trim();
+  if (!current) return null;
+  const isHundred = ms.matchScoreDetails?.matchFormat === "HUN";
+  return {
+    balls: current.split(/\s+/).filter(Boolean),
+    over: isHundred ? null : overContaining(ms.overs),
+  };
+}
+
+/** The over holding the last ball bowled: 97.3 is over 98, 23 is over 23. Null before a ball. */
+function overContaining(overs) {
+  const n = Number(overs);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const whole = Math.floor(n);
+  const balls = Math.round((n - whole) * 10);
+  return balls > 0 ? whole + 1 : whole;
+}
+
+/**
+ * The most recently COMPLETED over: its glyphs and its number. The fallback for a page whose
+ * miniscore carries no `recentOvsStats`.
  *
  * Cricbuzz hangs `overSummary` off the delivery that ENDS an over (ball `48.6` carries
  * `overNumber: 49`), so this is never the over being bowled. The number travels with the glyphs
@@ -733,12 +768,13 @@ export function parseLiveDetail(liveHtml) {
   );
   const sides = teamInningsSides(isl, ms.matchScoreDetails?.matchFormat);
   const batScore = ms.batTeam ? `${ms.batTeam.teamScore}/${ms.batTeam.teamWkts}` : null;
+  const live = liveOverOf(ms);
 
   return {
     batsmen,
     bowler: mapBowler(ms.bowlerStriker),
-    recentBalls,
-    recentBallsOver,
+    recentBalls: live ? live.balls : recentBalls,
+    recentBallsOver: live ? live.over : recentBallsOver,
     score: batScore ? `${batScore} (${s(ms.overs, "")})` : null,
     team1Score: sides[0]?.score ?? null,
     team1Overs: sides[0]?.overs ?? null,

@@ -15,8 +15,9 @@ import org.junit.Test
  * Over". While over 49 was being bowled the strip therefore showed over 48's six balls, directly
  * above a feed showing 48.1, 48.2, 48.3 — two different overs, nothing saying so.
  *
- * `recentBallsOver` is what settles it: the summary is used only when it describes the same over the
- * feed is on.
+ * `recentBallsOver` is what settles it. The server now publishes the miniscore's live
+ * `recentOvsStats` — the over being bowled — so the payload wins unless the Realtime feed has
+ * already moved on to a later over.
  */
 class OverStripTest {
 
@@ -65,6 +66,19 @@ class OverStripTest {
         // All seven glyphs, extras included. `takeLast(6)` used to drop the opening delivery of any
         // over that ran past six, and `Wd3` — a wide worth three — used to render as `Wd`.
         assertEquals(summary, strip?.balls)
+    }
+
+    @Test
+    fun `the live bar wins when the feed has not caught up to its over`() {
+        // The miniscore said 49.2 (`1 W` of over 50) while the newest commentary row is still 48.4.
+        val strip = buildOverStrip(
+            commentary = overInProgress(),
+            summary = listOf("1", "W"),
+            summaryOver = 50,
+        )
+
+        assertEquals(50, strip?.overNumber)
+        assertEquals(listOf("1", "W"), strip?.balls)
     }
 
     @Test
