@@ -131,7 +131,8 @@
     <string name="overview_last_batsmen">Last Batsmen</string>
     <string name="overview_current_bowler">Current Bowler</string>
     <string name="overview_best_bowler">Best Bowler</string>
-    <string name="overview_this_over">This Over</string>
+    <!-- Cricbuzz's own over numbering: ball 48.4 is in over 49. -->
+    <string name="over_number">Over %1$d</string>
     <string name="overview_last_wicket">Last Wicket</string>
     <string name="overview_not_started_title">Match hasn\'t started</string>
     <string name="overview_not_started_subtitle">Live scores, batsmen at the crease and win probability will appear here once play begins.</string>

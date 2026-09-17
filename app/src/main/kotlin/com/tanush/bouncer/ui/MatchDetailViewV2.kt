@@ -73,6 +73,7 @@ import com.tanush.bouncer.ui.screens.matchdetail.v2.CommentaryTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.HighlightsTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.InfoTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.OverviewTabV2
+import com.tanush.bouncer.ui.screens.matchdetail.v2.buildOverStrip
 import com.tanush.bouncer.viewmodels.HighlightsViewModel
 import com.tanush.bouncer.viewmodels.MatchDetailViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -270,6 +271,13 @@ fun MatchDetailViewV2(
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             Column(modifier = Modifier.fillMaxSize()) {
+            // The score header is a sibling of the pager, so its strip is on screen for every tab.
+            // The commentary tab does not repeat it: the over card at the head of the feed already
+            // states the same over, with the same chips.
+            val overStrip = remember(uiState.commentary, uiState.recentBalls, uiState.recentBallsOver) {
+                buildOverStrip(uiState.commentary, uiState.recentBalls, uiState.recentBallsOver)
+            }
+
             // ── Score Header ──
             ScoreHeaderV2(
                 match = liveMatch,
@@ -281,7 +289,7 @@ fun MatchDetailViewV2(
                 overs2 = overs2,
                 currentRunRate = uiState.liveCurrentRunRate,
                 requiredRunRate = meaningfulRequiredRunRate(uiState.liveRequiredRunRate),
-                recentBalls = uiState.recentBalls,
+                recentBalls = overStrip?.balls.orEmpty(),
             )
 
             // Live-data failure: static match info below still renders; this offers the retry.
@@ -358,7 +366,6 @@ fun MatchDetailViewV2(
                     )
                     R.string.tab_commentary -> CommentaryTabV2(
                         commentary = uiState.commentary,
-                        recentBalls = uiState.recentBalls,
                         matchStatus = liveMatch.currentStatus,
                         isLoading = uiState.commentaryLoading,
                         error = uiState.commentaryError,

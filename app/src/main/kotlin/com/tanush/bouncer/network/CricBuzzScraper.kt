@@ -590,8 +590,10 @@ class CricBuzzScraper {
     private fun buildMatchDetails(doc: Document): ScrapedMatchDetails {
         val batsmen = parseBatsmenFromDoc(doc)
         val bowler = parseBowlerFromDoc(doc)
-        val cssRecentBalls = parseRecentBallsFromDoc(doc)
-        val recentBalls = cssRecentBalls.ifEmpty { parseRecentBallsFromNextJs(doc.html()) }
+        // Flight payload first. The CSS selector reads Cricbuzz's rendered "Recent:" bar, which is a
+        // rolling two-over window, where the flight payload's overSummary is exactly one over — two
+        // different shapes for one field, and the rolling one silently won wherever it matched.
+        val recentBalls = parseRecentBallsFromNextJs(doc.html()).ifEmpty { parseRecentBallsFromDoc(doc) }
 
         val score = doc.select("span.cb-font-20.text-bold").first()?.text()
             ?: doc.select("div.cb-min-bat-rw span").first()?.text()
@@ -697,9 +699,16 @@ class CricBuzzScraper {
         }
     }
 
+    /**
+     * The most recently completed over's glyphs.
+     *
+     * Ordered by `timestamp`, not by `overNumber`: the over number restarts at 1 every innings, so
+     * at an innings boundary the largest number in the page's ~20-item window belongs to the innings
+     * that has just ended. Both keys sit on the same `overSeparator` node.
+     */
     private fun parseRecentBallsFromNextJs(html: String): List<String> {
         val overData = mutableListOf<Pair<Long, String>>()
-        forEachNextFlightPayload(html) { data -> collectKeyedPairs(data, "overSummary", "overNumber", overData) { it.asLong } }
+        forEachNextFlightPayload(html) { data -> collectKeyedPairs(data, "overSummary", "timestamp", overData) { it.asLong } }
         if (overData.isEmpty()) return emptyList()
         val latestSummary = overData.maxByOrNull { it.first }?.second ?: return emptyList()
         return latestSummary.trim().split(" ").filter { it.isNotBlank() }

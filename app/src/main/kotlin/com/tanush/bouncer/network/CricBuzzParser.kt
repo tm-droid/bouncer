@@ -102,11 +102,18 @@ internal fun parseBowlerFromDoc(doc: Document): ScrapedBowler? {
     return null
 }
 
+/**
+ * Cricbuzz's rendered "Recent:" bar, as a flat glyph list.
+ *
+ * This is a rolling window of about two overs and it draws `|` between them. The separator is
+ * dropped: every consumer treats this list as deliveries, and a `|` among them renders as a ball
+ * that never happened.
+ */
 internal fun parseRecentBallsFromDoc(doc: Document): List<String> {
     val recentBalls = mutableListOf<String>()
     doc.select("div.cb-min-rcnt span").forEach {
         val text = it.text().trim()
-        if (text.isNotEmpty()) recentBalls.add(text)
+        if (text.isNotEmpty() && text != "|") recentBalls.add(text)
     }
     return recentBalls
 }

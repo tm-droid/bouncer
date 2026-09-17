@@ -266,7 +266,7 @@ internal fun buildCommentaryBlocks(balls: List<ParsedBall>): List<CommentaryBloc
 }
 
 /** Two consecutive lines belong together only if both are deliveries of the same over and innings. */
-private fun sameBlock(a: ParsedBall, b: ParsedBall): Boolean {
+internal fun sameBlock(a: ParsedBall, b: ParsedBall): Boolean {
     if (a.ballLabel == null || b.ballLabel == null) return false
     if (a.innings != b.innings) return false
     if (a.overNumber <= 0f || b.overNumber <= 0f) return false

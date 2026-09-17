@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -50,7 +51,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Immutable
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.models.TimelineEventType
+import com.tanush.bouncer.ui.components.v2.BallGlyphKind
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
+import com.tanush.bouncer.ui.components.v2.ballGlyphKindOf
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.components.v2.ShimmerCommentaryList
 import com.tanush.bouncer.ui.theme.v2.BouncerColorsV2
@@ -68,7 +71,6 @@ import kotlinx.coroutines.withContext
 @Composable
 fun CommentaryTabV2(
     commentary: List<CommentaryEntry>,
-    recentBalls: List<String>,
     matchStatus: String = "",
     isLoading: Boolean = false,
     error: String? = null,
@@ -142,7 +144,6 @@ fun CommentaryTabV2(
         ) {
             commentaryFeedItems(
                 feed = feed,
-                recentBalls = recentBalls,
                 selectedFilter = selectedFilter,
                 spacing = spacing,
                 // Offered only under All: a filtered view holds a handful of lines drawn from the
@@ -157,17 +158,11 @@ fun CommentaryTabV2(
 
 private fun LazyListScope.commentaryFeedItems(
     feed: CommentaryFeed,
-    recentBalls: List<String>,
     selectedFilter: CommentaryFilter,
     spacing: BouncerSpacingV2,
     onLoadOlder: (() -> Unit)?,
     isLoadingOlder: Boolean,
 ) {
-    // Current over ball strip
-    if (recentBalls.isNotEmpty() && selectedFilter == CommentaryFilter.ALL) {
-        item(key = "recent_strip") { ThisOverStrip(recentBalls) }
-    }
-
     val showOverCards = selectedFilter == CommentaryFilter.ALL
     // Keys come from commentaryItemKeys: stable across live updates, unique by construction
     // (a duplicate key throws, ANDROID-40).
@@ -259,27 +254,6 @@ private fun InningsDivider(innings: Int?) {
     }
 }
 
-@Composable
-private fun ThisOverStrip(recentBalls: List<String>) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-    Column(modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.sm)) {
-        Text(
-            stringResource(R.string.overview_this_over),
-            style = typography.labelMedium,
-            color = colors.textSecondary,
-        )
-        Spacer(Modifier.height(spacing.xs))
-        Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
-            recentBalls.takeLast(6).forEach { ball ->
-                BallBadge(ball)
-            }
-        }
-    }
-    HorizontalDivider(color = colors.divider, modifier = Modifier.padding(top = spacing.sm))
-}
-
 // ── Over separator card ──────────────────────────────────────────────────────
 
 @Composable
@@ -313,7 +287,10 @@ private fun OverSeparatorCard(overNumber: Int, balls: List<ParsedBall>) {
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "Over $overNumber",
+                        // `overNumber` counts COMPLETED overs, as ball labels do: balls 48.1-48.6
+                        // belong to over 49, which is what Cricbuzz's own overNumber field says and
+                        // what every scorecard prints.
+                        text = stringResource(R.string.over_number, overNumber + 1),
                         style = typography.labelSmall,
                         color = colors.primaryText,
                         fontWeight = FontWeight.Bold,
@@ -349,11 +326,13 @@ private fun OverSeparatorCard(overNumber: Int, balls: List<ParsedBall>) {
 
         if (balls.isNotEmpty()) {
             Spacer(Modifier.height(spacing.xs))
+            // Oldest-first, the order they were bowled. `balls` arrives in feed order, which is
+            // newest-first, so the chips used to read right to left against the lines under them.
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                balls.forEach { ball ->
+                balls.asReversed().forEach { ball ->
                     // An en dash, not a dot: the over keeps its six positions, and an unknown ball
                     // stays visibly distinct from one that was actually a dot.
-                    BallBadge(ball.toBallString() ?: "\u2013", size = 22.dp)
+                    BallBadge(ball.toBallString() ?: UNKNOWN_BALL_GLYPH, size = 22.dp)
                 }
             }
         }
@@ -482,36 +461,35 @@ private fun NonBallLine(text: String) {
 
 // ── Small composables ────────────────────────────────────────────────────────
 
-private val EXTRAS_GLYPH = Regex("^(?:WD|NB|LB|[BLN]\\d{1,2}|WD\\d{1,2}|B)$")
-
 @Composable
 private fun BallBadge(ball: String, size: Dp = 28.dp) {
     val colors = BouncerThemeV2.colors
-    val b = ball.trim().uppercase()
     val cricket = colors.cricket
-    val (bg, fg) = when {
-        b == "W" -> cricket.wicket.copy(alpha = 0.2f) to cricket.wicket
-        b == "6" -> cricket.six.copy(alpha = 0.2f) to cricket.six
-        b == "4" -> cricket.four.copy(alpha = 0.2f) to cricket.four
-        // Every extras glyph Cricbuzz's overSummary writes: Wd, Wd3, Nb, N1, B1, B4, L1. The `N`
-        // and `L` forms reach this from the score header's own strip too, where they used to fall
-        // through to the neutral branch and render as if they were runs off the bat.
-        EXTRAS_GLYPH.matches(b) -> cricket.wide.copy(alpha = 0.15f) to cricket.wide
-        // "\u2013" is the over strip's unknown-ball placeholder; it is quiet for the same reason a
-        // dot is, and must not read as a scoring shot.
-        b == "." || b == "\u2013" -> colors.surfaceVariant to colors.textSecondary
-        else -> colors.surfaceVariant to colors.onSurface
+    // Classification is shared with the score header's strip (ui/components/v2/BallGlyph.kt); only
+    // the treatment differs. Two copies of this `when` disagreed on `W1` for as long as they
+    // existed.
+    val (bg, fg) = when (ballGlyphKindOf(ball)) {
+        BallGlyphKind.WICKET -> cricket.wicket.copy(alpha = 0.2f) to cricket.wicket
+        BallGlyphKind.SIX -> cricket.six.copy(alpha = 0.2f) to cricket.six
+        BallGlyphKind.FOUR -> cricket.four.copy(alpha = 0.2f) to cricket.four
+        BallGlyphKind.EXTRA -> cricket.wide.copy(alpha = 0.15f) to cricket.wide
+        BallGlyphKind.DOT -> colors.surfaceVariant to colors.textSecondary
+        BallGlyphKind.RUNS -> colors.surfaceVariant to colors.onSurface
     }
 
     Box(
         modifier = Modifier
-            .size(size)
+            .height(size)
+            .defaultMinSize(minWidth = size)
             .clip(RoundedCornerShape(if (size <= 22.dp) 4.dp else 6.dp))
-            .background(bg),
+            .background(bg)
+            .padding(horizontal = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = ball.take(2),
+            // Whole, never `take(2)`: `Wd3` is a wide worth three, and truncating it to `Wd` states
+            // a different delivery.
+            text = ball.trim(),
             style = BouncerThemeV2.typography.labelSmall,
             color = fg,
             fontWeight = FontWeight.Bold,

@@ -4,9 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,9 +17,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
+private val BALL_SIZE = 22.dp
+
 /**
- * Colored dots/pills for recent deliveries.
- * dot=gray, 4=green, 6=purple, W=red, wd/nb=yellow.
+ * Filled pills for the deliveries of an over, in Cricbuzz's own notation.
+ *
+ * The glyph is rendered whole. It used to be `ball.take(2)`, which turned `Wd3` into `Wd` — and a
+ * wide worth three is a different ball from a wide. A one-character glyph still reads as a circle;
+ * a longer one grows sideways rather than losing its runs.
  */
 @Composable
 fun RecentBallsStripV2(
@@ -37,13 +43,15 @@ fun RecentBallsStripV2(
             val (bg, text) = ballStyle(ball, colors)
             Box(
                 modifier = Modifier
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(bg),
+                    .height(BALL_SIZE)
+                    .defaultMinSize(minWidth = BALL_SIZE)
+                    .clip(RoundedCornerShape(BALL_SIZE / 2))
+                    .background(bg)
+                    .padding(horizontal = 5.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = ball.take(2),
+                    text = ball.trim(),
                     style = typography.labelSmall,
                     color = text,
                 )
@@ -53,16 +61,14 @@ fun RecentBallsStripV2(
 }
 
 private fun ballStyle(ball: String, colors: BouncerColorsToken): Pair<Color, Color> {
-    val b = ball.trim().uppercase()
     val cricket = colors.cricket
-    return when {
-        b.contains("W") && !b.contains("WD") -> cricket.wicket.copy(alpha = 0.85f) to cricket.onEvent
-        b == "4" -> cricket.four.copy(alpha = 0.85f) to cricket.onEvent
-        b == "6" -> cricket.six.copy(alpha = 0.85f) to cricket.onEvent
-        b.contains("WD") || b.contains("NB") || b.contains("LB") || b.contains("B") ->
-            cricket.wide.copy(alpha = 0.85f) to cricket.onEvent
-        b == "0" || b == "." -> colors.textSecondary.copy(alpha = 0.3f) to colors.onSurface
-        else -> colors.primary.copy(alpha = 0.2f) to colors.onSurface
+    return when (ballGlyphKindOf(ball)) {
+        BallGlyphKind.WICKET -> cricket.wicket.copy(alpha = 0.85f) to cricket.onEvent
+        BallGlyphKind.FOUR -> cricket.four.copy(alpha = 0.85f) to cricket.onEvent
+        BallGlyphKind.SIX -> cricket.six.copy(alpha = 0.85f) to cricket.onEvent
+        BallGlyphKind.EXTRA -> cricket.wide.copy(alpha = 0.85f) to cricket.onEvent
+        BallGlyphKind.DOT -> colors.textSecondary.copy(alpha = 0.3f) to colors.onSurface
+        BallGlyphKind.RUNS -> colors.primary.copy(alpha = 0.2f) to colors.onSurface
     }
 }
 

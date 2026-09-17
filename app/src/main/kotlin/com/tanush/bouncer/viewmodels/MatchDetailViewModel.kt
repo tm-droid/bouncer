@@ -59,6 +59,8 @@ class MatchDetailViewModel(
         val batsmen: List<ScrapedBatsman> = emptyList(),
         val bowler: ScrapedBowler? = null,
         val recentBalls: List<String> = emptyList(),
+        /** The over [recentBalls] describes; see [MatchLiveDetailPayload.recentBallsOver]. */
+        val recentBallsOver: Int? = null,
         val scorecard: Scorecard? = null,
         val scorecardLoading: Boolean = true,
         val commentary: List<CommentaryEntry> = emptyList(),
@@ -347,6 +349,9 @@ class MatchDetailViewModel(
                 batsmen = p.batsmen.ifEmpty { st.batsmen },
                 bowler = pick(p.bowler, st.bowler),
                 recentBalls = p.recentBalls.ifEmpty { st.recentBalls },
+                // Moves with the glyphs or not at all: a number left over from the previous payload
+                // would label this one's over wrongly, which is the defect the field exists to fix.
+                recentBallsOver = if (p.recentBalls.isEmpty()) st.recentBallsOver else p.recentBallsOver,
                 scorecard = pick(p.scorecard?.takeIf { it.innings.isNotEmpty() }, st.scorecard),
                 liveTeam1Score = pick(p.team1Score, st.liveTeam1Score),
                 liveTeam2Score = pick(p.team2Score, st.liveTeam2Score),

@@ -114,27 +114,38 @@ function forEachNextFlightPayload(html, cb) {
   }
 }
 
-function collectKeyedPairs(node, valueKey, orderKey, results) {
+/**
+ * Every `overSeparator` in the flight payload: its glyph string, its over number, and its clock.
+ *
+ * `overNumber` restarts at 1 every innings, so it cannot order the results. The live page carries a
+ * ~20-item window, and at an innings boundary that window holds both the previous innings' over 50
+ * and the new innings' over 2 — picking the larger number serves the innings that is already over.
+ * `timestamp` is the same field `collectCommentaryItems` orders by, and it is monotonic across the
+ * whole match.
+ */
+function collectOverSummaries(node, results) {
   if (node && typeof node === "object" && !Array.isArray(node)) {
-    if (valueKey in node && orderKey in node) {
-      const value = node[valueKey];
-      const order = Number(node[orderKey]);
-      if (typeof value === "string" && value.trim() && Number.isFinite(order)) {
-        results.push({ order, value });
+    if ("overSummary" in node && "overNumber" in node) {
+      const summary = node.overSummary;
+      const over = Number(node.overNumber);
+      const ts = Number(node.timestamp);
+      if (typeof summary === "string" && summary.trim() && Number.isFinite(over)) {
+        results.push({ over, summary, ts: Number.isFinite(ts) ? ts : null });
       }
     }
-    for (const k of Object.keys(node)) collectKeyedPairs(node[k], valueKey, orderKey, results);
+    for (const k of Object.keys(node)) collectOverSummaries(node[k], results);
   } else if (Array.isArray(node)) {
-    for (const item of node) collectKeyedPairs(item, valueKey, orderKey, results);
+    for (const item of node) collectOverSummaries(item, results);
   }
 }
 
 // RSC back-references ("$27", "$2a") sit where React hoisted the string elsewhere in the stream.
 const RSC_BACK_REFERENCE = /^\$[0-9a-f]+$/;
 
-// Mirrors CricBuzzScraper.collectCommentaryItems. collectKeyedPairs keeps only the value and order
-// keys, which discarded `ballMetric` on every delivery — see BallNotation.kt for why that field is
-// format-dependent and why "$undefined" must stay null rather than borrowing a neighbour's number.
+// Mirrors CricBuzzScraper.collectCommentaryItems. An earlier generic collector kept only a value
+// and an order key, which discarded `ballMetric` on every delivery — see BallNotation.kt for why
+// that field is format-dependent and why "$undefined" must stay null rather than borrowing a
+// neighbour's number.
 function collectCommentaryItems(node, results) {
   if (node && typeof node === "object" && !Array.isArray(node)) {
     if ("commText" in node && "timestamp" in node) {
@@ -380,12 +391,29 @@ export function parseBallRuns(text) {
   return parseBallOutcome(text).runs;
 }
 
+/**
+ * The most recently COMPLETED over: its glyphs and its number.
+ *
+ * Cricbuzz hangs `overSummary` off the delivery that ENDS an over (ball `48.6` carries
+ * `overNumber: 49`), so this is never the over being bowled. The number travels with the glyphs
+ * because the device cannot otherwise tell whether they describe the over its commentary feed is
+ * showing or the one before it — that mismatch is what made a strip headed "This Over" show the
+ * previous one.
+ */
 function parseRecentBallsNext(html) {
   const data = [];
-  forEachNextFlightPayload(html, (d) => collectKeyedPairs(d, "overSummary", "overNumber", data));
-  if (data.length === 0) return [];
-  const latest = data.reduce((a, b) => (b.order > a.order ? b : a));
-  return latest.value.trim().split(" ").filter(Boolean);
+  forEachNextFlightPayload(html, (d) => collectOverSummaries(d, data));
+  if (data.length === 0) return { balls: [], over: null };
+  const latest = data.reduce((a, b) => (newerOverSummary(b, a) ? b : a));
+  return { balls: latest.summary.trim().split(" ").filter(Boolean), over: latest.over };
+}
+
+/** Later by clock; by over number only when neither side carries one. */
+function newerOverSummary(candidate, best) {
+  if (candidate.ts !== null && best.ts !== null) return candidate.ts > best.ts;
+  if (candidate.ts !== null) return true;
+  if (best.ts !== null) return false;
+  return candidate.over > best.over;
 }
 
 // ---------------------------------------------------------------------------
@@ -672,12 +700,13 @@ export function parseScorecard(scorecardHtml) {
 // driven by the flight-payload miniscore object.
 export function parseLiveDetail(liveHtml) {
   const ms = findMiniscore(collectPayloads(liveHtml));
-  const recentBalls = parseRecentBallsNext(liveHtml);
+  const { balls: recentBalls, over: recentBallsOver } = parseRecentBallsNext(liveHtml);
   if (!ms) {
     return {
       batsmen: [],
       bowler: null,
       recentBalls,
+      recentBallsOver,
       score: null,
       team1Score: null,
       team1Overs: null,
@@ -709,6 +738,7 @@ export function parseLiveDetail(liveHtml) {
     batsmen,
     bowler: mapBowler(ms.bowlerStriker),
     recentBalls,
+    recentBallsOver,
     score: batScore ? `${batScore} (${s(ms.overs, "")})` : null,
     team1Score: sides[0]?.score ?? null,
     team1Overs: sides[0]?.overs ?? null,
