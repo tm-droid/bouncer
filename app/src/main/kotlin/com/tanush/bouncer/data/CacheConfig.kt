@@ -93,16 +93,17 @@ object CacheConfig {
     // page as 100. A paging loop therefore gets ~2 pages per minute, not ~100. (An earlier comment
     // here claimed ~100 pages fit under this cap; that was wrong by 50x.)
     //
-    // 400, raised from 200 on 2026-09-15. The app's largest legitimate single read is the
-    // commentary first paint, AppwriteMatchCommentaryClient.FEED_LIMIT = 150 rows. At 200 a
-    // reader who opened two matches in a minute — or one match while the highlights drain ran
-    // its 100-row page — crossed the cap and paused EVERY Appwrite read app-wide for five
-    // minutes (ANDROID-44, ANDROID-4G; the two reports name highlights.page and
+    // 400, raised from 200 on 2026-09-15. The app's largest legitimate single read is a
+    // commentary page, AppwriteMatchCommentaryClient.FEED_LIMIT = 150 rows — which since
+    // 2026-09-17 is a page the reader tapped for, not the first paint (FIRST_PAGE_LIMIT = 48).
+    // At 200 a reader who opened two matches in a minute — or one match while the highlights
+    // drain ran its 100-row page — crossed the cap and paused EVERY Appwrite read app-wide for
+    // five minutes (ANDROID-44, ANDROID-4G; the two reports name highlights.page and
     // commentary.ordered because the cap is per-quota and app-wide, so the name is only
     // whoever crossed the line, not whoever spent the budget). Ordinary use must not trip a
     // cap whose purpose is catching a runaway loop. The hour cap below is unchanged and is
-    // what actually bounds the org budget: 1,500/h still allows only ~10 commentary opens
-    // an hour.
+    // what actually bounds the org budget: 1,500/h is ~31 match opens an hour, or ~10 sessions
+    // that page back through an innings.
     const val READ_GUARD_MAX_READS_PER_MINUTE = 400
     const val READ_GUARD_MAX_READS_PER_HOUR = 1_500 // ~36K/day absolute ceiling per device
     const val READ_GUARD_MINUTE_WINDOW_MS = 60_000L

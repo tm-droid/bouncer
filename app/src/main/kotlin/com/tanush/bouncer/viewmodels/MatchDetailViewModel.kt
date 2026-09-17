@@ -136,6 +136,12 @@ class MatchDetailViewModel(
 
     private var unlockedAchievements: Set<AchievementKind> = emptySet()
 
+    /**
+     * How many feed rows the reader has explicitly paid for, i.e. the feed size after the last
+     * [loadOlderCommentary]. Realtime truncation never goes below it — see [MAX_FEED_ENTRIES].
+     */
+    private var pagedFeedFloor = 0
+
     init {
         viewModelScope.launch(bouncerExceptionHandler) { loadInitial() }
         // Per-match subscriptions: collection IS the subscription lifetime, and viewModelScope's
@@ -319,6 +325,8 @@ class MatchDetailViewModel(
 
     /** Clears errors and re-runs the initial load (retry from the error state). */
     fun retryInitialLoad() {
+        // The retry re-fetches the first page, so nothing paged-in survives it.
+        pagedFeedFloor = 0
         _uiState.update { it.copy(
             loadError = null,
             commentaryError = null,
@@ -386,7 +394,10 @@ class MatchDetailViewModel(
                     ev.commentary, ev.event, ev.ball, ev.sortKey, ev.runs, ev.extra, ev.innings,
                 )
                 st.copy(
-                    commentary = insertBySortKey(st.commentary, entry).take(MAX_FEED_ENTRIES),
+                    // The ceiling sits ABOVE what the reader explicitly paged in: those rows cost
+                    // billed reads, and `hasOlderCommentary` would cheerfully buy them again.
+                    commentary = insertBySortKey(st.commentary, entry)
+                        .take(pagedFeedFloor + MAX_FEED_ENTRIES),
                     commentaryError = null,
                 )
             }
@@ -429,8 +440,10 @@ class MatchDetailViewModel(
             _uiState.update { state ->
                 val known = state.commentary.mapNotNull { it.sortKey }.toSet()
                 val fresh = page.filter { it.sortKey != null && it.sortKey !in known }
+                val grown = state.commentary + fresh
+                pagedFeedFloor = grown.size
                 state.copy(
-                    commentary = state.commentary + fresh,
+                    commentary = grown,
                     olderCommentaryLoading = false,
                     // Judged on the page, not on `fresh`: a page that was entirely already-known
                     // rows still proves there is more behind it.
@@ -638,9 +651,15 @@ private const val PROBABILITY_HISTORY_MAX = 240
  * sorts as newest, which is what a locally scraped line is.
  */
 /**
- * The feed's ceiling in memory. The initial fetch is capped by `FEED_LIMIT`, but realtime inserts
- * were not capped at all: a Test left open for a session grew the list without bound, and every
- * insert copies it.
+ * How far the feed may grow ON TOP of what was fetched. Fetches are capped by the client's own page
+ * limits, but realtime inserts were not capped at all: a Test left open for a session grew the list
+ * without bound, and every insert copies it.
+ *
+ * It is a headroom, not a total. As a total it deleted the reader's own pages: paging is 48 + 150·n,
+ * so three taps put 498 rows on screen and the next delivery dropped 99 of them — rows that cost
+ * billed reads, and which `hasOlderCommentary` would then offer to buy again. `pagedFeedFloor`
+ * holds what the reader asked for, and 400 realtime deliveries — 66 overs of new play, by which
+ * point that page really is history — is what may sit above it.
  */
 private const val MAX_FEED_ENTRIES = 400
 

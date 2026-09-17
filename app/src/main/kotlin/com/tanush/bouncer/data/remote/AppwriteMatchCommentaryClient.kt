@@ -112,29 +112,61 @@ internal fun parseCommentaryEvent(raw: String?): TimelineEventType? = when (raw)
     else -> null
 }
 
+// A Test day is ~90 overs and `match-commentary` now stores every delivery, so 60 rows could not
+// hold a session, let alone an innings — the tab showed a window narrower than the over groups it
+// was drawing. Reads bill per row returned, and at ~2% of the plan's monthly read budget this is
+// affordable; `olderThan` pages beyond it rather than raising it further.
+private const val FEED_LIMIT = 150
+
+// The FIRST page is deliberately smaller than the ones behind it.
+//
+// Reads bill per row RETURNED, so opening a match cost 150 of them — about 25 overs — no matter
+// what the reader wanted. The common case by far is a glance at the last over or two, and that
+// glance was paying for a session it never scrolled to. 48 rows is ~8 overs of ordinary cricket,
+// and a third of the reads.
+//
+// It does NOT make the page's over groups whole: a page boundary always cuts the oldest over, and
+// 48 rows is 8 overs only if nobody bowls an extra. That is safe rather than lucky — `overTotalRuns`
+// and `isMaidenOver` state a figure only for six legal deliveries, so the part-over at the seam
+// says nothing it cannot support, and the next page rejoins it into one block.
+//
+// Someone who does scroll back pays nothing extra per row — the first tap fetches a full FEED_LIMIT
+// page, so reading deep costs what it always did and only the entry price moved.
+private const val FIRST_PAGE_LIMIT = 48
+
+/**
+ * Rows to ask for. The first page of a feed is [FIRST_PAGE_LIMIT]; everything else is [FEED_LIMIT].
+ *
+ * @param olderThan the page's `sort_key` cursor — null is the first page.
+ * @param degraded true for a rung below [FeedOrder.SORT_KEY]. Those rungs cannot page at all (the
+ *   cursor filters on `sort_key`, the very attribute whose index is missing), so the one page they
+ *   serve is the whole feed that reader will get — it is sized as a deep page, not an entry one.
+ */
+internal fun commentaryPageLimit(olderThan: Double?, degraded: Boolean = false): Int =
+    if (olderThan == null && !degraded) FIRST_PAGE_LIMIT else FEED_LIMIT
+
+/**
+ * What a page is ordered by, which is also the ladder it degrades down.
+ *
+ * [SORT_KEY] is the feed's real order and needs a user index. [CREATED_AT] is the rung below it:
+ * `$createdAt` is a built-in and is always orderable, so it still returns the NEWEST rows when that
+ * index is missing. [NONE] returns rows in whatever order Appwrite has them — creation order, i.e.
+ * the OLDEST of the match — which the client-side sort then presents newest-first. That last rung
+ * is a genuinely wrong window presented as the right one, so it exists only as the last resort
+ * before a blank feed, and the rung above it is what should answer.
+ */
+private enum class FeedOrder(val queryName: String) {
+    SORT_KEY("commentary.ordered"),
+    CREATED_AT("commentary.created"),
+    NONE("commentary.unordered"),
+}
+
 // Reads the server-generated per-ball commentary feed (written by bouncer-match-sync)
 // for a single match, and exposes an app-lifetime Realtime stream of new lines. The
 // on-device scrape is gone — this is the sole source of match-detail commentary.
 // The Realtime channel is table-wide (started once); ViewModels filter [events] by matchId.
 object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchCommentary") {
     private const val TABLE_ID = "match-commentary"
-    // A Test day is ~90 overs and `match-commentary` now stores every delivery, so 60 rows could
-    // not hold a session, let alone an innings — the tab showed a window narrower than the over
-    // groups it was drawing. Reads bill per row returned, and at ~2% of the plan's monthly read
-    // budget this is affordable; `olderThan` pages beyond it rather than raising it further.
-    private const val FEED_LIMIT = 150
-
-    // The FIRST page is deliberately smaller than the ones behind it.
-    //
-    // Reads bill per row RETURNED, so opening a match cost 150 of them — about 25 overs — no matter
-    // what the reader wanted. The common case by far is a glance at the last over or two, and that
-    // glance was paying for a session it never scrolled to. 48 rows is ~8 overs: enough that the
-    // over groups the tab draws are whole and the feed does not open mid-over, and a third of the
-    // reads.
-    //
-    // Someone who does scroll back pays nothing extra for it — the first tap fetches a full
-    // FEED_LIMIT page, so the cost of reading deep is unchanged and only the entry price moved.
-    private const val FIRST_PAGE_LIMIT = 48
 
     fun initialize() {
         initTable(ApiKeys.appwriteAiCacheDbId, TABLE_ID)
@@ -157,16 +189,22 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
     private suspend fun fetchPage(matchId: String, olderThan: Double?): List<CommentaryEntry> {
         if (!isReady) return emptyList()
         return withContext(Dispatchers.IO) {
-            // Server-side order needs a sort_key index; if that's missing the ordered query 400s.
-            // Fall back to an unordered fetch + client-side sort so a missing index never blanks the feed.
+            // Ordering on sort_key needs a user index; without it the query 400s. Degrade one rung
+            // at a time rather than straight to an unordered fetch — `$createdAt` needs no index
+            // and still answers with the newest rows, where an unordered fetch answers with the
+            // oldest and says nothing about it.
             runCatching {
-                queryRows(matchId, ordered = true, olderThan = olderThan)
+                queryRows(matchId, FeedOrder.SORT_KEY, olderThan)
             }.recoverCatching { e ->
-                logSilentFailure("Commentary ordered fetch failed; retrying unordered", e)
-                // The unordered retry cannot page — a page is defined by the order — so it only
-                // ever serves the first one. A caller asking for older lines gets nothing rather
-                // than an arbitrary 150 rows presented as "older".
-                if (olderThan != null) emptyList() else queryRows(matchId, ordered = false, olderThan = null)
+                logSilentFailure("Commentary sort_key fetch failed; retrying on \$createdAt", e)
+                // A degraded rung cannot page — the cursor filters on sort_key, which is the
+                // attribute that just failed — so it only ever serves the first page. A caller
+                // asking for older lines gets nothing rather than an arbitrary page presented as
+                // "older".
+                if (olderThan != null) emptyList() else queryRows(matchId, FeedOrder.CREATED_AT, null)
+            }.recoverCatching { e ->
+                logSilentFailure("Commentary \$createdAt fetch failed; retrying unordered", e)
+                if (olderThan != null) emptyList() else queryRows(matchId, FeedOrder.NONE, null)
             }.onFailure { e ->
                 logSilentFailure("Commentary feed fetch failed", e)
             }.getOrDefault(emptyList())
@@ -175,20 +213,29 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
 
     private suspend fun queryRows(
         matchId: String,
-        ordered: Boolean,
+        order: FeedOrder,
         olderThan: Double?,
     ): List<CommentaryEntry> {
         val queries = buildList {
             add(Query.equal("match_id", matchId))
             if (olderThan != null) add(Query.lessThan("sort_key", olderThan))
-            if (ordered) add(Query.orderDesc("sort_key"))
-            add(Query.limit(if (olderThan == null) FIRST_PAGE_LIMIT else FEED_LIMIT))
+            when (order) {
+                FeedOrder.SORT_KEY -> add(Query.orderDesc("sort_key"))
+                FeedOrder.CREATED_AT -> add(Query.orderDesc("\$createdAt"))
+                FeedOrder.NONE -> Unit
+            }
+            add(Query.limit(commentaryPageLimit(olderThan, degraded = order != FeedOrder.SORT_KEY)))
         }
-        val name = if (ordered) "commentary.ordered" else "commentary.unordered"
-        val rows = guardedRead(name) {
+        val rows = guardedRead(order.queryName) {
             it.listRows(databaseId = dbId, tableId = tableId, queries = queries)
         }?.rows ?: return emptyList()
-        val sorted = if (ordered) rows else rows.sortedByDescending { (it.data["sort_key"] as? Number)?.toDouble() ?: 0.0 }
+        // Every rung but SORT_KEY is sorted client-side: $createdAt is close to sort_key order but
+        // is not it, and NONE is not ordered at all.
+        val sorted = if (order == FeedOrder.SORT_KEY) {
+            rows
+        } else {
+            rows.sortedByDescending { (it.data["sort_key"] as? Number)?.toDouble() ?: 0.0 }
+        }
         return sorted.mapNotNull { row ->
             val text = (row.data["commentary"] as? String)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
             CommentaryEntry(

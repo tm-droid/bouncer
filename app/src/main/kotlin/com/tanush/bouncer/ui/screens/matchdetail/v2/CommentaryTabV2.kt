@@ -63,26 +63,6 @@ import com.tanush.bouncer.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Contextual empty state — a quiet feed reads differently at stumps vs. pre-match. */
-@Composable
-private fun CommentaryEmptyState(matchStatus: String) {
-    val statusLower = matchStatus.lowercase()
-    // The status text being matched is upstream scoreboard copy, always English; only the message
-    // shown to the reader is a resource.
-    val (title, subtitle) = when {
-        statusLower.contains("stumps") ->
-            R.string.commentary_empty_stumps_title to R.string.commentary_empty_stumps_subtitle
-        statusLower.contains("break") ->
-            R.string.commentary_empty_break_title to R.string.commentary_empty_break_subtitle
-        statusLower.contains("rain") || statusLower.contains("delay") ->
-            R.string.commentary_empty_rain_title to R.string.commentary_empty_rain_subtitle
-        statusLower.contains("won") || statusLower.contains("drawn") ->
-            R.string.commentary_empty_complete_title to R.string.commentary_empty_complete_subtitle
-        else -> R.string.commentary_empty_none_title to R.string.commentary_empty_none_subtitle
-    }
-    EmptyStateV2(title = stringResource(title), subtitle = stringResource(subtitle))
-}
-
 // ── Main composable ──────────────────────────────────────────────────────────
 
 @Composable
@@ -146,6 +126,15 @@ fun CommentaryTabV2(
             },
             modifier = Modifier.padding(vertical = spacing.sm),
         )
+
+        // A filter that matched nothing in the loaded feed used to render an empty LazyColumn — a
+        // blank page with no message and no way forward, because "load older" is offered under All
+        // only. It is the common case now that the first page is 8 overs rather than 25: plenty of
+        // them hold no wicket and no milestone.
+        if (feed.blocks.isEmpty() && selectedFilter != CommentaryFilter.ALL) {
+            FilterEmptyState(hasOlder, isLoadingOlder, onLoadOlder)
+            return@Column
+        }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -216,9 +205,10 @@ private fun LazyListScope.commentaryFeedItems(
 /**
  * Fetches the next page back, on a tap.
  *
- * Reader-driven rather than infinite scroll because Appwrite bills per row RETURNED: a page is 150
- * billed reads, and a Test innings is several of them. Someone scrolling back through a session
- * asks for it; someone glancing at the last over does not pay for it.
+ * Reader-driven rather than infinite scroll because Appwrite bills per row RETURNED: opening the
+ * match is a 48-row page and every page behind it is 150, and a Test innings is several of them.
+ * Someone scrolling back through a session asks for it; someone glancing at the last over does not
+ * pay for it.
  */
 @Composable
 private fun LoadOlderRow(isLoading: Boolean, onClick: () -> Unit) {

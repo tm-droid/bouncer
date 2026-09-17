@@ -151,6 +151,8 @@
     <string name="commentary_empty_complete_subtitle">No more commentary available</string>
     <string name="commentary_empty_none_title">No commentary yet</string>
     <string name="commentary_empty_none_subtitle">Commentary will appear once the match starts</string>
+    <string name="commentary_filter_empty_title">Nothing here yet</string>
+    <string name="commentary_filter_empty_subtitle">No matching deliveries in the commentary loaded so far. Load earlier commentary, or switch back to All.</string>
 
     <string name="highlights_empty_title">No highlights yet</string>
     <string name="highlights_empty_subtitle">Clips appear here once key moments are available for this match.</string>
