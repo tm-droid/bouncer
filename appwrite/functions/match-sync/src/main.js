@@ -32,7 +32,7 @@ import {
   parseScorecard,
   BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
-import { chainDepth, classifyEvent, deadProviders, drainUnknownQuotaIds, generateVerifiedLine, isHighStakesBall, sanitize, stripPreamble } from "./llm.js";
+import { BATCH_MAX_ITEMS, chainDepth, classifyEvent, deadProviders, drainUnknownQuotaIds, generateBatch, isHighStakesBall, sanitize, stripPreamble, verifyLine } from "./llm.js";
 import {
   initObservability,
   report,
@@ -146,6 +146,85 @@ const READ_BUDGET_PER_RUN = 20;
 const READ_402_BACKOFF_MS = 6 * 60 * 60 * 1000; // budget resets monthly; retrying sooner is pointless
 let budget402UntilMs = 0; // survives warm invocations of the 1-min cron
 let readsThisRun = 0;
+// ── Cross-match rewrite batching ─────────────────────────────────────────────
+//
+// Every delivery is now rewritten, which only fits the free ladder because the calls are batched:
+// 6,672 deliveries a day against ~2,500 calls is 31% coverage one-ball-at-a-time, and ~960 calls
+// batched. Measured 2026-09-16.
+//
+// It batches across MATCHES, not across time, and that distinction is the whole design. Filling a
+// batch by waiting for an over would delay the ball by ~10 minutes against the 0-60s it takes to
+// appear now. Breadth is free: `handleRun` already runs every match through `Promise.allSettled`,
+// so their rewrite requests arrive within milliseconds of each other and a short debounce collects
+// them with no added latency. Seven deliveries from seven unrelated matches measured 7/7 keys
+// returned and zero players leaked between them.
+//
+// The debounce is the only thing that makes a batch form, so every queued item MUST eventually be
+// resolved — a promise left hanging would stall `Promise.allSettled` until the 120s function
+// timeout. `flushBatch` therefore resolves every item it takes, on every path including a throw.
+const BATCH_DEBOUNCE_MS = 250;
+
+let pendingRewrites = [];
+let batchTimer = null;
+// Indirection so the throw path below can be proved. `generateBatch` returns an empty Map for every
+// provider failure rather than throwing, so no fetch stub can reach the catch — and an unreachable
+// catch is exactly where a hang would hide if that ever changed.
+let batchFn = generateBatch;
+
+/** Queue one delivery for the next batch. Resolves to its rewritten line, or null. */
+function queueRewrite(entry) {
+  return new Promise((resolve) => {
+    pendingRewrites.push({ ...entry, resolve });
+    if (pendingRewrites.length >= BATCH_MAX_ITEMS) {
+      flushBatch();
+    } else if (!batchTimer) {
+      batchTimer = setTimeout(flushBatch, BATCH_DEBOUNCE_MS);
+    }
+  });
+}
+
+function flushBatch() {
+  if (batchTimer) { clearTimeout(batchTimer); batchTimer = null; }
+  const taken = pendingRewrites.splice(0, BATCH_MAX_ITEMS);
+  if (!taken.length) return;
+  // Anything still queued forms the next batch immediately rather than waiting out another
+  // debounce — it is already late by a full window.
+  if (pendingRewrites.length) batchTimer = setTimeout(flushBatch, 0);
+
+  const { log, error } = taken[0];
+  const attempts = [];
+  // Mutated by generateLine with the rung that answered, so each row records its real provider
+  // rather than a placeholder. Every delivery in a batch shares one rung by construction.
+  const used = {};
+  batchFn(taken.map((t) => ({ key: t.key, text: t.text })), { log, error, attempts, used })
+    .then((lines) => {
+      for (const t of taken) {
+        t.resolve({ line: lines.get(t.key) ?? null, provider: used.provider ?? null, attempts });
+      }
+    })
+    .catch((e) => {
+      error?.(`Rewrite batch threw: ${e?.message}`);
+      for (const t of taken) t.resolve({ line: null, provider: null, attempts });
+    });
+}
+
+/** Test seam: swap the batch generator, e.g. for one that throws. Returns the previous one. */
+export function __setBatchFn(fn) {
+  const prev = batchFn;
+  batchFn = fn ?? generateBatch;
+  return prev;
+}
+
+/** Exported for the coalescing tests; production calls it only from syncMatch. */
+export const __queueRewrite = queueRewrite;
+
+/** Test seam, and a safety net: nothing may survive a run boundary. */
+export function resetRewriteBatcher() {
+  if (batchTimer) { clearTimeout(batchTimer); batchTimer = null; }
+  for (const t of pendingRewrites) t.resolve({ line: null, attempts: [] });
+  pendingRewrites = [];
+}
+
 // Dedupe watermark: matchId -> highest commentary sort_key already written. Survives warm 1-min
 // cron invocations (module scope), so the seed read is paid only on a cold container / a match's
 // first appearance. Pruned each run to the live set so ended matches don't retain memory.
@@ -944,8 +1023,9 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
   // commentary, which the live page alone carries.
   //
   // Two independent decisions, deliberately two arguments:
-  //  - `commentaryCap` is the LLM budget (0 / SLOW_MAX_NEW_PER_MATCH / MAX_NEW_PER_MATCH) and is
-  //    also what puts this match in the DETAIL tier — scorecard fetch, detail row, scorecard row.
+  //  - `commentaryCap` now gates the DETAIL tier ONLY — scorecard fetch, detail row, scorecard
+  //    row — which is a write-budget decision. It stopped gating rewriting when rewriting became
+  //    batched: a batched call covers every live match at once, so there is nothing to ration.
   //  - `storeCommentary` says whether every new delivery is written to `match-commentary`. It is
   //    true for essentially every live match, because a feed that skips balls is not a feed.
   const detailTier = commentaryCap > 0;
@@ -1012,7 +1092,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
     return { status: { commentaryWritten: 0, skipped: "beyond commentary cap" }, winProb };
   }
 
-  // 4. Commentary: store every new delivery, rewrite the first `commentaryCap` of them.
+  // 4. Commentary: store every new delivery, and rewrite every one of them (batched).
   const commentary = parseCommentary(liveHtml).slice(0, SCAN_NEWEST);
 
   // Dedupe against everything already written, via a high-water mark seeded from Appwrite exactly
@@ -1040,6 +1120,60 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
   const fresh = commentary
     .filter((i) => Number(i.timestamp) > watermark)
     .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+
+  // Rewrite every fresh delivery in one batched call, BEFORE the write loop.
+  //
+  // Per delivery inside the loop this could not batch at all: the loop awaits, so a match with six
+  // new balls would issue six calls of one. Queued up front, this match's deliveries batch with
+  // each other AND with every other match's, because `handleRun` runs the matches concurrently.
+  //
+  // Bounded by BATCH_MAX_ITEMS per match per run. In steady state a match produces about one
+  // delivery a run so the bound never binds; it binds on a Cricbuzz backlog republish, and the
+  // remainder is simply stored raw and not retried — the watermark has moved past it.
+  //
+  // Note this is NOT gated on `commentaryCap`. That still gates the detail tier (`detailTier`
+  // above) and its scorecard writes, which are a write-budget decision; rewriting is now a
+  // batched-call decision and every live match gets it.
+  const rewrites = new Map();
+  if (storeCommentary) {
+    const queued = [];
+    for (const item of fresh.slice(0, BATCH_MAX_ITEMS)) {
+      const classified = classifyCommentaryItem(item);
+      if (!classified) continue;
+      queued.push({ ts: Number(item.timestamp), clean: classified.clean, ball: classified.ball });
+    }
+    const results = await Promise.all(
+      queued.map(async (qi) => {
+        // The batch prompt carries the raw Cricbuzz line and nothing else. That line already names
+        // the bowler and the batter ("Hassan Khan to Chris Green, 1 run, ..."), which is what the
+        // measured 7/7 run used; the per-match bowler/batsman/score context cannot travel in a
+        // cross-match batch, and a score carried from the wrong match would be a fabricated fact.
+        const out = await queueRewrite({ key: `${matchId}|${qi.ball}`, text: qi.clean, log, error });
+        return { qi, out };
+      })
+    );
+    for (const { qi, out } of results) {
+      if (!out.line) {
+        rewrites.set(qi.ts, { line: null, provider: null, verified: false, reason: "providers_exhausted", attempts: out.attempts });
+        continue;
+      }
+      // Verification stays PER LINE and high-stakes only, unchanged. Batching the fact-check too
+      // would be a second unproven contract on top of a new one, and at ~813 high-stakes balls a
+      // day the individual calls fit the budget comfortably.
+      if (isHighStakesBall(qi.clean)) {
+        const attempts = out.attempts ?? [];
+        const ok = await verifyLine(
+          { line: out.line, snippet1: qi.clean, ball: qi.ball },
+          { log, error, attempts }
+        );
+        if (!ok) {
+          rewrites.set(qi.ts, { line: null, provider: null, verified: false, reason: "verification_failed", attempts });
+          continue;
+        }
+      }
+      rewrites.set(qi.ts, { line: out.line, provider: out.provider, verified: true, reason: null, attempts: out.attempts });
+    }
+  }
 
   let written = 0;
   let rewritten = 0;
@@ -1073,50 +1207,20 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
     // chain was indistinguishable from a working one.
     // Null until the rewrite is attempted; commentaryOrigin reads that as "no budget this run".
     let generated = null;
-    if (rewritten < commentaryCap) {
-      // Ball-by-ball line → cinematic AI rewrite (mirror generateBallCommentary).
-      const bowler = detail.bowler?.name ?? "";
-      const batsman = detail.batsmen?.[0]?.name ?? "";
-      const score = detail.score ?? "";
-      const contextLine = [
-        bowler && `Bowler: ${bowler}`,
-        batsman && `Batsman: ${batsman}`,
-        score && `Score: ${score}`,
-      ].filter(Boolean).join(" | ");
-      const prompt =
-        `${ball}: ${clean}\n` +
-        (contextLine ? `${contextLine}\n` : "") +
-        `Write one vivid broadcast commentary line. Start with ${ball}: at the beginning.`;
-      const attempts = [];
-      // Verified generation: the hallucination check that used to run on the device, where the
-      // provider keys no longer live. A rejected line is a failed generation, not a usable one —
-      // it falls through to raw text and is marked, rather than being written as if it were AI.
-      generated = await generateVerifiedLine(prompt, {
-        // Covers reasoning tokens as well as the line itself. gpt-oss emits its reasoning first
-        // and only then the `content`; at 100 the budget was spent before a single word of
-        // commentary was written and every call came back `empty completion`.
-        maxTokens: 320,
-        temperature: 0.7,
-        // Narrowed from unconditional `true` on 2026-08-05. See isHighStakesBall: verification is
-        // the difference between one provider call a line and two, and the chain sustains ~48
-        // requests/minute in total. Spending that on a dot ball is spending it on the deliveries
-        // with nothing to invent.
-        verify: isHighStakesBall(clean),
-        context: { snippet1: clean, ball, bowler, batsman },
-        log,
-        error,
-        attempts,
-      });
-      if (generated.line) {
-        line = sanitize(stripPreamble(generated.line));
+    const pre = rewrites.get(itemTs);
+    if (pre) {
+      generated = pre;
+      if (pre.line) {
+        line = sanitize(stripPreamble(pre.line));
         if (line && !line.startsWith(ball)) line = `${ball}: ${line}`;
         rewritten++;
       } else {
-        error(`[PASSTHROUGH] ${matchId}/${ball} (${generated.reason}): writing raw Cricbuzz text — ${attempts.join("; ")}`);
+        const attempts = pre.attempts ?? [];
+        error(`[PASSTHROUGH] ${matchId}/${ball} (${pre.reason}): writing raw Cricbuzz text — ${attempts.join("; ")}`);
         report("match-sync wrote raw Cricbuzz text — AI generation produced nothing usable", {
           matchId,
           ball,
-          reason: generated.reason,
+          reason: pre.reason,
           attempts: attempts.join("; "),
         });
       }

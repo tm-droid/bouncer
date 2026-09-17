@@ -585,6 +585,86 @@ export async function generateLine(
   return null;
 }
 
+/**
+ * The batch system prompt: same rules as [SYSTEM_INSTRUCTION], N lines out for N lines in.
+ *
+ * Derived from the single-line prompt by replacement rather than written out, so the hallucination
+ * and style rules cannot drift between the two paths — those rules are the reason the chain exists.
+ */
+export const BATCH_SYSTEM_INSTRUCTION = SYSTEM_INSTRUCTION
+  .replace(
+    "Write exactly one vivid, natural commentary line.",
+    "You are given several deliveries from DIFFERENT, UNRELATED matches. Rewrite EVERY one as its own commentary line. Never carry a player, team, score or event from one line into another — the lines share nothing."
+  )
+  .replace(
+    "STRICT FORMAT: Begin with the ball number exactly as given in the input, followed by a colon. Never invent, guess or alter it; if the input has no ball number, begin with the action instead.",
+    "STRICT FORMAT: Output exactly one line per input delivery, in the same order, each beginning with that delivery's [key] tag exactly as given, followed by a colon. Never invent, guess or alter a tag. No blank lines, no numbering, no headers."
+  )
+  .replace("One sentence only.", "One sentence per delivery.");
+
+// Deliveries per batched call. 12 keeps the prompt near 600 tokens and the reply near 450, well
+// inside every rung's budget, and bounds the damage when Cricbuzz republishes a backlog after a
+// publishing gap — the 13-minute hole on 2026-09-12 arrived as one burst.
+export const BATCH_MAX_ITEMS = 12;
+
+/**
+ * Rewrite many deliveries in ONE provider call, keyed so a partial answer cannot be misread.
+ *
+ * Why batch at all: measured 2026-09-16, the app stores 6,672 deliveries a day and the free ladder
+ * is ~2,500 calls. One call per ball can therefore cover 31% of them and no more, which is why most
+ * of the commentary tab was raw Cricbuzz text. Batched, the same coverage costs ~960 calls — every
+ * ball, inside the free budget.
+ *
+ * Why batch across MATCHES rather than across time: filling a batch by waiting would delay the
+ * ball. Batching by over needs ~10 minutes of accumulation, against the 0-60s a ball takes to
+ * appear today. Breadth costs nothing — about seven deliveries arrive per run across the live
+ * matches, so one call per run covers them with no added latency at all. Measured on seven
+ * deliveries from seven unrelated matches: 7/7 keys returned, zero players leaked between them.
+ *
+ * Returns a Map of key -> line for the deliveries the model actually answered. **Matching is by
+ * key, never by position**: a model that drops, merges or reorders a line must leave that delivery
+ * absent from the Map so the caller stores raw text, rather than handing it the neighbouring
+ * delivery's commentary. A wrong line is far worse than a raw one.
+ *
+ * @param items [{ key, text }] — `key` must be unique within the batch and appear verbatim in the
+ *              output; `${matchId}|${ball}` is what the caller uses, because a ball number alone
+ *              collides across matches.
+ */
+export async function generateBatch(items, options = {}) {
+  const out = new Map();
+  if (!items?.length) return out;
+
+  const prompt =
+    items.map((i) => `[${i.key}]: ${i.text}`).join("\n") +
+    `\n\nRewrite all ${items.length} deliveries above, one line each, in order, each tagged [key] exactly as given.`;
+
+  // `used` is threaded through so the caller learns WHICH rung answered. Without it every batched
+  // row records a placeholder, which would undo the `provider` column entirely — the point of that
+  // column is that "is this groq or gemini or raw Cricbuzz?" is a GROUP BY and not a guess.
+  const raw = await generateLine(prompt, {
+    ...options,
+    // Sized per delivery, not per call: one line is ~35 tokens, and a budget that fits 3 would
+    // truncate the 4th onward — which the caller cannot tell apart from a model that skipped it.
+    maxTokens: 120 * items.length + 200,
+    systemInstruction: BATCH_SYSTEM_INSTRUCTION,
+    // The reply is many lines; "does it end in a full stop" says nothing about whether the LAST
+    // one was cut off, and the key match below is the real completeness check.
+    requireTerminated: false,
+  });
+  if (!raw) return out;
+
+  for (const line of raw.split("\n").map((l) => l.trim()).filter(Boolean)) {
+    const m = line.match(/^\[([^\]]+)\]:\s*(.+)$/);
+    if (!m) continue;
+    const [, key, body] = m;
+    // Unknown or duplicated keys are dropped rather than guessed at: both mean the model invented
+    // structure, and the delivery is better served raw than served somebody else's ball.
+    if (!items.some((i) => i.key === key) || out.has(key)) continue;
+    if (body.trim()) out.set(key, body.trim());
+  }
+  return out;
+}
+
 // Kept byte-identical in intent to CommentaryFusionService.VERIFICATION_PROMPT_TEMPLATE, which this
 // replaces. The check moved server-side when the device stopped holding provider keys — the guard
 // against invented names and events is worth the same two LLM calls it always cost, it just cannot
