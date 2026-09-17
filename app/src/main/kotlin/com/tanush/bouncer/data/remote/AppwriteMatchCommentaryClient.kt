@@ -124,6 +124,18 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
     // budget this is affordable; `olderThan` pages beyond it rather than raising it further.
     private const val FEED_LIMIT = 150
 
+    // The FIRST page is deliberately smaller than the ones behind it.
+    //
+    // Reads bill per row RETURNED, so opening a match cost 150 of them — about 25 overs — no matter
+    // what the reader wanted. The common case by far is a glance at the last over or two, and that
+    // glance was paying for a session it never scrolled to. 48 rows is ~8 overs: enough that the
+    // over groups the tab draws are whole and the feed does not open mid-over, and a third of the
+    // reads.
+    //
+    // Someone who does scroll back pays nothing extra for it — the first tap fetches a full
+    // FEED_LIMIT page, so the cost of reading deep is unchanged and only the entry price moved.
+    private const val FIRST_PAGE_LIMIT = 48
+
     fun initialize() {
         initTable(ApiKeys.appwriteAiCacheDbId, TABLE_ID)
     }
@@ -170,7 +182,7 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
             add(Query.equal("match_id", matchId))
             if (olderThan != null) add(Query.lessThan("sort_key", olderThan))
             if (ordered) add(Query.orderDesc("sort_key"))
-            add(Query.limit(FEED_LIMIT))
+            add(Query.limit(if (olderThan == null) FIRST_PAGE_LIMIT else FEED_LIMIT))
         }
         val name = if (ordered) "commentary.ordered" else "commentary.unordered"
         val rows = guardedRead(name) {
