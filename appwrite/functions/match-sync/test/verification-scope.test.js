@@ -110,7 +110,8 @@ test("a 402 is latched for the container — the provider is not called a second
     const first = [];
     await generateVerifiedLine("p", { attempts: first });
     assert.equal(calls, 1);
-    assert.match(first[0], /^groq: HTTP 402 PAYMENT_METHOD_REQUIRED/);
+    // By entry, not by index: this test is about what groq did, not where groq sits in the ladder.
+    assert.match(first.find((a) => a.startsWith("groq:")) ?? "", /^groq: HTTP 402 PAYMENT_METHOD_REQUIRED/);
 
     // The line that matters: `unavailable` is per-line, so without the container-scoped latch this
     // would be a second doomed round trip, and one per delivery for as long as the account is unpaid.
@@ -118,7 +119,7 @@ test("a 402 is latched for the container — the provider is not called a second
     await generateVerifiedLine("p", { attempts: second });
     assert.equal(calls, 1, "a 402 provider is not asked again in this container");
     assert.equal(
-      second[0],
+      second.find((a) => a.startsWith("groq:")),
       "groq: HTTP 402 (latched for this container)",
       "skipped, but still recorded — a chain that silently loses a rung is the original defect",
     );
@@ -266,5 +267,5 @@ test("an empty completion records why it was empty", async () => {
   // "empty completion" alone cannot distinguish a spent budget from a model that answered nothing,
   // and those need opposite fixes. The other two providers account for their missing keys after it,
   // which is the chain working as intended and not part of this assertion.
-  assert.equal(attempts[0], "groq: empty completion (length)");
+  assert.equal(attempts.find((a) => a.startsWith("groq:")), "groq: empty completion (length)");
 });

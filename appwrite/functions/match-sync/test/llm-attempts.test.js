@@ -33,10 +33,12 @@ test("with no keys configured, every provider records why it was skipped", async
     assert.deepEqual(
       attempts,
       [
+        // Rung order, and it is asserted as order: gemini-3.5-flash-lite leads because it was
+        // measured more accurate on real deliveries than gpt-oss-20b.
+        "gemini-flash-lite: no GEMINI_API_KEY",
         "groq: no GROQ_API_KEY",
         // Three rungs, one key: the missing variable is named once per RUNG, not once per key.
         // Collapsing them would hide which models the chain still believes it has.
-        "gemini-flash-lite: no GEMINI_API_KEY",
         "gemini-3.6-flash: no GEMINI_API_KEY",
         "gemini-3-flash-preview: no GEMINI_API_KEY",
       ],

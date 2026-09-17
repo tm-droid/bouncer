@@ -66,8 +66,19 @@ const PROVIDERS = [
   // budget it returned `empty completion` every time — a 200 with nothing in it, which the
   // chain correctly treats as a failed generation. Sent only to groq; the Gemini endpoint rejects
   // it alongside its own `thinking_level`.
-  { name: "groq",                   account: "groq",   url: "https://api.groq.com/openai/v1/chat/completions", model: "openai/gpt-oss-20b",     keyEnv: "GROQ_API_KEY",   tokenFloor: 0,    extraBody: { reasoning_effort: "low" } },
+  // Order is quality first, measured — not a preference. On nine real production deliveries
+  // (wickets, fours, sixes) with this exact system prompt, gpt-oss-20b got the CRICKET wrong in
+  // five: it had the bowler playing the shot ("Colin Ackermann smashes a thunderous drive to Adam
+  // Hose" — Ackermann is bowling), and it described a FOUR as clearing the ropes, twice.
+  // gemini-3.5-flash-lite got none wrong, kept every fielding position the source named, and its
+  // only liberties were shot descriptions, which the prompt explicitly licenses. It costs ~1056ms
+  // against groq's ~584ms, which is nothing against a 120s function timeout.
+  //
+  // groq stays at rung 2 rather than below the other Gemini rungs on purpose: generate-commentary
+  // is device-facing with a 30s timeout, and gemini-3-flash-preview measured up to 12s. A fast
+  // second rung keeps the common failure path well inside that.
   { name: "gemini-flash-lite",      account: "gemini", url: GEMINI_URL,                                        model: "gemini-3.5-flash-lite",  keyEnv: "GEMINI_API_KEY", tokenFloor: 0 },
+  { name: "groq",                   account: "groq",   url: "https://api.groq.com/openai/v1/chat/completions", model: "openai/gpt-oss-20b",     keyEnv: "GROQ_API_KEY",   tokenFloor: 0,    extraBody: { reasoning_effort: "low" } },
   { name: "gemini-3.6-flash",       account: "gemini", url: GEMINI_URL,                                        model: "gemini-3.6-flash",       keyEnv: "GEMINI_API_KEY", tokenFloor: 2048 },
   { name: "gemini-3-flash-preview", account: "gemini", url: GEMINI_URL,                                        model: "gemini-3-flash-preview", keyEnv: "GEMINI_API_KEY", tokenFloor: 2048 },
 ];

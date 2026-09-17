@@ -110,7 +110,8 @@ test("a 402 is latched for the container — the provider is not called a second
     const first = [];
     await generateVerifiedLine("p", { attempts: first });
     assert.equal(calls, 1);
-    assert.match(first[0], /^groq: HTTP 402 PAYMENT_METHOD_REQUIRED/);
+    // By entry, not by index: this test is about what groq did, not where groq sits in the ladder.
+    assert.match(first.find((a) => a.startsWith("groq:")) ?? "", /^groq: HTTP 402 PAYMENT_METHOD_REQUIRED/);
 
     // The line that matters: `unavailable` is per-line, so without the container-scoped latch this
     // would be a second doomed round trip, and one per delivery for as long as the account is unpaid.
@@ -118,7 +119,7 @@ test("a 402 is latched for the container — the provider is not called a second
     await generateVerifiedLine("p", { attempts: second });
     assert.equal(calls, 1, "a 402 provider is not asked again in this container");
     assert.equal(
-      second[0],
+      second.find((a) => a.startsWith("groq:")),
       "groq: HTTP 402 (latched for this container)",
       "skipped, but still recorded — a chain that silently loses a rung is the original defect",
     );
@@ -191,4 +192,80 @@ test("a provider that sometimes succeeds is busy, not dead", async () => {
   } finally {
     globalThis.fetch = original;
   }
+});
+
+// 3. The verification call's token budget. Every provider in the chain is a reasoning model, and
+//    reasoning tokens come out of the same budget as the answer — so a budget sized for the word
+//    "PASS" alone is spent before the verdict is ever emitted. That is not a hypothetical: at 16 the
+//    verify call returned an empty completion on every ball while the generate call (100) was fine,
+//    verification failed closed, and 1,858 deliveries were stored as raw Cricbuzz text (ANDROID-38).
+async function withGroqOnly(handler, body) {
+  const saved = {
+    GROQ_API_KEY: process.env.GROQ_API_KEY,
+    CEREBRAS_API_KEY: process.env.CEREBRAS_API_KEY,
+    SAMBANOVA_API_KEY: process.env.SAMBANOVA_API_KEY,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  };
+  const savedFetch = globalThis.fetch;
+  process.env.GROQ_API_KEY = "test-key";
+  delete process.env.CEREBRAS_API_KEY;
+  delete process.env.SAMBANOVA_API_KEY;
+  // Three of the four live rungs read this one variable. Leaving it set makes "groq only" a lie on
+  // any machine that has a Gemini key, and the test would then measure the wrong chain.
+  delete process.env.GEMINI_API_KEY;
+
+  const bodies = [];
+  globalThis.fetch = async (_url, init) => {
+    bodies.push(JSON.parse(init.body));
+    return handler(bodies.length);
+  };
+  try {
+    return { result: await body(), bodies };
+  } finally {
+    globalThis.fetch = savedFetch;
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+}
+
+const completionOf = (content, finishReason = "stop") =>
+  new Response(JSON.stringify({ choices: [{ message: { content }, finish_reason: finishReason }] }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+
+test("the verify call asks for more tokens than a bare verdict needs", async () => {
+  resetProviderHealth();
+  const { result, bodies } = await withGroqOnly(
+    (nth) => completionOf(nth === 1 ? "18.5: Bumrah bowls a jaffa." : "PASS"),
+    () =>
+      generateVerifiedLine("18.5: Bumrah to Root, no run", {
+        verify: true,
+        context: { snippet1: "Bumrah to Root, no run", ball: "18.5" },
+      })
+  );
+
+  assert.equal(bodies.length, 2, "one generate, one verify");
+  assert.ok(
+    bodies[1].max_tokens > 16,
+    `verify budget was ${bodies[1].max_tokens} — reasoning tokens consume it before the verdict`
+  );
+  assert.equal(result.verified, true);
+  assert.equal(result.line, "18.5: Bumrah bowls a jaffa.");
+});
+
+test("an empty completion records why it was empty", async () => {
+  resetProviderHealth();
+  const attempts = [];
+  await withGroqOnly(
+    () => completionOf("", "length"),
+    () => generateVerifiedLine("18.5: Bumrah to Root, no run", { attempts })
+  );
+
+  // "empty completion" alone cannot distinguish a spent budget from a model that answered nothing,
+  // and those need opposite fixes. The other two providers account for their missing keys after it,
+  // which is the chain working as intended and not part of this assertion.
+  assert.equal(attempts.find((a) => a.startsWith("groq:")), "groq: empty completion (length)");
 });

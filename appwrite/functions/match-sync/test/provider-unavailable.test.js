@@ -26,7 +26,7 @@ const MODEL_TO_PROVIDER = {
   "gemini-3-flash-preview": "gemini-3-flash-preview",
 };
 
-const PROVIDER_ORDER = ["groq", "gemini-flash-lite", "gemini-3.6-flash", "gemini-3-flash-preview"];
+const PROVIDER_ORDER = ["gemini-flash-lite", "groq", "gemini-3.6-flash", "gemini-3-flash-preview"];
 
 function providerOf(init) {
   const model = JSON.parse(init?.body ?? "{}").model;
@@ -116,8 +116,9 @@ test("the skip does not survive the call — a recovered provider is asked again
   // Appwrite reuses containers across executions, so this is the difference between a one-ball
   // hiccup and a provider switched off for the life of the container.
   let line = 1;
+  const FIRST = PROVIDER_ORDER[0];
   const { calls } = await withStubbedProviders(
-    (name) => (name === "groq" && line === 1 ? rateLimited() : completion("18.6: driven for four.")),
+    (name) => (name === FIRST && line === 1 ? rateLimited() : completion("18.6: driven for four.")),
     async () => {
       await generateVerifiedLine("18.5: Bumrah to Root, no run", { verify: false });
       line = 2;
@@ -125,6 +126,6 @@ test("the skip does not survive the call — a recovered provider is asked again
     }
   );
 
-  assert.equal(calls.groq, 2, "groq is asked again on the second line despite failing on the first");
-  assert.equal(calls["gemini-flash-lite"], 1, "only the first line had to fall through");
+  assert.equal(calls[FIRST], 2, "the first rung is asked again on the second line despite failing on the first");
+  assert.equal(calls[PROVIDER_ORDER[1]], 1, "only the first line had to fall through");
 });

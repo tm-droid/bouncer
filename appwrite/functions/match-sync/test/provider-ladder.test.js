@@ -165,8 +165,10 @@ test("an unrecognised quota window is reported rather than latched", async () =>
   // the guess wrong forever. So: never latch, always surface.
   // Drained INSIDE the run: withLadder resets module state on the way out, as every test here
   // needs it to, so a drain after the fact would read an empty set and pass for the wrong reason.
+  // The FIRST rung is the one that must be re-asked; naming it keeps this honest if the order moves.
+  const FIRST = "gemini-flash-lite";
   const { result, seen } = await withLadder(
-    (name) => (name === "groq" ? quota429("SomeQuotaNobodyPredicted", "7") : completion("19.2: taken.")),
+    (name) => (name === FIRST ? quota429("SomeQuotaNobodyPredicted", "7") : completion("19.2: taken.")),
     async () => {
       await generateLine("first ball");
       await generateLine("second ball");
@@ -174,7 +176,7 @@ test("an unrecognised quota window is reported rather than latched", async () =>
     }
   );
 
-  assert.equal(seen.filter((s) => s.provider === "groq").length, 2, "an unclassified 429 must not latch the rung");
+  assert.equal(seen.filter((s) => s.provider === FIRST).length, 2, "an unclassified 429 must not latch the rung");
   assert.deepEqual(result.first, ["SomeQuotaNobodyPredicted"], "but it must be reported");
   assert.deepEqual(result.second, [], "and drained, so the caller reports it once");
 });
