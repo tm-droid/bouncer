@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.widgets
 
 import android.content.Context
+import androidx.core.content.edit
 import com.tanush.bouncer.data.AppJson
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.sentry.SentryLevel
@@ -162,11 +163,11 @@ object WidgetSnapshotStore {
      * preference files is silent at runtime, which is half of what went wrong here.
      */
     fun clear(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { clear() }
         context.getSharedPreferences(BouncerGlanceWidget.PREF_NAME, Context.MODE_PRIVATE)
-            .edit().clear().apply()
+            .edit { clear() }
         context.getSharedPreferences(BouncerLockScreenWidget.PREF_NAME, Context.MODE_PRIVATE)
-            .edit().clear().apply()
+            .edit { clear() }
     }
 }
 

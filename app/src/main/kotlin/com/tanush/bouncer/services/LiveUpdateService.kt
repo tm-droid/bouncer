@@ -1,5 +1,6 @@
 package com.tanush.bouncer.services
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.Service
 import android.content.Context
@@ -247,7 +248,11 @@ class LiveUpdateService : Service() {
  * The type is asserted here as well as in the manifest: from API 34 the platform validates it
  * where the service actually enters the foreground, and a mismatch is a runtime failure rather
  * than a build one.
+ *
+ * The constant is a compile-time int that R8 inlines, so the reference is safe below API 29 where
+ * `startForeground` simply ignores the type argument — which is what `ServiceCompat` exists to do.
  */
+@SuppressLint("InlinedApi")
 private fun Service.enterForeground(matchId: String, notification: Notification) = ServiceCompat.startForeground(
     this,
     liveUpdateNotificationId(matchId),

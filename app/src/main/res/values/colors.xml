@@ -23,8 +23,6 @@
     <color name="text_primary">#1A1A1A</color>
     <color name="text_secondary">#4B5563</color>
     <color name="text_tertiary">#6B7280</color>
-    <color name="live_blue">#1D4ED8</color>
-    <color name="live_blue_bright">#2563EB</color>
     <color name="success_green">#15803D</color>
     <color name="warning_orange">#B45309</color>
     <color name="error_red">#DC2626</color>
@@ -63,7 +61,6 @@
 
     <!-- LEGACY COMPAT -->
     <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
 
     <!--
       Notification-only neutrals.

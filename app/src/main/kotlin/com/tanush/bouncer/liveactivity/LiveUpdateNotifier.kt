@@ -7,12 +7,12 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Build
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.net.toUri
 import com.tanush.bouncer.R
 import com.tanush.bouncer.services.LiveUpdateDismissReceiver
 import com.tanush.bouncer.ui.screens.NotificationPrefsManager
@@ -80,7 +80,6 @@ class LiveUpdateNotifier(private val context: Context) {
      * to.
      */
     fun ensureChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.deleteNotificationChannel(RETIRED_CHANNEL_ID)
         manager.createNotificationChannel(
@@ -197,7 +196,7 @@ class LiveUpdateNotifier(private val context: Context) {
     private fun openMatchIntent(matchId: String): PendingIntent = PendingIntent.getActivity(
         context,
         requestCode(matchId, REQUEST_OPEN),
-        Intent(Intent.ACTION_VIEW, Uri.parse("app://bouncer/match/$matchId")).setPackage(context.packageName),
+        Intent(Intent.ACTION_VIEW, "app://bouncer/match/$matchId".toUri()).setPackage(context.packageName),
         PENDING_INTENT_FLAGS,
     )
 

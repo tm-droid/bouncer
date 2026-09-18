@@ -22,8 +22,6 @@
     <color name="text_primary">#FCF7ED</color>
     <color name="text_secondary">#C1B08D</color>
     <color name="text_tertiary">#8D7E61</color>
-    <color name="live_blue">#007AFF</color>
-    <color name="live_blue_bright">#4DA3FF</color>
     <color name="success_green">#34C759</color>
     <color name="warning_orange">#F4B740</color>
     <color name="error_red">#FF5A4E</color>
