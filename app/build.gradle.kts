@@ -376,22 +376,23 @@ dependencies {
 
 configurations.all {
     resolutionStrategy {
-        // Netty — covers all Netty CVEs (#17,18,21–24,26–28,30,32,33,37–45)
-        force("io.netty:netty-codec-http:4.2.15.Final")
-        force("io.netty:netty-codec-http2:4.2.15.Final")
-        force("io.netty:netty-codec:4.2.15.Final")
-        force("io.netty:netty-common:4.2.15.Final")
-        force("io.netty:netty-handler:4.2.15.Final")
-        force("io.netty:netty-handler-proxy:4.2.15.Final")
-        // Bouncy Castle (#34,35,36)
-        force("org.bouncycastle:bcprov-jdk18on:1.84")
-        force("org.bouncycastle:bcpkix-jdk18on:1.84")
-        // Other transitive CVEs
-        force("org.apache.commons:commons-lang3:3.20.0")
-        force("org.bitbucket.b_c:jose4j:0.9.6")
-        force("org.jdom:jdom2:2.0.6.1")
-        force("com.google.guava:guava:33.6.0-android")
-        force("org.apache.httpcomponents:httpclient:4.5.13")
+        // The only pin left, because it is the only one of the eight that reached the app.
+        // `./gradlew :app:dependencies --configuration releaseRuntimeClasspath` lists exactly
+        // two third-party libraries from that old list: guava (declared 31.1-android by a transitive,
+        // raised to 33.7.1-android by this line) and jsoup. Nothing else here shipped.
+        force("com.google.guava:guava:33.7.1-android")
+
+        // Deleted, and the reason is worth keeping: Netty, Bouncy Castle, commons-lang3,
+        // jose4j, jdom2 and httpclient were forced in d0d9fbf to clear a wall of Dependabot
+        // alerts, without tracing where any of them came from. None of them is in the AAB.
+        // `:app:dependencies` puts every one on `androidLintTool` or on the Unified Test
+        // Platform's own configuration, under `com.android.tools.utp:android-device-provider-
+        // ddmlib` -> io.grpc -> io.netty — AGP's instrumented-test runner, which is not built
+        // into anything a user installs. The forces therefore silenced alerts about code that
+        // does not ship, and did it by overriding the versions AGP's own tooling was tested
+        // against: Netty 4.2 moved classes out of netty-codec into netty-codec-base, and grpc
+        // 1.57 is compiled against 4.1. The alerts are dismissed as not-used instead, with
+        // that command as the evidence.
     }
 }
 
