@@ -111,7 +111,71 @@ class MatchDetailViewModel(
         val loadError: String? = null,
         /** Non-null when the commentary feed failed and no lines are available. */
         val commentaryError: String? = null,
-    )
+    ) {
+        /**
+         * Fold one live-detail payload into the screen's state.
+         *
+         * [matchIsOver] is the whole point of this function. `match-live-detail` is written only while a
+         * match sits in `live-matches.json`, and only on match-sync's detail tier — once per
+         * `SLOW_TIER_INTERVAL_MS` (15 minutes) for a match nobody has open. The moment the match ends it
+         * leaves that list and **nothing writes, finalises or prunes the row again**, so what is left is a
+         * snapshot from up to a quarter of an hour before the last ball, kept for good. The payload carries
+         * no timestamp and the client never reads `updated_at`, so the staleness is not visible field by
+         * field — while the matches list, re-scraped from Cricbuzz every 60s, has the real result.
+         *
+         * That is the defect this exists to close: the Recent row and the detail header of the same match
+         * showed different scores, and the header was the wrong one, because every non-null payload field
+         * overwrote the list-derived seed through [pick] with no status gate.
+         *
+         * So for a finished match the payload contributes nothing — not the score, the overs, the status,
+         * the run rates, the batting pair, the bowler, the recent balls or the probability — with one
+         * exception: a scorecard, and only when the state has none. Rows written before the scorecard moved
+         * to its own table still carry one, and an old card beats an empty tab. `loadError` is deliberately
+         * NOT cleared on that branch: a stale payload is not evidence that anything loaded.
+         */
+        internal fun merge(p: MatchLiveDetailPayload, matchIsOver: Boolean): UiState {
+            if (matchIsOver) {
+                val legacyCard = p.scorecard?.takeIf { it.innings.isNotEmpty() && scorecard == null }
+                    ?: return this
+                return this.copy(scorecard = legacyCard)
+            }
+            return this.copy(
+                loadError = null,
+                batsmen = p.batsmen.ifEmpty { this.batsmen },
+                bowler = pick(p.bowler, this.bowler),
+                recentBalls = p.recentBalls.ifEmpty { this.recentBalls },
+                // Moves with the glyphs or not at all: a number left over from the previous payload
+                // would label this one's over wrongly, which is the defect the field exists to fix.
+                recentBallsOver = if (p.recentBalls.isEmpty()) this.recentBallsOver else p.recentBallsOver,
+                scorecard = pick(p.scorecard?.takeIf { it.innings.isNotEmpty() }, this.scorecard),
+                liveTeam1Score = pick(p.team1Score, this.liveTeam1Score),
+                liveTeam2Score = pick(p.team2Score, this.liveTeam2Score),
+                liveTeam1Overs = pick(p.team1Overs, this.liveTeam1Overs),
+                liveTeam2Overs = pick(p.team2Overs, this.liveTeam2Overs),
+                liveCurrentRunRate = pick(p.currentRunRate, this.liveCurrentRunRate),
+                liveRequiredRunRate = pick(p.requiredRunRate, this.liveRequiredRunRate),
+                liveStatus = pick(p.status?.takeIf { it.isNotBlank() }, this.liveStatus),
+                // Server sends 0..1; the UI works in percent. Keep the previous value when this
+                // update carries none, so the bar does not blink out on a payload that omits it.
+                // Routed through `pick` rather than its own elvis for the same reason every other
+                // field here is: two more branches in this function trips detekt's complexity cap,
+                // and the file is already at the TooManyFunctions threshold so a helper cannot pay
+                // for itself.
+                liveWinProbability = pick(p.winProbabilityTeam1?.times(PERCENT_SCALE), this.liveWinProbability),
+                liveDrawProbability = pick(p.winProbabilityDraw?.times(PERCENT_SCALE), this.liveDrawProbability),
+                // A detail payload exists only for a match that is being synced live, so its
+                // arrival is itself the evidence that any earlier pre-match prior is superseded.
+                liveWinProbabilityIsPrematch =
+                    if (p.winProbabilityTeam1 != null) false else this.liveWinProbabilityIsPrematch,
+                // The swing chart's series, accumulated on the device. The server keeps only the
+                // current probability — `live-winprob` and the detail payload are both snapshots,
+                // and nothing stores a history — so a point is recorded each time the probability
+                // moves. Session-scoped by design: it is the swing since this screen opened, not
+                // the match's whole arc.
+                probabilityHistory = appendProbabilityPoint(this, p),
+            )
+        }
+    }
 
     private val appContext = context.applicationContext
     private val firedMilestones = mutableSetOf<String>()
@@ -150,8 +214,17 @@ class MatchDetailViewModel(
         // cancellation in onCleared() is the release boundary — so leaving the screen drops the
         // Realtime claim without any Compose-side plumbing. No client-side filter any more; the
         // detail stream is scoped to this match's row server-side.
-        viewModelScope.launch(bouncerExceptionHandler) {
-            liveSource.observeDetail(match.id).collect { applyDetail(it) }
+        //
+        // Skipped outright for a match the list already calls finished: nothing will ever write
+        // that row again (match-sync only syncs matches in `live-matches.json`), so the claim is
+        // realtime bandwidth — billed from the same pool as API and Storage — spent on silence.
+        // `match.isCompleted` and not `liveStatus`: terminal is sticky, a match never un-completes,
+        // and a match that ends while this screen is open was constructed with it false, so it
+        // keeps the subscription and receives the payload that reports the result.
+        if (!match.isCompleted) {
+            viewModelScope.launch(bouncerExceptionHandler) {
+                liveSource.observeDetail(match.id).collect { applyDetail(it) }
+            }
         }
         viewModelScope.launch(bouncerExceptionHandler) {
             liveSource.observeCommentary(match.id).collect { onNewCommentaryEvent(it) }
@@ -159,10 +232,13 @@ class MatchDetailViewModel(
         // The scorecard has its own row and its own channel — it was 85-93% of the detail payload
         // and was pushed to every subscriber of that row every minute. Subscribed for the whole
         // screen, not just the Scorecard tab: the Overview's bowler figures, fall-of-wickets phases
-        // and innings summary read the same object.
-        viewModelScope.launch(bouncerExceptionHandler) {
-            liveSource.observeScorecard(match.id).collect { sc ->
-                if (sc.innings.isNotEmpty()) _uiState.update { it.copy(scorecard = sc) }
+        // and innings summary read the same object. Skipped for a finished match for the same
+        // reason the detail stream above is: that row froze when the match left the live list.
+        if (!match.isCompleted) {
+            viewModelScope.launch(bouncerExceptionHandler) {
+                liveSource.observeScorecard(match.id).collect { sc ->
+                    if (sc.innings.isNotEmpty()) _uiState.update { it.copy(scorecard = sc) }
+                }
             }
         }
         // Presence heartbeat: while this match is open and not over, tell the backend a viewer is
@@ -218,21 +294,33 @@ class MatchDetailViewModel(
 
         try {
             // Live snapshot (batsmen/bowler/score/scorecard) + commentary feed from Appwrite.
-            val detail = withTimeoutOrNull(10_000L) { liveSource.getForMatch(match.id) }
-            if (detail == null) {
-                sentryBreadcrumb(
-                    "match_detail_v2.scorecard",
-                    "Appwrite live-detail fetch timed out or returned null",
-                    SentryLevel.WARNING,
-                )
+            //
+            // Not fetched at all for a finished match: the row froze when the match left the live
+            // list, [UiState.merge] would discard every field of it, and the read is billed per row
+            // out of the quota a 402 takes out app-wide.
+            if (!match.isCompleted) {
+                val detail = withTimeoutOrNull(10_000L) { liveSource.getForMatch(match.id) }
+                if (detail == null) {
+                    sentryBreadcrumb(
+                        "match_detail_v2.scorecard",
+                        "Appwrite live-detail fetch timed out or returned null",
+                        SentryLevel.WARNING,
+                    )
+                }
+                applyDetail(detail)
             }
-            applyDetail(detail)
             // Scorecard: one billed read for first paint, because the detail payload no longer
             // carries it and the row's realtime channel only speaks when match-sync next writes --
             // up to a minute of a blank Overview otherwise. Every update after this arrives free
             // over observeScorecard. The on-device CricBuzz scrape below stays as the last resort
             // for matches match-sync has not written (no live viewer, or not yet started).
-            resolveScorecard(_uiState.value.scorecard, match.id, liveSource, matchRepository) { e ->
+            resolveScorecard(
+                current = _uiState.value.scorecard,
+                matchId = match.id,
+                liveSource = liveSource,
+                repository = matchRepository,
+                matchIsOver = isMatchOver(match, _uiState.value.liveStatus),
+            ) { e ->
                 sentryBreadcrumb(
                     "match_detail_v2.scorecard_fallback",
                     "On-device scorecard fetch failed: ${e.message}",
@@ -343,43 +431,11 @@ class MatchDetailViewModel(
         // The server orients both team slots to the first-innings batting side; this screen is in
         // Cricbuzz's listing order. See MatchLiveDetailAlignment.
         val p = payload?.alignedTo(match.teams) ?: return
-        _uiState.update { st ->
-            st.copy(
-                loadError = null,
-                batsmen = p.batsmen.ifEmpty { st.batsmen },
-                bowler = pick(p.bowler, st.bowler),
-                recentBalls = p.recentBalls.ifEmpty { st.recentBalls },
-                // Moves with the glyphs or not at all: a number left over from the previous payload
-                // would label this one's over wrongly, which is the defect the field exists to fix.
-                recentBallsOver = if (p.recentBalls.isEmpty()) st.recentBallsOver else p.recentBallsOver,
-                scorecard = pick(p.scorecard?.takeIf { it.innings.isNotEmpty() }, st.scorecard),
-                liveTeam1Score = pick(p.team1Score, st.liveTeam1Score),
-                liveTeam2Score = pick(p.team2Score, st.liveTeam2Score),
-                liveTeam1Overs = pick(p.team1Overs, st.liveTeam1Overs),
-                liveTeam2Overs = pick(p.team2Overs, st.liveTeam2Overs),
-                liveCurrentRunRate = pick(p.currentRunRate, st.liveCurrentRunRate),
-                liveRequiredRunRate = pick(p.requiredRunRate, st.liveRequiredRunRate),
-                liveStatus = pick(p.status?.takeIf { it.isNotBlank() }, st.liveStatus),
-                // Server sends 0..1; the UI works in percent. Keep the previous value when this
-                // update carries none, so the bar does not blink out on a payload that omits it.
-                // Routed through `pick` rather than its own elvis for the same reason every other
-                // field here is: two more branches in this function trips detekt's complexity cap,
-                // and the file is already at the TooManyFunctions threshold so a helper cannot pay
-                // for itself.
-                liveWinProbability = pick(p.winProbabilityTeam1?.times(PERCENT), st.liveWinProbability),
-                liveDrawProbability = pick(p.winProbabilityDraw?.times(PERCENT), st.liveDrawProbability),
-                // A detail payload exists only for a match that is being synced live, so its
-                // arrival is itself the evidence that any earlier pre-match prior is superseded.
-                liveWinProbabilityIsPrematch =
-                    if (p.winProbabilityTeam1 != null) false else st.liveWinProbabilityIsPrematch,
-                // The swing chart's series, accumulated on the device. The server keeps only the
-                // current probability — `live-winprob` and the detail payload are both snapshots,
-                // and nothing stores a history — so a point is recorded each time the probability
-                // moves. Session-scoped by design: it is the swing since this screen opened, not
-                // the match's whole arc.
-                probabilityHistory = appendProbabilityPoint(st, p),
-            )
-        }
+        // Judged from the state BEFORE this payload, so the update that finishes the match still
+        // lands and only the re-reads of that frozen row afterwards are ignored. See [UiState.merge].
+        val alreadyOver = isMatchOver(match, _uiState.value.liveStatus)
+        _uiState.update { st -> st.merge(p, alreadyOver) }
+        if (alreadyOver) return
         p.batsmen.forEach { handleBatsmanMilestone(it) }
         p.bowler?.let { if ((it.wickets.toIntOrNull() ?: 0) >= 5) tryUnlock(AchievementKind.WICKETS_5) }
     }
@@ -500,9 +556,6 @@ class MatchDetailViewModel(
         // Re-ping well within match-sync's 4-min VIEWER_TTL_MS so ~2 dropped pings still count.
         private const val PRESENCE_HEARTBEAT_MS = 90_000L
 
-        /** The server states probabilities as 0..1; every renderer here works in percent. */
-        private const val PERCENT = 100.0
-
         /** Per-type store key — see [HighlightsViewModel.storeKey] for why sharing one collides. */
         fun storeKey(matchId: String): String = "match_detail_$matchId"
 
@@ -579,19 +632,24 @@ private fun isMatchOver(match: CricketMatch, liveStatus: String?): Boolean =
  * callers gate on `scorecard == null`, so storing an empty one closes the retry gates while the tab
  * still renders "No scorecard available" — the on-device fallback used to do exactly that.
  */
-private suspend fun resolveScorecard(
+internal suspend fun resolveScorecard(
     current: Scorecard?,
     matchId: String,
     liveSource: LiveMatchDetailSource,
     repository: MatchRepository,
+    matchIsOver: Boolean,
     onScrapeFailure: (Throwable) -> Unit,
 ): Scorecard? {
     if (current != null) return null
-    liveSource.getScorecardForMatch(matchId)?.takeIf { it.innings.isNotEmpty() }?.let { return it }
-    return runCatching { repository.fetchScorecard(matchId) }
+    suspend fun stored() = liveSource.getScorecardForMatch(matchId)?.takeIf { it.innings.isNotEmpty() }
+    suspend fun scraped() = runCatching { repository.fetchScorecard(matchId) }
         .onFailure(onScrapeFailure)
         .getOrNull()
         ?.takeIf { it.innings.isNotEmpty() }
+    // `match-scorecard` freezes when the match leaves the live list, at the same instant and for
+    // the same reason `match-live-detail` does — so for a finished match the stored row is the
+    // truncated one and Cricbuzz's own page has the completed card.
+    return if (matchIsOver) scraped() ?: stored() else stored() ?: scraped()
 }
 
 /**

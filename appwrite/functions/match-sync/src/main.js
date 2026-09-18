@@ -26,6 +26,7 @@ import {
   scorecardUrl,
   fetchHtml,
   findCommentaryGaps,
+  isTerminalStatus,
   parseBallOutcome,
   parseCommentary,
   parseLiveDetail,
@@ -301,13 +302,33 @@ export function selectSlowTier({ live, viewed, state, now, cooldownUntil = 0 }) 
   return due.slice(0, Math.min(SLOW_MAX_MATCHES_PER_RUN, Math.floor(headroom / READ_COST_PER_MATCH)));
 }
 
+/**
+ * The suffix that marks a match whose final rows have been written.
+ *
+ * It rides in the same flat `{ key: epochMs }` map as the slow-tier clock rather than a nested
+ * object, so `selectSlowTier` — which only ever reads `state[<bare id>]` — cannot see it and needs
+ * no change. The prune below compares the id BEFORE the suffix, so the marker lives exactly as long
+ * as the match stays in `live-matches.json`: long enough to stop the finalisation repeating on
+ * every run and on every cold container, and gone once the match leaves and can never sync again.
+ */
+const FINAL_SUFFIX = ":final";
+
+export const finalKey = (matchId) => `${matchId}${FINAL_SUFFIX}`;
+
+/** True when this run already wrote [matchId]'s final rows, per the persisted state. */
+export function isFinalised(state, matchId) {
+  return typeof state?.[finalKey(matchId)] === "number";
+}
+
 /** The slow-tier clock, stamped for the matches that just ran and pruned to those still live. */
-export function nextSlowState({ state, processed, liveIds, now }) {
+export function nextSlowState({ state, processed, liveIds, now, finalised = [] }) {
   const next = {};
-  for (const [id, ts] of Object.entries(state ?? {})) {
-    if (liveIds.has(id) && typeof ts === "number") next[id] = ts;
+  for (const [key, ts] of Object.entries(state ?? {})) {
+    const id = key.endsWith(FINAL_SUFFIX) ? key.slice(0, -FINAL_SUFFIX.length) : key;
+    if (liveIds.has(id) && typeof ts === "number") next[key] = ts;
   }
   for (const id of processed) next[id] = now;
+  for (const id of finalised) next[finalKey(id)] = now;
   return next;
 }
 
@@ -525,6 +546,9 @@ async function handleRun({ req, res, log, error }) {
     }, droppedWithViewers.length > 0 ? "error" : "warning");
   }
 
+  // Matches whose final rows were written this run — see FINAL_SUFFIX.
+  const finalisedNow = new Set();
+
   // Process matches in parallel so per-ball LLM latency doesn't serialize across matches.
   await Promise.allSettled(
     allLive.map(async (m) => {
@@ -536,11 +560,13 @@ async function handleRun({ req, res, log, error }) {
           title: m.title ?? "",
           commentaryCap: commentaryCapFor(matchId, viewed, slowTier),
           storeCommentary: commentaryMatches.has(matchId),
+          alreadyFinalised: isFinalised(slowState, matchId),
           model,
           log,
           error,
         });
         summary[matchId] = result.status;
+        if (result.finalised) finalisedNow.add(matchId);
         if (result.winProb) winProb[matchId] = result.winProb;
       } catch (e) {
         error(`Match ${matchId} failed: ${e?.message}`);
@@ -560,6 +586,10 @@ async function handleRun({ req, res, log, error }) {
       }
     })
   );
+
+  if (finalisedNow.size > 0) {
+    log(`${finalisedNow.size} match(es) finalised: ${[...finalisedNow].join(",")}`);
+  }
 
   // A viewed match that produced nothing is the failure mode this whole change exists to expose:
   // someone has the screen open, the fast tier ran, and the device still has no rows to render, so
@@ -597,7 +627,13 @@ async function handleRun({ req, res, log, error }) {
   await writeWinProbFile({ storage, winProb, log, error });
   await writeSlowState({
     storage,
-    state: nextSlowState({ state: slowState, processed: slowTier, liveIds, now: Date.now() }),
+    state: nextSlowState({
+      state: slowState,
+      processed: slowTier,
+      liveIds,
+      now: Date.now(),
+      finalised: finalisedNow,
+    }),
     previous: slowState,
     log,
     error,
@@ -617,6 +653,7 @@ async function handleRun({ req, res, log, error }) {
     live: allLive.length,
     processed: live.length,
     slowTier: slowTier.size,
+    finalised: finalisedNow.size,
     winProbabilities: Object.keys(winProb).length,
     summary,
   });
@@ -1017,7 +1054,9 @@ async function activeViewerIds({ storage, log, error }) {
   }
 }
 
-async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, model, log, error }) {
+// Exported for `finalise.test.js`: the finalisation wiring (which tier writes, and once) is
+// invisible in production until a match ends, which is the class of defect this file keeps finding.
+export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error }) {
   // 2. Fetch live page, plus the scorecard only when we are going to use it. A match with no
   // viewer needs the live page alone to produce a win probability — and, now, to store its
   // commentary, which the live page alone carries.
@@ -1029,7 +1068,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
   //  - `storeCommentary` says whether every new delivery is written to `match-commentary`. It is
   //    true for essentially every live match, because a feed that skips balls is not a feed.
   const detailTier = commentaryCap > 0;
-  const [liveHtml, scoreHtml] = await Promise.all([
+  const [liveHtml, tierScoreHtml] = await Promise.all([
     fetchHtml(liveScoresUrl(matchId)),
     detailTier
       ? fetchHtml(scorecardUrl(matchId)).catch((e) => { error(`Scorecard fetch failed for ${matchId}: ${e?.message}`); return null; })
@@ -1038,6 +1077,27 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
 
   // 3. Build + upsert the live-detail snapshot.
   const detail = parseLiveDetail(liveHtml);
+
+  // 3a. Finalisation. A match leaves `live-matches.json` the moment it is over and never comes
+  // back, and nothing else writes these two rows — so whatever the detail tier last left behind is
+  // what the device reads forever. For an unviewed match that tier runs once per
+  // SLOW_TIER_INTERVAL_MS, so the frozen row was routinely a quarter of an hour short of the
+  // result: the detail screen showed a mid-innings score while the Recent list, re-scraped from
+  // Cricbuzz every minute, showed the real one.
+  //
+  // The live page is fetched for every live match on every run regardless of tier, so the status
+  // is already in hand here; the scorecard is not, and is fetched now if the tier skipped it.
+  // Once per match lifetime — `alreadyFinalised` is the persisted marker, and lastDetailBody
+  // suppresses an identical rewrite on top of that.
+  const finalising = !alreadyFinalised && isTerminalStatus(detail.status);
+  let scoreHtml = tierScoreHtml;
+  if (finalising && !scoreHtml) {
+    scoreHtml = await fetchHtml(scorecardUrl(matchId)).catch((e) => {
+      error(`Final scorecard fetch failed for ${matchId}: ${e?.message}`);
+      return null;
+    });
+  }
+  const writeDetail = detailTier || finalising;
   const winProb = winProbFor(detail, title, model);
   // Carried in the detail payload as well as the aggregate file, so the detail screen updates on
   // the existing realtime channel instead of waiting for a file download. `payload` is an opaque
@@ -1051,9 +1111,9 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
     detail.winProbabilityDraw = winProb.drawProbability;
   }
 
-  if (!detailTier && !storeCommentary) {
-    // No viewer, not due a slow pass, and beyond the commentary cap: the probability is the only
-    // product. No scorecard, no LLM, no DB write.
+  if (!writeDetail && !storeCommentary) {
+    // No viewer, not due a slow pass, beyond the commentary cap, and not the run that ends the
+    // match: the probability is the only product. No scorecard, no LLM, no DB write.
     return { status: winProb ? "winprob_only" : "winprob_undetermined", winProb };
   }
 
@@ -1076,7 +1136,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
   // Gated on the detail tier, not on storeCommentary: a match nobody has open stores its
   // commentary but must NOT pay a live-detail write every minute — that is one row per live match
   // per run, which is the write volume this whole change is budgeted against.
-  if (detailHasContent && detailTier) {
+  if (detailHasContent && writeDetail) {
     await upsertDetail({ db, matchId, detail, error });
     // The scorecard now lives ONLY here. upsertDetail strips it from the detail payload, so this
     // write is the sole source for the Scorecard tab and for the Overview's scorecard-derived
@@ -1084,12 +1144,17 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
     if ((detail.scorecard?.innings?.length || 0) > 0) {
       await upsertScorecard({ db, matchId, scorecard: detail.scorecard, error });
     }
-  } else if (detailTier) {
+  } else if (writeDetail) {
     log(`Match ${matchId}: hollow live-detail, skipping upsert`);
   }
+  // Reported to handleRun so the marker is persisted for the runs before this match leaves the
+  // live list. Claimed only when a row was actually written: a hollow parse must be retried, not
+  // recorded as the match's final word.
+  const finalised = finalising && detailHasContent;
+  if (finalised) log(`Match ${matchId}: finalised on "${detail.status}"`);
 
   if (!storeCommentary) {
-    return { status: { commentaryWritten: 0, skipped: "beyond commentary cap" }, winProb };
+    return { status: { commentaryWritten: 0, skipped: "beyond commentary cap" }, winProb, finalised };
   }
 
   // 4. Commentary: store every new delivery, and rewrite every one of them (batched).
@@ -1289,7 +1354,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, m
   if (newWatermark > watermark) watermarkByMatch.set(matchId, newWatermark);
   reportCommentaryGaps({ matchId, writtenBalls, error });
   log(`Match ${matchId}: ${written} new commentary rows (${rewritten} rewritten)`);
-  return { status: { commentaryWritten: written }, winProb };
+  return { status: { commentaryWritten: written }, winProb, finalised };
 }
 
 async function upsertDetail({ db, matchId, detail, error }) {

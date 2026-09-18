@@ -749,6 +749,53 @@ export function parseScorecard(scorecardHtml) {
   return { innings };
 }
 
+/**
+ * Terminal markers, mirroring `TERMINAL` in the device's `MatchStatusClassifier.kt`.
+ *
+ * Kept as escaped pattern STRINGS rather than regex literals so `MatchStatusParityTest` can lift
+ * them out of this file and run them against the same fixtures the Kotlin list is run against —
+ * `cricbuzz.js` is a declared Gradle test input, so editing one side alone fails the build. A
+ * mirrored rule that nothing compares is not a pinned rule, which this repo has now learned twice.
+ *
+ * Two properties are load-bearing and neither is obvious:
+ *  - **Precedence, not position.** A terminal marker anywhere in the string wins, however much
+ *    in-progress prose surrounds it. "Match drawn, England 2nd innings 340/6" is over.
+ *  - **Word boundaries, and never a bare `won`.** "India won the toss and elected to bat" is the
+ *    START of a match. "tea" must not fire inside "team", "draw" not inside "drawing".
+ */
+const TERMINAL_STATUS_PATTERNS = [
+  "\\bwon\\s+by\\b",
+  "\\bwon\\s+the\\s+(match|series|game)\\b",
+  "\\bbeat\\b",
+  "\\bdrawn\\b",
+  "\\bdraw\\b",
+  "\\btied\\b",
+  "\\bno\\s+result\\b",
+  "\\babandon(ed)?\\b",
+  "\\bcomplete[d]?\\b",
+  "\\bwins\\b",
+  "\\bwin\\s+by\\b",
+  "\\bconcede[ds]?\\b",
+  "\\bforfeit(ed)?\\b",
+  "\\belected\\s+not\\s+to\\s+bat\\b",
+];
+
+const TERMINAL_STATUS_RE = TERMINAL_STATUS_PATTERNS.map((p) => new RegExp(p, "i"));
+
+/**
+ * Whether a Cricbuzz status line says the match is finished.
+ *
+ * This is what lets match-sync write one last detail and scorecard row before the match leaves
+ * `live-matches.json` for good. Without it the row froze wherever the 15-minute slow tier last
+ * left it and stayed frozen, which is what made the match-detail screen disagree with the Recent
+ * list about the score.
+ */
+export function isTerminalStatus(status) {
+  if (!status) return false;
+  const text = String(status);
+  return TERMINAL_STATUS_RE.some((re) => re.test(text));
+}
+
 // Parse the live page into the device-shaped match-live-detail payload,
 // driven by the flight-payload miniscore object.
 export function parseLiveDetail(liveHtml) {

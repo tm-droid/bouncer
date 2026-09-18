@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { selectSlowTier, nextSlowState, commentaryCapFor } from "../src/main.js";
+import { selectSlowTier, nextSlowState, commentaryCapFor, isFinalised, finalKey } from "../src/main.js";
 
 // READ_BUDGET_PER_RUN = 20, READ_HEADROOM_RESERVE = 5, READ_COST_PER_MATCH = 1,
 // SLOW_MAX_MATCHES_PER_RUN = 3, SLOW_TIER_INTERVAL_MS = 15 min, SLOW_MAX_NEW_PER_MATCH = 2.
@@ -90,6 +90,41 @@ test("a match that just ran is not due again on the next run", () => {
   });
   assert.deepEqual(select({ live, state: after, now: NOW + 60_000 }), []);
   assert.deepEqual(select({ live, state: after, now: NOW + INTERVAL }), ["144783"]);
+});
+
+test("the finalised marker rides in the same file without disturbing the tier", () => {
+  // It shares the flat { key: epochMs } map so selectSlowTier, which only reads bare ids, needs no
+  // change. If the suffixed key ever became visible to it, a finalised match would look like one
+  // that had just had a slow pass and would stop being selected.
+  const state = nextSlowState({
+    state: {},
+    processed: new Set(),
+    liveIds: new Set(["144783"]),
+    now: NOW,
+    finalised: new Set(["144783"]),
+  });
+  assert.equal(isFinalised(state, "144783"), true);
+  assert.equal(isFinalised(state, "999"), false);
+  assert.equal(state["144783"], undefined, "finalising is not a slow pass");
+  assert.deepEqual(
+    select({ live: matches("144783"), state, now: NOW }),
+    ["144783"],
+    "the suffixed key must be invisible to the tier"
+  );
+});
+
+test("the marker lives exactly as long as the match stays in the live list", () => {
+  // Long enough to stop the finalisation repeating every minute — and on every cold container,
+  // which is why it is persisted at all — and gone once the match can never sync again.
+  const state = { [finalKey("144783")]: NOW - 60_000, [finalKey("ended")]: NOW - 60_000 };
+  const next = nextSlowState({
+    state,
+    processed: new Set(),
+    liveIds: new Set(["144783"]),
+    now: NOW,
+  });
+  assert.equal(isFinalised(next, "144783"), true, "still listed live, so still finalised");
+  assert.equal(isFinalised(next, "ended"), false, "left the list, so the marker goes with it");
 });
 
 test("the cap encodes the tier: 10 for a viewer, 2 for the slow tier, 0 otherwise", () => {

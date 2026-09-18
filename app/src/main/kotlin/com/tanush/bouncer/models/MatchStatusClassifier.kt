@@ -40,7 +40,11 @@ object MatchStatusClassifier {
 
     // Terminal markers. Deliberately NOT bare "won": "won the toss" is the start of a match, not
     // the end of one. Only the result-bearing forms of "won" count.
-    private val TERMINAL = listOf(
+    //
+    // `internal` rather than private so `MatchStatusParityTest` can compare this list pattern for
+    // pattern against `TERMINAL_STATUS_PATTERNS` in match-sync's cricbuzz.js, which answers the
+    // same question server-side. A count or a fixture set would let one side gain a rule silently.
+    internal val TERMINAL = listOf(
         """\bwon\s+by\b""",
         """\bwon\s+the\s+(match|series|game)\b""",
         """\bbeat\b""",
