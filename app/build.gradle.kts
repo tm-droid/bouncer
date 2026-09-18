@@ -180,6 +180,13 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
     // is what makes a one-sided edit fail the build — without this the test passes even with llm.js
     // deleted, which is exactly the vacuous-green it exists to prevent.
     tasks.withType<Test>().configureEach {
+        // Gradle's default test JVM heap is 512m and the suite had grown to the edge of it: runs
+        // failed with `java.lang.OutOfMemoryError: Java heap space` attributed to whichever test
+        // happened to be executing, which reads as a flaky test rather than as an exhausted fork.
+        // Every test in one JVM plus mockk's generated classes is what fills it, so the fix is the
+        // heap and not the tests.
+        maxHeapSize = "2g"
+
         // Both llm.js copies, not just the canonical one: CommentaryConstantParityTest only reads
         // match-sync's, but LlmJsVendorParityTest byte-compares the pair, and with only one path
         // declared an edit to the other leaves the task UP-TO-DATE and the drift ships.
@@ -207,6 +214,20 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
         // leaves the task UP-TO-DATE and the parity checks never run.
         inputs.files(rootProject.file("appwrite/functions/match-sync/src/cricbuzz.js"))
             .withPropertyName("cricbuzzScorecardParitySource")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+
+        // WinProbJsVendorParityTest byte-compares the two copies of winprob.js, and
+        // SeriesClassificationParityTest compares the Kotlin category rules against series.js.
+        // Same reasoning again, and both sides of each pair must be declared.
+        inputs.files(
+            rootProject.file("appwrite/functions/match-sync/src/winprob.js"),
+            rootProject.file("appwrite/functions/win-probability/src/winprob.js"),
+            rootProject.file("appwrite/functions/poll-live-matches/src/series.js"),
+            rootProject.file("appwrite/functions/match-sync/src/nextflight.js"),
+            rootProject.file("appwrite/functions/poll-live-matches/src/nextflight.js"),
+            rootProject.file("appwrite/functions/poll-live-matches/src/matchstate.js"),
+        )
+            .withPropertyName("winProbAndSeriesParitySources")
             .withPathSensitivity(PathSensitivity.RELATIVE)
 
         // CricbuzzTeamListParityTest asserts the Kotlin team-list reading and tools/update_logos.py

@@ -39,6 +39,17 @@ interface PlayerCacheDao {
     @Query("SELECT lastUpdated FROM player_cache WHERE playerId = :id")
     suspend fun getLastUpdated(id: String): Long?
 
+    /**
+     * One player's cached row.
+     *
+     * The table has been written since the cache existed and read back only for search, which
+     * indexes three of its columns; `statsJson` had no reader at all. The profile screen scraped
+     * Cricbuzz on every open regardless — so the same player had two answers, one in search and a
+     * freshly-scraped one on the screen, and the cross-device cache bought nothing.
+     */
+    @Query("SELECT * FROM player_cache WHERE playerId = :id")
+    suspend fun getById(id: String): PlayerCacheEntity?
+
     @Query("DELETE FROM player_cache WHERE lastUpdated < :before")
     suspend fun deleteOlderThan(before: Long)
 }

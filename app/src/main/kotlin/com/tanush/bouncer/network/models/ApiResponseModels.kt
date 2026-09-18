@@ -118,9 +118,44 @@ data class SanwebMatchesListResponse(
     val count: Int
 )
 
+/**
+ * One match in a `{type}-matches` Storage file, written by `bouncer-poll-live-matches`.
+ *
+ * Everything below [status] was added when that function stopped reading a separately-hosted
+ * scraper and began parsing Cricbuzz itself. The old shape was `{id, title, status}` and nothing
+ * else, which is why every server-fed surface was a degraded copy of the phone UI: the widget
+ * split [title] on " vs " to name the sides, Android Auto had no score to show, and nothing
+ * carried Cricbuzz's team ids — the only key a live payload can be aligned on.
+ *
+ * Every added field has a default, so a file written by an older deployment still parses. An
+ * absent [teams] is "this file predates the change", not "this match has no teams", and a caller
+ * must degrade rather than render blanks.
+ */
 @Serializable
 data class SanwebMatchSummary(
     val id: String,
     val title: String,
-    val status: String
+    /** Cricbuzz's result-bearing line: "India won by 5 wkts", "Innings Break". */
+    val status: String,
+    /** Cricbuzz's coarse `state`: "Complete", "In Progress", "Preview". Blank on an older file. */
+    val state: String = "",
+    /** "TEST", "ODI", "T20", "HUNDRED". Blank when the upstream page did not name it. */
+    val matchFormat: String = "",
+    val seriesId: String = "",
+    val seriesName: String = "",
+    val matchDesc: String = "",
+    /** Epoch millis as a string, matching Cricbuzz's own field. Blank when absent. */
+    val startDate: String = "",
+    val teams: List<SanwebMatchTeam> = emptyList(),
+)
+
+/** One side of a [SanwebMatchSummary]. [teamId] is Cricbuzz's own id, blank when unknown. */
+@Serializable
+data class SanwebMatchTeam(
+    val teamId: String = "",
+    val name: String = "",
+    /** Every innings this side has batted, joined: "266 & 83/2". Blank before it has batted. */
+    val score: String = "",
+    val overs: String = "",
+    val isBatting: Boolean = false,
 )

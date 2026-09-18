@@ -63,7 +63,7 @@ object MatchStatusClassifier {
 
     // In-progress markers. Breaks and delays live here on purpose: a rain delay is a live match
     // that is not currently being played, not a finished one.
-    private val IN_PROGRESS = listOf(
+    internal val IN_PROGRESS = listOf(
         """\blive\b""",
         """\bin\s+progress\b""",
         """\binn?in?gs\b""",
@@ -92,7 +92,7 @@ object MatchStatusClassifier {
         """\bplay\s+(resumed|suspended|stopped|in\s+progress)\b""",
     ).map { it.toRegex(RegexOption.IGNORE_CASE) }
 
-    private val PRE_MATCH = listOf(
+    internal val PRE_MATCH = listOf(
         """\bpreview\b""",
         """\bupcoming\b""",
         """\bscheduled\b""",

@@ -39,15 +39,11 @@ class CommentaryConstantParityTest {
         )
     }
 
-    @Test
-    fun `SYSTEM_INSTRUCTION is byte-identical across Kotlin and llm_js`() {
-        assertEquals(
-            "The prompt drifted. The same ball can be narrated by either path, so a difference " +
-                "here is two house styles in one match — reconcile both copies, do not relax this.",
-            CommentaryFusionService.SYSTEM_INSTRUCTION,
-            LlmJsSource.stringConstant("SYSTEM_INSTRUCTION")
-        )
-    }
+    // `SYSTEM_INSTRUCTION` had a Kotlin copy until CommentaryFusionService was deleted. That
+    // service was a second, fully-wired AI-commentary path with no production call site, and its
+    // prompt was the only thing on the device that had to match llm.js. The prompt now exists
+    // server-side only, where `LlmJsVendorParityTest` pins the two vendored copies against each
+    // other; there is no third copy left to drift.
 
     @Test
     fun `the meta refusal pattern is identical across Kotlin and llm_js`() {

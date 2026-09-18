@@ -27,7 +27,7 @@ Each step wrapped in `initializeSafely()` block (try-catch + Sentry breadcrumb).
 
 **WidgetManager:** Syncs app widget state with FCM score_update messages + WorkManager polling
 
-**CommentaryFusionService:** Processes live commentary text → calls `bouncer-generate-commentary`, which runs the shared groq/Gemini provider ladder → returns LLM verdict on key moments. No OpenRouter, and no provider key on the device.
+**Commentary generation is server-side only.** `bouncer-match-sync` writes every line into `match-commentary` and the device reads it. `CommentaryFusionService` — a second, complete pipeline that called `bouncer-generate-commentary` per ball — was deleted: nothing in the app ever constructed it, only its own tests referenced it, and it was still wired to the live function and its per-device rate limiter. Do not reintroduce a device-side generator.
 
 **Deep linking:** Match details accessible via `app://bouncer/match/{matchId}` intent URLs (scheme `app`, host `bouncer`)
 

@@ -9,14 +9,14 @@ import android.os.IBinder
 import androidx.core.app.ServiceCompat
 import com.tanush.bouncer.R
 import com.tanush.bouncer.data.remote.LiveMatchDetailSource
-import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
+import com.tanush.bouncer.data.remote.LiveDetailSnapshot
 import com.tanush.bouncer.data.remote.ProductionLiveDetailSource
 import com.tanush.bouncer.liveactivity.LiveUpdateContent
 import com.tanush.bouncer.liveactivity.LiveUpdateDismissals
 import com.tanush.bouncer.liveactivity.LiveUpdateLogoLoader
 import com.tanush.bouncer.liveactivity.LiveUpdateNotifier
 import com.tanush.bouncer.liveactivity.buildLiveUpdateContent
-import com.tanush.bouncer.liveactivity.cachedLiveMatch
+import com.tanush.bouncer.liveactivity.cachedMatchEntry
 import com.tanush.bouncer.liveactivity.cachedLiveMatches
 import com.tanush.bouncer.liveactivity.liveUpdateNotificationId
 import com.tanush.bouncer.liveactivity.placeholderContent
@@ -174,8 +174,8 @@ class LiveUpdateService : Service() {
      * A finished match is retired rather than unsubscribed: following a match is the user's choice
      * to reverse, not the scoreline's.
      */
-    private suspend fun publish(matchId: String, payload: MatchLiveDetailPayload) {
-        val content = buildLiveUpdateContent(matchId, cachedLiveMatch(matchId), payload)
+    private suspend fun publish(matchId: String, snapshot: LiveDetailSnapshot) {
+        val content = buildLiveUpdateContent(matchId, cachedMatchEntry(matchId), snapshot.payload)
         contents[matchId] = content
 
         // A finished match and a swiped-away one both stop updating; only the first is remembered

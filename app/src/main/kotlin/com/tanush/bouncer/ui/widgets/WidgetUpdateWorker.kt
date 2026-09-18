@@ -8,7 +8,6 @@ import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import java.util.concurrent.TimeUnit
-import kotlin.math.abs
 
 /**
  * WorkManager-based Widget Updater
@@ -40,8 +39,6 @@ object WidgetUpdateWorker {
 
     internal const val WORK_NAME          = "bouncer_widget_update"
     internal const val IMMEDIATE_WORK_NAME = "bouncer_widget_update_immediate"
-    internal const val PREFS_WIDGET_CACHE = "widget_cache"
-    internal const val KEY_LAST_UPDATE    = "last_update_epoch"
 
     /**
      * Delay before the next fallback refresh, from the user's Refresh Interval preference.
@@ -138,66 +135,6 @@ object WidgetUpdateWorker {
         }
     }
 
-    internal fun buildStaleDataFallback(context: Context): MatchWidgetData {
-        val prefs = context.getSharedPreferences(PREFS_WIDGET_CACHE, Context.MODE_PRIVATE)
-        val lastUpdate = prefs.getLong(KEY_LAST_UPDATE, 0L)
-        val statusText = if (lastUpdate > 0L) {
-            val minAgo = abs(System.currentTimeMillis() - lastUpdate) / 60_000
-            "No data · updated ${minAgo}m ago"
-        } else {
-            "No data available"
-        }
-        return MatchWidgetData(
-            team1Name      = prefs.getString("team1_name", "--") ?: "--",
-            team1Score     = prefs.getString("team1_score", "-") ?: "-",
-            team2Name      = prefs.getString("team2_name", "--") ?: "--",
-            team2Score     = prefs.getString("team2_score", "-") ?: "-",
-            matchStatus    = statusText,
-            isLive         = false,
-            winProbability = prefs.getFloat("win_probability", 0.5f),
-            recentBalls    = prefs.getString("recent_balls", null),
-            battingPair    = prefs.getString("batting_pair", null),
-            currentBowler  = prefs.getString("current_bowler", null)
-        )
-    }
-
-    internal fun fetchLatestMatchData(context: Context): MatchWidgetData? {
-        return try {
-            val prefs = context.getSharedPreferences(PREFS_WIDGET_CACHE, Context.MODE_PRIVATE)
-            val team1Name = prefs.getString("team1_name", null)
-            val team2Name = prefs.getString("team2_name", null)
-            if (team1Name != null && team2Name != null) {
-                MatchWidgetData(
-                    team1Name      = team1Name,
-                    team1Score     = prefs.getString("team1_score", "-") ?: "-",
-                    team2Name      = team2Name,
-                    team2Score     = prefs.getString("team2_score", "-") ?: "-",
-                    matchStatus    = prefs.getString("match_status", "Unknown") ?: "Unknown",
-                    isLive         = prefs.getBoolean("is_live", false),
-                    winProbability = prefs.getFloat("win_probability", 0.5f),
-                    recentBalls    = prefs.getString("recent_balls", null),
-                    battingPair    = prefs.getString("batting_pair", null),
-                    currentBowler  = prefs.getString("current_bowler", null)
-                )
-            } else null
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            null
-        }
-    }
-
-    data class MatchWidgetData(
-        val team1Name: String,
-        val team1Score: String,
-        val team2Name: String,
-        val team2Score: String,
-        val matchStatus: String,
-        val isLive: Boolean,
-        val winProbability: Float,
-        val recentBalls: String? = null,
-        val battingPair: String? = null,
-        val currentBowler: String? = null
-    )
 }
 
 /**
@@ -218,15 +155,15 @@ class WidgetUpdateWorkManagerWorker(
                 level = SentryLevel.INFO
             })
 
-            val matchData = WidgetUpdateWorker.fetchLatestMatchData(context)
-                ?: WidgetUpdateWorker.buildStaleDataFallback(context)
+            // Rebuild the one snapshot, then redraw. This worker used to read `widget_cache`
+            // and copy it into the Glance and lock stores, which made it a second author of the
+            // same fact — and the copy it spread was the one-sided one `ScorePollingWorker` wrote.
+            // [WidgetSnapshotSource.refresh] writes every store; everything below is rendering.
+            WidgetSnapshotSource.refresh(context)
 
-            updateGlanceWidget(matchData)
-            updateLockScreenWidget(matchData)
-            updateLegacyWidget()
-
-            context.getSharedPreferences(WidgetUpdateWorker.PREFS_WIDGET_CACHE, Context.MODE_PRIVATE)
-                .edit().putLong(WidgetUpdateWorker.KEY_LAST_UPDATE, System.currentTimeMillis()).apply()
+            redrawGlance()
+            redrawLockScreen()
+            redrawLegacy()
 
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "widget"
@@ -249,21 +186,8 @@ class WidgetUpdateWorkManagerWorker(
         }
     }
 
-    private suspend fun updateGlanceWidget(data: WidgetUpdateWorker.MatchWidgetData) {
+    private suspend fun redrawGlance() {
         try {
-            BouncerGlanceWidget.updateWidgetData(
-                context        = context,
-                team1Name      = data.team1Name,
-                team1Score     = data.team1Score,
-                team2Name      = data.team2Name,
-                team2Score     = data.team2Score,
-                matchStatus    = data.matchStatus,
-                isLive         = data.isLive,
-                winProbability = data.winProbability,
-                recentBalls    = data.recentBalls,
-                battingPair    = data.battingPair,
-                currentBowler  = data.currentBowler
-            )
             val glanceManager = GlanceAppWidgetManager(context)
             glanceManager.getGlanceIds(BouncerGlanceWidget::class.java).forEach { id ->
                 BouncerGlanceWidget().update(context, id)
@@ -273,18 +197,8 @@ class WidgetUpdateWorkManagerWorker(
         }
     }
 
-    private suspend fun updateLockScreenWidget(data: WidgetUpdateWorker.MatchWidgetData) {
+    private suspend fun redrawLockScreen() {
         try {
-            val team1Abbr = data.team1Name.take(3).uppercase()
-            val team2Abbr = data.team2Name.take(3).uppercase()
-            BouncerLockScreenWidget.updateLockWidgetData(
-                context    = context,
-                team1Abbr  = team1Abbr,
-                team1Score = data.team1Score,
-                team2Abbr  = team2Abbr,
-                team2Score = data.team2Score,
-                isLive     = data.isLive
-            )
             val glanceManager = GlanceAppWidgetManager(context)
             glanceManager.getGlanceIds(BouncerLockScreenWidget::class.java).forEach { id ->
                 BouncerLockScreenWidget().update(context, id)
@@ -294,7 +208,7 @@ class WidgetUpdateWorkManagerWorker(
         }
     }
 
-    private fun updateLegacyWidget() {
+    private fun redrawLegacy() {
         try {
             LiveMatchWidgetProvider.triggerUpdate(context)
         } catch (e: Exception) {

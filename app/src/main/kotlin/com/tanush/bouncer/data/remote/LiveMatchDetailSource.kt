@@ -13,8 +13,13 @@ import kotlinx.coroutines.flow.Flow
  */
 interface LiveMatchDetailSource {
 
-    /** Latest server-built live snapshot for a match, or null when unavailable. */
-    suspend fun getForMatch(matchId: String): MatchLiveDetailPayload?
+    /**
+     * Latest server-built live snapshot for a match, or null when unavailable.
+     *
+     * Carries the row's `updated_at`: the row stops being written the moment its match leaves the
+     * live list, so a caller merging it into list-derived state needs to know how old it is.
+     */
+    suspend fun getForMatch(matchId: String): LiveDetailSnapshot?
 
     /** Newest-first commentary lines for a match, each with the server's event verdict. */
     suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry>
@@ -30,17 +35,17 @@ interface LiveMatchDetailSource {
      * the detail payload and rode that row's realtime channel to every subscriber once a minute.
      * This is the first-paint read; [observeScorecard] carries every update after it.
      */
-    suspend fun getScorecardForMatch(matchId: String): com.tanush.bouncer.models.Scorecard?
+    suspend fun getScorecardForMatch(matchId: String): ScorecardSnapshot?
 
     /** Realtime scorecard updates for ONE match, subscribed while collected. */
-    fun observeScorecard(matchId: String): Flow<com.tanush.bouncer.models.Scorecard>
+    fun observeScorecard(matchId: String): Flow<ScorecardSnapshot>
 
     /**
      * Realtime live-detail snapshots for ONE match, subscribed for as long as the flow is
      * collected. Previously a process-wide stream of every match that callers filtered — which
      * meant every device received every watched match's payload whether or not it was on screen.
      */
-    fun observeDetail(matchId: String): Flow<MatchLiveDetailPayload>
+    fun observeDetail(matchId: String): Flow<LiveDetailSnapshot>
 
     /** Realtime new commentary lines for ONE match, subscribed while collected. */
     fun observeCommentary(matchId: String): Flow<CommentaryEvent>
@@ -49,7 +54,7 @@ interface LiveMatchDetailSource {
 /** Production wiring: Appwrite Realtime clients + CricketRepository. */
 object ProductionLiveDetailSource : LiveMatchDetailSource {
 
-    override suspend fun getForMatch(matchId: String): MatchLiveDetailPayload? =
+    override suspend fun getForMatch(matchId: String): LiveDetailSnapshot? =
         AppwriteMatchDetailClient.getForMatch(matchId)
 
     override suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry> =
@@ -58,13 +63,13 @@ object ProductionLiveDetailSource : LiveMatchDetailSource {
     override suspend fun getOlderCommentary(matchId: String, olderThan: Double): List<CommentaryEntry> =
         AppwriteMatchCommentaryClient.getOlderThan(matchId, olderThan)
 
-    override suspend fun getScorecardForMatch(matchId: String): com.tanush.bouncer.models.Scorecard? =
+    override suspend fun getScorecardForMatch(matchId: String): ScorecardSnapshot? =
         AppwriteMatchScorecardClient.getForMatch(matchId)
 
-    override fun observeScorecard(matchId: String): Flow<com.tanush.bouncer.models.Scorecard> =
+    override fun observeScorecard(matchId: String): Flow<ScorecardSnapshot> =
         AppwriteMatchScorecardClient.observeMatch(matchId)
 
-    override fun observeDetail(matchId: String): Flow<MatchLiveDetailPayload> =
+    override fun observeDetail(matchId: String): Flow<LiveDetailSnapshot> =
         AppwriteMatchDetailClient.observeMatch(matchId)
 
     override fun observeCommentary(matchId: String): Flow<CommentaryEvent> =

@@ -92,6 +92,17 @@ fun PlayerDetailScreenV2(
 
     LaunchedEffect(playerName, retryCount) {
         loadState = LoadState.Loading
+        // Room, then the shared Appwrite table, then Cricbuzz — the order `PlayerCacheWorker`
+        // already uses. This screen used to scrape unconditionally and read neither cache, so it
+        // disagreed with search (which answers from Room) about the same player and spent a page
+        // load on every open of a profile some other device had already scraped.
+        val cached = PlayerCacheWorker.cachedProfile(context, playerName)
+        if (cached != null) {
+            profile = cached
+            loadState = LoadState.Success
+            formats.firstOrNull { cached.stats.containsKey(it) }?.let { selectedFormat = it }
+            return@LaunchedEffect
+        }
         val scraped = PlayerProfileScraper.scrapeProfile(playerName)
         if (scraped != null) {
             profile = scraped

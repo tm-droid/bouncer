@@ -44,7 +44,7 @@ import io.sentry.SentryLevel
 class BouncerLockScreenWidget : GlanceAppWidget() {
 
     companion object {
-        private const val PREF_NAME = "bouncer_lock_widget"
+        internal const val PREF_NAME = "bouncer_lock_widget"
 
         fun updateLockWidgetData(
             context: Context,

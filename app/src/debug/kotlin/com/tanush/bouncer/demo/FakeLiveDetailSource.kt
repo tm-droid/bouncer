@@ -3,7 +3,9 @@ package com.tanush.bouncer.demo
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
+import com.tanush.bouncer.data.remote.LiveDetailSnapshot
 import com.tanush.bouncer.data.remote.LiveMatchDetailSource
+import com.tanush.bouncer.data.remote.ScorecardSnapshot
 import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
 import com.tanush.bouncer.models.WinProbabilityPoint
 import kotlinx.coroutines.delay
@@ -17,8 +19,10 @@ import kotlinx.coroutines.flow.flow
  */
 internal class FakeLiveDetailSource(private val elapsed: () -> Long) : LiveMatchDetailSource {
 
-    override suspend fun getForMatch(matchId: String): MatchLiveDetailPayload =
-        ShowcaseScript.detailPayloadAt(elapsed())
+    // Always "just written": the script IS the live feed here, so the freshness rules that guard
+    // against a frozen `match-live-detail` row must never fire against it.
+    override suspend fun getForMatch(matchId: String): LiveDetailSnapshot =
+        LiveDetailSnapshot(ShowcaseScript.detailPayloadAt(elapsed()), System.currentTimeMillis())
 
     // No server verdict on purpose: the scripted lines carry Cricbuzz's own "FOUR!"/"SIX!", so the
     // showcase exercises the same text-classification fallback a scraped line takes.
@@ -30,20 +34,22 @@ internal class FakeLiveDetailSource(private val elapsed: () -> Long) : LiveMatch
         emptyList()
 
     // The scripted payload already carries the scorecard, so the split table adds nothing here.
-    override suspend fun getScorecardForMatch(matchId: String): com.tanush.bouncer.models.Scorecard? =
+    override suspend fun getScorecardForMatch(matchId: String): ScorecardSnapshot? =
         ShowcaseScript.detailPayloadAt(elapsed()).scorecard
+            ?.let { ScorecardSnapshot(it, System.currentTimeMillis()) }
 
-    override fun observeScorecard(matchId: String): Flow<com.tanush.bouncer.models.Scorecard> = flow {
+    override fun observeScorecard(matchId: String): Flow<ScorecardSnapshot> = flow {
         while (true) {
             delay(DETAIL_TICK_MS)
-            ShowcaseScript.detailPayloadAt(elapsed()).scorecard?.let { emit(it) }
+            ShowcaseScript.detailPayloadAt(elapsed()).scorecard
+                ?.let { emit(ScorecardSnapshot(it, System.currentTimeMillis())) }
         }
     }
 
-    override fun observeDetail(matchId: String): Flow<MatchLiveDetailPayload> = flow {
+    override fun observeDetail(matchId: String): Flow<LiveDetailSnapshot> = flow {
         while (true) {
             delay(DETAIL_TICK_MS)
-            emit(ShowcaseScript.detailPayloadAt(elapsed()))
+            emit(LiveDetailSnapshot(ShowcaseScript.detailPayloadAt(elapsed()), System.currentTimeMillis()))
         }
     }
 

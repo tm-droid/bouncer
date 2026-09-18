@@ -30,6 +30,16 @@ interface SeriesCacheDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(series: List<SeriesCacheEntity>)
 
+    /**
+     * Every cached series, newest-started first.
+     *
+     * `SeriesSyncWorker` has filled this table since it existed and only search ever read it, so
+     * the Series tab — which live-scrapes on every open — could not show a series that search
+     * could find, and showed an error rather than a list when the scrape failed.
+     */
+    @Query("SELECT * FROM series_cache ORDER BY startDate DESC")
+    suspend fun getAll(): List<SeriesCacheEntity>
+
     @Query("SELECT MAX(lastUpdated) FROM series_cache")
     suspend fun getLastSyncTime(): Long?
 

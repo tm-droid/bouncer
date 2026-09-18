@@ -28,7 +28,7 @@ object AppwriteMatchScorecardClient : AppwriteTableClient("AppwriteMatchScorecar
         initTable(ApiKeys.appwriteAiCacheDbId, TABLE_ID)
     }
 
-    suspend fun getForMatch(matchId: String): Scorecard? {
+    suspend fun getForMatch(matchId: String): ScorecardSnapshot? {
         if (!isReady) return null
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -42,7 +42,9 @@ object AppwriteMatchScorecardClient : AppwriteTableClient("AppwriteMatchScorecar
                     throw e
                 }
                 val raw = row.data["scorecard"] as? String ?: return@runCatching null
-                parseScorecard(raw)
+                // Carries the row's `updated_at` for the same reason the detail row does: this row
+                // freezes at the same instant, so "stored" and "fresh" have to be distinguishable.
+                parseScorecard(raw)?.let { ScorecardSnapshot(it, rowUpdatedAtMs(row.data["updated_at"])) }
             }.onFailure { e ->
                 logSilentFailure("Scorecard fetch failed", e)
             }.getOrNull()
@@ -57,7 +59,7 @@ object AppwriteMatchScorecardClient : AppwriteTableClient("AppwriteMatchScorecar
      * same scorecard, so a tab-scoped subscription would leave them frozen at whatever the initial
      * fetch returned. Realtime costs no billed reads, which is the quota this work exists to protect.
      */
-    fun observeMatch(matchId: String): Flow<Scorecard> = callbackFlow {
+    fun observeMatch(matchId: String): Flow<ScorecardSnapshot> = callbackFlow {
         if (!isReady) {
             close()
             return@callbackFlow
@@ -72,14 +74,14 @@ object AppwriteMatchScorecardClient : AppwriteTableClient("AppwriteMatchScorecar
     private fun scorecardFrom(
         response: io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>,
         matchId: String,
-    ): Scorecard? {
+    ): ScorecardSnapshot? {
         if (response.events.none { it.contains(".create") || it.contains(".update") }) return null
         val payload = response.payload
         // Defensive, same as the detail client: a sanitizeMatchId drift becomes "no events" rather
         // than another match's scorecard.
         if (payload["match_id"] as? String != matchId) return null
         val raw = payload["scorecard"] as? String ?: return null
-        return parseScorecard(raw)
+        return parseScorecard(raw)?.let { ScorecardSnapshot(it, rowUpdatedAtMs(payload["updated_at"])) }
     }
 
     private fun parseScorecard(raw: String): Scorecard? =

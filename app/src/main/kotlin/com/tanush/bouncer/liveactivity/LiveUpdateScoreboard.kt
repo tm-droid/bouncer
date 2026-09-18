@@ -45,7 +45,11 @@ private const val BATTERS_AT_CREASE = 2
 /** Cricbuzz writes a session prefix onto the status: "Day 4: 1st Session - Kent need 371 runs". */
 private const val STATUS_PREFIX_SEPARATOR = " - "
 
-internal fun scoreboardOf(payload: MatchLiveDetailPayload, battingSlot: Int?): LiveUpdateScoreboard {
+internal fun scoreboardOf(
+    payload: MatchLiveDetailPayload,
+    battingSlot: Int?,
+    statusOverride: String? = null,
+): LiveUpdateScoreboard {
     val opponentSlot = battingSlot?.let { if (it == 0) 1 else 0 }
     return LiveUpdateScoreboard(
         battingName = battingSlot?.let { slotName(payload, it) }
@@ -62,7 +66,7 @@ internal fun scoreboardOf(payload: MatchLiveDetailPayload, battingSlot: Int?): L
         recentBalls = payload.recentBalls
             .mapNotNull { it.trim().takeIf(String::isNotEmpty) }
             .takeLast(RECENT_BALLS),
-        statusLine = statusLine(payload),
+        statusLine = statusLine(payload, statusOverride),
     )
 }
 
@@ -90,7 +94,10 @@ private fun bowlerLine(bowler: ScrapedBowler): LiveUpdateScoreboard.PlayerLine {
  * and only the second belongs on a card this short. `substringAfterLast` returns the whole string
  * when the separator is absent, so "Innings Break" passes through untouched.
  */
-private fun statusLine(payload: MatchLiveDetailPayload): String? {
+private fun statusLine(payload: MatchLiveDetailPayload, override: String?): String? {
+    // A result from the matches list outranks both, including the chase line: "needs 12 runs" over
+    // a decided match is worse than no line at all.
+    if (override != null) return override
     chaseLine(payload.situation)?.let { return it }
     return payload.status?.trim()
         ?.substringAfterLast(STATUS_PREFIX_SEPARATOR)

@@ -3,8 +3,10 @@ package com.tanush.bouncer.viewmodels
 import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
+import com.tanush.bouncer.data.remote.LiveDetailSnapshot
 import com.tanush.bouncer.data.remote.LiveMatchDetailSource
 import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
+import com.tanush.bouncer.data.remote.ScorecardSnapshot
 import com.tanush.bouncer.models.Innings
 import com.tanush.bouncer.models.Scorecard
 import io.mockk.coEvery
@@ -48,13 +50,14 @@ class MatchDetailScorecardSourceTest {
     )
 
     private class ScorecardSource(private val scorecard: Scorecard?) : LiveMatchDetailSource {
-        override suspend fun getForMatch(matchId: String): MatchLiveDetailPayload? = null
+        override suspend fun getForMatch(matchId: String): LiveDetailSnapshot? = null
         override suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry> = emptyList()
         override suspend fun getOlderCommentary(matchId: String, olderThan: Double) = emptyList<CommentaryEntry>()
-        override suspend fun getScorecardForMatch(matchId: String): Scorecard? = scorecard
-        override fun observeDetail(matchId: String): Flow<MatchLiveDetailPayload> = emptyFlow()
+        override suspend fun getScorecardForMatch(matchId: String): ScorecardSnapshot? =
+            scorecard?.let { ScorecardSnapshot(it, updatedAtMs = null) }
+        override fun observeDetail(matchId: String): Flow<LiveDetailSnapshot> = emptyFlow()
         override fun observeCommentary(matchId: String): Flow<CommentaryEvent> = emptyFlow()
-        override fun observeScorecard(matchId: String): Flow<Scorecard> = emptyFlow()
+        override fun observeScorecard(matchId: String): Flow<ScorecardSnapshot> = emptyFlow()
     }
 
     private fun repository(scorecard: Scorecard): MatchRepository = mockk(relaxed = true) {

@@ -4,8 +4,28 @@ import { createSign, createHash } from "crypto";
 import { seriesCategory, isWomensSeries } from "./series.js";
 import { parseJsonFile } from "./storageJson.js";
 import { CricbuzzBlockedError, fetchHtml } from "./cricbuzz-http.js";
+import { parseMatchList } from "./matchlist.js";
+import { classifyStatus } from "./matchstate.js";
 
-const VERCEL_BASE = process.env.VERCEL_API_BASE ?? "https://api-iota-jade.vercel.app";
+/**
+ * Cricbuzz's own list pages, one per tab.
+ *
+ * This function used to read `${VERCEL_API_BASE}/matches?type=…` — a scraper hosted separately,
+ * whose code is in another repository, and which answered `{id, title, status}` and nothing else.
+ * It was the third independent parser of the match list (the device scrapes these same pages for
+ * the phone UI, and this function already fetches Cricbuzz directly for the schedule, the series
+ * list and the archives), and the thinnest of the three fed everything server-side: `match-sync`,
+ * the widgets, Android Auto and `ScorePollingWorker`.
+ *
+ * Its output shape is what forced the rest. With no team objects the widget had to split the title
+ * on " vs " to name the sides, Android Auto had no score to show at all, and nothing downstream
+ * carried Cricbuzz's team ids — the only key the live payload can be aligned on.
+ */
+const LIST_URLS = {
+  live: "https://www.cricbuzz.com/cricket-match/live-scores",
+  recent: "https://www.cricbuzz.com/cricket-match/live-scores/recent-matches",
+  upcoming: "https://www.cricbuzz.com/cricket-match/live-scores/upcoming-matches",
+};
 const BUCKET_ID = process.env.MATCH_CACHE_BUCKET_ID ?? "cricket-stats";
 const FILE_IDS = { live: "live-matches", recent: "recent-matches", upcoming: "upcoming-matches" };
 
@@ -69,9 +89,7 @@ export default async ({ req, res, log, error }) => {
   const now = Date.now();
   const formatCache = { ...(prevState.formats ?? {}) };
   const settled = await Promise.allSettled(types.map(async (type) => {
-    const resp = await fetch(`${VERCEL_BASE}/matches?type=${type}`, { signal: AbortSignal.timeout(10_000) });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
+    const data = await fetchMatchList(type);
 
     // Upcoming fixtures carry their real format, so match-sync does not have to guess it.
     //
@@ -82,6 +100,15 @@ export default async ({ req, res, log, error }) => {
     // match". On 2026-08-07 that scored 9 of 13 fixtures on T20 form for ODI matches, and on
     // Scotland vs Canada it reversed the favourite.
     if (type === "upcoming") await attachFormats(data, formatCache, log, error);
+
+    // An empty parse is Cricbuzz's answer being unreadable, not an answer that no match exists.
+    // Overwriting a good file with an empty one takes every server-side surface dark at once, and
+    // the previous file is always the better of the two. Same rule the series walk already applies
+    // to a `CricbuzzBlockedError`.
+    if (data.matches.length === 0 && prevState[type]?.writtenAt) {
+      error(`Parsed 0 ${type} matches — keeping the previous file rather than emptying it`);
+      return { type, data, hash: prevState[type].hash, writtenAt: prevState[type].writtenAt, skipped: true };
+    }
 
     // Hash the DATA only. The stored payload embeds `fetchedAt`, so hashing it would differ on
     // every run and this comparison would never skip anything. Hashed AFTER enrichment, so a
@@ -259,6 +286,36 @@ export async function syncSeries({ storage, prevState, nextState, now, log, erro
  * simply arrives without the field, which is exactly the input match-sync's existing probe already
  * handles. Never throws — this must not be able to fail the match list it is decorating.
  */
+/**
+ * One tab's matches, straight off Cricbuzz.
+ *
+ * Returns the same `{ matches, count }` envelope the Vercel proxy did, so every consumer of the
+ * stored file is unaffected by where the list came from — the matches inside it are simply richer.
+ */
+async function fetchMatchList(type) {
+  const html = await fetchHtml(LIST_URLS[type], 12_000);
+  const matches = parseMatchList(html).filter((m) => belongsOn(type, m));
+  return { matches, count: matches.length };
+}
+
+/**
+ * Whether a parsed match belongs on [type]'s list.
+ *
+ * A Cricbuzz list page carries the site-wide live ticker as well as its own tab's fixtures, so the
+ * page a match was found on does not decide which tab it is for. Classified on `state` alone,
+ * which is the same field and the same rule `CricBuzzScraper.filterMatches` applies on the device;
+ * classifying `status` as well would put the two parsers on different rules.
+ *
+ * Live stays the catch-all: a state neither list recognises surfaces there rather than vanishing
+ * from every tab.
+ */
+export function belongsOn(type, match) {
+  const signal = classifyStatus(match.state);
+  if (type === "upcoming") return signal === "PRE_MATCH";
+  if (type === "recent") return signal === "TERMINAL";
+  return signal !== "PRE_MATCH" && signal !== "TERMINAL";
+}
+
 async function attachFormats(data, cache, log, error) {
   const matches = data?.matches;
   if (!Array.isArray(matches) || matches.length === 0) return;

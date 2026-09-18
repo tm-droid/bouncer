@@ -3,10 +3,8 @@ package com.tanush.bouncer.liveactivity
 import com.tanush.bouncer.data.remote.LiveSituation
 import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
 import com.tanush.bouncer.models.CricketMatch
-import com.tanush.bouncer.models.MatchStatusClassifier
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
-import com.tanush.bouncer.models.StatusSignal
 
 /**
  * Everything a Live Update renders, as plain data.
@@ -81,27 +79,40 @@ fun buildLiveUpdateContent(
 ): LiveUpdateContent {
     val battingSlot = battingSlot(payload)
     val liveScore = liveInningsScore(payload.score)
-    val scoreboard = scoreboardOf(payload, battingSlot)
+    val completion = liveUpdateCompletion(match, payload.status)
+    val scoreboard = scoreboardOf(payload, battingSlot, completion.result)
 
     return LiveUpdateContent(
         matchId = matchId,
         subText = subText(match, payload.situation),
         title = scoreTitle(payload, battingSlot),
-        text = secondaryLine(payload),
+        text = completion.result ?: secondaryLine(payload),
         bigText = bigTextOf(scoreboard),
         scoreboard = scoreboard,
         shortCriticalText = liveScore?.takeIf { it.length <= SHORT_CRITICAL_MAX },
-        accentTeamName = battingSlot?.let { slotName(payload, it) }
-            ?: payload.situation?.battingTeamName?.takeIf { it.isNotBlank() }
-            ?: match?.teams?.firstOrNull()?.name
-            ?: "",
+        accentTeamName = accentNameOf(payload, battingSlot, match),
         logoTeamName = battingSlot?.let { slot -> matchTeamNameForSlot(payload, match, slot) },
         opponentLogoTeamName = battingSlot
             ?.let { if (it == 0) 1 else 0 }
             ?.let { slot -> matchTeamNameForSlot(payload, match, slot) },
-        isComplete = isComplete(match, payload.status),
+        isComplete = completion.isComplete,
     )
 }
+
+/**
+ * The team whose brand colour tints the card: the side batting, however that can be established.
+ *
+ * Its own function so [buildLiveUpdateContent] stays under detekt's complexity cap — the chain is
+ * three fallbacks and each one is a branch.
+ */
+private fun accentNameOf(
+    payload: MatchLiveDetailPayload,
+    battingSlot: Int?,
+    match: CricketMatch?,
+): String = battingSlot?.let { slotName(payload, it) }
+    ?: payload.situation?.battingTeamName?.takeIf { it.isNotBlank() }
+    ?: match?.teams?.firstOrNull()?.name
+    ?: ""
 
 /**
  * "The Ashes · Test", or whichever half of it is known.
@@ -179,11 +190,3 @@ private fun secondaryLine(payload: MatchLiveDetailPayload): String {
     return if (withBowler.length <= TEXT_BUDGET) withBowler else pair
 }
 
-/**
- * A match is over when the list snapshot says so or the live status prose does.
- *
- * `match.isLive` is not consulted: the cached list entry is a snapshot that goes stale, and the
- * live status is the fresher of the two signals.
- */
-private fun isComplete(match: CricketMatch?, liveStatus: String?): Boolean =
-    match?.isCompleted == true || MatchStatusClassifier.classify(liveStatus) == StatusSignal.TERMINAL

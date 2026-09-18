@@ -104,12 +104,15 @@ class TabbedScoreScreen(carContext: CarContext) : Screen(carContext) {
 
         val listBuilder = ItemList.Builder()
         for (match in matches.take(6)) {
-            listBuilder.addItem(
-                Row.Builder()
-                    .setTitle(match.title)
-                    .addText(match.status)
-                    .build()
-            )
+            val row = Row.Builder().setTitle(match.title)
+            // The score line, when the file carries one. Until `bouncer-poll-live-matches` began
+            // parsing Cricbuzz itself, `{type}-matches` held `{id, title, status}` and nothing
+            // else, so this screen could only ever show a fixture and a status — no scores at all,
+            // on the one surface where the phone is out of reach. A file written by an older
+            // deployment still arrives in that shape, so an absent score is simply not drawn.
+            scoreLine(match)?.let { row.addText(it) }
+            row.addText(match.status)
+            listBuilder.addItem(row.build())
         }
 
         return ListTemplate.Builder()
@@ -117,5 +120,22 @@ class TabbedScoreScreen(carContext: CarContext) : Screen(carContext) {
             .setHeaderAction(Action.APP_ICON)
             .setSingleList(listBuilder.build())
             .build()
+    }
+
+    /**
+     * "AUS 266 & 234/1 (56.4) · IND 301" — both sides, batting side first.
+     *
+     * Null when neither side has a score, which is every upcoming fixture and every match from a
+     * file written before the list carried teams.
+     */
+    private fun scoreLine(match: SanwebMatchSummary): String? {
+        val sides = match.teams
+            .sortedByDescending { it.isBatting }
+            .mapNotNull { side ->
+                val score = side.score.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val overs = side.overs.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
+                "${side.name} $score$overs"
+            }
+        return sides.takeIf { it.isNotEmpty() }?.joinToString("  ·  ")
     }
 }

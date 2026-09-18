@@ -4,8 +4,10 @@ import android.content.Context
 import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
+import com.tanush.bouncer.data.remote.LiveDetailSnapshot
 import com.tanush.bouncer.data.remote.LiveMatchDetailSource
 import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
+import com.tanush.bouncer.data.remote.ScorecardSnapshot
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.TimelineEventType
@@ -48,7 +50,7 @@ class MatchDetailFeedPagingTest {
         var pagesServed = 0
             private set
 
-        override suspend fun getForMatch(matchId: String): MatchLiveDetailPayload? = null
+        override suspend fun getForMatch(matchId: String): LiveDetailSnapshot? = null
 
         override suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry> =
             (0 until FIRST_PAGE).map {
@@ -62,10 +64,10 @@ class MatchDetailFeedPagingTest {
             }
         }
 
-        override suspend fun getScorecardForMatch(matchId: String): Scorecard? = null
-        override fun observeDetail(matchId: String): Flow<MatchLiveDetailPayload> = emptyFlow()
+        override suspend fun getScorecardForMatch(matchId: String): ScorecardSnapshot? = null
+        override fun observeDetail(matchId: String): Flow<LiveDetailSnapshot> = emptyFlow()
         override fun observeCommentary(matchId: String): Flow<CommentaryEvent> = events
-        override fun observeScorecard(matchId: String): Flow<Scorecard> = emptyFlow()
+        override fun observeScorecard(matchId: String): Flow<ScorecardSnapshot> = emptyFlow()
 
         companion object {
             const val FIRST_PAGE = 48

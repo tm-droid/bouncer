@@ -117,6 +117,12 @@ fun MatchDetailViewV2(
     val uiState by vm.uiState.collectAsStateWithLifecycle()
     val streamingCommentary by vm.streamingCommentary.collectAsStateWithLifecycle()
 
+    // The ViewModel is keyed on the match id, so it keeps the entry it was constructed with while
+    // this parameter is recomputed from the matches list on every poll. Handing the newer entry
+    // over is what lets a match the server is not writing follow the list instead of freezing on
+    // its open-time score — see MatchDetailViewModel.onMatchUpdated.
+    LaunchedEffect(match) { vm.onMatchUpdated(match) }
+
     val highlightsViewModel: HighlightsViewModel = viewModel(
         key = HighlightsViewModel.storeKey(match.id),
         factory = HighlightsViewModel.factory(context, match.id),

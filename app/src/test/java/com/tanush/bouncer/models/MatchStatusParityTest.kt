@@ -34,6 +34,60 @@ class MatchStatusParityTest {
 
     private val cricbuzzJs: File get() = locate("appwrite/functions/match-sync/src/cricbuzz.js")
 
+    /**
+     * `poll-live-matches` classifies too, and over all three states rather than just the terminal
+     * one: a Cricbuzz list page carries the site-wide ticker as well as its own tab's fixtures, so
+     * it has to decide which tab each match belongs on exactly as the device does. A narrower list
+     * there puts a finished match on Live or drops a fixture from Upcoming outright.
+     */
+    private val matchStateJs: File get() = locate("appwrite/functions/poll-live-matches/src/matchstate.js")
+
+    /** The escaped pattern strings of a `const NAME = [...]` array in a JS file. */
+    private fun patternsIn(file: File, name: String): List<String> {
+        val source = file.readText()
+        val block = Regex("""const $name = \[(.*?)];""", RegexOption.DOT_MATCHES_ALL)
+            .find(source)
+            ?.groupValues
+            ?.get(1)
+            ?: error("$name not found in ${file.path}")
+        return Regex("\"((?:[^\"\\\\]|\\\\.)*)\"").findAll(block)
+            .map { it.groupValues[1].replace("\\\\", "\\") }
+            .toList()
+    }
+
+    @Test
+    fun `all three pattern lists are identical in Kotlin and poll-live-matches`() {
+        // Element for element, not by count and not by a fixture set: either of those lets one side
+        // gain or lose a rule silently, which is the failure this whole file exists to prevent.
+        assertEquals(
+            "TERMINAL drifted between MatchStatusClassifier and matchstate.js",
+            MatchStatusClassifier.TERMINAL.map { it.pattern },
+            patternsIn(matchStateJs, "TERMINAL_PATTERNS"),
+        )
+        assertEquals(
+            "IN_PROGRESS drifted between MatchStatusClassifier and matchstate.js",
+            MatchStatusClassifier.IN_PROGRESS.map { it.pattern },
+            patternsIn(matchStateJs, "IN_PROGRESS_PATTERNS"),
+        )
+        assertEquals(
+            "PRE_MATCH drifted between MatchStatusClassifier and matchstate.js",
+            MatchStatusClassifier.PRE_MATCH.map { it.pattern },
+            patternsIn(matchStateJs, "PRE_MATCH_PATTERNS"),
+        )
+    }
+
+    @Test
+    fun `the two server copies of the terminal list agree with each other`() {
+        // match-sync decides when to write a match's final rows; poll-live-matches decides whether
+        // that match is still on the live list at all. A disagreement between them is a match that
+        // one half has finished and the other has not.
+        assertEquals(
+            "TERMINAL drifted between cricbuzz.js and matchstate.js",
+            patternsIn(cricbuzzJs, "TERMINAL_STATUS_PATTERNS"),
+            patternsIn(matchStateJs, "TERMINAL_PATTERNS"),
+        )
+    }
+
     /** The escaped pattern strings between `TERMINAL_STATUS_PATTERNS = [` and its closing `]`. */
     private fun serverPatterns(): List<Regex> {
         val source = cricbuzzJs.readText()

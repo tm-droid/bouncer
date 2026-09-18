@@ -28,9 +28,21 @@ import com.tanush.bouncer.services.MatchCacheService
 suspend fun cachedLiveMatches(): List<CricketMatch>? =
     MatchCacheService.getMatches(LIVE_STATUS) ?: MatchCacheService.getOfflineMatches(LIVE_STATUS)
 
-/** The cached live-match entry for [matchId], or null when the cache has no entry for it. */
-suspend fun cachedLiveMatch(matchId: String): CricketMatch? =
-    cachedLiveMatches()?.firstOrNull { it.id == matchId }
+/**
+ * The cached list entry for [matchId], from whichever list holds it, or null when none does.
+ *
+ * Deliberately not the Live list alone. A match leaves that list the instant it finishes and lands
+ * in Recent, so a Live-only lookup returns null for exactly the match whose result the card still
+ * needs — leaving the frozen `match-live-detail` payload as the only vote on whether the match is
+ * over, which is the staleness `eb91dcd` fixed on the match-detail screen. Live first because that
+ * is where a running match is and where the search should stop.
+ */
+suspend fun cachedMatchEntry(matchId: String): CricketMatch? =
+    listOf(MatchCacheService.LIVE, MatchCacheService.RECENT, MatchCacheService.UPCOMING)
+        .firstNotNullOfOrNull { status ->
+            (MatchCacheService.getMatches(status) ?: MatchCacheService.getOfflineMatches(status))
+                ?.firstOrNull { it.id == matchId }
+        }
 
 /**
  * The notification shown between `startForegroundService` and the first payload.

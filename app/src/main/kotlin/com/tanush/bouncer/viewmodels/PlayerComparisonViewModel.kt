@@ -1,9 +1,11 @@
 package com.tanush.bouncer.viewmodels
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.models.PlayerProfile
 import com.tanush.bouncer.network.PlayerProfileScraper
+import com.tanush.bouncer.services.PlayerCacheWorker
 import io.sentry.Sentry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,7 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class PlayerComparisonViewModel : ViewModel() {
+class PlayerComparisonViewModel(application: Application) : AndroidViewModel(application) {
     private val _player1 = MutableStateFlow<PlayerProfile?>(null)
     val player1: StateFlow<PlayerProfile?> = _player1.asStateFlow()
 
@@ -42,7 +44,10 @@ class PlayerComparisonViewModel : ViewModel() {
         viewModelScope.launch {
             if (slot == 1) _loadingPlayer1.value = true else _loadingPlayer2.value = true
             try {
-                val full = PlayerProfileScraper.scrapeProfile(stub.name)
+                // Cache first, exactly as the profile screen and PlayerCacheWorker do. Two
+                // players compared meant two Cricbuzz page loads per open, for profiles the
+                // shared table usually already holds.
+                val full = fullProfile(stub.name)
                 when (slot) {
                     1 -> _player1.value = full ?: stub
                     2 -> _player2.value = full ?: stub
@@ -56,3 +61,13 @@ class PlayerComparisonViewModel : ViewModel() {
         }
     }
 }
+
+/**
+ * Room, then the shared Appwrite table, then Cricbuzz — the order `PlayerCacheWorker` already
+ * uses. Two players compared meant two Cricbuzz page loads per open, for profiles the shared table
+ * usually already holds.
+ *
+ * Top-level to keep [PlayerComparisonViewModel.loadFullProfile] under detekt's complexity cap.
+ */
+private suspend fun PlayerComparisonViewModel.fullProfile(name: String): PlayerProfile? =
+    PlayerCacheWorker.cachedProfile(getApplication(), name) ?: PlayerProfileScraper.scrapeProfile(name)

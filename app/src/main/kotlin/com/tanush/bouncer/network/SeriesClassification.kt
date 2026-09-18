@@ -6,15 +6,18 @@ import com.tanush.bouncer.models.Series
  * Series classification from a competition name.
  *
  * Mirrors `appwrite/functions/poll-live-matches/src/series.js` — the server writes the same two
- * fields into the `active-series` bucket file, so the two must agree.
+ * fields into the `active-series` bucket file, so the two must agree. That agreement is pinned by
+ * `SeriesClassificationParityTest`, which reads the regexes out of the real JS file; the three
+ * patterns below are `internal` rather than private so it can compare them one for one. A comment
+ * saying two files must agree is not a check, which is the whole lesson of `llm.js`.
  */
 
 // The apostrophe is optional: Cricbuzz emits both "Women's" and "Womens".
-private val WOMENS = """\bwomen(?:'?s)?\b|\bwpl\b""".toRegex(RegexOption.IGNORE_CASE)
+internal val WOMENS = """\bwomen(?:'?s)?\b|\bwpl\b""".toRegex(RegexOption.IGNORE_CASE)
 // WPL is listed because "Women's Premier League" is often abbreviated past the word "League".
-private val LEAGUE =
+internal val LEAGUE =
     """\b(?:IPL|PSL|BBL|CPL|WPL)\b|League|T20""".toRegex(RegexOption.IGNORE_CASE)
-private val DOMESTIC = """Domestic|Ranji|Sheffield""".toRegex(RegexOption.IGNORE_CASE)
+internal val DOMESTIC = """Domestic|Ranji|Sheffield""".toRegex(RegexOption.IGNORE_CASE)
 
 /**
  * Whether a series is women's cricket.

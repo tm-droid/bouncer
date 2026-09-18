@@ -14,6 +14,7 @@ import {
   isBlockStatus,
   resetThrottleState,
 } from "./cricbuzz-http.js";
+import { forEachNextFlightPayload } from "./nextflight.js";
 
 const BASE = CRICBUZZ_BASE;
 export const liveScoresUrl = (matchId) => `${BASE}/live-cricket-scores/${matchId}`;
@@ -34,85 +35,6 @@ export {
 // ---------------------------------------------------------------------------
 // Next.js flight-payload parsing (port of CricBuzzScraper.kt:28-104,551-585)
 // ---------------------------------------------------------------------------
-
-function parseLenient(s) {
-  try {
-    return JSON.parse(s);
-  } catch {
-    return null;
-  }
-}
-
-function normalizeNextFlightPayload(raw) {
-  let normalized = String(raw).trim();
-  const colonIndex = normalized.indexOf(":");
-  if (colonIndex >= 1 && colonIndex <= 9) {
-    const prefix = normalized.slice(0, colonIndex);
-    if ([...prefix].every((c) => /[0-9a-f]/i.test(c))) {
-      normalized = normalized.slice(colonIndex + 1);
-    }
-  }
-  if (normalized.startsWith("I")) normalized = normalized.slice(1);
-  normalized = normalized.trim();
-  return normalized.startsWith("{") || normalized.startsWith("[") ? normalized : null;
-}
-
-function unwrapNextFlightPayload(scriptContent) {
-  const el = parseLenient(scriptContent);
-  if (!Array.isArray(el)) return null;
-  if (el.length <= 1 || typeof el[1] !== "string") return null;
-  return normalizeNextFlightPayload(el[1]);
-}
-
-function findMatchingParenEnd(html, openParenIdx) {
-  let parenCount = 0;
-  let inString = false;
-  let escape = false;
-  for (let i = openParenIdx; i < html.length; i++) {
-    const ch = html[i];
-    if (escape) {
-      escape = false;
-      continue;
-    }
-    if (ch === "\\") {
-      escape = true;
-      continue;
-    }
-    if (ch === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (inString) continue;
-    if (ch === "(") parenCount++;
-    else if (ch === ")") {
-      parenCount--;
-      if (parenCount === 0) return i;
-    }
-  }
-  return -1;
-}
-
-function forEachNextFlightPayload(html, cb) {
-  const startMarker = "self.__next_f.push(";
-  let startIndex = 0;
-  while (true) {
-    const idx = html.indexOf(startMarker, startIndex);
-    if (idx === -1) break;
-    const openParenIdx = idx + startMarker.length - 1;
-    const endIdx = findMatchingParenEnd(html, openParenIdx);
-    if (endIdx === -1) {
-      startIndex = idx + 1;
-      continue;
-    }
-    const scriptContent = html.substring(openParenIdx + 1, endIdx);
-    const unwrapped = unwrapNextFlightPayload(scriptContent);
-    if (unwrapped) {
-      const parsed = parseLenient(unwrapped);
-      if (parsed) cb(parsed);
-    }
-    startIndex = endIdx + 1;
-  }
-}
 
 /**
  * Every `overSeparator` in the flight payload: its glyph string, its over number, and its clock.

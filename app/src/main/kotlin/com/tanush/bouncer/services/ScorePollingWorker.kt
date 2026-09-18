@@ -13,12 +13,14 @@ import androidx.work.*
 import com.tanush.bouncer.R
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricketRepository
-import com.tanush.bouncer.data.remote.AppwriteMatchDetailClient
+import com.tanush.bouncer.models.MatchStatusClassifier
+import com.tanush.bouncer.models.StatusSignal
 import com.tanush.bouncer.network.models.SanwebMatchSummary
 import com.tanush.bouncer.network.models.SanwebMatchesListResponse
 import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.ui.notifications.RichNotificationBuilder
 import com.tanush.bouncer.ui.widgets.LiveMatchWidgetProvider
+import com.tanush.bouncer.ui.widgets.WidgetSnapshotSource
 import com.tanush.bouncer.ui.widgets.WidgetUpdateWorker
 import com.tanush.bouncer.utils.WorkerLogger
 import com.tanush.bouncer.utils.PrefsRegistry
@@ -119,69 +121,23 @@ class ScorePollingWorker(
     private fun retryOrFail(): Result =
         if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
 
+    /**
+     * Refresh the widgets' one snapshot, and record the poll for the app's own bookkeeping.
+     *
+     * This used to build the widget state itself, from two producers at once and with neither
+     * reconciled: team names parsed out of the server list's free-text title, the status as
+     * `detail?.status ?: primary.status`, `is_live` hardcoded true, and `match-live-detail`'s
+     * `score` — the innings *being batted* — written into `team1_score` whichever side was
+     * batting, with `team2_score` never written at all. [WidgetSnapshotSource] is the single
+     * producer now; this is one of its triggers and not a second author.
+     */
     private suspend fun cacheForWidgets(matches: List<SanwebMatchSummary>) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putInt("live_match_count", matches.size)
             .putLong("last_poll_epoch", System.currentTimeMillis())
             .apply()
-
-        val widgetPrefs = context.getSharedPreferences("widget_cache", Context.MODE_PRIVATE)
-        val primary = matches.firstOrNull()
-
-        if (primary == null) {
-            widgetPrefs.edit().putBoolean("is_live", false).apply()
-            return
-        }
-
-        // The widget's live score comes from the same `match-live-detail` row the detail screen
-        // reads — one billed getRow on a deterministic id, and only for the single match shown.
-        // It used to come from the Vercel API, which was this app's one remaining use of a
-        // second, separately-hosted scraper for data Appwrite already had.
-        val detail = try {
-            AppwriteMatchDetailClient.getForMatch(primary.id)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.w(TAG, "Score fetch for widget failed", e)
-            Sentry.captureException(e)
-            null
-        }
-
-        val (team1, team2) = parseWidgetTeamNames(primary.title)
-
-        widgetPrefs.edit().apply {
-            putString("team1_name", team1)
-            putString("team2_name", team2)
-            putString("match_status", detail?.status ?: primary.status)
-            putBoolean("is_live", true)
-            detail?.score?.let { putString("team1_score", it) }
-            // BouncerGlanceWidget.parseBattingPair needs both halves of "N|runs|balls;N|runs|balls"
-            // and returns null on one, so a single batsman at the crease is written as no pair
-            // rather than as a half-formed string.
-            detail?.batsmen?.takeIf { it.size >= 2 }?.let { batsmen ->
-                putString(
-                    "batting_pair",
-                    batsmen.take(2).joinToString(";") { "${it.name}|${it.runs}|${it.balls}" },
-                )
-            }
-            // "name|wickets|runs|overs" — the field order parseBowler expects, which is not the
-            // order the fields are declared in.
-            detail?.bowler?.let {
-                putString("current_bowler", "${it.name}|${it.wickets}|${it.runs}|${it.overs}")
-            }
-            apply()
-        }
-    }
-
-    private fun parseWidgetTeamNames(title: String): Pair<String, String> {
-        val vsIdx = title.indexOf(" vs ", ignoreCase = true)
-        if (vsIdx < 0) return Pair("Team 1", "Team 2")
-        val before = title.substring(0, vsIdx)
-        val after = title.substring(vsIdx + 4)
-        val team1 = before.substringAfterLast(", ").trim().ifEmpty { before.trim() }
-        val team2 = after.substringBefore(",").trim()
-        return Pair(team1, team2)
+        WidgetSnapshotSource.refresh(context)
     }
 
     /**
@@ -213,8 +169,10 @@ class ScorePollingWorker(
 
             notifPrefs.edit().putString("$LAST_STATUS_PREFIX${match.id}", match.status).apply()
 
-            val channelId = if (match.status.contains("won", ignoreCase = true) ||
-                match.status.contains("result", ignoreCase = true))
+            // Through the shared classifier, not `contains("won")`: "India won the toss and
+            // elected to bat" is the START of a match, and that substring routed it to the
+            // match-ended channel. The classifier exists precisely to retire this test.
+            val channelId = if (MatchStatusClassifier.classify(match.status) == StatusSignal.TERMINAL)
                 RichNotificationBuilder.CricketNotificationChannel.CHANNEL_MATCH_END
             else
                 RichNotificationBuilder.CricketNotificationChannel.CHANNEL_LIVE_SCORE

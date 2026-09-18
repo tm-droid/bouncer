@@ -6,6 +6,8 @@ import androidx.work.*
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.local.entities.PlayerCacheEntity
 import com.tanush.bouncer.data.remote.AppwritePlayerProfilesClient
+import com.tanush.bouncer.models.FormatStats
+import com.tanush.bouncer.models.PlayerProfile
 import com.tanush.bouncer.network.PlayerProfileScraper
 import com.tanush.bouncer.utils.WorkerLogger
 import io.sentry.Sentry
@@ -161,6 +163,77 @@ class PlayerCacheWorker(
         }
 
         fun playerIdFor(playerName: String): String = playerName.lowercase().replace(" ", "_")
+
+        /**
+         * A cached profile for [playerName], from Room and then the shared Appwrite table.
+         *
+         * The same order this worker already uses, exposed so the profile screen can take it too.
+         * That screen scraped Cricbuzz on every open and read neither cache, which meant a page
+         * load per visit, a different answer from the one search gives, and a global cache whose
+         * whole purpose — the first device to scrape a player saves every other device the
+         * scrape — applied to everything except the screen that shows the player.
+         *
+         * Null when neither tier has a usable copy: no row, a row older than [FRESH_MS], or a row
+         * whose stats did not survive. A profile with a name and no figures is worse than a
+         * scrape, so it is not offered as one.
+         */
+        suspend fun cachedProfile(context: Context, playerName: String): PlayerProfile? {
+            val playerId = playerIdFor(playerName)
+            val dao = BouncerDatabase.getInstance(context).playerCacheDao()
+            val local = dao.getById(playerId)
+            if (local != null && System.currentTimeMillis() - local.lastUpdated < FRESH_MS) {
+                return profileFrom(local)
+            }
+            val remote = AppwritePlayerProfilesClient.pullProfile(playerId) ?: return null
+            dao.upsert(remote)
+            return profileFrom(remote)
+        }
+
+        private fun profileFrom(entity: PlayerCacheEntity): PlayerProfile? {
+            val stats = deserializeStats(entity.statsJson)
+            if (stats.isEmpty()) return null
+            return PlayerProfile(
+                id = entity.playerId,
+                name = entity.name,
+                country = entity.country,
+                role = entity.role,
+                teams = listOf(entity.teamName).filter { it.isNotBlank() },
+                stats = stats,
+            )
+        }
+
+        /**
+         * The inverse of [serializeStats].
+         *
+         * Hand-written to match it field for field rather than routed through kotlinx: the stored
+         * JSON is this function's own shape, rows written by older builds may be missing fields,
+         * and a strict decoder would throw the whole profile away over one absent key. Every field
+         * falls back to the model's own default.
+         */
+        internal fun deserializeStats(json: String): Map<String, FormatStats> = runCatching {
+            val root = JSONObject(json)
+            root.keys().asSequence().associateWith { format ->
+                val o = root.getJSONObject(format)
+                FormatStats(
+                    matches = o.optInt("matches"),
+                    innings = o.optInt("innings"),
+                    runs = o.optInt("runs"),
+                    highScore = o.optString("highScore", "-"),
+                    average = o.optDouble("average", 0.0),
+                    strikeRate = o.optDouble("strikeRate", 0.0),
+                    hundreds = o.optInt("hundreds"),
+                    fifties = o.optInt("fifties"),
+                    fours = o.optInt("fours"),
+                    sixes = o.optInt("sixes"),
+                    wickets = o.optInt("wickets"),
+                    bowlingAverage = o.optDouble("bowlingAverage", 0.0),
+                    economy = o.optDouble("economy", 0.0),
+                    bestBowling = o.optString("bestBowling", "-"),
+                    fiveWickets = o.optInt("fiveWickets"),
+                    catches = o.optInt("catches"),
+                )
+            }
+        }.getOrDefault(emptyMap())
 
         private const val FRESH_MS = 7L * 24 * 60 * 60 * 1000
 

@@ -19,6 +19,7 @@ import com.tanush.bouncer.data.CricBuzzMatchRepository
 import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
+import com.tanush.bouncer.data.remote.LiveDetailSnapshot
 import com.tanush.bouncer.data.remote.LiveMatchDetailSource
 import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
 import com.tanush.bouncer.data.remote.ProductionLiveDetailSource
@@ -49,7 +50,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 class MatchDetailViewModel(
-    private val match: CricketMatch,
+    private var match: CricketMatch,
     context: Context,
     private val matchRepository: MatchRepository = CricBuzzMatchRepository(),
     private val liveSource: LiveMatchDetailSource = ProductionLiveDetailSource,
@@ -175,11 +176,18 @@ class MatchDetailViewModel(
                 probabilityHistory = appendProbabilityPoint(this, p),
             )
         }
+
     }
 
     private val appContext = context.applicationContext
     private val firedMilestones = mutableSetOf<String>()
     private var espnMatchUrl: String? = null
+
+    /** `updated_at` of the newest detail row applied, or null when one arrived without a usable age. */
+    private var detailUpdatedAtMs: Long? = null
+
+    /** Whether any detail payload has ever been applied. Before the first one the list is all there is. */
+    private var hasAppliedDetail = false
 
     private val _uiState = MutableStateFlow(
         UiState(
@@ -237,7 +245,8 @@ class MatchDetailViewModel(
         if (!match.isCompleted) {
             viewModelScope.launch(bouncerExceptionHandler) {
                 liveSource.observeScorecard(match.id).collect { sc ->
-                    if (sc.innings.isNotEmpty()) _uiState.update { it.copy(scorecard = sc) }
+                    val card = sc.scorecard
+                    if (card.innings.isNotEmpty()) _uiState.update { it.copy(scorecard = card) }
                 }
             }
         }
@@ -413,6 +422,26 @@ class MatchDetailViewModel(
         }.onError { sentryBreadcrumb("match_detail_v2.prematch", "Pre-match data fetch failed: ${it.message}", SentryLevel.WARNING) }
     }
 
+    /**
+     * A newer entry for this match from the matches list.
+     *
+     * The list is re-scraped roughly every six seconds and is correct at the final ball. The detail
+     * row is not: `match-sync` writes it only for a match inside `MAX_MATCHES = 12` of
+     * `live-matches.json`, and the state seeded from the list at construction is never blank, so
+     * [ui.MatchDetailViewV2]'s `ifBlank` fallback to the list can never fire. A match the server is
+     * not writing therefore sat on its open-time score while the row behind it advanced — the
+     * inverse of the staleness `eb91dcd` fixed, and on a LIVE match rather than a finished one.
+     *
+     * Called from composition on every list emission, so it must stay cheap and idempotent:
+     * [listLeadsDetail] decides, and when it says no this is one comparison and a field write.
+     */
+    fun onMatchUpdated(updated: CricketMatch) {
+        if (updated.id != match.id) return
+        match = updated
+        if (!listLeadsDetail(updated, hasAppliedDetail, detailUpdatedAtMs)) return
+        _uiState.update { it.seededFrom(updated) }
+    }
+
     /** Clears errors and re-runs the initial load (retry from the error state). */
     fun retryInitialLoad() {
         // The retry re-fetches the first page, so nothing paged-in survives it.
@@ -427,17 +456,26 @@ class MatchDetailViewModel(
     }
 
     // Live snapshot updates (one-shot + Realtime) flow through here. Null fields keep prior values.
-    private fun applyDetail(payload: MatchLiveDetailPayload?) {
+    private fun applyDetail(snapshot: LiveDetailSnapshot?) {
         // The server orients both team slots to the first-innings batting side; this screen is in
         // Cricbuzz's listing order. See MatchLiveDetailAlignment.
-        val p = payload?.alignedTo(match.teams) ?: return
+        val p = snapshot?.payload?.alignedTo(match.teams) ?: return
+        // Remembered so [onMatchUpdated] can tell a row match-sync is still writing from one it
+        // abandoned. Null (an unreadable `updated_at`) is not treated as old — see
+        // [LiveDetailSnapshot] — so it is recorded as "seen, age unknown".
+        detailUpdatedAtMs = snapshot.updatedAtMs
+        hasAppliedDetail = true
         // Judged from the state BEFORE this payload, so the update that finishes the match still
         // lands and only the re-reads of that frozen row afterwards are ignored. See [UiState.merge].
         val alreadyOver = isMatchOver(match, _uiState.value.liveStatus)
         _uiState.update { st -> st.merge(p, alreadyOver) }
         if (alreadyOver) return
         p.batsmen.forEach { handleBatsmanMilestone(it) }
-        p.bowler?.let { if ((it.wickets.toIntOrNull() ?: 0) >= 5) tryUnlock(AchievementKind.WICKETS_5) }
+        p.bowler?.let {
+            if ((it.wickets.toIntOrNull() ?: 0) >= 5) {
+                unlockedAchievements = unlockAchievement(appContext, AchievementKind.WICKETS_5, unlockedAchievements)
+            }
+        }
     }
 
     // New server commentary line: prepend to the feed (dedup) and typewriter-reveal it.
@@ -516,8 +554,8 @@ class MatchDetailViewModel(
 
     private fun handleBatsmanMilestone(b: ScrapedBatsman) {
         val runs = b.runs.toIntOrNull() ?: 0
-        if (runs >= 50) tryUnlock(AchievementKind.RUNS_50)
-        if (runs >= 100) tryUnlock(AchievementKind.RUNS_100)
+        if (runs >= 50) unlockedAchievements = unlockAchievement(appContext, AchievementKind.RUNS_50, unlockedAchievements)
+        if (runs >= 100) unlockedAchievements = unlockAchievement(appContext, AchievementKind.RUNS_100, unlockedAchievements)
         val milestoneType = milestoneTypeFor(runs) ?: return
         if (firedMilestones.add("${b.name}_${milestoneType.runs}")) emitBatsmanMilestone(b, runs, milestoneType)
     }
@@ -541,12 +579,6 @@ class MatchDetailViewModel(
                 if (s.batsmanMilestone?.playerName == playerName) s.copy(batsmanMilestone = null) else s
             }
         }
-    }
-
-    private fun tryUnlock(kind: AchievementKind) {
-        if (unlockedAchievements.contains(kind)) return
-        runCatching { AchievementKind.unlock(appContext, kind) }
-        unlockedAchievements = unlockedAchievements + kind
     }
 
     companion object {
@@ -641,15 +673,22 @@ internal suspend fun resolveScorecard(
     onScrapeFailure: (Throwable) -> Unit,
 ): Scorecard? {
     if (current != null) return null
-    suspend fun stored() = liveSource.getScorecardForMatch(matchId)?.takeIf { it.innings.isNotEmpty() }
+    suspend fun stored() = liveSource.getScorecardForMatch(matchId)?.takeIf { it.scorecard.innings.isNotEmpty() }
     suspend fun scraped() = runCatching { repository.fetchScorecard(matchId) }
         .onFailure(onScrapeFailure)
         .getOrNull()
         ?.takeIf { it.innings.isNotEmpty() }
     // `match-scorecard` freezes when the match leaves the live list, at the same instant and for
     // the same reason `match-live-detail` does — so for a finished match the stored row is the
-    // truncated one and Cricbuzz's own page has the completed card.
-    return if (matchIsOver) scraped() ?: stored() else stored() ?: scraped()
+    // truncated one and Cricbuzz's own page has the completed card. The scrape goes first there,
+    // which also spends no billed read unless it fails.
+    if (matchIsOver) return scraped() ?: stored()?.scorecard
+    // Live: one billed read, and the row wins while the server is still writing it. A row that has
+    // gone quiet is not discarded — it is merely outranked by a scrape, and still serves if that
+    // scrape comes back empty. Losing a stale card to no card at all would be a worse answer.
+    val row = stored()
+    if (row != null && row.isFresh()) return row.scorecard
+    return scraped() ?: row?.scorecard
 }
 
 /**

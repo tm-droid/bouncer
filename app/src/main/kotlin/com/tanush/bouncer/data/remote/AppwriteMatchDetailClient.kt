@@ -113,7 +113,7 @@ object AppwriteMatchDetailClient : AppwriteTableClient("AppwriteMatchDetail") {
         initTable(ApiKeys.appwriteAiCacheDbId, TABLE_ID)
     }
 
-    suspend fun getForMatch(matchId: String): MatchLiveDetailPayload? {
+    suspend fun getForMatch(matchId: String): LiveDetailSnapshot? {
         if (!isReady) return null
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -129,7 +129,9 @@ object AppwriteMatchDetailClient : AppwriteTableClient("AppwriteMatchDetail") {
                     throw e
                 }
                 val raw = row.data["payload"] as? String ?: return@runCatching null
-                parsePayload(raw)
+                // The row's own `updated_at` travels with the payload. Without it a frozen row and
+                // a row written this minute are indistinguishable — see [LiveDetailSnapshot].
+                parsePayload(raw)?.let { LiveDetailSnapshot(it, rowUpdatedAtMs(row.data["updated_at"])) }
             }.onFailure { e ->
                 logSilentFailure("Live detail fetch failed", e)
             }.getOrNull()
@@ -145,7 +147,7 @@ object AppwriteMatchDetailClient : AppwriteTableClient("AppwriteMatchDetail") {
      * open. Collection is the lifetime: `awaitClose` releases the refcount, and the base class
      * lingers briefly so a rotation does not re-handshake.
      */
-    fun observeMatch(matchId: String): Flow<MatchLiveDetailPayload> = callbackFlow {
+    fun observeMatch(matchId: String): Flow<LiveDetailSnapshot> = callbackFlow {
         if (!isReady) {
             close()
             return@callbackFlow
@@ -160,7 +162,7 @@ object AppwriteMatchDetailClient : AppwriteTableClient("AppwriteMatchDetail") {
     private fun detailFrom(
         response: io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>,
         matchId: String,
-    ): MatchLiveDetailPayload? {
+    ): LiveDetailSnapshot? {
         if (response.events.none { it.contains(".create") || it.contains(".update") }) return null
         @Suppress("UNCHECKED_CAST")
         val payload = response.payload as? Map<String, Any> ?: return null
@@ -168,7 +170,7 @@ object AppwriteMatchDetailClient : AppwriteTableClient("AppwriteMatchDetail") {
         // match" into "no events" rather than showing the wrong score.
         if (payload["match_id"] as? String != matchId) return null
         val raw = payload["payload"] as? String ?: return null
-        return parsePayload(raw)
+        return parsePayload(raw)?.let { LiveDetailSnapshot(it, rowUpdatedAtMs(payload["updated_at"])) }
     }
 
     private fun parsePayload(raw: String): MatchLiveDetailPayload? =

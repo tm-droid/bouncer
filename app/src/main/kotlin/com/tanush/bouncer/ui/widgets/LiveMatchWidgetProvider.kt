@@ -337,43 +337,4 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
         }
     }
     
-    /**
-     * Updates the widget cache with new match data
-     * Enhanced with iOS Live Activity parity: recent balls, team colors
-     */
-    fun updateCache(
-        context: Context,
-        match: CricketMatch,
-        winProbability: Float? = null,
-        recentBalls: List<String>? = null,
-        teamColor: Int? = null
-    ) {
-        val team1 = match.teams.getOrNull(0)
-        val team2 = match.teams.getOrNull(1)
-        
-        val prefs = context.getSharedPreferences("widget_cache", Context.MODE_PRIVATE)
-        prefs.edit().apply {
-            putString("team1_name", team1?.acronym?.ifEmpty { team1.name.take(3) } ?: "Team 1")
-            putString("team2_name", team2?.acronym?.ifEmpty { team2.name.take(3) } ?: "Team 2")
-            putString("team1_score", team1?.score ?: "-")
-            putString("team2_score", team2?.score)
-            putString("match_status", match.status)
-            putString("match_type", match.matchType)
-            putFloat("win_probability", winProbability ?: 0.5f)
-            putBoolean("is_live", match.isLive)
-            
-            // Store recent balls as comma-separated string
-            recentBalls?.let { balls ->
-                putString("recent_balls", balls.joinToString(","))
-            }
-            
-            // Store team color for gradient
-            putInt("team1_color", teamColor ?: WidgetRemoteViewsColors.of(context).primary)
-            
-            apply()
-        }
-        
-        // Trigger widget update
-        triggerUpdate(context, match)
-    }
 }

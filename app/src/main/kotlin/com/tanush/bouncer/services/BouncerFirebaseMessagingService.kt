@@ -12,7 +12,7 @@ import com.tanush.bouncer.BouncerActivity
 import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.notifications.RichNotificationBuilder.CricketNotificationChannel
 import com.tanush.bouncer.ui.screens.NotificationPrefsManager
-import com.tanush.bouncer.ui.widgets.WidgetManager
+import com.tanush.bouncer.ui.widgets.WidgetSnapshotStore
 import com.tanush.bouncer.ui.widgets.WidgetUpdateWorker
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -159,7 +159,12 @@ class BouncerFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         if (type == TYPE_SCORE_UPDATE) {
-            WidgetManager.updateAllWidgets(applicationContext, match = null)
+            // This used to call `updateAllWidgets(match = null)`, which took the clear-everything
+            // branch: the freshest signal the app receives BLANKED every widget, and the score the
+            // push was carrying went only to the tray notification. It now folds that score into
+            // the one snapshot and redraws.
+            WidgetSnapshotStore.applyPush(applicationContext, matchId, team1, team2, score)
+            WidgetUpdateWorker.triggerImmediateUpdate(applicationContext)
         }
 
         val channelId = resolveChannelId(type)
