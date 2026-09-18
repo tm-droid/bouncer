@@ -3,6 +3,22 @@ version: 2
 updates:
   - package-ecosystem: "gradle"
     directory: "/"
+    ignore:
+      # Not in the app. Every one of these resolves on `androidLintTool` or on the Unified Test
+      # Platform's configuration (com.android.tools.utp:android-device-provider-ddmlib ->
+      # io.grpc:grpc-netty -> io.netty), never on releaseRuntimeClasspath — verified with
+      # `./gradlew :app:dependencies --configuration releaseRuntimeClasspath`. Dependabot cannot
+      # fix them either: they are AGP's own transitives, so the only way it can "bump" one is to
+      # edit a force() line, and forcing a version AGP was not tested against is how the test
+      # runner's classpath ends up on a Netty line grpc 1.57 cannot call. Alerts for these are
+      # dismissed as not-used; PRs for them are noise.
+      - dependency-name: "io.netty:*"
+      - dependency-name: "io.grpc:*"
+      - dependency-name: "org.bouncycastle:*"
+      - dependency-name: "org.apache.httpcomponents:*"
+      - dependency-name: "org.apache.commons:commons-lang3"
+      - dependency-name: "org.bitbucket.b_c:jose4j"
+      - dependency-name: "org.jdom:jdom2"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -46,6 +62,14 @@ updates:
     labels:
       - "dependencies"
       - "appwrite"
+    ignore:
+      # node-appwrite 15 is a deliberate pin, not drift. The functions are written against its
+      # API surface — `listDocuments` (there is no `listRows`), and `parseJsonFile` returning an
+      # already-parsed object for application/json, which is the bug that made player-search
+      # rebuild its whole index on every query. A major bump here is a migration with its own
+      # verification, not a dependency refresh.
+      - dependency-name: "node-appwrite"
+        update-types: ["version-update:semver-major"]
     groups:
       generate-commentary:
         patterns:
@@ -60,6 +84,14 @@ updates:
     labels:
       - "dependencies"
       - "appwrite"
+    ignore:
+      # node-appwrite 15 is a deliberate pin, not drift. The functions are written against its
+      # API surface — `listDocuments` (there is no `listRows`), and `parseJsonFile` returning an
+      # already-parsed object for application/json, which is the bug that made player-search
+      # rebuild its whole index on every query. A major bump here is a migration with its own
+      # verification, not a dependency refresh.
+      - dependency-name: "node-appwrite"
+        update-types: ["version-update:semver-major"]
     groups:
       highlights-sync:
         patterns:
@@ -74,6 +106,14 @@ updates:
     labels:
       - "dependencies"
       - "appwrite"
+    ignore:
+      # node-appwrite 15 is a deliberate pin, not drift. The functions are written against its
+      # API surface — `listDocuments` (there is no `listRows`), and `parseJsonFile` returning an
+      # already-parsed object for application/json, which is the bug that made player-search
+      # rebuild its whole index on every query. A major bump here is a migration with its own
+      # verification, not a dependency refresh.
+      - dependency-name: "node-appwrite"
+        update-types: ["version-update:semver-major"]
     groups:
       match-commentary-prune:
         patterns:
@@ -88,6 +128,14 @@ updates:
     labels:
       - "dependencies"
       - "appwrite"
+    ignore:
+      # node-appwrite 15 is a deliberate pin, not drift. The functions are written against its
+      # API surface — `listDocuments` (there is no `listRows`), and `parseJsonFile` returning an
+      # already-parsed object for application/json, which is the bug that made player-search
+      # rebuild its whole index on every query. A major bump here is a migration with its own
+      # verification, not a dependency refresh.
+      - dependency-name: "node-appwrite"
+        update-types: ["version-update:semver-major"]
     groups:
       match-presence:
         patterns:
@@ -102,6 +150,14 @@ updates:
     labels:
       - "dependencies"
       - "appwrite"
+    ignore:
+      # node-appwrite 15 is a deliberate pin, not drift. The functions are written against its
+      # API surface — `listDocuments` (there is no `listRows`), and `parseJsonFile` returning an
+      # already-parsed object for application/json, which is the bug that made player-search
+      # rebuild its whole index on every query. A major bump here is a migration with its own
+      # verification, not a dependency refresh.
+      - dependency-name: "node-appwrite"
+        update-types: ["version-update:semver-major"]
     groups:
       match-sync:
         patterns:
@@ -116,6 +172,14 @@ updates:
     labels:
       - "dependencies"
       - "appwrite"
+    ignore:
+      # node-appwrite 15 is a deliberate pin, not drift. The functions are written against its
+      # API surface — `listDocuments` (there is no `listRows`), and `parseJsonFile` returning an
+      # already-parsed object for application/json, which is the bug that made player-search
+      # rebuild its whole index on every query. A major bump here is a migration with its own
+      # verification, not a dependency refresh.
+      - dependency-name: "node-appwrite"
+        update-types: ["version-update:semver-major"]
     groups:
       news-sync:
         patterns:
@@ -130,6 +194,14 @@ updates:
     labels:
       - "dependencies"
       - "appwrite"
+    ignore:
+      # node-appwrite 15 is a deliberate pin, not drift. The functions are written against its
+      # API surface — `listDocuments` (there is no `listRows`), and `parseJsonFile` returning an
+      # already-parsed object for application/json, which is the bug that made player-search
+      # rebuild its whole index on every query. A major bump here is a migration with its own
+      # verification, not a dependency refresh.
+      - dependency-name: "node-appwrite"
+        update-types: ["version-update:semver-major"]
     groups:
       player-search:
         patterns:
@@ -144,6 +216,14 @@ updates:
     labels:
       - "dependencies"
       - "appwrite"
+    ignore:
+      # node-appwrite 15 is a deliberate pin, not drift. The functions are written against its
+      # API surface — `listDocuments` (there is no `listRows`), and `parseJsonFile` returning an
+      # already-parsed object for application/json, which is the bug that made player-search
+      # rebuild its whole index on every query. A major bump here is a migration with its own
+      # verification, not a dependency refresh.
+      - dependency-name: "node-appwrite"
+        update-types: ["version-update:semver-major"]
     groups:
       poll-live-matches:
         patterns:
@@ -158,6 +238,14 @@ updates:
     labels:
       - "dependencies"
       - "appwrite"
+    ignore:
+      # node-appwrite 15 is a deliberate pin, not drift. The functions are written against its
+      # API surface — `listDocuments` (there is no `listRows`), and `parseJsonFile` returning an
+      # already-parsed object for application/json, which is the bug that made player-search
+      # rebuild its whole index on every query. A major bump here is a migration with its own
+      # verification, not a dependency refresh.
+      - dependency-name: "node-appwrite"
+        update-types: ["version-update:semver-major"]
     groups:
       train-win-probability:
         patterns:
@@ -172,6 +260,14 @@ updates:
     labels:
       - "dependencies"
       - "appwrite"
+    ignore:
+      # node-appwrite 15 is a deliberate pin, not drift. The functions are written against its
+      # API surface — `listDocuments` (there is no `listRows`), and `parseJsonFile` returning an
+      # already-parsed object for application/json, which is the bug that made player-search
+      # rebuild its whole index on every query. A major bump here is a migration with its own
+      # verification, not a dependency refresh.
+      - dependency-name: "node-appwrite"
+        update-types: ["version-update:semver-major"]
     groups:
       win-probability:
         patterns:
