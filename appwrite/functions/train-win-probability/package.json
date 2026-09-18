@@ -7,6 +7,6 @@
   },
   "dependencies": {
     "node-appwrite": "^15.0.0",
-    "adm-zip": "^0.5.16"
+    "adm-zip": "^0.6.1"
   }
 }
