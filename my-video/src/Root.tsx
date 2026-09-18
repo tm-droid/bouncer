@@ -9,6 +9,7 @@ import { Cta } from "./scenes/Cta";
 import { HomeScreen } from "./app/HomeScreen";
 import { CommentaryTab, MatchDetailScreen, OverviewTab, ScorecardTab } from "./app/MatchDetailScreen";
 import { AndroidHome, LiveUpdateCard } from "./app/AndroidHome";
+import { NewsScreen, SeriesScreen } from "./app/SeriesNewsScreens";
 import { states } from "./data/match";
 import { dp } from "./theme/tokens";
 
@@ -53,6 +54,17 @@ const StillWidgets: React.FC = () => (
   </AbsoluteFill>
 );
 
+const StillSeries: React.FC = () => (
+  <AbsoluteFill>
+    <SeriesScreen />
+  </AbsoluteFill>
+);
+const StillNews: React.FC = () => (
+  <AbsoluteFill>
+    <NewsScreen />
+  </AbsoluteFill>
+);
+
 export const RemotionRoot: React.FC = () => {
   return (
     <>
@@ -67,6 +79,8 @@ export const RemotionRoot: React.FC = () => {
         <Still id="Still-Overview" component={StillOverview} width={1080} height={2400} />
         <Still id="Still-Commentary" component={StillCommentary} width={1080} height={2400} />
         <Still id="Still-Scorecard" component={StillScorecard} width={1080} height={2400} />
+        <Still id="Still-Series" component={StillSeries} width={1080} height={2400} />
+        <Still id="Still-News" component={StillNews} width={1080} height={2400} />
         <Still id="Still-Widgets" component={StillWidgets} width={1080} height={2400} />
       </Folder>
     </>

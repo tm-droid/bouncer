@@ -43,7 +43,7 @@ export const Cta: React.FC = () => {
         </svg>
         <span style={{ fontFamily: FONT_FAMILY, fontSize: 40, fontWeight: 600, color: colors.onPrimary }}>Get it on Google Play</span>
       </div>
-      <span style={{ fontFamily: FONT_FAMILY, fontSize: 28, color: AD_MUTED, marginTop: 40, opacity: fade(1.4 * fps) }}>Free · No account needed</span>
+      <span style={{ fontFamily: FONT_FAMILY, fontSize: 28, color: AD_MUTED, marginTop: 40, opacity: fade(1.4 * fps) }}>Free · Light and dark themes · No account needed</span>
     </AbsoluteFill>
   );
 };

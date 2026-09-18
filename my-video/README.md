@@ -8,7 +8,7 @@ app's own launcher icon, so the ad shows the app as it ships.
 
 ## Output
 
-- `BouncerAd` — 1920×1080, 30 fps, ~33 s, H.264. Landscape because that is what the Play Console
+- `BouncerAd` — 1920×1080, 30 fps, ~39 s, H.264. Landscape because that is what the Play Console
   recommends for the listing video (it autoplays muted; the SFX are a bonus for YouTube).
 - `Stills/*` — 1080×2400 screens (Home, Overview, Commentary, Scorecard, Widgets), usable as the
   listing's phone screenshots.

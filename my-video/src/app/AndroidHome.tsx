@@ -80,7 +80,10 @@ export const GlanceWidget: React.FC<{ state: ChaseState; width: number }> = ({ s
       </Col>
       <Spacer h={4} />
       <Row style={{ width: "100%", background: widget.surfaceElevated, borderRadius: dp(8), padding: `${dp(6)}px ${dp(8)}px`, boxSizing: "border-box" }}>
-        <span style={t(12, 400, widget.textPrimary)}>⚾</span>
+        <svg width={dp(12)} height={dp(12)} viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+          <circle cx="12" cy="12" r="10" fill="#B3261E" />
+          <path d="M8 3.5c2.5 4 2.5 13 0 17M16 3.5c-2.5 4-2.5 13 0 17" stroke="#F2E6D8" strokeWidth="1.4" fill="none" />
+        </svg>
         <Spacer w={6} />
         <span style={{ ...type.bodySmall, color: widget.textPrimary, flex: 1 }}>{state.bowler.name}</span>
         <span style={{ ...t(12, 700, widget.textPrimary), fontVariantNumeric: "tabular-nums" }}>

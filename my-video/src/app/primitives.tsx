@@ -83,7 +83,7 @@ const ballStyle = (ball: string): { bg: string; fg: string } => {
   }
 };
 
-/** RecentBallsStripV2 pill: 22dp tall, min 22dp wide, radius 11, padding 5h, labelSmall. */
+/** RecentBallsStripV2 pill (the ad shows the last six deliveries, the app up to twelve): 22dp tall, min 22dp wide, radius 11, padding 5h, labelSmall. */
 export const BallPill: React.FC<{ ball: string; style?: React.CSSProperties }> = ({ ball, style }) => {
   const { bg, fg } = ballStyle(ball);
   return (
@@ -111,7 +111,7 @@ export const RecentBallsStripV2: React.FC<{ balls: string[]; ballStyle?: (i: num
   balls,
   ballStyle: perBall,
 }) => {
-  const shown = balls.slice(-12);
+  const shown = balls.slice(-6);
   return (
     <Row gap={4}>
       {shown.map((b, i) => (

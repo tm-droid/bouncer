@@ -4,6 +4,7 @@ import { Phone } from "../app/Phone";
 import { HomeScreen } from "../app/HomeScreen";
 import { CommentaryTab, MatchDetailScreen, OverviewTab, ScorecardTab } from "../app/MatchDetailScreen";
 import { AndroidHome, LiveUpdateCard } from "../app/AndroidHome";
+import { NewsScreen, SeriesScreen } from "../app/SeriesNewsScreens";
 import { AD_BG, Gold, Headline } from "../ad/Headline";
 import { colors, dp, withAlpha } from "../theme/tokens";
 import { states, type ChaseState } from "../data/match";
@@ -22,9 +23,11 @@ export const T = {
   commentaryStart: 375,
   commentaryWicket: 450,
   scorecardStart: 555,
-  homescreenStart: 705,
-  notification: 740,
-  end: 825,
+  seriesStart: 705,
+  newsStart: 795,
+  homescreenStart: 885,
+  notification: 920,
+  end: 1005,
 };
 
 export const TOUR_DURATION = T.end;
@@ -64,7 +67,9 @@ export const AppTour: React.FC = () => {
 
   /* ---- which screen is showing ---- */
   const inHome = frame < T.detailStart + 24;
-  const inDetail = frame >= T.detailStart && frame < T.homescreenStart + 20;
+  const inDetail = frame >= T.detailStart && frame < T.seriesStart + 20;
+  const inSeries = frame >= T.seriesStart && frame < T.newsStart + 16;
+  const inNews = frame >= T.newsStart && frame < T.homescreenStart + 20;
   const inLauncher = frame >= T.homescreenStart;
 
   /* ---- Home state ---- */
@@ -106,7 +111,11 @@ export const AppTour: React.FC = () => {
 
   /* ---- commentary wicket insert ---- */
   const wicketIn = interpolate(frame, [T.commentaryWicket, T.commentaryWicket + 20], [0, 1], { ...clamp, easing: ease });
-  const hideNewest = frame < T.commentaryWicket ? 2 : 0;
+  const hideNewest = frame < T.commentaryWicket ? 1 : 0;
+
+  /* ---- series / news ---- */
+  const seriesT = interpolate(frame, [T.seriesStart, T.seriesStart + 18], [0, 1], { ...clamp, easing: ease });
+  const newsT = interpolate(frame, [T.newsStart, T.newsStart + 16], [0, 1], { ...clamp, easing: ease });
 
   /* ---- launcher ---- */
   const launcherT = interpolate(frame, [T.homescreenStart, T.homescreenStart + 20], [0, 1], { ...clamp, easing: ease });
@@ -153,7 +162,7 @@ export const AppTour: React.FC = () => {
 
           {/* Match detail */}
           {inDetail ? (
-            <div style={{ position: "absolute", inset: 0, translate: `${(1 - pushT) * 1080}px 0`, opacity: inLauncher ? 1 - launcherT : 1 }}>
+            <div style={{ position: "absolute", inset: 0, translate: `${(1 - pushT) * 1080}px 0`, opacity: 1 - seriesT }}>
               <MatchDetailScreen state={detailState} tab={tab} indicator={indicator} flash={flash} ballStyle={chipLanding(frame, frame < T.commentaryStart ? T.detailSix : T.commentaryWicket)}>
                 {tab === 0 ? <OverviewTab state={detailState} homeProb={detailProb} swing={swing !== undefined && Math.abs(swing) >= 1 ? swing : undefined} scrollY={scrollY} /> : null}
                 {tab === 2 ? (
@@ -161,7 +170,7 @@ export const AppTour: React.FC = () => {
                     <CommentaryTab
                       hideNewest={hideNewest}
                       rowStyle={(i) =>
-                        hideNewest === 0 && i < 2
+                        hideNewest === 0 && i < 1
                           ? { opacity: wicketIn, translate: `0 ${(1 - wicketIn) * -dp(24)}px` }
                           : {}
                       }
@@ -174,6 +183,18 @@ export const AppTour: React.FC = () => {
                   </div>
                 ) : null}
               </MatchDetailScreen>
+            </div>
+          ) : null}
+
+          {/* Series tab, then News tab (bottom-nav tap) */}
+          {inSeries ? (
+            <div style={{ position: "absolute", inset: 0, opacity: seriesT * (1 - newsT) }}>
+              <SeriesScreen rowStyle={stagger(frame, T.seriesStart + 8, 5, 18)} />
+            </div>
+          ) : null}
+          {inNews ? (
+            <div style={{ position: "absolute", inset: 0, opacity: newsT * (inLauncher ? 1 - launcherT : 1) }}>
+              <NewsScreen rowStyle={stagger(frame, T.newsStart + 6, 5, 18)} />
             </div>
           ) : null}
 
@@ -201,8 +222,9 @@ export const AppTour: React.FC = () => {
       <Headline eyebrow="LIVE SCORES" title={<><Gold>Live</Gold> scores, one screen.</>} sub="Live, upcoming and recent — refreshed as the game moves. Tests, ODIs, T20s and domestic cricket." from={T.homeStart + 20} until={T.detailStart} />
       <Headline eyebrow="WIN PROBABILITY" title={<>Watch the match <Gold>turn.</Gold></>} sub="Live win probability that updates every ball, plus the swing that explains it." from={T.detailStart + 8} until={T.commentaryStart} />
       <Headline eyebrow="BALL-BY-BALL COMMENTARY" title={<>Every <Gold>delivery</Gold>, in order.</>} sub="Grouped by over, with wickets and boundaries called out as they happen." from={T.commentaryStart + 8} until={T.scorecardStart} />
-      <Headline eyebrow="FULL SCORECARDS" title={<>The <Gold>numbers</Gold> that explain it.</>} sub="Batting and bowling cards, extras, fall of wickets, partnerships." from={T.scorecardStart + 8} until={T.homescreenStart} />
-      <Headline eyebrow="ON YOUR HOME SCREEN" title={<>Never <Gold>miss</Gold> a ball.</>} sub="Home-screen widgets and a pinned live-score notification. Android Auto for the drive." from={T.homescreenStart + 8} until={T.end} />
+      <Headline eyebrow="FULL SCORECARDS" title={<>The <Gold>numbers</Gold> that explain it.</>} sub="Batting and bowling cards, extras, fall of wickets, partnerships." from={T.scorecardStart + 8} until={T.seriesStart} />
+      <Headline eyebrow="SERIES AND NEWS" title={<>Every <Gold>series</Gold>, every story.</>} sub="Fixtures, points tables and cricket news. Player profiles and side-by-side comparison too." from={T.seriesStart + 8} until={T.homescreenStart} />
+      <Headline eyebrow="ON YOUR HOME SCREEN" title={<>Never <Gold>miss</Gold> a ball.</>} sub="Home-screen widgets, a pinned live score, and alerts only for the matches you follow." from={T.homescreenStart + 8} until={T.end} />
     </AbsoluteFill>
   );
 };

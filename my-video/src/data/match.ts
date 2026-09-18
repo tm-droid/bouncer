@@ -175,7 +175,6 @@ export type CommentaryRow =
 
 /** Commentary feed, newest first, for Innings 2 — as CommentaryTabV2 renders it. */
 export const commentary: CommentaryRow[] = [
-  { kind: "over", over: 18, runs: 0, balls: ["W"] },
   {
     kind: "ball",
     label: "17.1",
