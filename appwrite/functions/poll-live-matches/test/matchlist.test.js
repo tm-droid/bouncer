@@ -141,3 +141,24 @@ test("the toss is not a result, however the word won is used", () => {
   assert.equal(belongsOn("recent", { state: "India won the toss and elected to bat" }), false);
   assert.equal(belongsOn("recent", { state: "India won by 5 wkts" }), true);
 });
+
+// ── File size is a constraint, not an afterthought ───────────────────────────
+
+const { LIST_CAPS } = await import("../src/main.js");
+
+test("every list file is capped", () => {
+  // Storage bandwidth was already over its plan cap before a summary grew from ~95 bytes to ~450.
+  // Measured against the live pages: uncapped, `recent` was 90 matches and 40 KB against the 1.3 KB
+  // the old upstream produced. Auto and the widgets read these files; the phone's own Recent and
+  // Upcoming tabs do not.
+  assert.deepEqual(Object.keys(LIST_CAPS).sort(), ["live", "recent", "upcoming"]);
+  for (const [type, cap] of Object.entries(LIST_CAPS)) {
+    assert.ok(cap > 0 && cap <= 40, `${type} cap ${cap} is not a bound worth having`);
+  }
+});
+
+test("the live cap is a ceiling, not a working limit", () => {
+  // 18 live matches on the day this was written, and match-sync slices its own work to 12. A cap
+  // that bound here would silently drop a live match from every server-fed surface at once.
+  assert.ok(LIST_CAPS.live >= 40);
+});

@@ -21,6 +21,26 @@ import { classifyStatus } from "./matchstate.js";
  * on " vs " to name the sides, Android Auto had no score to show at all, and nothing downstream
  * carried Cricbuzz's team ids — the only key the live payload can be aligned on.
  */
+/**
+ * How many matches each file may carry.
+ *
+ * Storage bandwidth is the binding constraint on this bucket — measured at 2.91 GB over 30 days
+ * against a 2 GB cap — and every device downloads these files. Now that a summary carries both
+ * sides, their scores and their ids it is ~450 bytes rather than ~95, so an uncapped list is the
+ * difference between a 1.3 KB file and a 40 KB one: measured on the live Recent page, which listed
+ * 90 finished matches against the 14 the old upstream returned.
+ *
+ * The caps are per file because the pages differ in kind. `live` is bounded by how much cricket is
+ * being played (18 on the day this was measured; `match-sync` slices its own work to 12 anyway), so
+ * 40 is a ceiling against a freak day rather than a working limit. `recent` and `upcoming` grow
+ * with the calendar and have no natural bound, so theirs do bind — and the phone's own Recent and
+ * Upcoming tabs are scraped on the device, not read from here, so the cap reaches Android Auto and
+ * the widgets and nothing else.
+ *
+ * Page order is newest first, so a cap drops the oldest.
+ */
+export const LIST_CAPS = { live: 40, recent: 20, upcoming: 30 };
+
 const LIST_URLS = {
   live: "https://www.cricbuzz.com/cricket-match/live-scores",
   recent: "https://www.cricbuzz.com/cricket-match/live-scores/recent-matches",
@@ -294,7 +314,7 @@ export async function syncSeries({ storage, prevState, nextState, now, log, erro
  */
 async function fetchMatchList(type) {
   const html = await fetchHtml(LIST_URLS[type], 12_000);
-  const matches = parseMatchList(html).filter((m) => belongsOn(type, m));
+  const matches = parseMatchList(html).filter((m) => belongsOn(type, m)).slice(0, LIST_CAPS[type]);
   return { matches, count: matches.length };
 }
 
