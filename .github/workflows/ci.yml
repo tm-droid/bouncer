@@ -185,6 +185,11 @@ jobs:
           APPWRITE_PLAYER_PROFILES_COL_ID=${{ secrets.APPWRITE_PLAYER_PROFILES_COL_ID }}
           EOF
 
+      # GitHub's expression language has no arithmetic operators, so the offset cannot live in
+      # a ${{ }} — it has to be computed by a shell.
+      - name: Derive versionCode
+        run: echo "BOUNCER_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+
       - name: Install sentry-cli
         run: |
           curl -sL https://sentry.io/get-cli/ | INSTALL_DIR=/usr/local/bin bash
@@ -194,9 +199,6 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dorg.gradle.parallel=true"
-          # Monotonic for the life of this workflow, and already far above the codes Play holds.
-          # See the comment on versionCode in app/build.gradle.kts.
-          BOUNCER_VERSION_CODE: ${{ 1000 + github.run_number }}
         # lintVital* used to be excluded here. It is the release-blocking subset — the check
         # that catches a NewApi call, a wrong exported flag or an invalid backup rule before an
         # upload — so skipping it meant the release path had no lint at all.
