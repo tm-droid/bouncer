@@ -167,7 +167,11 @@ class NewsViewModel(
                         "status_code" to (e as? NewsUnavailableException)?.statusCode,
                     ),
                 )
-                Sentry.captureException(e)
+                // Reported unless the call never left the device. `transportFailure` is set at
+                // the throw site, not inferred here — the version of this that shipped as a PR
+                // compared `e.message` against the literal default message, which is one string
+                // edit away from silently reporting everything again.
+                if ((e as? NewsUnavailableException)?.transportFailure != true) Sentry.captureException(e)
                 Sentry.metrics().count("news.fetch.error", 1.0)
                 _error.value = messageFor(e)
             } finally {

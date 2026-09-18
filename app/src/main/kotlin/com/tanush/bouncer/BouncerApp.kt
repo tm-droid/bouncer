@@ -66,6 +66,9 @@ class BouncerApp : Application() {
 
     companion object {
         private const val TAG = "BouncerApp"
+
+        /** Captive-portal networks accept the connection and never answer; this bounds that. */
+        private const val APPWRITE_PING_TIMEOUT_MS = 10_000L
     }
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -131,26 +134,7 @@ class BouncerApp : Application() {
             AppwriteReadGuard.initPersistence(AppwriteReadGuard.PrefsBreakerStore(this))
         }
         initializeSafely("AppwriteClient") { AppwriteClient.initialize(this) }
-        // Verify Appwrite reachability; reflect in AppHealth so UI can show degraded state.
-        // Timeout guards against indefinite hang on slow/captive-portal networks.
-        applicationScope.launch(Dispatchers.IO) {
-            val reachable = try {
-                kotlinx.coroutines.withTimeoutOrNull(10_000L) {
-                    AppwriteClient.client?.ping()
-                } != null
-            } catch (e: Exception) {
-                Sentry.addBreadcrumb(
-                    Breadcrumb().apply {
-                        category = "app.init"
-                        message = "Appwrite ping failed: ${e.message}"
-                        level = SentryLevel.WARNING
-                    }
-                )
-                Sentry.captureException(e)
-                false
-            }
-            AppHealth.setAppwriteReachable(reachable)
-        }
+        probeAppwriteReachability()
         initializeSafely("AppwriteAICache") { AppwriteAICache.initialize() }
         initializeSafely("AppwriteHighlightsClient") { AppwriteHighlightsClient.initialize() }
         initializeSafely("AppwritePlayerProfilesClient") { AppwritePlayerProfilesClient.initialize() }
@@ -277,6 +261,40 @@ class BouncerApp : Application() {
     }
 
     // ── Helper: wrap any init step so a failure is reported but never kills startup ──
+    /**
+     * Records whether Appwrite answers, so the UI can show a degraded state.
+     *
+     * The timeout guards against an indefinite hang on a captive-portal network, where the
+     * connection is up and nothing resolves.
+     */
+    private fun probeAppwriteReachability() {
+        applicationScope.launch(Dispatchers.IO) {
+            val reachable = try {
+                kotlinx.coroutines.withTimeoutOrNull(APPWRITE_PING_TIMEOUT_MS) {
+                    AppwriteClient.client?.ping()
+                } != null
+            } catch (e: Exception) {
+                Sentry.addBreadcrumb(
+                    Breadcrumb().apply {
+                        category = "app.init"
+                        message = "Appwrite ping failed: ${e.message}"
+                        level = SentryLevel.WARNING
+                    }
+                )
+                // "Cannot reach Appwrite" is the answer this probe exists to produce, and it is
+                // recorded in AppHealth below. A no-route failure is therefore not an error: it
+                // fires on every cold start behind a captive portal, in flight mode or on a dead
+                // cell, and reporting it drowns the ping failures that do mean something — a
+                // wrong endpoint, a revoked project, an SDK that threw. SentryOptionsConfig
+                // already drops UnknownHostException globally; ConnectException reaches Sentry
+                // unless it names sentry.io, which is why this was noisy for Appwrite alone.
+                if (!HttpClientProvider.isConnectivityException(e)) Sentry.captureException(e)
+                false
+            }
+            AppHealth.setAppwriteReachable(reachable)
+        }
+    }
+
     private fun initializeSafely(componentName: String, block: () -> Unit) {
         try {
             block()

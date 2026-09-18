@@ -38,6 +38,14 @@ class NewsUnavailableException(
     val statusCode: Int? = null,
     message: String = "News is temporarily unavailable.",
     cause: Throwable? = null,
+    /**
+     * True when the call never reached the function at all — no network, SDK not initialised, or
+     * the quota breaker is latched. That is a state of the device or the plan, not a defect, and
+     * it is the one shape of this exception that must not be reported to Sentry: it fires on
+     * every refresh for as long as the condition lasts, and it buries the shapes that do mean
+     * something. Everything else — a 4xx, a 5xx, a response that would not parse — is reported.
+     */
+    val transportFailure: Boolean = false,
 ) : Exception(message, cause)
 
 interface NewsRepository {
@@ -66,7 +74,7 @@ class CricbuzzNewsRepository : NewsRepository {
         val body = when (val outcome = AppwriteClient.executeFunctionDetailed(FUNCTION_ID, "")) {
             is FunctionOutcome.Success -> outcome.body
             is FunctionOutcome.HttpError -> throw NewsUnavailableException(outcome.statusCode)
-            FunctionOutcome.Unavailable -> throw NewsUnavailableException()
+            FunctionOutcome.Unavailable -> throw NewsUnavailableException(transportFailure = true)
         }
 
         val response = try {
@@ -120,7 +128,7 @@ class CricbuzzNewsRepository : NewsRepository {
             // A 503 here means the server has no body and could not fetch one. That is not the same
             // as an article with no text, which is why the function never answers with an empty 200.
             is FunctionOutcome.HttpError -> throw NewsUnavailableException(outcome.statusCode)
-            FunctionOutcome.Unavailable -> throw NewsUnavailableException()
+            FunctionOutcome.Unavailable -> throw NewsUnavailableException(transportFailure = true)
         }
         return AppJson.decodeFromString<ArticleBodyResponse>(body).paragraphs
             .map { it.trim() }
