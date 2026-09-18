@@ -1,4 +1,5 @@
 import React from "react";
+import { Img, staticFile } from "remotion";
 import { colors, dp, radius, spacing } from "../theme/tokens";
 import { type } from "../theme/type";
 import { Icon } from "./Icons";
@@ -76,21 +77,22 @@ export const SeriesScreen: React.FC<{ rowStyle?: (i: number) => React.CSSPropert
 );
 
 /**
- * Headlines are written for the fixture match, not lifted from a real feed. The image slots are
- * flat surfaceVariant blocks — the app fills them from the article, the ad never fakes a photo.
+ * Real articles from the app's own feed — the `news-cache` file `bouncer-news-sync` writes to the
+ * `cricket-stats` bucket, captured 2026-09-18 — with their Cricbuzz cover images saved under
+ * public/news/{imageId}.jpg, the same `static.cricbuzz.com` assets the app loads.
  */
 export const newsList = [
-  { headline: "Suryakumar's 59 sets up a final-over finish at the Wankhede", source: "Cricbuzz", time: "1h ago" },
-  { headline: "Hazlewood strikes twice as Australia drag the chase back", source: "Cricbuzz", time: "2h ago" },
-  { headline: "Pakistan lead by 104 after Rizwan's second-innings fifty", source: "Cricbuzz", time: "3h ago" },
-  { headline: "Australia Women retain the T20 World Cup with a 13-run win", source: "Cricbuzz", time: "Yesterday" },
-  { headline: "New Zealand name squad for the South Africa ODIs", source: "Cricbuzz", time: "Yesterday" },
+  { headline: "Shree Charani spins India into the semifinals", source: "Cricbuzz", time: "2h ago", image: "news/1078727.jpg" },
+  { headline: "BCCI office bearers authorised to decide on selection committee amid Agarkar uncertainty", source: "Cricbuzz", time: "1h ago", image: "news/1078794.jpg" },
+  { headline: "Athapaththu, Dilhari fire Sri Lanka into Asian Games semifinal", source: "Cricbuzz", time: "4h ago", image: "news/1078681.jpg" },
+  { headline: "Falcons storm into CPL final after Shadab, Moqim spin web around Warriors", source: "Cricbuzz", time: "4h ago", image: "news/1078680.jpg" },
+  { headline: "Gambhir outlines Hardik's return path, backs Nitish for ODI role", source: "Cricbuzz", time: "5h ago", image: "news/1078661.jpg" },
 ];
 
 /** FeaturedNewsCard — BouncerCard, 180dp image, headlineMedium, "source • time". */
 const FeaturedNewsCard: React.FC<{ n: (typeof newsList)[number] }> = ({ n }) => (
   <div style={{ margin: `0 ${dp(spacing.lg)}px`, background: colors.surface, borderRadius: dp(radius.medium), border: `${dp(1)}px solid ${colors.divider}`, overflow: "hidden" }}>
-    <div style={{ height: dp(180), background: `linear-gradient(160deg, ${colors.surfaceVariant}, ${colors.border})` }} />
+    <Img src={staticFile(n.image)} style={{ width: "100%", height: dp(180), objectFit: "cover", display: "block" }} />
     <Col style={{ padding: dp(spacing.lg) }}>
       <span style={{ ...type.headlineMedium, color: colors.onSurface }}>{n.headline}</span>
       <Spacer h={4} />
@@ -104,7 +106,7 @@ const FeaturedNewsCard: React.FC<{ n: (typeof newsList)[number] }> = ({ n }) => 
 /** NewsCardV2 — BouncerCard row: 72dp image, titleSmall headline, "source • time". */
 const NewsCard: React.FC<{ n: (typeof newsList)[number] }> = ({ n }) => (
   <div style={{ margin: `0 ${dp(spacing.lg)}px`, background: colors.surface, borderRadius: dp(radius.medium), border: `${dp(1)}px solid ${colors.divider}`, padding: dp(spacing.md), display: "flex", alignItems: "center", boxSizing: "border-box" }}>
-    <div style={{ width: dp(72), height: dp(72), flexShrink: 0, borderRadius: dp(8), background: `linear-gradient(160deg, ${colors.surfaceVariant}, ${colors.border})` }} />
+    <Img src={staticFile(n.image)} style={{ width: dp(72), height: dp(72), flexShrink: 0, objectFit: "cover", display: "block" }} />
     <Spacer w={12} />
     <Col style={{ flex: 1, minWidth: 0 }}>
       <span style={{ ...type.titleSmall, color: colors.onSurface }}>{n.headline}</span>

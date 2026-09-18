@@ -1,6 +1,6 @@
 import React from "react";
 import { Img, staticFile } from "remotion";
-import { dp, notif, teamSurface, widget, withAlpha } from "../theme/tokens";
+import { dp, notif, teamSurface, withAlpha } from "../theme/tokens";
 import { type } from "../theme/type";
 import { Col, Row, Spacer, Crest, Divider } from "./primitives";
 import { match, type ChaseState } from "../data/match";
@@ -14,85 +14,6 @@ const t = (size: number, weight: 400 | 500 | 700 = 400, color: string, extra: Re
   color,
   ...extra,
 });
-
-const widgetBall = (b: string) => {
-  const g = b.toUpperCase();
-  if (/^W\d?$/.test(g)) return { bg: widget.wicket, fg: "#FFFFFF", text: "W" };
-  if (g === "6") return { bg: widget.six, fg: "#FFFFFF", text: "6" };
-  if (g === "4") return { bg: widget.four, fg: "#FFFFFF", text: "4" };
-  if (g === "0" || g === "•") return { bg: widget.dotBall, fg: widget.textTertiary, text: "•" };
-  if (/^(NB|WD|LB|B)/.test(g)) return { bg: widget.warning, fg: "#000000", text: b.toLowerCase() };
-  return { bg: widget.surfaceHighest, fg: widget.textPrimary, text: b };
-};
-
-const WTeamRow: React.FC<{ name: string; score: string; leading: boolean }> = ({ name, score, leading }) => (
-  <Row style={{ width: "100%", background: leading ? widget.primaryContainer : widget.surfaceElevated, borderRadius: dp(12), padding: `${dp(8)}px ${dp(12)}px`, boxSizing: "border-box" }}>
-    <span style={{ ...t(14, leading ? 700 : 500, leading ? widget.primary : widget.textPrimary), flex: 1 }}>{name}</span>
-    <Spacer w={8} />
-    <span style={{ ...t(16, 700, leading ? widget.primary : widget.textPrimary), fontVariantNumeric: "tabular-nums" }}>{score}</span>
-  </Row>
-);
-
-/** BouncerGlanceWidget 4×2 LiveMatchLayout — the older cream/tan widget palette, as shipped. */
-export const GlanceWidget: React.FC<{ state: ChaseState; width: number }> = ({ state, width }) => {
-  const leadingHome = state.winProb > 50;
-  return (
-    <Col style={{ width: dp(width), background: widget.background, borderRadius: dp(16), padding: dp(12), boxSizing: "border-box" }}>
-      <Row>
-        <div style={{ background: widget.live, borderRadius: dp(8), padding: `${dp(2)}px ${dp(6)}px` }}>
-          <span style={t(10, 700, widget.textPrimary)}>LIVE</span>
-        </div>
-        <Spacer w={8} />
-        <span style={t(11, 500, widget.primary, { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" })}>{state.status}</span>
-      </Row>
-      <Spacer h={12} />
-      <WTeamRow name={match.home.name} score={`${state.score} (${state.overs})`} leading={leadingHome} />
-      <Spacer h={8} />
-      <span style={{ ...t(10, 700, widget.textSecondary), textAlign: "center" }}>VS</span>
-      <Spacer h={8} />
-      <WTeamRow name={match.away.name} score={`${match.awayScore} (${match.awayOvers})`} leading={!leadingHome} />
-      <Spacer h={12} />
-      <div style={{ width: "100%", background: widget.primaryContainer, borderRadius: dp(8), padding: `${dp(6)}px ${dp(10)}px`, boxSizing: "border-box", textAlign: "center" }}>
-        <span style={t(10, 500, widget.primary)}>{Math.max(state.winProb, 100 - state.winProb)}% projected win edge</span>
-      </div>
-      <Spacer h={8} />
-      <Row gap={4} style={{ width: "100%", background: widget.surfaceElevated, borderRadius: dp(8), padding: `${dp(6)}px ${dp(8)}px`, boxSizing: "border-box" }}>
-        {state.recentBalls.slice(-6).map((b, i) => {
-          const s = widgetBall(b);
-          return (
-            <div key={i} style={{ width: dp(22), height: dp(22), borderRadius: "50%", background: s.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={t(11, 700, s.fg)}>{s.text}</span>
-            </div>
-          );
-        })}
-      </Row>
-      <Spacer h={6} />
-      <Col style={{ width: "100%", background: widget.surfaceElevated, borderRadius: dp(8), padding: dp(8), boxSizing: "border-box" }}>
-        {[state.striker, state.nonStriker].map((b, i) => (
-          <Row key={b.name} style={{ width: "100%" }}>
-            <div style={{ width: dp(12) }}>{i === 0 ? <span style={t(8, 400, widget.four)}>●</span> : null}</div>
-            <span style={{ ...type.bodySmall, color: widget.textPrimary, flex: 1 }}>{b.name}</span>
-            <span style={{ ...t(12, 700, widget.textPrimary), fontVariantNumeric: "tabular-nums" }}>{b.runs}</span>
-            <Spacer w={2} />
-            <span style={{ ...type.labelSmall, color: widget.textSecondary }}>({b.balls})</span>
-          </Row>
-        ))}
-      </Col>
-      <Spacer h={4} />
-      <Row style={{ width: "100%", background: widget.surfaceElevated, borderRadius: dp(8), padding: `${dp(6)}px ${dp(8)}px`, boxSizing: "border-box" }}>
-        <svg width={dp(12)} height={dp(12)} viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
-          <circle cx="12" cy="12" r="10" fill="#B3261E" />
-          <path d="M8 3.5c2.5 4 2.5 13 0 17M16 3.5c-2.5 4-2.5 13 0 17" stroke="#F2E6D8" strokeWidth="1.4" fill="none" />
-        </svg>
-        <Spacer w={6} />
-        <span style={{ ...type.bodySmall, color: widget.textPrimary, flex: 1 }}>{state.bowler.name}</span>
-        <span style={{ ...t(12, 700, widget.textPrimary), fontVariantNumeric: "tabular-nums" }}>
-          {state.bowler.wickets}/{state.bowler.runs}
-        </span>
-      </Row>
-    </Col>
-  );
-};
 
 /**
  * The Live Update card: notification_live_score.xml (expanded RemoteViews) inside the system shade's
@@ -166,25 +87,14 @@ export const LiveUpdateCard: React.FC<{ state: ChaseState }> = ({ state }) => {
   );
 };
 
-/** A plain Android launcher home: dark wallpaper, clock, the widget, a row of app icons, dock. */
-export const AndroidHome: React.FC<{ state: ChaseState; widgetStyle?: React.CSSProperties; children?: React.ReactNode }> = ({ state, widgetStyle, children }) => (
+/** A plain Android launcher home: dark wallpaper and the clock. The Live Update card drops in over it. */
+export const AndroidHome: React.FC<{ children?: React.ReactNode }> = ({ children }) => (
   <div style={{ width: "100%", height: "100%", position: "relative", background: "radial-gradient(120% 80% at 50% 0%, #1B2230 0%, #0B0F14 60%, #06080B 100%)" }}>
     <Col style={{ position: "absolute", inset: 0, padding: `${dp(28)}px ${dp(20)}px 0`, boxSizing: "border-box" }}>
       <Spacer h={20} />
       <span style={{ ...t(56, 400, "#F1F3F6"), letterSpacing: dp(-1), fontVariantNumeric: "tabular-nums" }}>19:42</span>
       <span style={t(16, 400, "#B7BDC6")}>Fri, 18 Sep</span>
-      <Spacer h={150} />
-      <div style={widgetStyle}>
-        <GlanceWidget state={state} width={320} />
-      </div>
       <div style={{ flex: 1 }} />
-      <Row style={{ justifyContent: "space-around", width: "100%", paddingBottom: dp(20) }}>
-        {["#3B82F6", "#22C55E", "#F59E0B", "#EF4444"].map((c) => (
-          <div key={c} style={{ width: dp(56), height: dp(56), borderRadius: "50%", background: withAlpha(c, 0.35) }} />
-        ))}
-        <Img src={staticFile("icon.webp")} style={{ width: dp(56), height: dp(56), borderRadius: "50%", background: "#000" }} />
-      </Row>
-      <Spacer h={12} />
       <div style={{ alignSelf: "center", width: dp(108), height: dp(4), borderRadius: dp(2), background: withAlpha("#FFFFFF", 0.6), marginBottom: dp(8) }} />
     </Col>
     {children}

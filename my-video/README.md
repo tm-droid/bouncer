@@ -10,8 +10,8 @@ app's own launcher icon, so the ad shows the app as it ships.
 
 - `BouncerAd` — 1920×1080, 30 fps, ~39 s, H.264. Landscape because that is what the Play Console
   recommends for the listing video (it autoplays muted; the SFX are a bonus for YouTube).
-- `Stills/*` — 1080×2400 screens (Home, Overview, Commentary, Scorecard, Widgets), usable as the
-  listing's phone screenshots.
+- `Stills/*` — 1080×2400 screens (Home, Overview, Commentary, Scorecard, Series, News, Widgets), usable
+  as the listing's phone screenshots.
 
 ## Commands
 
@@ -34,13 +34,14 @@ src/
   Root.tsx             compositions + stills
   data/match.ts        the one fixture every scene reads (IND v AUS T20I chase)
   theme/               tokens.ts (colour/spacing, mirrors ColorTokensV2), type.ts (TypographyV2), fonts.ts
-  app/                 the rebuilt screens: HomeScreen, MatchDetailScreen, AndroidHome (widget +
-                       Live Update card), Phone frame, primitives, Material icon paths
+  app/                 the rebuilt screens: HomeScreen, MatchDetailScreen, SeriesNewsScreens,
+                       AndroidHome (Live Update card), Phone frame, primitives, Material icon paths
   scenes/              Hook, AppTour (scenes 2–6 on one continuous phone), Cta
   ad/Headline.tsx      the right-column copy per beat
 public/
   fonts/               IBM Plex Sans (copied from app/src/main/res/font)
   crests/              team flags (Cricbuzz, the same URLs TeamLogos.json points at)
+  news/                cover images of real articles from the app's news-cache (static.cricbuzz.com)
   sfx/                 whoosh / whip / switch / ding from remotion.media
   icon.webp            ic_launcher_foreground
 ```

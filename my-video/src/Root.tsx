@@ -46,7 +46,7 @@ const StillScorecard: React.FC = () => (
 );
 const StillWidgets: React.FC = () => (
   <AbsoluteFill>
-    <AndroidHome state={states.s4}>
+    <AndroidHome>
       <div style={{ position: "absolute", left: dp(8), right: dp(8), top: dp(40) }}>
         <LiveUpdateCard state={states.s4} />
       </div>

@@ -198,17 +198,10 @@ export const AppTour: React.FC = () => {
             </div>
           ) : null}
 
-          {/* Android launcher with the widget + Live Update card */}
+          {/* Android launcher with the Live Update card */}
           {inLauncher ? (
             <div style={{ position: "absolute", inset: 0, opacity: launcherT }}>
-              <AndroidHome
-                state={states.s4}
-                widgetStyle={{
-                  scale: String(interpolate(frame, [T.homescreenStart + 8, T.homescreenStart + 30], [0.92, 1], { ...clamp, easing: spring, output: "perceptual-scale" })),
-                  opacity: interpolate(frame, [T.homescreenStart + 8, T.homescreenStart + 24], [0, 1], clamp),
-                  transformOrigin: "top left",
-                }}
-              >
+              <AndroidHome>
                 <div style={{ position: "absolute", left: dp(8), right: dp(8), top: dp(40), translate: `0 ${notifY}px` }}>
                   <LiveUpdateCard state={states.s4} />
                 </div>
@@ -224,7 +217,7 @@ export const AppTour: React.FC = () => {
       <Headline eyebrow="BALL-BY-BALL COMMENTARY" title={<>Every <Gold>delivery</Gold>, in order.</>} sub="Grouped by over, with wickets and boundaries called out as they happen." from={T.commentaryStart + 8} until={T.scorecardStart} />
       <Headline eyebrow="FULL SCORECARDS" title={<>The <Gold>numbers</Gold> that explain it.</>} sub="Batting and bowling cards, extras, fall of wickets, partnerships." from={T.scorecardStart + 8} until={T.seriesStart} />
       <Headline eyebrow="SERIES AND NEWS" title={<>Every <Gold>series</Gold>, every story.</>} sub="Fixtures, points tables and cricket news. Player profiles and side-by-side comparison too." from={T.seriesStart + 8} until={T.homescreenStart} />
-      <Headline eyebrow="ON YOUR HOME SCREEN" title={<>Never <Gold>miss</Gold> a ball.</>} sub="Home-screen widgets, a pinned live score, and alerts only for the matches you follow." from={T.homescreenStart + 8} until={T.end} />
+      <Headline eyebrow="ON YOUR HOME SCREEN" title={<>Never <Gold>miss</Gold> a ball.</>} sub="A pinned live score in your notifications, and alerts only for the matches you follow." from={T.homescreenStart + 8} until={T.end} />
     </AbsoluteFill>
   );
 };
