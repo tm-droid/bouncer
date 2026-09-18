@@ -28,7 +28,8 @@
     "dev": "remotion studio",
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
-    "lint": "eslint src && tsc"
+    "lint": "eslint src && tsc",
+    "screenshots": "node scripts/render-screenshots.mjs"
   },
   "sideEffects": [
     "*.css"

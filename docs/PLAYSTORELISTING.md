@@ -111,6 +111,15 @@ Play Store showcase video. Keep store copy and video on the same line.
 `https://youtu.be/8hGBRcYCWzo` — rendered from `my-video/` (Remotion, see its README);
 thumbnail is the `Thumbnail` still there. Re-render and re-upload when a shown screen changes.
 
+**Phone screenshots** (Play Console → Store listing → Phone screenshots; 2–8, PNG/JPEG, 9:16 or
+16:9, each side 320–3,840 px, ≤ 8 MB): rendered from `my-video/` with `npm run screenshots`, which
+writes seven 1080×1920 PNGs to `my-video/out/screenshots/` and fails on any file outside Play's
+rules. Upload in file order — `01-home`, `02-overview`, `03-commentary`, `04-scorecard`,
+`05-series`, `06-news`, `07-widgets`. Each is the ad's rebuilt screen (same IND v AUS fixture) in a
+device frame under that beat's headline; the copy claims only what the app does. The 1080×2400
+`Stills/*` are 9:20 and Play refuses them. Same rule as the video: re-render when a shown screen
+changes.
+
 ---
 
 ### Full Description

@@ -10,8 +10,12 @@ app's own launcher icon, so the ad shows the app as it ships.
 
 - `BouncerAd` — 1920×1080, 30 fps, ~39 s, H.264. Landscape because that is what the Play Console
   recommends for the listing video (it autoplays muted; the SFX are a bonus for YouTube).
-- `Stills/*` — 1080×2400 screens (Home, Overview, Commentary, Scorecard, Series, News, Widgets), usable
-  as the listing's phone screenshots.
+- `Stills/*` — 1080×2400 screens (Home, Overview, Commentary, Scorecard, Series, News, Widgets) at the
+  phone's logical size, for fidelity checks against emulator screencaps. **Not** uploadable as
+  listing screenshots: 1080×2400 is 9:20 and Play accepts only 9:16 or 16:9.
+- `Screenshots/*` — `Shot-01-Home` … `Shot-07-Widgets`, 1080×1920 (9:16): the listing's phone
+  screenshots, each a headline over the device frame. `npm run screenshots` renders all seven into
+  `out/screenshots/` in upload order and fails if any file is not 1080×1920 or is over 8 MB.
 
 ## Commands
 
@@ -20,7 +24,8 @@ npm i
 npm run dev                                   # Remotion Studio
 npm run lint                                  # eslint + tsc
 npx remotion render BouncerAd out/bouncer-playstore.mp4 --codec=h264 --crf=18
-npx remotion still Still-Home out/screenshots/home.png
+npm run screenshots                           # the 7 Play Store phone screenshots → out/screenshots/
+npx remotion still Still-Home out/stills/Still-Home.png   # one full-size fidelity still
 ```
 
 Upload the MP4 to YouTube (unlisted is fine) and paste the link into Play Console → Store listing →
@@ -38,6 +43,9 @@ src/
                        AndroidHome (Live Update card), Phone frame, primitives, Material icon paths
   scenes/              Hook, AppTour (scenes 2–6 on one continuous phone), Cta
   ad/Headline.tsx      the right-column copy per beat
+  ad/Screenshot.tsx    the 1080×1920 Play Store screenshot frame (headline + Phone); Thumbnail.tsx the YouTube still
+scripts/
+  render-screenshots.mjs   renders Shot-01…07 and checks Play's size rules
 public/
   fonts/               IBM Plex Sans (copied from app/src/main/res/font)
   crests/              team flags (Cricbuzz, the same URLs TeamLogos.json points at)

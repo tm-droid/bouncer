@@ -11,6 +11,8 @@ import { CommentaryTab, MatchDetailScreen, OverviewTab, ScorecardTab } from "./a
 import { AndroidHome, LiveUpdateCard } from "./app/AndroidHome";
 import { NewsScreen, SeriesScreen } from "./app/SeriesNewsScreens";
 import { Thumbnail } from "./ad/Thumbnail";
+import { Gold } from "./ad/Headline";
+import { Screenshot, SHOT_H, SHOT_W } from "./ad/Screenshot";
 import { states } from "./data/match";
 import { dp } from "./theme/tokens";
 
@@ -66,6 +68,47 @@ const StillNews: React.FC = () => (
   </AbsoluteFill>
 );
 
+/**
+ * Play Store phone screenshots, 1080×1920, in upload order. Each wraps the matching full-screen
+ * still in the listing frame; the copy is the ad's `AppTour` headline for that beat, with the
+ * shared Series/News beat split in two. Render all seven with `npm run screenshots`.
+ */
+const ShotHome: React.FC = () => (
+  <Screenshot eyebrow="LIVE SCORES" title={<><Gold>Live</Gold> scores, one screen.</>} sub="Live, upcoming and recent — refreshed as the game moves.">
+    <StillHome />
+  </Screenshot>
+);
+const ShotOverview: React.FC = () => (
+  <Screenshot eyebrow="WIN PROBABILITY" title={<>Watch the match <Gold>turn.</Gold></>} sub="Live win probability that updates every ball.">
+    <StillOverview />
+  </Screenshot>
+);
+const ShotCommentary: React.FC = () => (
+  <Screenshot eyebrow="BALL-BY-BALL COMMENTARY" title={<>Every <Gold>delivery</Gold>, in order.</>} sub="Grouped by over, wickets and boundaries called out.">
+    <StillCommentary />
+  </Screenshot>
+);
+const ShotScorecard: React.FC = () => (
+  <Screenshot eyebrow="FULL SCORECARDS" title={<>The <Gold>numbers</Gold> that explain it.</>} sub="Batting, bowling, extras, fall of wickets, partnerships.">
+    <StillScorecard />
+  </Screenshot>
+);
+const ShotSeries: React.FC = () => (
+  <Screenshot eyebrow="SERIES" title={<>Every <Gold>series</Gold>, one place.</>} sub="Fixtures and points tables, active and archived.">
+    <StillSeries />
+  </Screenshot>
+);
+const ShotNews: React.FC = () => (
+  <Screenshot eyebrow="NEWS" title={<>Every <Gold>story</Gold>, as it breaks.</>} sub="Cricket news, read inside the app.">
+    <StillNews />
+  </Screenshot>
+);
+const ShotWidgets: React.FC = () => (
+  <Screenshot eyebrow="ON YOUR HOME SCREEN" title={<>Never <Gold>miss</Gold> a ball.</>} sub="A pinned live score in your notifications.">
+    <StillWidgets />
+  </Screenshot>
+);
+
 export const RemotionRoot: React.FC = () => {
   return (
     <>
@@ -84,6 +127,15 @@ export const RemotionRoot: React.FC = () => {
         <Still id="Still-Series" component={StillSeries} width={1080} height={2400} />
         <Still id="Still-News" component={StillNews} width={1080} height={2400} />
         <Still id="Still-Widgets" component={StillWidgets} width={1080} height={2400} />
+      </Folder>
+      <Folder name="Screenshots">
+        <Still id="Shot-01-Home" component={ShotHome} width={SHOT_W} height={SHOT_H} />
+        <Still id="Shot-02-Overview" component={ShotOverview} width={SHOT_W} height={SHOT_H} />
+        <Still id="Shot-03-Commentary" component={ShotCommentary} width={SHOT_W} height={SHOT_H} />
+        <Still id="Shot-04-Scorecard" component={ShotScorecard} width={SHOT_W} height={SHOT_H} />
+        <Still id="Shot-05-Series" component={ShotSeries} width={SHOT_W} height={SHOT_H} />
+        <Still id="Shot-06-News" component={ShotNews} width={SHOT_W} height={SHOT_H} />
+        <Still id="Shot-07-Widgets" component={ShotWidgets} width={SHOT_W} height={SHOT_H} />
       </Folder>
     </>
   );
