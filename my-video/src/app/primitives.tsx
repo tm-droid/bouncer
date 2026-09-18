@@ -125,7 +125,7 @@ export const RecentBallsStripV2: React.FC<{ balls: string[]; ballStyle?: (i: num
 export const StatusBar: React.FC<{ background?: string; ink?: string }> = ({ background = colors.topBar, ink = colors.onSurface }) => (
   <div
     style={{
-      height: dp(28),
+      height: dp(40),
       background,
       display: "flex",
       alignItems: "center",

@@ -60,22 +60,24 @@ export const HomeFilterBar: React.FC<{ selected?: number }> = ({ selected = 1 })
     <Row style={{ height: dp(48), paddingLeft: dp(4) }}>
       <Row style={{ flex: 1 }}>
         {TABS.map((t, i) => (
-          <div key={t} style={{ position: "relative", height: dp(48), display: "flex", alignItems: "center", padding: `0 ${dp(16)}px` }}>
-            <span style={{ ...type.labelLarge, color: i === selected ? colors.primaryText : colors.textSecondary }}>{t}</span>
-            {i === selected ? (
-              <div
-                style={{
-                  position: "absolute",
-                  left: dp(16),
-                  right: dp(16),
-                  bottom: 0,
-                  height: dp(3),
-                  borderTopLeftRadius: dp(3),
-                  borderTopRightRadius: dp(3),
-                  background: colors.primaryText,
-                }}
-              />
-            ) : null}
+          <div key={t} style={{ flex: 1, height: dp(48), display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ position: "relative", display: "inline-block", height: dp(48), lineHeight: `${dp(48)}px` }}>
+              <span style={{ ...type.labelLarge, lineHeight: `${dp(48)}px`, color: i === selected ? colors.primaryText : colors.textSecondary }}>{t}</span>
+              {i === selected ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: dp(3),
+                    borderTopLeftRadius: dp(3),
+                    borderTopRightRadius: dp(3),
+                    background: colors.primaryText,
+                  }}
+                />
+              ) : null}
+            </span>
           </div>
         ))}
       </Row>
