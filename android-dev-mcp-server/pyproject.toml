@@ -5,6 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-	"mcp[cli]==1.23.0",
-	"Pillow==12.2.0",
+	"mcp[cli]>=1.28.1,<2",
+	"Pillow>=12.3.0",
 ]
+
+[tool.uv]
+# cryptography arrives only as pyjwt[crypto] -> mcp[cli]. Nothing here imports it directly, so
+# there is no dependency line to bump; a constraint is the only way to lift a transitive that
+# its own parent does not pin tightly enough.
+constraint-dependencies = ["cryptography>=50.0.0"]
