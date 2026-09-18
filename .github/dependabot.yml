@@ -288,6 +288,22 @@ updates:
         patterns:
           - "*"
 
+  # The Remotion promo video. Dev tooling only — nothing here is compiled into the app or
+  # deployed anywhere — but it has its own lockfile, so it raises its own alerts and needs its
+  # own entry for version updates to reach it.
+  - package-ecosystem: "npm"
+    directory: "/my-video"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+    groups:
+      my-video:
+        patterns:
+          - "*"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
