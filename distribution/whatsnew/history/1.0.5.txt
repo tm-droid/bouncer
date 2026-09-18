@@ -1,0 +1,5 @@
+Commentary no longer loses most of an over. Deliveries that read alike were being treated as
+repeats of each other and dropped, so a six-ball over could render as two.
+
+News articles now load their full text, and a story that is briefly unavailable says so rather
+than failing silently.

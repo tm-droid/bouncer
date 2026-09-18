@@ -1,0 +1,5 @@
+The over strip above the commentary showed the previous over while labelling it as the current
+one. It now shows the over actually being bowled, ball by ball.
+
+Fixes a crash on the Overview tab caused by the fall-of-wickets parser, which was also
+swallowing bowler names.

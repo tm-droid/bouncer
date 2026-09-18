@@ -1,0 +1,7 @@
+Search now finds players, teams and series, with a landing page for every team.
+
+Loading, empty and error states across the app, so a screen that has nothing to show says so
+instead of rendering blank. Pull to refresh on the points table, team detail and series list.
+
+Match detail no longer sticks on a spinner when the scorecard is slow, and commentary and
+highlights load properly from the match screen.

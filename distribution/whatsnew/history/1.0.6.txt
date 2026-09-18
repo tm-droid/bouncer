@@ -1,0 +1,9 @@
+Every delivery now gets written commentary, not a sample of the match.
+
+A match opens on the last few overs instead of pulling in twenty-five, so the commentary tab
+appears straight away and scrolls back on demand.
+
+Series is now its own tab. Upcoming keeps the last fixtures list it saw when the source is
+briefly empty.
+
+Faster cold start, a smaller download, and less background work while you are not watching.

@@ -67,8 +67,15 @@ android {
         applicationId = "com.tanush.bouncer"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
-        versionName = "1.0.7"
+        // CI supplies this; a local build keeps the literal. The Play publish job ran on every
+        // push to main against a hand-edited literal, so every push after a bump re-uploaded a
+        // code Play already held and the job failed with "Version code N has already been used"
+        // — permanently, and quietly, because the job carried continue-on-error. The workflow
+        // run number is monotonic for the life of the workflow, so a code derived from it can
+        // never collide or go backwards. versionName stays hand-edited: it is the thing users
+        // read, and it changes when the release is worth a name, not when CI runs.
+        versionCode = System.getenv("BOUNCER_VERSION_CODE")?.toIntOrNull() ?: 8
+        versionName = "1.0.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

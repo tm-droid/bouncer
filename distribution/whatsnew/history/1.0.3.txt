@@ -1,0 +1,6 @@
+Team crests now come from the match itself, so more teams have one.
+
+Home has been redrawn: more room between match rows, and less chrome around them.
+
+The Live Update notification is a proper scoreboard, with a designed layout on devices that
+cannot show a promoted card.

@@ -1,0 +1,5 @@
+Housekeeping release. No change to what the app shows.
+
+Behind the scenes: the build's own checks were failing silently, which meant real problems
+could reach a release unnoticed. Those checks pass again, and the app's dependencies have been
+brought up to date.

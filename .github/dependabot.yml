@@ -29,15 +29,168 @@ updates:
           - "io.ktor.*"
           - "io.coil-kt.*"
 
+  # One entry per Appwrite function directory. Security updates reach any manifest in the
+  # dependency graph on their own, but VERSION updates only reach the directories listed here,
+  # and only highlights-sync was listed — so the other nine functions drifted until something
+  # in them became a CVE and a security PR arrived. Keeping them current is the cheaper half.
+  #
+  # Each one groups all its updates into a single PR and allows one open PR at a time: ten
+  # ungrouped directories at the old limit of 5 would be up to fifty PRs a week at one
+  # maintainer, which is how a review queue stops being read at all.
+  - package-ecosystem: "npm"
+    directory: "/appwrite/functions/generate-commentary"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+      - "appwrite"
+    groups:
+      generate-commentary:
+        patterns:
+          - "*"
+
   - package-ecosystem: "npm"
     directory: "/appwrite/functions/highlights-sync"
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 1
     labels:
       - "dependencies"
       - "appwrite"
+    groups:
+      highlights-sync:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/appwrite/functions/match-commentary-prune"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+      - "appwrite"
+    groups:
+      match-commentary-prune:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/appwrite/functions/match-presence"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+      - "appwrite"
+    groups:
+      match-presence:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/appwrite/functions/match-sync"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+      - "appwrite"
+    groups:
+      match-sync:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/appwrite/functions/news-sync"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+      - "appwrite"
+    groups:
+      news-sync:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/appwrite/functions/player-search"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+      - "appwrite"
+    groups:
+      player-search:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/appwrite/functions/poll-live-matches"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+      - "appwrite"
+    groups:
+      poll-live-matches:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/appwrite/functions/train-win-probability"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+      - "appwrite"
+    groups:
+      train-win-probability:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/appwrite/functions/win-probability"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+      - "appwrite"
+    groups:
+      win-probability:
+        patterns:
+          - "*"
+
+  # The local MCP dev server (screenshots, UI dumps). Nothing here ships to a user, but it was
+  # raising 30 of the 99 open alerts, and version updates never reached it.
+  - package-ecosystem: "uv"
+    directory: "/android-dev-mcp-server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+    groups:
+      android-dev-mcp-server:
+        patterns:
+          - "*"
 
   - package-ecosystem: "github-actions"
     directory: "/"

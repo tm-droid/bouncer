@@ -1,0 +1,9 @@
+Light mode is now a real palette rather than dark colours on a white page.
+
+Test scores show both innings ("266 & 234/1"), and scores and the win-probability bar are
+matched to the right team — they could sit against the opposition before.
+
+Commentary stores every delivery, in the order bowled, and the scorecard reads fall of wickets
+and partnerships. Player names are no longer "View match performance".
+
+A denser match list, a redrawn Live Update, and Hindi.

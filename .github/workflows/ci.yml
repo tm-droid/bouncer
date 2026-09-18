@@ -142,6 +142,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     needs: test
+    # Repository secrets are not exposed to workflow runs triggered by dependabot[bot], so
+    # KEYSTORE_BASE64 expands to an empty string, `base64 --decode` writes a zero-byte file and
+    # signing dies with `Failed to read key from store: Tag number over 30 is not supported`.
+    # That failure has nothing to do with the dependency being bumped, and it made every single
+    # Dependabot PR look broken — hiding whatever the bump actually did to the build. Unit Tests
+    # and Lint still run for them, and those are the checks that can say anything useful here.
+    if: github.actor != 'dependabot[bot]'
 
     steps:
       - uses: actions/checkout@v7
@@ -187,6 +194,9 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dorg.gradle.parallel=true"
+          # Monotonic for the life of this workflow, and already far above the codes Play holds.
+          # See the comment on versionCode in app/build.gradle.kts.
+          BOUNCER_VERSION_CODE: ${{ 1000 + github.run_number }}
         # lintVital* used to be excluded here. It is the release-blocking subset — the check
         # that catches a NewApi call, a wrong exported flag or an invalid backup rule before an
         # upload — so skipping it meant the release path had no lint at all.
@@ -202,7 +212,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: build
-    continue-on-error: true  # app not yet created in Play Console; first upload must be done manually
+    # This used to carry `continue-on-error: true`, with a comment saying the app did not exist
+    # in Play Console yet. It does, and has for a while — the job was failing every run with
+    # "Version code 8 has already been used" while reporting nothing, which is the whole reason
+    # nobody noticed that no build had reached the internal track in weeks.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
@@ -218,5 +231,8 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.tanush.bouncer
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
-          track: internal
+          tracks: internal
           status: completed
+          # Without this every internal release shipped with blank release notes.
+          # distribution/whatsnew/README.md says who edits it and when.
+          whatsNewDirectory: distribution/whatsnew
