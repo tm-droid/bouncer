@@ -194,8 +194,71 @@ First release.
 | `INTERNET` | Live score polling, AI commentary, widget sync |
 | `VIBRATE` | Notification haptic feedback (wickets, boundaries) |
 | `POST_NOTIFICATIONS` | Match event push notifications (Android 13+) |
-| `FOREGROUND_SERVICE` | Background score polling service |
-| `FOREGROUND_SERVICE_DATA_SYNC` | WorkManager data sync classification |
+| `FOREGROUND_SERVICE` | `LiveUpdateService` — the ongoing live-score notification for followed matches |
+| `FOREGROUND_SERVICE_DATA_SYNC` | Same service; it holds the Realtime connection that feeds that notification. See "Foreground service declaration" below |
 | `RECEIVE_BOOT_COMPLETED` | Restart polling workers after device reboot |
 | `SCHEDULE_EXACT_ALARM` | Match reminder alarms at exact scheduled time |
 | `USE_EXACT_ALARM` | Required companion to SCHEDULE_EXACT_ALARM |
+
+---
+
+### Foreground service declaration
+
+**Play Console → Monitor and improve → App content → Foreground service permissions.**
+Separate from the store listing above. Required because the app targets Android 14+.
+
+The app declares exactly one foreground service type. `LiveUpdateService`
+(`services/LiveUpdateService.kt`, manifest `android:foregroundServiceType="dataSync"`) is the only
+service that calls `startForeground`, and it passes `FOREGROUND_SERVICE_TYPE_DATA_SYNC`. Nothing
+else in the app uses a typed foreground service — background score polling, series sync and player
+caching are all WorkManager, which needs no declaration.
+
+**Use case:** Network processing → Other.
+Custom text: `Real-time live score updates over a websocket for matches the user follows`.
+
+Not backup/restore, not import/export, not local processing. The service neither uploads nor
+writes files; it receives score rows over a connection the user opened by following a match.
+
+**Description of functionality**
+
+```
+Bouncer shows live cricket scores. When a user taps the bell on a live match ("Follow live
+updates"), the app starts a foreground service that keeps a websocket connection open to our
+backend (Appwrite Realtime) and receives that match's score row every time it changes, about once
+a minute while play is on. Each update is rendered into an ongoing "Live Update" notification that
+stays in the notification shade and on the lock screen: current score, batters, bowler, recent
+balls and the match situation. The service runs only while the user is following at least one live
+match. It stops itself when the last followed match ends, when the user taps Stop or swipes the
+notification away, and when the user unfollows the match. Nothing is uploaded; the connection only
+receives score data for matches the user asked to watch.
+```
+
+**User impact if the task is deferred**
+
+```
+The Live Update notification does not appear, or appears with a stale score, so the user misses
+wickets and boundaries in a match they explicitly asked to follow. Following a match is the only
+control the feature has; there is no other way to get the live card.
+```
+
+**User impact if the task is interrupted**
+
+```
+The notification stays on screen but freezes at the last score received. The app falls back to a
+periodic background poll, so the card catches up slowly rather than ball by ball, and the service
+is re-armed the next time the app is opened. The app already handles this deliberately for the
+Android 15 six-hour data-sync limit: onTimeout detaches the service from the foreground, leaves
+the cards posted and switches to the poll, rather than dropping the user's followed matches.
+```
+
+**Video:** `distribution/declarations/fgs-datasync.mp4` — a real screen recording of the debug
+build, 41 s, showing Home, the bell tap that starts the service, the resulting ongoing notification,
+and Stop. Play takes a **link**, so upload it unlisted to the same YouTube channel as the promo
+video and paste the URL here once submitted. See `distribution/declarations/README.md` for how to
+re-record it.
+
+**If a reviewer asks why not FCM or a user-initiated data transfer job:** a score changes every
+ball for the length of a match, which is hundreds of pushes per match, and a user-initiated data
+transfer job is for a bounded transfer with a known end, which a live match does not have. The
+service is user-initiated (the bell), user-visible (the notification is its only output) and
+self-terminating (it stops when the match does).
