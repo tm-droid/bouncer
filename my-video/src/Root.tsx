@@ -10,6 +10,7 @@ import { HomeScreen } from "./app/HomeScreen";
 import { CommentaryTab, MatchDetailScreen, OverviewTab, ScorecardTab } from "./app/MatchDetailScreen";
 import { AndroidHome, LiveUpdateCard } from "./app/AndroidHome";
 import { NewsScreen, SeriesScreen } from "./app/SeriesNewsScreens";
+import { Thumbnail } from "./ad/Thumbnail";
 import { states } from "./data/match";
 import { dp } from "./theme/tokens";
 
@@ -74,6 +75,7 @@ export const RemotionRoot: React.FC = () => {
         <Composition id="AppTour" component={AppTour} durationInFrames={TOUR_DURATION} fps={FPS} width={W} height={H} />
         <Composition id="Cta" component={Cta} durationInFrames={CTA_DURATION} fps={FPS} width={W} height={H} />
       </Folder>
+      <Still id="Thumbnail" component={Thumbnail} width={1280} height={720} />
       <Folder name="Stills">
         <Still id="Still-Home" component={StillHome} width={1080} height={2400} />
         <Still id="Still-Overview" component={StillOverview} width={1080} height={2400} />
