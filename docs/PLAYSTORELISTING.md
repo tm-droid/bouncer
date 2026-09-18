@@ -107,6 +107,10 @@ Alternates:
 "It hits different" is the tagline used on the closing beat of the ad and the
 Play Store showcase video. Keep store copy and video on the same line.
 
+**Promo video** (Play Console → Store listing → Promo video):
+`https://youtu.be/8hGBRcYCWzo` — rendered from `my-video/` (Remotion, see its README);
+thumbnail is the `Thumbnail` still there. Re-render and re-upload when a shown screen changes.
+
 ---
 
 ### Full Description
