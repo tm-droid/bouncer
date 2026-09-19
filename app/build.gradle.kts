@@ -339,8 +339,16 @@ dependencies {
     ksp(libs.room.compiler)
 
     // Firebase (requires google-services.json from Firebase Console to activate)
+    //
+    // firebase-analytics is deliberately absent. It pulls play-services-measurement, which pulls
+    // play-services-ads-identifier — AdvertisingIdClient. Play reads the bundle's own SDK list
+    // (BUNDLE-METADATA/com.android.tools.build.libraries/dependencies.pb), so that library's mere
+    // presence makes the advertising-ID declaration "yes" no matter what the manifest says;
+    // removing the merged AD_ID permission alone left Play rejecting the edit. Nothing in the app
+    // ever called FirebaseAnalytics, so the only loss is auto-collected screen views in the
+    // Firebase console, against an advertising ID appearing in the store's Data safety card.
+    // firebase-messaging does not depend on measurement, so FCM is unaffected.
     implementation(platform(libs.firebase.bom.lib))
-    implementation(libs.firebase.analytics)
     implementation(libs.firebase.messaging)
 
     // Car App (Android Auto)

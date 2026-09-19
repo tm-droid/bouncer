@@ -16,12 +16,13 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!--
-        Advertising ID is removed on purpose. firebase-analytics pulls
-        play-services-measurement-api, whose library manifest declares AD_ID, and that merge alone
-        is what Play's advertising-ID declaration asks about. Bouncer serves no ads and does no
-        attribution, so the declaration is answered "no" and the permission must not reach the
-        merged manifest — Play blocks a release that contradicts the declaration. Analytics keeps
-        working without it, on the app-set ID.
+        Advertising ID is removed on purpose, and this line is now a guard rather than a fix.
+        firebase-analytics used to merge AD_ID in through play-services-measurement-api's library
+        manifest; that dependency is gone (see app/build.gradle.kts), so nothing contributes the
+        permission today. It stays so that adding an SDK which declares it cannot silently flip the
+        app's Play advertising-ID declaration, which is answered "no". Note that removing the
+        permission is not by itself sufficient: Play also reads the bundle's SDK list, so an ad-ID
+        library must not be on the classpath either.
     -->
     <uses-permission
         android:name="com.google.android.gms.permission.AD_ID"

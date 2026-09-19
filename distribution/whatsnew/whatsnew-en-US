@@ -1,5 +1,7 @@
-Housekeeping release. No change to what the app shows.
+The "You're offline" banner now follows the connection your phone is actually using. It used to
+watch every network at once, so it could stay up while you were online, or miss a drop while you
+were not.
 
-Behind the scenes: the build's own checks were failing silently, which meant real problems
-could reach a release unnoticed. Those checks pass again, and the app's dependencies have been
-brought up to date.
+Behind the scenes: the build's own checks were failing silently, which meant real problems could
+reach a release unnoticed. Those checks pass again, the app's dependencies have been brought up to
+date, and an advertising ID permission the app never used has been removed.

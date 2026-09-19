@@ -120,7 +120,6 @@ room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 
 # ── Firebase ──────────────────────────────────────────────────────────────────
 firebase-bom-lib = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
-firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging-ktx" }
 
 # ── Debug ─────────────────────────────────────────────────────────────────────
