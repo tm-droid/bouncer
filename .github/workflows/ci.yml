@@ -210,14 +210,14 @@ jobs:
           path: app/build/outputs/bundle/release/app-release.aab
 
   publish:
-    name: Publish to Play Store (Internal)
+    name: Publish to Play Store (Closed testing)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: build
     # This used to carry `continue-on-error: true`, with a comment saying the app did not exist
     # in Play Console yet. It does, and has for a while — the job was failing every run with
     # "Version code 8 has already been used" while reporting nothing, which is the whole reason
-    # nobody noticed that no build had reached the internal track in weeks.
+    # nobody noticed that no build had reached the internal track (now closed testing) in weeks.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
@@ -233,8 +233,8 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.tanush.bouncer
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
-          tracks: internal
+          tracks: alpha  # Play API id of the default closed testing track
           status: completed
-          # Without this every internal release shipped with blank release notes.
+          # Without this every release shipped with blank release notes.
           # distribution/whatsnew/README.md says who edits it and when.
           whatsNewDirectory: distribution/whatsnew
