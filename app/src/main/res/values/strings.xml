@@ -40,8 +40,18 @@
     <string name="match_starts_today">Starts today, %1$s</string>
     <string name="match_starts_tomorrow">Starts tomorrow, %1$s</string>
     <string name="match_starts_on">Starts %1$s, %2$s</string>
-    <string name="match_follow_live_updates">Follow live updates</string>
-    <string name="match_stop_live_updates">Stop live updates</string>
+    <string name="match_follow_live_updates">Follow match</string>
+    <string name="match_stop_live_updates">Following — change</string>
+    <string name="match_follow_title">Follow %1$s</string>
+    <string name="match_follow_live_card">Live score card</string>
+    <string name="match_follow_live_card_subtitle">Pinned notification that updates every ball</string>
+    <string name="match_follow_alerts">Alerts</string>
+    <string name="match_follow_wickets">Wickets</string>
+    <string name="match_follow_boundaries">Fours and sixes</string>
+    <string name="match_follow_milestones">Milestones</string>
+    <string name="match_follow_milestones_subtitle">Fifties and hundreds</string>
+    <string name="match_follow_start_result">Start and result</string>
+    <string name="match_alert_action_stop">Stop alerts</string>
     <string name="home_unread_badge_overflow" translatable="false">9+</string>
 
     <!-- ── Search ───────────────────────────────────────────────────────── -->
@@ -240,15 +250,11 @@
     <string name="live_live_scoring_graph">LIVE SCORING GRAPH</string>
     <string name="live_required_rr">Required RR</string>
     <string name="live_run_progression_by_over">Run progression by over</string>
-    <string name="match_all_on">All On</string>
     <string name="match_balanced">Balanced</string>
     <string name="match_copy_match_id">Copy Match ID</string>
     <string name="match_following">Following</string>
     <string name="match_key_factors">KEY FACTORS</string>
-    <string name="match_key_only">Key Only</string>
     <string name="match_momentum_summary">MOMENTUM SUMMARY</string>
-    <string name="match_mute">Mute</string>
-    <string name="match_notifications">Notifications</string>
     <string name="match_predicted_winner">PREDICTED WINNER</string>
     <string name="match_share_score">Share Score</string>
     <string name="match_tie_draw">TIE/DRAW</string>
@@ -327,7 +333,7 @@
     <string name="settings_clear_app_cache">Clear App Cache</string>
     <string name="settings_clear_cache">Clear Cache?</string>
     <string name="settings_feel_the_game_with_vibrations">Feel the game with vibrations</string>
-    <string name="settings_get_notified_when_your_favorite_team">Get notified when your favorite team is playing</string>
+    <string name="settings_get_notified_when_your_favorite_team">Alerts for the matches you follow</string>
     <string name="settings_haptic_feedback">Haptic Feedback</string>
     <string name="settings_live_match_alerts">Live Match Alerts</string>
     <string name="settings_never_miss_a_crucial_wicket">Never miss a crucial wicket</string>

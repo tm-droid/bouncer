@@ -14,7 +14,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -38,8 +37,8 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 /**
  * Long-press actions for a match row.
  *
- * [onSubscribeToggle] is null for a match with nothing left to follow; when present it is the same
- * Live Update subscription as the row's bell, so the control is reachable without hitting a 16dp icon.
+ * [onSubscribeToggle] is null for a match with nothing left to follow; when present it opens the
+ * same follow sheet as the row's bell, so the control is reachable without hitting a 16dp icon.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,7 +91,7 @@ fun MatchContextMenuSheet(
 private fun LiveUpdatesItem(isSubscribed: Boolean, onToggle: () -> Unit, onDismiss: () -> Unit) {
     SheetItem(
         label = stringResource(if (isSubscribed) R.string.match_stop_live_updates else R.string.match_follow_live_updates),
-        icon = if (isSubscribed) Icons.Default.NotificationsOff else Icons.Default.NotificationsActive,
+        icon = if (isSubscribed) Icons.Default.NotificationsActive else Icons.Default.Notifications,
     ) {
         onToggle()
         onDismiss()

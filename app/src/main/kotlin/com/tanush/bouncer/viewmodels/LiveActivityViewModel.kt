@@ -4,9 +4,6 @@ import com.tanush.bouncer.services.backoffDelayMs
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tanush.bouncer.managers.MatchSubscriptionManager
-import com.tanush.bouncer.managers.NotificationInboxManager
-import com.tanush.bouncer.managers.NotificationItem
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.utils.TimelineEventExtractor
@@ -187,19 +184,9 @@ class LiveActivityViewModel(
             try {
                 breadcrumb("live.event", "Key event: $title")
                 _keyEvent.value = title to body
-
-                val liveMatch = _currentMatches.value.firstOrNull { it.isLive } ?: return@launch
-                if (!MatchSubscriptionManager.isSubscribed(liveMatch.id)) return@launch
-
-                NotificationInboxManager.add(
-                    NotificationItem(
-                        matchId = liveMatch.id,
-                        title = title,
-                        body = body,
-                        type = NotificationInboxManager.inferType(title),
-                    )
-                )
-
+                // The inbox is written by BouncerFirebaseMessagingService when an alert arrives.
+                // It used to be written here, from whichever live match was FIRST in the list
+                // rather than the one the event came from, and only while the app was open.
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Log.e(TAG, "Error processing key event: $title", e)

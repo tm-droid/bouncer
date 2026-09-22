@@ -4,21 +4,14 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.work.*
-import com.tanush.bouncer.R
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricketRepository
-import com.tanush.bouncer.models.MatchStatusClassifier
-import com.tanush.bouncer.models.StatusSignal
 import com.tanush.bouncer.network.models.SanwebMatchSummary
 import com.tanush.bouncer.network.models.SanwebMatchesListResponse
 import com.tanush.bouncer.managers.MatchSubscriptionManager
-import com.tanush.bouncer.ui.notifications.RichNotificationBuilder
 import com.tanush.bouncer.ui.widgets.LiveMatchWidgetProvider
 import com.tanush.bouncer.ui.widgets.WidgetSnapshotSource
 import com.tanush.bouncer.ui.widgets.WidgetUpdateWorker
@@ -33,8 +26,10 @@ import com.tanush.bouncer.utils.sentryBreadcrumb
 /**
  * WorkManager-based periodic score poller.
  *
- * Fetches live match data from the API and pushes updates to widgets.
- * Scheduled every 15 minutes with network constraints.
+ * Fetches live match data from the API and pushes updates to widgets. It no longer posts
+ * notifications: it used to post one whenever a followed match's status line changed, on the
+ * silent live-score channel, which was the only notification the app ever actually sent. Match
+ * alerts are now pushed by the server to each match's topic (see BouncerFirebaseMessagingService).
  */
 class ScorePollingWorker(
     private val context: Context,
@@ -44,7 +39,10 @@ class ScorePollingWorker(
     override suspend fun doWork(): Result {
         sentryBreadcrumb("score_polling", "ScorePollingWorker started (attempt ${runAttemptCount})")
 
-        // Early-exit: no subscriptions → nothing to notify, skip network call entirely.
+        // Early-exit: no followed match → no widget to refresh, skip the network call entirely.
+        // Initialised here because a worker can cold-start the process, and BouncerApp initialises
+        // the manager on a background dispatcher — reading before that finishes sees an empty set.
+        MatchSubscriptionManager.initialize(context)
         if (MatchSubscriptionManager.subscriptions.value.isEmpty()) {
             Log.d(TAG, "No subscriptions — skipping poll")
             WorkerLogger.enqueued("score_polling", "Skipped — no active subscriptions")
@@ -83,7 +81,6 @@ class ScorePollingWorker(
         context.sendBroadcast(
             Intent(ACTION_SCORES_UPDATED).setPackage(context.packageName)
         )
-        notifySubscribedMatches(matchesResponse.matches)
 
         sentryBreadcrumb("score_polling", "Poll succeeded – $matchCount live matches")
 
@@ -140,68 +137,12 @@ class ScorePollingWorker(
         WidgetSnapshotSource.refresh(context)
     }
 
-    /**
-     * Drop `last_status_*` entries for matches the user is no longer subscribed to.
-     *
-     * One key was written per subscribed match and none was ever removed, so the prefs file grew a
-     * permanent entry for every match ever followed — including matches that finished months ago.
-     * Subscriptions are the authority: once a match leaves that set its status key is dead weight.
-     */
-    private fun pruneStaleStatusKeys(prefs: SharedPreferences, subscribed: Set<String>) {
-        val stale = prefs.all.keys.filter {
-            it.startsWith(LAST_STATUS_PREFIX) && it.removePrefix(LAST_STATUS_PREFIX) !in subscribed
-        }
-        if (stale.isEmpty()) return
-        prefs.edit().apply { stale.forEach { remove(it) } }.apply()
-    }
-
-    private fun notifySubscribedMatches(matches: List<SanwebMatchSummary>) {
-        val subscribed = MatchSubscriptionManager.subscriptions.value
-        if (subscribed.isEmpty()) return
-
-        val notifPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val notifManager = NotificationManagerCompat.from(context)
-        pruneStaleStatusKeys(notifPrefs, subscribed)
-
-        matches.filter { it.id in subscribed }.forEach { match ->
-            val lastStatus = notifPrefs.getString("$LAST_STATUS_PREFIX${match.id}", null)
-            if (lastStatus == match.status) return@forEach
-
-            notifPrefs.edit().putString("$LAST_STATUS_PREFIX${match.id}", match.status).apply()
-
-            // Through the shared classifier, not `contains("won")`: "India won the toss and
-            // elected to bat" is the START of a match, and that substring routed it to the
-            // match-ended channel. The classifier exists precisely to retire this test.
-            val channelId = if (MatchStatusClassifier.classify(match.status) == StatusSignal.TERMINAL)
-                RichNotificationBuilder.CricketNotificationChannel.CHANNEL_MATCH_END
-            else
-                RichNotificationBuilder.CricketNotificationChannel.CHANNEL_LIVE_SCORE
-
-            val notification = NotificationCompat.Builder(context, channelId)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentTitle(match.title)
-                .setContentText(match.status)
-                .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setGroup(RichNotificationBuilder.CricketNotificationChannel.GROUP_CRICKET)
-                .build()
-
-            try {
-                notifManager.notify(("bg_${match.id}").hashCode(), notification)
-            } catch (e: SecurityException) {
-                Log.w(TAG, "Notification permission not granted", e)
-                sentryBreadcrumb("score_polling", "Notification permission denied: ${e.message}", SentryLevel.WARNING)
-            }
-        }
-    }
-
     companion object {
         const val TAG = "ScorePollingWorker"
 
         private const val UNIQUE_WORK_NAME = "score_polling_periodic"
         private const val ONE_TIME_WORK_TAG = "score_polling_once"
         private val PREFS_NAME = PrefsRegistry.PREFS_SCORE_POLLING
-        private const val LAST_STATUS_PREFIX = "last_status_"
         private const val MAX_LIVE_FOLLOWUPS = 12 // 12 × 5 min = 1 hour cap
         private val KEY_FOLLOWUP_COUNT = PrefsRegistry.ScorePolling.FOLLOWUP_COUNT
 

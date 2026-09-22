@@ -36,8 +36,6 @@ class SharedPreferencesFileInventoryTest {
         "bouncer_countdown_widget",
         "bouncer_glance_widget",
         "bouncer_lock_widget",
-        "bouncer_match_notif_prefs",
-        "bouncer_mute_prefs",
         "bouncer_notification_prefs",
         "bouncer_prefs",
         "bouncer_reminders",

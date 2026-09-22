@@ -60,8 +60,10 @@ fun MatchCardV2(
     match: CricketMatch,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isSubscribed: Boolean = false,
-    onSubscribeToggle: (() -> Unit)? = null,
+    /** Either half of following is on — the card or any alert. Drives the bell's fill. */
+    isFollowing: Boolean = false,
+    /** Shows the bell. Its tap opens [MatchFollowSheet]. */
+    followable: Boolean = false,
     onSetReminder: () -> Unit = {},
     isFavouriteTeam: Boolean = false,
 ) {
@@ -72,10 +74,11 @@ fun MatchCardV2(
     val hapticEnabled = remember { PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true) }
 
     var showContextMenu by remember { mutableStateOf(false) }
+    var showFollowSheet by remember { mutableStateOf(false) }
 
     val statusType = remember(match) { determineMatchStatus(match) }
     // A decided match has nothing left to follow.
-    val subscribeToggle = onSubscribeToggle.takeIf { statusType != MatchStatusType.Completed }
+    val openFollow = { showFollowSheet = true }.takeIf { followable && statusType != MatchStatusType.Completed }
     val cardDescription = remember(match) { matchCardDescription(match) }
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -103,8 +106,8 @@ fun MatchCardV2(
                 match = match,
                 isLive = statusType == MatchStatusType.Live,
                 isFavouriteTeam = isFavouriteTeam,
-                isSubscribed = isSubscribed,
-                onSubscribeToggle = subscribeToggle,
+                isSubscribed = isFollowing,
+                onSubscribeToggle = openFollow,
             )
             Spacer(Modifier.height(spacing.sm))
             MatchTeamRows(match = match, isLive = statusType == MatchStatusType.Live)
@@ -115,14 +118,40 @@ fun MatchCardV2(
         HorizontalDivider(color = colors.divider)
     }
 
+    MatchCardSheets(
+        match = match,
+        showContextMenu = showContextMenu,
+        showFollowSheet = showFollowSheet,
+        onDismissContextMenu = { showContextMenu = false },
+        onDismissFollowSheet = { showFollowSheet = false },
+        onSetReminder = onSetReminder,
+        isFollowing = isFollowing,
+        openFollow = openFollow,
+    )
+}
+
+@Composable
+private fun MatchCardSheets(
+    match: CricketMatch,
+    showContextMenu: Boolean,
+    showFollowSheet: Boolean,
+    onDismissContextMenu: () -> Unit,
+    onDismissFollowSheet: () -> Unit,
+    onSetReminder: () -> Unit,
+    isFollowing: Boolean,
+    openFollow: (() -> Unit)?,
+) {
     if (showContextMenu) {
         MatchContextMenuSheet(
             match = match,
-            onDismiss = { showContextMenu = false },
+            onDismiss = onDismissContextMenu,
             onSetReminder = onSetReminder,
-            isSubscribed = isSubscribed,
-            onSubscribeToggle = subscribeToggle,
+            isSubscribed = isFollowing,
+            onSubscribeToggle = openFollow,
         )
+    }
+    if (showFollowSheet) {
+        MatchFollowSheet(matchId = match.id, matchTitle = match.matchTitle, onDismiss = onDismissFollowSheet)
     }
 }
 

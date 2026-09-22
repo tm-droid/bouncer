@@ -5,33 +5,22 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
+import com.tanush.bouncer.managers.MatchAlertPrefs
+import com.tanush.bouncer.managers.MatchSubscriptionManager
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 
 /**
- * Receives "Mute Match" actions from notifications and persists the muted
- * match ID so future notifications for that match are suppressed.
- *
- * Muted match IDs are stored in SharedPreferences as a string set and can be
- * queried via the [isMatchMuted] companion helper.
+ * The "Stop alerts" action on a match alert. Turns the match's alerts off through the same switch
+ * as the bell's sheet, so the user can turn them back on there; it used to add the match to a
+ * private mute set that nothing in the UI could clear.
  */
 class MuteMatchReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "MuteMatchReceiver"
         const val EXTRA_MATCH_ID = "extra_match_id"
-        private const val PREFS_NAME = "bouncer_mute_prefs"
-        private const val KEY_MUTED_MATCHES = "muted_matches"
-
-        /**
-         * Returns `true` when the given [matchId] has been muted by the user.
-         */
-        fun isMatchMuted(context: Context, matchId: String): Boolean {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val muted = prefs.getStringSet(KEY_MUTED_MATCHES, emptySet()) ?: emptySet()
-            return matchId in muted
-        }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -41,27 +30,21 @@ class MuteMatchReceiver : BroadcastReceiver() {
             return
         }
 
-        Log.d(TAG, "Muting match: $matchId")
+        MatchSubscriptionManager.initialize(context.applicationContext)
+        MatchSubscriptionManager.setAlerts(matchId, MatchAlertPrefs.NONE)
 
-        // Persist the muted match
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val current = prefs.getStringSet(KEY_MUTED_MATCHES, emptySet())?.toMutableSet() ?: mutableSetOf()
-        current.add(matchId)
-        prefs.edit().putStringSet(KEY_MUTED_MATCHES, current).apply()
-
-        // Cancel any existing notifications for this match
         try {
             val notificationManager = NotificationManagerCompat.from(context)
-            val notificationId = 5000 + matchId.hashCode()
-            notificationManager.cancel(notificationId)
+            val tag = BouncerFirebaseMessagingService.notificationTag(matchId)
+            MatchAlertType.ALL.indices.forEach { notificationManager.cancel(tag, it) }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to cancel notification for match $matchId", e)
+            Log.e(TAG, "Failed to cancel notifications for match $matchId", e)
             Sentry.captureException(e)
         }
 
         Sentry.addBreadcrumb(Breadcrumb().apply {
             category = "mute"
-            message = "Match muted: $matchId"
+            message = "Match alerts stopped: $matchId"
             level = SentryLevel.INFO
             setData("match_id", matchId)
         })

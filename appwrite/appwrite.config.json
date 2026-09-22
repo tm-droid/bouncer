@@ -276,6 +276,14 @@
                 {
                     "key": "MATCH_SCORECARD_COL_ID",
                     "value": "match-scorecard"
+                },
+                {
+                    "key": "FIREBASE_SERVICE_ACCOUNT_JSON",
+                    "value": ""
+                },
+                {
+                    "key": "FIREBASE_PROJECT_ID",
+                    "value": ""
                 }
             ]
         },

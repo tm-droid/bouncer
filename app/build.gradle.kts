@@ -233,6 +233,9 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
             rootProject.file("appwrite/functions/match-sync/src/nextflight.js"),
             rootProject.file("appwrite/functions/poll-live-matches/src/nextflight.js"),
             rootProject.file("appwrite/functions/poll-live-matches/src/matchstate.js"),
+            // FcmJsVendorParityTest: the push sender both functions deploy, and matchTopic's rule.
+            rootProject.file("appwrite/functions/match-sync/src/fcm.js"),
+            rootProject.file("appwrite/functions/poll-live-matches/src/fcm.js"),
         )
             .withPropertyName("winProbAndSeriesParitySources")
             .withPathSensitivity(PathSensitivity.RELATIVE)

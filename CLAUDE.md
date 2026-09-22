@@ -202,8 +202,8 @@ the row `bouncer-match-sync` already writes every minute — so a tracked match 
 at first paint and none after. A promoted notification does **not** need a foreground service; the
 FGS only keeps the process alive for the websocket frames, which is why `onTimeout` (the API 34+
 six-hour cumulative `dataSync` cap, which a Test day exceeds) can `STOP_FOREGROUND_DETACH` and
-leave every card posted. Subscribing to a match is the only control — there is deliberately no
-second toggle, and the settings row exists only to surface the one state the user cannot fix from
+leave every card posted. The card is one half of following a match (the "Live score card" switch in
+`MatchFollowSheet`); the settings row exists only to surface the one state the user cannot fix from
 inside the app. The channel is `live_update_scores` at `IMPORTANCE_DEFAULT`: the retired
 `live_activity_updates` was `IMPORTANCE_LOW`, channel importance is immutable after creation, and a
 LOW channel has no status-bar presence for the chip to attach to. `startForeground` binds the
@@ -298,6 +298,26 @@ reachable: the array's only writer sat inside the dead live-notification path, b
 a ball source `LiveActivityViewModel` does not have — the match-list scrape sets `recentBalls` to
 null and only the per-match detail scrape carries it, which on the six-second Live poll would be
 one scrape per live match per tick.
+
+**Match alerts are server-sent FCM data messages to a per-match topic, and until September 2026 nothing
+sent them.** `BouncerFirebaseMessagingService` always handled `wicket`/`boundary`/`milestone`/
+`match_start`/`match_end`, but the only server push was `poll-live-matches`' `cricket-live-updates`
+live-count broadcast, which the device turns into a widget refresh and nothing else — so a user with
+notifications enabled received none. Now: `match-sync` sends wicket/boundary (from `classifyEvent` of
+the raw line, on a row's **first** write only — a 409 means another execution already alerted),
+milestones (batter runs crossing 50/100/150/200 between runs, kept in memory; a cold container seeds
+rather than alerts) and the result (on the once-per-match finalising run); `poll-live-matches` sends
+`match_start` when an id first appears live (`startedIds` in `poll-state`, 6-day memory; the first run
+after deploy records without sending). Deliveries older than `ALERT_MAX_AGE_MS` (5 min) are not
+alerted, so a Cricbuzz backlog republish does not burst. Topic = `match_{id}` (`matchTopic`, in the
+vendored `fcm.js` and mirrored by the Kotlin `matchTopic`, both pinned by `FcmJsVendorParityTest`).
+The server sends every event whether or not anyone listens; the device decides in
+`shouldShowMatchAlert` (per-match prefs × the Settings switches, which were cosmetic until then ×
+quiet hours). Both functions need the **secret** `FIREBASE_SERVICE_ACCOUNT_JSON` + `FIREBASE_PROJECT_ID`
+— secret values read back empty from the API, so check the run log: each run logs `FCM not
+configured` when they are missing. **The bell opens `MatchFollowSheet`**, which sets two independent
+things in `MatchSubscriptionManager`: `subscriptions` (the Live Update card) and `alertPrefs` (which
+alerts; any on ⇒ subscribed to the topic). `ScorePollingWorker` no longer posts notifications.
 
 **AI cache (3-tier):** `MemoryFifoCache` (256 entries; FIFO eviction, not LRU — `utils/BoundedLruCache` is the real LRU) → Room `ai_commentary_cache` → Appwrite `ai-commentary-cache` table. All four commentary functions (`generateBallCommentary`, `fuse`, `streamCommentary`, `summarizeOversWithAI`) check cache before calling any AI provider. Completed matches use **permanent TTL** (`Long.MAX_VALUE` in Room, `expires_at = "2099-01-01T00:00:00.000Z"` in Appwrite) — `isMatchComplete` flag threads from ViewModels → `AICacheService`. Never set permanent=true for live matches.
 

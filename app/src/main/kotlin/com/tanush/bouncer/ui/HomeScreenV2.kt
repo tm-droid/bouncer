@@ -261,6 +261,7 @@ private fun HomeMatchList(
 ) {
     val spacing = BouncerThemeV2.spacing
     val subscriptions by MatchSubscriptionManager.subscriptions.collectAsStateWithLifecycle()
+    val alertPrefs by MatchSubscriptionManager.alertPrefs.collectAsStateWithLifecycle()
     val favourites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
     val favouriteNames = remember(favourites) { favourites.map { it.trim().lowercase() }.toSet() }
     val (featured, rows) = remember(matches, favouriteNames) { splitFeatured(matches, favouriteNames) }
@@ -292,8 +293,8 @@ private fun HomeMatchList(
                         match = match,
                         onClick = { onMatchClick(match) },
                         modifier = Modifier.fillMaxWidth().animateItem(),
-                        isSubscribed = match.id in subscriptions,
-                        onSubscribeToggle = { MatchSubscriptionManager.toggle(match.id) },
+                        isFollowing = match.id in subscriptions || alertPrefs[match.id]?.anyOn == true,
+                        followable = true,
                         isFavouriteTeam = match.hasFavouriteTeam(favouriteNames),
                     )
                 }

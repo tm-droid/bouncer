@@ -43,6 +43,8 @@ import {
   startCheckIn,
   finishCheckIn,
 } from "./observability.js";
+import { deliveryAlert, milestoneAlerts, resultAlert } from "./alerts.js";
+import { fcmConfigured, matchTopic, sendTopicMessage } from "./fcm.js";
 import { evaluate, evaluateLong, evaluatePrematch, formatFromText, ballsRemainingFor } from "./winprob.js";
 import {
   resolveMatchTeams, teamStatsOf, genderFromTitle, teamsFromTitle, stripWomenSuffix, teamKey,
@@ -234,6 +236,10 @@ export function resetRewriteBatcher() {
 // purpose — commentary only ever arrives newest-after-oldest — while costing 1 read instead of 30.
 // Correctness never depended on either: writes use a deterministic rowId plus a 409 backstop.
 const watermarkByMatch = new Map();
+// name → runs for each live match's current batters, the last time this container saw them. Kept
+// in memory only: a cold container seeds rather than alerting, which can miss a milestone crossed
+// in the one minute it took to boot and cannot invent one.
+const batterRunsByMatch = new Map();
 
 // Last body written per row, per warm container, so an unchanged snapshot is not rewritten. Between
 // overs, at drinks, at lunch and in a rain delay the live page does not move, yet every viewed
@@ -548,6 +554,11 @@ async function handleRun({ req, res, log, error }) {
 
   // Matches whose final rows were written this run — see FINAL_SUFFIX.
   const finalisedNow = new Set();
+  // Push sends queued by syncMatch, awaited before the run returns (the container freezes on
+  // return and an unsent request is lost). Null when the Firebase secrets are unset.
+  const alertsOn = fcmConfigured();
+  const alerts = alertsOn ? [] : null;
+  if (!alertsOn) log("FCM not configured (FIREBASE_SERVICE_ACCOUNT_JSON / FIREBASE_PROJECT_ID) — no match alerts sent");
 
   // Process matches in parallel so per-ball LLM latency doesn't serialize across matches.
   await Promise.allSettled(
@@ -564,6 +575,7 @@ async function handleRun({ req, res, log, error }) {
           model,
           log,
           error,
+          alerts,
         });
         summary[matchId] = result.status;
         if (result.finalised) finalisedNow.add(matchId);
@@ -586,6 +598,14 @@ async function handleRun({ req, res, log, error }) {
       }
     })
   );
+
+  if (alerts?.length) {
+    const sent = (await Promise.all(alerts)).filter(Boolean).length;
+    log(`Sent ${sent}/${alerts.length} match alert(s)`);
+    if (sent < alerts.length) {
+      report("match-sync failed to send match alerts", { sent, queued: alerts.length }, "warning");
+    }
+  }
 
   if (finalisedNow.size > 0) {
     log(`${finalisedNow.size} match(es) finalised: ${[...finalisedNow].join(",")}`);
@@ -1056,7 +1076,13 @@ async function activeViewerIds({ storage, log, error }) {
 
 // Exported for `finalise.test.js`: the finalisation wiring (which tier writes, and once) is
 // invisible in production until a match ends, which is the class of defect this file keeps finding.
-export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error }) {
+export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error, alerts = null }) {
+  // Queues one push to this match's topic. [alerts] is null when FCM is unconfigured or in tests
+  // that do not exercise alerts, and then nothing is sent.
+  const alert = (data) => {
+    if (!alerts || !data) return;
+    alerts.push(sendTopicMessage(matchTopic(matchId), data, { onError: error }));
+  };
   // 2. Fetch live page, plus the scorecard only when we are going to use it. A match with no
   // viewer needs the live page alone to produce a win probability — and, now, to store its
   // commentary, which the live page alone carries.
@@ -1098,6 +1124,13 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
     });
   }
   const writeDetail = detailTier || finalising;
+
+  // Milestones come off the live page's batters, which every live match has fetched every run.
+  const milestones = milestoneAlerts({
+    matchId, title, batsmen: detail.batsmen, previous: batterRunsByMatch.get(matchId), score: detail.score,
+  });
+  batterRunsByMatch.set(matchId, milestones.next);
+  milestones.alerts.forEach(alert);
   const winProb = winProbFor(detail, title, model);
   // Carried in the detail payload as well as the aggregate file, so the detail screen updates on
   // the existing realtime channel instead of waiting for a file download. `payload` is an opaque
@@ -1151,7 +1184,12 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   // live list. Claimed only when a row was actually written: a hollow parse must be retried, not
   // recorded as the match's final word.
   const finalised = finalising && detailHasContent;
-  if (finalised) log(`Match ${matchId}: finalised on "${detail.status}"`);
+  if (finalised) {
+    log(`Match ${matchId}: finalised on "${detail.status}"`);
+    // Once per match: `alreadyFinalised` is persisted, so this is the one run that sends it.
+    alert(resultAlert({ matchId, title, status: detail.status }));
+    batterRunsByMatch.delete(matchId);
+  }
 
   if (!storeCommentary) {
     return { status: { commentaryWritten: 0, skipped: "beyond commentary cap" }, winProb, finalised };
@@ -1333,6 +1371,10 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
       );
       advance(itemTs);
       written++;
+      // Only on a first write: a 409 means another execution stored this ball and alerted for it.
+      alert(deliveryAlert({
+        matchId, title, event, ball, text: clean, timestampMs: itemTs, now: Date.now(), score: detail.score,
+      }));
       writtenBalls.push({ innings: item.innings ?? fallbackInnings, ball });
     } catch (e) {
       // 409 = row already exists (race / watermark behind): it is durably written, so advance.

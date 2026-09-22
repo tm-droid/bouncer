@@ -82,7 +82,7 @@ function fakeDb() {
 
 const silent = () => {};
 
-async function run({ db, matchId, commentaryCap, alreadyFinalised }) {
+async function run({ db, matchId, commentaryCap, alreadyFinalised, alerts = null }) {
   return syncMatch({
     db,
     matchId,
@@ -95,6 +95,7 @@ async function run({ db, matchId, commentaryCap, alreadyFinalised }) {
     model: null,
     log: silent,
     error: silent,
+    alerts,
   });
 }
 
@@ -165,4 +166,14 @@ test("a match on the detail tier still writes exactly as it did before", async (
   STATUS = "Birmingham Phoenix need 96 runs in 44 balls";
   await run({ db, matchId: "finalise-6", commentaryCap: 10 });
   assert.ok(db.writes.some((w) => w.table === "match-live-detail"));
+});
+
+test("the finalising run queues exactly one result push, and a later run none", async () => {
+  // The result alert rides on finalisation because that is the one run per match that is
+  // guaranteed to see the terminal status exactly once.
+  const alerts = [];
+  await run({ db: fakeDb(), matchId: "finalise-alert", commentaryCap: 0, alerts });
+  assert.equal(alerts.length, 1);
+  await run({ db: fakeDb(), matchId: "finalise-alert", commentaryCap: 0, alreadyFinalised: true, alerts });
+  assert.equal(alerts.length, 1);
 });

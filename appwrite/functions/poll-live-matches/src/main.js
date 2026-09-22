@@ -1,11 +1,12 @@
 import { Client, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
-import { createSign, createHash } from "crypto";
+import { createHash } from "crypto";
 import { seriesCategory, isWomensSeries } from "./series.js";
 import { parseJsonFile } from "./storageJson.js";
 import { CricbuzzBlockedError, fetchHtml } from "./cricbuzz-http.js";
 import { parseMatchList } from "./matchlist.js";
 import { classifyStatus } from "./matchstate.js";
+import { fcmConfigured, matchTopic, sendTopicMessage } from "./fcm.js";
 
 /**
  * Cricbuzz's own list pages, one per tab.
@@ -195,17 +196,26 @@ export default async ({ req, res, log, error }) => {
         log(`Live match count changed: ${prevCount} → ${newLiveCount}`);
 
         // Send FCM BEFORE recording the count so a timeout or throw can't update it without notifying
-        const saJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-        const projectId = process.env.FIREBASE_PROJECT_ID;
-        if (saJson && projectId) {
-          await sendFcmTopicMessage(
-            "cricket-live-updates",
-            { type: newLiveCount > prevCount ? "MATCH_STARTED" : "MATCH_ENDED", liveCount: String(newLiveCount) },
-            saJson, projectId, error
-          );
-        }
+        await sendTopicMessage(
+          "cricket-live-updates",
+          { type: newLiveCount > prevCount ? "MATCH_STARTED" : "MATCH_ENDED", liveCount: String(newLiveCount) },
+          { onError: error }
+        );
       }
       nextState.liveCount = newLiveCount;
+
+      // Per-match start alerts, to the topic a device subscribes to when it follows a match.
+      const { starts, started } = matchStarts({
+        matches: liveData?.matches ?? [],
+        previous: prevState.startedIds,
+        now,
+      });
+      nextState.startedIds = started;
+      if (!fcmConfigured()) {
+        if (starts.length) log(`FCM not configured — ${starts.length} match start alert(s) not sent`);
+      } else {
+        await Promise.all(starts.map((m) => sendTopicMessage(matchTopic(m.id), startAlert(m), { onError: error })));
+      }
     } catch (e) {
       error(`FCM state-change check failed: ${e?.message}`);
     }
@@ -539,48 +549,39 @@ function decodeEntities(text) {
     .replace(/&gt;/g, ">");
 }
 
-async function getFirebaseAccessToken(serviceAccountJson) {
-  const sa = JSON.parse(serviceAccountJson);
-  const now = Math.floor(Date.now() / 1000);
-  const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({
-    iss: sa.client_email,
-    scope: "https://www.googleapis.com/auth/firebase.messaging",
-    aud: "https://oauth2.googleapis.com/token",
-    iat: now,
-    exp: now + 3600,
-  })).toString("base64url");
-  const sigInput = `${header}.${payload}`;
-  const sign = createSign("RSA-SHA256");
-  sign.update(sigInput);
-  const sig = sign.sign(sa.private_key, "base64url");
-  const jwt = `${sigInput}.${sig}`;
+// A started id is remembered this long, so a match that drops off the live list and comes back
+// (Cricbuzz does this across a rain delay or an innings break) is not announced twice.
+const STARTED_RETENTION_MS = 6 * 24 * 3600 * 1000;
 
-  const tokenResp = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
-    signal: AbortSignal.timeout(8_000),
-  });
-  if (!tokenResp.ok) throw new Error(`Token exchange HTTP ${tokenResp.status}`);
-  const tokenData = await tokenResp.json();
-  return tokenData.access_token;
+/**
+ * Live matches not seen live before. [previous] is `poll-state.startedIds` ({id: firstSeenMs}); when
+ * it is absent — the first run after this shipped — every current match is recorded and none is
+ * announced, or a deploy would push a start alert for every match already in progress.
+ */
+export function matchStarts({ matches, previous, now }) {
+  const started = {};
+  for (const [id, at] of Object.entries(previous ?? {})) {
+    if (now - at < STARTED_RETENTION_MS) started[id] = at;
+  }
+  const starts = [];
+  for (const m of matches) {
+    const id = String(m?.id ?? "");
+    if (!id || started[id] !== undefined) continue;
+    started[id] = now;
+    if (previous) starts.push(m);
+  }
+  return { starts, started };
 }
 
-async function sendFcmTopicMessage(topic, data, serviceAccountJson, projectId, errorFn) {
-  try {
-    const accessToken = await getFirebaseAccessToken(serviceAccountJson);
-    const resp = await fetch(
-      `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
-        body: JSON.stringify({ message: { topic, data } }),
-        signal: AbortSignal.timeout(8_000),
-      }
-    );
-    if (!resp.ok) errorFn?.(`FCM v1 send failed: HTTP ${resp.status}`);
-  } catch (e) {
-    errorFn?.(`FCM v1 send error: ${e?.message}`);
-  }
+/** The push for a match going live. */
+export function startAlert(m) {
+  const sides = (m.teams ?? []).map((t) => t?.name).filter(Boolean);
+  const matchTitle = sides.length === 2 ? `${sides[0]} vs ${sides[1]}` : String(m.title ?? "").split(",")[0].trim();
+  return {
+    type: "match_start",
+    match_id: String(m.id),
+    title: matchTitle || "Match started",
+    body: m.status || "Match is live",
+    match_title: matchTitle,
+  };
 }

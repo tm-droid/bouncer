@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -57,11 +58,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tanush.bouncer.ui.components.CoilImage
+import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.MatchStatus
 import com.tanush.bouncer.ui.components.v2.AnimatedScoreText
-import com.tanush.bouncer.ui.components.v2.MatchNotificationPrefsSheet
+import com.tanush.bouncer.ui.components.v2.MatchFollowSheet
 import com.tanush.bouncer.ui.components.v2.MatchStatusType
 import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
 import com.tanush.bouncer.ui.components.v2.ReminderBottomSheet
@@ -142,6 +144,9 @@ fun MatchDetailViewV2(
 
     var showReminderSheet by remember { mutableStateOf(false) }
     var showNotifPrefsSheet by remember { mutableStateOf(false) }
+    val followedCards by MatchSubscriptionManager.subscriptions.collectAsStateWithLifecycle()
+    val followedAlerts by MatchSubscriptionManager.alertPrefs.collectAsStateWithLifecycle()
+    val isFollowing = match.id in followedCards || followedAlerts[match.id]?.anyOn == true
     var isSharingCard by remember { mutableStateOf(false) }
 
     val team1 = match.teams.getOrNull(0)
@@ -263,7 +268,13 @@ fun MatchDetailViewV2(
                         Icon(Icons.Default.Alarm, "Reminder", tint = colors.onSurface)
                     }
                     IconButton(onClick = { showNotifPrefsSheet = true }) {
-                        Icon(Icons.Default.Notifications, "Notification Preferences", tint = colors.onSurface)
+                        Icon(
+                            imageVector = if (isFollowing) Icons.Filled.Notifications else Icons.Outlined.Notifications,
+                            contentDescription = stringResource(
+                                if (isFollowing) R.string.match_stop_live_updates else R.string.match_follow_live_updates
+                            ),
+                            tint = if (isFollowing) colors.primaryText else colors.onSurface,
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -415,7 +426,7 @@ fun MatchDetailViewV2(
         }
 
         if (showNotifPrefsSheet) {
-            MatchNotificationPrefsSheet(
+            MatchFollowSheet(
                 matchId = match.id,
                 matchTitle = match.matchTitle,
                 onDismiss = { showNotifPrefsSheet = false },
