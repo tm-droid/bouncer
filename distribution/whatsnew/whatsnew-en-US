@@ -1,7 +1,5 @@
-The "You're offline" banner now follows the connection your phone is actually using. It used to
-watch every network at once, so it could stay up while you were online, or miss a drop while you
-were not.
+Match alerts now arrive. Tap the bell on a match to choose wickets, boundaries, milestones, start and result, plus the live score card. Quiet hours and your Settings switches now apply to them.
 
-Behind the scenes: the build's own checks were failing silently, which meant real problems could
-reach a release unnoticed. Those checks pass again, the app's dependencies have been brought up to
-date, and an advertising ID permission the app never used has been removed.
+Series pages have real Schedule and Stats tabs, and the schedule opens on the next match. The Series tab has a Past view for earlier years.
+
+A match now links to its series, and back from there returns you to the match. Closing a match opened from a series or search no longer drops you on Home.
