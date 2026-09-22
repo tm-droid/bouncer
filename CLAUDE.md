@@ -414,6 +414,18 @@ overwritten with the same empty list and carries no start times. Pinned by `Upco
 its "All matches" link pushes `AllMatchesScreenV2`. `SeriesListScreen` is the Series tab and is no
 longer a row under More; `series/…` and `points-table/…` highlight Series, `match/…` highlights Home.
 
+**Series detail reads the series' own pages, and every series tab needs the slug.**
+`/cricket-series/{id}/{tab}` answers 200 with no data for every tab; only
+`/cricket-series/{id}/{slug}/{tab}` carries it, so `seriesSlugOf` reads the slug off the unslugged
+page (`SeriesDetailScraper`, `PointsTableScraper`). Schedule walks `matchDetailsMap` groups — never
+bare `matchInfo`, which is also the site-wide ticker on the same page. Stats is
+`/stats?statsType=X`, server-rendered per type, and one page carries every format's table
+(`initialStats.{odi|t20|test}StatsList`); a series that has not started has no stats section at
+all, which is the normal answer, not drift. The Series tab's Past view is
+`/cricket-scorecard-archives/{year}` (sections `internationalData`/`leagueData`/`domesticData`/
+`womenData`); `/cricket-schedule/series/all` is current and upcoming only. Pinned by
+`SeriesDetailFlightTest` and `SeriesListMergeTest`.
+
 **Cricbuzz profile pages are App Router.** `/profiles/{id}/{slug}` carries no `__NEXT_DATA__` block — only `self.__next_f.push(...)` chunks — and the legacy Jsoup selectors (`cb-font-40`, `cb-plyr-inf`, `cb-plyr-thead`, …) match **zero** elements on it. Both of `PlayerProfileScraper`'s original strategies were therefore dead, and the fallback produced a profile with a name and every other field empty rather than an error. `PlayerProfileRsc` reads the flight stream via `forEachNextFlightPayload` — the same parser the match pages use — and runs first; the other two stay as fallbacks. Pinned by `PlayerProfileRscTest` against captured markup.
 
 **Scorecard player names are in a span, not the row's link.** A `div.grid.scorecard-bat-grid` /

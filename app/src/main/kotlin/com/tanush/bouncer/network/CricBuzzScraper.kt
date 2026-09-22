@@ -350,6 +350,9 @@ class CricBuzzScraper {
             scoreFields.team2Overs, scoreFields.team2IsBatting, teamImageIdOf(info, "team2")),
     )
 
+    /** One `{matchInfo, matchScore}` object as a match, or null if it is not one. For [SeriesDetailScraper]. */
+    internal fun matchOf(obj: JsonObject): CricketMatch? = parseMatchObject(obj)
+
     private fun parseMatchObject(obj: JsonObject): CricketMatch? {
         try {
             val info = obj.get("matchInfo")?.takeIf { it.isJsonObject }?.asJsonObject ?: return null

@@ -4,7 +4,9 @@ import com.tanush.bouncer.services.WORKER_MAX_RETRIES
 import com.tanush.bouncer.services.backoffDelayMs
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
+import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.models.Series
+import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -26,6 +28,11 @@ class SeriesScraper {
         // `/cricket-schedule/series` (no suffix) carries only the site-wide live ticker, so every
         // strategy below returned nothing on it and the Series screen said "No series found".
         private const val SERIES_LIST_URL = "${CricBuzzUrls.BASE}/cricket-schedule/series/all"
+        private const val ARCHIVE_URL = "${CricBuzzUrls.BASE}/cricket-scorecard-archives"
+        private val ARCHIVE_SECTIONS = setOf("internationalData", "leagueData", "domesticData", "womenData")
+
+        /** The earliest year `/cricket-scorecard-archives` links to. */
+        const val FIRST_ARCHIVE_YEAR = 2007
     }
 
     /**
@@ -94,6 +101,19 @@ class SeriesScraper {
     }
 
     /**
+     * Every series Cricbuzz archived for [year], from `/cricket-scorecard-archives/{year}`.
+     *
+     * The Series tab only ever listed `/cricket-schedule/series/all`, which holds current and
+     * upcoming series alone, so nothing that had finished could be opened from it at all.
+     */
+    suspend fun fetchArchivedSeries(year: Int): AppResult<List<Series>> = withContext(Dispatchers.IO) {
+        sentryBreadcrumb(category = "network.series", message = "Fetching archived series for $year")
+        AppResult.runCatchingSuspend {
+            parseArchiveHtml(ScrapeFetcher.getString("$ARCHIVE_URL/$year", randomUserAgent(), 10_000))
+        }
+    }
+
+    /**
      * Every series in the page's App Router flight stream: `seriesScheduleData` is a list of month
      * groups, each `{date, series: [{id, name, startDt, endDt}]}`. `internal` for the fixture test.
      */
@@ -105,6 +125,47 @@ class SeriesScraper {
             }
         }
         return result.values.toList()
+    }
+
+    /**
+     * An archive year page: `{internationalData, leagueData, domesticData, womenData}`, each holding
+     * `seriesMapProto` month groups in the same `{date, series: [{id, name, startDt, endDt}]}` shape
+     * as the schedule. The section is Cricbuzz's own classification, so it outranks the name-based
+     * guess; `womenData` says only that it is women's cricket, so its category is still guessed.
+     * `internal` for the fixture test.
+     */
+    internal fun parseArchiveHtml(html: String): List<Series> {
+        val result = linkedMapOf<String, Series>()
+        forEachNextFlightPayload(html) { payload ->
+            findArchiveSections(payload).forEach { (section, groups) ->
+                seriesOfGroups(groups).forEach { series ->
+                    val classified = classifiedBySection(series, section)
+                    // Listed in two sections: keep the first section's category, and the flag.
+                    result.merge(classified.id, classified) { existing, _ ->
+                        existing.copy(isWomens = existing.isWomens || classified.isWomens)
+                    }
+                }
+            }
+        }
+        return result.values.sortedByDescending { it.startDate.toLongOrNull() ?: 0L }
+    }
+
+    private fun classifiedBySection(series: Series, section: String): Series = when (section) {
+        "internationalData" -> series.copy(category = Series.SeriesCategory.INTERNATIONAL)
+        "leagueData" -> series.copy(category = Series.SeriesCategory.LEAGUE)
+        "domesticData" -> series.copy(category = Series.SeriesCategory.DOMESTIC)
+        "womenData" -> series.copy(isWomens = true)
+        else -> series
+    }
+
+    private fun findArchiveSections(element: JsonElement): List<Pair<String, JsonArray>> = when {
+        element.isJsonObject -> element.asJsonObject.entrySet().flatMap { (key, value) ->
+            val groups = value.takeIf { key in ARCHIVE_SECTIONS && it.isJsonObject }
+                ?.asJsonObject?.get("seriesMapProto")?.takeIf { it.isJsonArray }?.asJsonArray
+            if (groups != null) listOf(key to groups) else findArchiveSections(value)
+        }
+        element.isJsonArray -> element.asJsonArray.flatMap { findArchiveSections(it) }
+        else -> emptyList()
     }
 
     private fun findScheduleGroups(element: JsonElement): List<JsonArray> = when {

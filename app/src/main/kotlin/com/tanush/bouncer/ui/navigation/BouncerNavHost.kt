@@ -524,6 +524,10 @@ private fun NavGraphBuilder.entityDestinations(
             onPointsTableClick = { id ->
                 navController.navigateForward(BouncerScreen.PointsTable.createRoute(id))
             },
+            onMatchClick = onMatchClick,
+            onPlayerClick = { name ->
+                navController.navigateForward(BouncerScreen.PlayerDetail.createRoute(name))
+            },
             onBackClick = { navController.popBackStack() }
         )
     }

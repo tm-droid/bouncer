@@ -52,6 +52,8 @@ import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.ShimmerListItem
+import com.tanush.bouncer.ui.components.v2.TextMenuV2
+import com.tanush.bouncer.ui.components.v2.TextTabBarV2
 import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
@@ -72,6 +74,8 @@ fun SeriesListScreen(
     val allSeries by viewModel.series.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val hasError by viewModel.hasError.collectAsStateWithLifecycle()
+    val mode by viewModel.mode.collectAsStateWithLifecycle()
+    val selectedYear by viewModel.selectedYear.collectAsStateWithLifecycle()
     var selectedFilter by remember { mutableStateOf("All") }
 
     val filteredSeries = filterSeries(allSeries, selectedFilter)
@@ -84,12 +88,25 @@ fun SeriesListScreen(
         },
         containerColor = colors.background,
     ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        SeriesModeBar(
+            mode = mode,
+            onModeSelected = viewModel::selectMode,
+            years = viewModel.archiveYears,
+            selectedYear = selectedYear,
+            onYearSelected = viewModel::selectYear,
+        )
         PullRefreshWrapperV2(
             isRefreshing = isLoading,
             onRefresh = viewModel::retry,
         ) {
             SeriesListBody(
-                innerPadding = innerPadding,
+                innerPadding = PaddingValues(),
+                emptySubtitle = if (mode == SeriesListViewModel.Mode.PAST) {
+                    stringResource(R.string.series_no_archived_series_for_year, selectedYear)
+                } else {
+                    stringResource(R.string.series_active_cricket_series_will_appear_here)
+                },
                 isLoading = isLoading,
                 hasError = hasError,
                 allSeries = allSeries,
@@ -101,12 +118,41 @@ fun SeriesListScreen(
                 onRetry = { viewModel.retry() },
             )
         }
+        }
+    }
+}
+
+/** Current / Past, and — on Past — which year. */
+@Composable
+private fun SeriesModeBar(
+    mode: SeriesListViewModel.Mode,
+    onModeSelected: (SeriesListViewModel.Mode) -> Unit,
+    years: List<Int>,
+    selectedYear: Int,
+    onYearSelected: (Int) -> Unit,
+) {
+    val modes = SeriesListViewModel.Mode.entries
+    TextTabBarV2(
+        tabs = listOf(stringResource(R.string.series_current), stringResource(R.string.series_past)),
+        selectedIndex = modes.indexOf(mode),
+        onSelect = { onModeSelected(modes[it]) },
+    ) {
+        if (mode == SeriesListViewModel.Mode.PAST) {
+            TextMenuV2(
+                label = selectedYear.toString(),
+                options = years,
+                selected = selectedYear,
+                optionLabel = { it.toString() },
+                onSelect = onYearSelected,
+            )
+        }
     }
 }
 
 @Composable
 private fun SeriesListBody(
     innerPadding: PaddingValues,
+    emptySubtitle: String,
     isLoading: Boolean,
     hasError: Boolean,
     allSeries: List<Series>,
@@ -150,7 +196,7 @@ private fun SeriesListBody(
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 EmptyStateV2(
                     title = stringResource(R.string.series_no_series_found),
-                    subtitle = stringResource(R.string.series_active_cricket_series_will_appear_here),
+                    subtitle = emptySubtitle,
                 )
             }
         }

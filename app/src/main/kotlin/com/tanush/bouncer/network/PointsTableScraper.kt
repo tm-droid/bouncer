@@ -95,9 +95,22 @@ class PointsTableScraper {
  * rather than selecting on the parsed document.
  */
 internal fun sluggedPointsTableUrl(html: String, seriesId: String): String? {
-    val pattern = Regex("""/cricket-series/${Regex.escape(seriesId)}/([a-z0-9\-]+)/points-table""")
-    val slug = pattern.find(html)?.groupValues?.get(1) ?: return null
+    val slug = seriesSlugOf(html, seriesId) ?: return null
     return "${CricBuzzUrls.BASE}/cricket-series/$seriesId/$slug/points-table"
+}
+
+/**
+ * The series' URL slug, read off any of its own tab links on [html].
+ *
+ * Every series tab has the same trap: `/cricket-series/{id}/{tab}` answers 200 with no data, and
+ * only `/cricket-series/{id}/{slug}/{tab}` carries it. Navigation passes the id alone, and every
+ * series page links to its own slugged tabs, so the slug is recovered from whichever page is at hand.
+ */
+internal fun seriesSlugOf(html: String, seriesId: String): String? {
+    val pattern = Regex(
+        """/cricket-series/${Regex.escape(seriesId)}/([a-z0-9\-]+)/(?:matches|points-table|stats|squads|news|venues)"""
+    )
+    return pattern.find(html)?.groupValues?.get(1)
 }
 
 /** Every standings row on the page, in the order Cricbuzz lists them. */
