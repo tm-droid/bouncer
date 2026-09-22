@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import com.tanush.bouncer.utils.PreferencesHelper
 import androidx.navigation.NavGraphBuilder
 import kotlinx.coroutines.Dispatchers
@@ -524,6 +525,7 @@ private fun NavGraphBuilder.entityDestinations(
     ) { backStackEntry ->
         val seriesId = backStackEntry.arguments?.getString(BouncerScreen.SeriesDetail.ARG_SERIES_ID)
             ?.decodeUrlSafe() ?: return@composable
+        val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
 
         SeriesDetailScreen(
             seriesId = seriesId,
@@ -534,7 +536,11 @@ private fun NavGraphBuilder.entityDestinations(
             onPlayerClick = { name ->
                 navController.navigateForward(BouncerScreen.PlayerDetail.createRoute(name))
             },
-            onBackClick = { navController.popBackStack() }
+            // Through the dispatcher, not popBackStack: a series opened from a match's series link
+            // returns to that match, and the arrow must take the same path as the system back.
+            onBackClick = {
+                if (backDispatcher != null) backDispatcher.onBackPressed() else navController.popBackStack()
+            }
         )
     }
 

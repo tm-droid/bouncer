@@ -110,6 +110,11 @@ fun BouncerAppContent(
 
     // Hoisted so the match overlay can navigate the app underneath it (a match's series link).
     val navController = rememberNavController()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    // A series opened from a match's series link, and the match to reopen when that series page
+    // is backed out of. Keyed on the back-stack entry, so leaving it any other way (a bottom tab)
+    // never matches again and the match stays closed.
+    var seriesReturn by remember { mutableStateOf<Pair<String, CricketMatch>?>(null) }
 
     BouncerThemeV2(themeMode = themeMode) {
         Box(
@@ -137,12 +142,22 @@ fun BouncerAppContent(
                     )
                 }
             )
+            // Composed after the NavHost, so its back callback outranks the NavHost's own.
+            BackHandler(enabled = seriesReturn != null && backStackEntry?.id == seriesReturn?.first) {
+                val match = seriesReturn?.second
+                seriesReturn = null
+                navController.popBackStack()
+                currentMatch = match
+            }
             MatchOverlay(
                 match = currentMatch,
                 onClose = { currentMatch = null },
                 onSeriesClick = { seriesId ->
+                    val from = currentMatch
                     currentMatch = null
                     navController.navigateForward(BouncerScreen.SeriesDetail.createRoute(seriesId))
+                    val entryId = navController.currentBackStackEntry?.id
+                    seriesReturn = if (from != null && entryId != null) entryId to from else null
                 },
             )
         }
