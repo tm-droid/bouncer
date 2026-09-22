@@ -4,6 +4,7 @@ import com.tanush.bouncer.data.AppJson
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import androidx.core.content.edit
 import com.google.firebase.messaging.FirebaseMessaging
 import com.tanush.bouncer.services.LiveUpdateService
 import com.tanush.bouncer.utils.PrefsRegistry
@@ -118,7 +119,7 @@ object MatchSubscriptionManager {
         // `apply()` is asynchronous, so this is an ordering guarantee, not a durability one — a
         // process kill in the next few milliseconds can still lose the write. DataStore is the
         // real fix; commit() would only trade the loss for a main-thread disk write.
-        prefs.edit().putString(KEY_SUBSCRIBED, AppJson.encodeToString(set.toList())).apply()
+        prefs.edit { putString(KEY_SUBSCRIBED, AppJson.encodeToString(set.toList())) }
         _subscriptions.value = set
     }
 
@@ -129,7 +130,7 @@ object MatchSubscriptionManager {
     }
 
     private fun saveAlerts(map: Map<String, MatchAlertPrefs>) {
-        prefs.edit().putString(KEY_ALERTS, AppJson.encodeToString(map)).apply()
+        prefs.edit { putString(KEY_ALERTS, AppJson.encodeToString(map)) }
         _alertPrefs.value = map
     }
 
@@ -143,7 +144,7 @@ object MatchSubscriptionManager {
         val json = prefs.getString(KEY_ALERTS, null)
         if (json == null) {
             val migrated = _subscriptions.value.associateWith { MatchAlertPrefs.DEFAULT }
-            prefs.edit().putString(KEY_ALERTS, AppJson.encodeToString(migrated)).apply()
+            prefs.edit { putString(KEY_ALERTS, AppJson.encodeToString(migrated)) }
             migrated.keys.forEach { topics.subscribe(matchTopic(it)) }
             return migrated
         }

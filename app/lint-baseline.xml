@@ -547,60 +547,10 @@
             column="9"/>
     </issue>
 
-    <issue
-        id="DisableBaselineAlignment"
-        message="Set `android:baselineAligned=&quot;false&quot;` on this element for better performance"
-        errorLine1="    &lt;LinearLayout"
-        errorLine2="     ~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="11"
-            column="6"/>
-    </issue>
 
-    <issue
-        id="DisableBaselineAlignment"
-        message="Set `android:baselineAligned=&quot;false&quot;` on this element for better performance"
-        errorLine1="    &lt;LinearLayout"
-        errorLine2="     ~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="153"
-            column="6"/>
-    </issue>
 
-    <issue
-        id="NestedWeights"
-        message="Nested weights are bad for performance"
-        errorLine1="                android:layout_weight=&quot;1&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="174"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="NestedWeights"
-        message="Nested weights are bad for performance"
-        errorLine1="                android:layout_weight=&quot;1&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="213"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="Overdraw"
-        message="Possible overdraw: Root element paints background `@color/black_background` with a theme that also paints a background (inferred theme is `@style/Theme.Bouncer`)"
-        errorLine1="    android:background=&quot;@color/black_background&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="7"
-            column="5"/>
-    </issue>
 
     <issue
         id="Overdraw"
@@ -778,60 +728,10 @@
             column="48"/>
     </issue>
 
-    <issue
-        id="SmallSp"
-        message="Avoid using sizes smaller than `11sp`: `10sp`"
-        errorLine1="                android:textSize=&quot;10sp&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="109"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="SmallSp"
-        message="Avoid using sizes smaller than `11sp`: `9sp`"
-        errorLine1="            android:textSize=&quot;9sp&quot;"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="246"
-            column="13"/>
-    </issue>
 
-    <issue
-        id="SmallSp"
-        message="Avoid using sizes smaller than `11sp`: `9sp`"
-        errorLine1="            android:textSize=&quot;9sp&quot;"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="288"
-            column="13"/>
-    </issue>
 
-    <issue
-        id="SmallSp"
-        message="Avoid using sizes smaller than `11sp`: `9sp`"
-        errorLine1="            android:textSize=&quot;9sp&quot;"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="317"
-            column="13"/>
-    </issue>
 
-    <issue
-        id="SmallSp"
-        message="Avoid using sizes smaller than `11sp`: `9sp`"
-        errorLine1="                android:textSize=&quot;9sp&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="362"
-            column="17"/>
-    </issue>
 
     <issue
         id="SmallSp"
@@ -1185,16 +1085,6 @@
             column="13"/>
     </issue>
 
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        prefs.edit().putString(KEY_SUBSCRIBED, gson.toJson(set.toList())).apply()"
-        errorLine2="        ~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/tanush/bouncer/managers/MatchSubscriptionManager.kt"
-            line="95"
-            column="9"/>
-    </issue>
 
     <issue
         id="UseKtx"
@@ -1383,269 +1273,29 @@
             column="53"/>
     </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;India&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;India&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="28"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;185/4 (18.3)&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;185/4 (18.3)&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="38"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;(18.3)&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;(18.3)&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="48"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;LIVE&quot;, should use `@string` resource"
-        errorLine1="                    android:text=&quot;LIVE&quot;"
-        errorLine2="                    ~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="86"
-            column="21"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;LIVE&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;LIVE&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="97"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;T20I&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;T20I&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="108"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;Australia&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;Australia&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="126"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;Target: 201&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;Target: 201&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="136"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;(20.0)&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;(20.0)&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="145"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;Kohli*&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;Kohli*&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="175"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;65(42)&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;65(42)&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="186"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;Jadeja&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;Jadeja&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="214"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;23(18)&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;23(18)&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="224"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;BWL&quot;, should use `@string` resource"
-        errorLine1="            android:text=&quot;BWL&quot;"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="245"
-            column="13"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;Starc&quot;, should use `@string` resource"
-        errorLine1="            android:text=&quot;Starc&quot;"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="255"
-            column="13"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;2/34 (3.4)&quot;, should use `@string` resource"
-        errorLine1="            android:text=&quot;2/34 (3.4)&quot;"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="266"
-            column="13"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;REQ&quot;, should use `@string` resource"
-        errorLine1="            android:text=&quot;REQ&quot;"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="287"
-            column="13"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;THIS OVER&quot;, should use `@string` resource"
-        errorLine1="            android:text=&quot;THIS OVER&quot;"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="316"
-            column="13"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;1  4  0  W  2  6&quot;, should use `@string` resource"
-        errorLine1="            android:text=&quot;1  4  0  W  2  6&quot;"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="326"
-            column="13"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;65%&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;65%&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="353"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;WIN PROBABILITY&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;WIN PROBABILITY&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="361"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;35%&quot;, should use `@string` resource"
-        errorLine1="                android:text=&quot;35%&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="371"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;Win probability bar&quot;, should use `@string` resource"
-        errorLine1="            android:contentDescription=&quot;Win probability bar&quot; />"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="384"
-            column="13"/>
-    </issue>
 
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;Kohli hits Starc for SIX! Over deep midwicket!&quot;, should use `@string` resource"
-        errorLine1="            android:text=&quot;Kohli hits Starc for SIX! Over deep midwicket!&quot;"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/notification_live_expanded.xml"
-            line="412"
-            column="13"/>
-    </issue>
 
     <issue
         id="HardcodedText"
