@@ -15,6 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Git Workflow
 - After completing requested changes, commit and push directly to main (do not create a PR unless explicitly asked).
 - Always run a clean build and tests before pushing; do not push a broken build.
+- Every push to main uploads to Play with `distribution/whatsnew/whatsnew-en-US` as "What's new". A commit touching `app/src/main/` must update that file (user-facing wording, ≤500 chars — see `distribution/whatsnew/README.md`). `.claude/hooks/release-notes-check.sh` blocks the commit otherwise; prefix `SKIP_RELEASE_NOTES=1` only when nothing user-visible changed.
 
 ## Code Tasks
 - When asked to 'look at the app' or audit features, INSPECT THE CODEBASE (Read/Grep) rather than launching, screenshotting, or building mocked/fake screens.
