@@ -424,7 +424,15 @@ bare `matchInfo`, which is also the site-wide ticker on the same page. Stats is
 all, which is the normal answer, not drift. The Series tab's Past view is
 `/cricket-scorecard-archives/{year}` (sections `internationalData`/`leagueData`/`domesticData`/
 `womenData`); `/cricket-schedule/series/all` is current and upcoming only. Pinned by
-`SeriesDetailFlightTest` and `SeriesListMergeTest`.
+`SeriesDetailFlightTest` and `SeriesListMergeTest`. The schedule opens on the next match
+(`scheduleAnchorIndex`, pinned by `SeriesScheduleAnchorTest`).
+
+**A tapped match is an overlay above the NavHost, and the NavHost stays composed under it.**
+`BouncerAppContent` used to *swap* `MainAppContainer` for `MatchDetailViewV2`, which disposed the
+NavHost and its back stack, so closing a match opened from a series, a search or a team landed on
+Home. The navController is now hoisted there, the list poll pauses while the overlay is up
+(`isCovered`), and the match screen reaches navigation through `LocalOpenSeries` rather than a
+parameter.
 
 **Cricbuzz profile pages are App Router.** `/profiles/{id}/{slug}` carries no `__NEXT_DATA__` block — only `self.__next_f.push(...)` chunks — and the legacy Jsoup selectors (`cb-font-40`, `cb-plyr-inf`, `cb-plyr-thead`, …) match **zero** elements on it. Both of `PlayerProfileScraper`'s original strategies were therefore dead, and the fallback produced a profile with a name and every other field empty rather than an error. `PlayerProfileRsc` reads the flight stream via `forEachNextFlightPayload` — the same parser the match pages use — and runs first; the other two stay as fallbacks. Pinned by `PlayerProfileRscTest` against captured markup.
 

@@ -23,6 +23,7 @@ import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.ui.components.v2.BottomNavBarV2
 import com.tanush.bouncer.ui.navigation.BouncerNavHost
 import com.tanush.bouncer.ui.navigation.BouncerScreen
+import com.tanush.bouncer.ui.navigation.LocalOpenSeries
 import com.tanush.bouncer.ui.navigation.navigateForward
 import com.tanush.bouncer.ui.navigation.navigateToTab
 import com.tanush.bouncer.ui.screens.*
@@ -56,9 +57,11 @@ import com.tanush.bouncer.viewmodels.NewsViewModel
  * foreground costs one catch-up fetch, not a restart.
  */
 @Composable
-private fun PollWhileStarted(viewModel: LiveActivityViewModel) {
-    LifecycleStartEffect(viewModel) {
-        viewModel.startPolling()
+private fun PollWhileStarted(viewModel: LiveActivityViewModel, paused: Boolean) {
+    // [paused] while a match is open over the app: the list under it cannot be seen, and before the
+    // app stayed composed under the match, this effect was disposed there and the loop stopped.
+    LifecycleStartEffect(viewModel, paused) {
+        if (!paused) viewModel.startPolling()
         onStopOrDispose { viewModel.stopPolling() }
     }
 }
@@ -105,59 +108,72 @@ fun BouncerAppContent(
         )
     }
 
-    BouncerThemeV2(themeMode = themeMode) {
-        BackHandler(enabled = currentMatch != null) { currentMatch = null }
+    // Hoisted so the match overlay can navigate the app underneath it (a match's series link).
+    val navController = rememberNavController()
 
+    BouncerThemeV2(themeMode = themeMode) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(BouncerThemeV2.colors.background)
         ) {
-            SharedTransitionLayout {
-                AnimatedContent(
-                    targetState = currentMatch,
-                    transitionSpec = {
-                        if (targetState != null) {
-                            BouncerMotion.Transitions.verticalEnter(offsetDivisor = 10)
-                                .togetherWith(fadeOut(BouncerMotion.Specs.FadeOut))
-                        } else {
-                            fadeIn(BouncerMotion.Specs.FadeIn) togetherWith
-                                BouncerMotion.Transitions.verticalExit(offsetDivisor = 10)
-                        }
-                    },
-                    label = "rootNavigation"
-                ) { match ->
-                    if (match != null) {
-                        Box(
-                            modifier = Modifier
-                                .sharedBounds(
-                                    sharedContentState = rememberSharedContentState(key = "match_container_${match.id}"),
-                                    animatedVisibilityScope = this@AnimatedContent
-                                )
-                                .graphicsLayer { clip = true }
-                        ) {
-                            MatchDetailViewV2(
-                                match = match,
-                                onBackClick = { currentMatch = null }
-                            )
-                        }
-                    } else {
-                        MainAppContainer(
-                            onMatchClick = { clickedMatch ->
-                                currentMatch = clickedMatch
-                            },
-                            externalDeepLinkUri = externalDeepLinkUri,
-                            themeMode = themeMode,
-                            onThemeModeChanged = {
-                                themeMode = it
-                                PreferencesHelper.setString(
-                                    context,
-                                    PreferencesHelper.KEY_THEME_VARIANT,
-                                    it.name,
-                                )
-                            }
-                        )
-                    }
+            // The app stays composed under an open match. It used to be swapped out for the match
+            // screen, which disposed the NavHost and its back stack: closing a match opened from a
+            // series, a search or a team landed on Home instead of where the reader was.
+            MainAppContainer(
+                navController = navController,
+                onMatchClick = { clickedMatch ->
+                    currentMatch = clickedMatch
+                },
+                isCovered = currentMatch != null,
+                externalDeepLinkUri = externalDeepLinkUri,
+                themeMode = themeMode,
+                onThemeModeChanged = {
+                    themeMode = it
+                    PreferencesHelper.setString(
+                        context,
+                        PreferencesHelper.KEY_THEME_VARIANT,
+                        it.name,
+                    )
+                }
+            )
+            MatchOverlay(
+                match = currentMatch,
+                onClose = { currentMatch = null },
+                onSeriesClick = { seriesId ->
+                    currentMatch = null
+                    navController.navigateForward(BouncerScreen.SeriesDetail.createRoute(seriesId))
+                },
+            )
+        }
+    }
+}
+
+/** The open match, over the app. Keeps the last match on screen while it animates out. */
+@Composable
+private fun MatchOverlay(
+    match: CricketMatch?,
+    onClose: () -> Unit,
+    onSeriesClick: (String) -> Unit,
+) {
+    var shown by remember { mutableStateOf(match) }
+    if (match != null) shown = match
+    AnimatedVisibility(
+        visible = match != null,
+        enter = BouncerMotion.Transitions.verticalEnter(offsetDivisor = 10),
+        exit = BouncerMotion.Transitions.verticalExit(offsetDivisor = 10),
+    ) {
+        val visibleMatch = shown ?: return@AnimatedVisibility
+        // Registered after the NavHost's own back callback, so back closes the match first.
+        BackHandler(enabled = match != null, onBack = onClose)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(BouncerThemeV2.colors.background)
+        ) {
+            key(visibleMatch.id) {
+                CompositionLocalProvider(LocalOpenSeries provides onSeriesClick) {
+                    MatchDetailViewV2(match = visibleMatch, onBackClick = onClose)
                 }
             }
         }
@@ -180,13 +196,14 @@ fun BouncerAppContent(
 fun MainAppContainer(
     viewModel: LiveActivityViewModel = viewModel(),
     newsViewModel: NewsViewModel = viewModel(),
+    navController: NavHostController = rememberNavController(),
     onMatchClick: (CricketMatch) -> Unit,
+    /** A match is open over the app; the list poll pauses, as it did when this was disposed. */
+    isCovered: Boolean = false,
     externalDeepLinkUri: String? = null,
     themeMode: ThemeModeV2 = ThemeModeV2.System,
     onThemeModeChanged: (ThemeModeV2) -> Unit = {}
 ) {
-    // Navigation controller - survives configuration changes via rememberNavController
-    val navController = rememberNavController()
     var consumedDeepLink by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
@@ -195,7 +212,7 @@ fun MainAppContainer(
             || FavouriteTeamsManager.favourites.value.isNotEmpty()
     }
 
-    PollWhileStarted(viewModel)
+    PollWhileStarted(viewModel, paused = isCovered)
 
     // Observe current route for bottom nav state
     val navBackStackEntry by navController.currentBackStackEntryAsState()

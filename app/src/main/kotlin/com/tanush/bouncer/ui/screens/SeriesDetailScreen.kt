@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -45,6 +46,8 @@ import com.tanush.bouncer.models.SeriesStatsTable
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.MatchCardV2
+import com.tanush.bouncer.ui.components.v2.MatchStatusType
+import com.tanush.bouncer.ui.components.v2.determineMatchStatus
 import com.tanush.bouncer.ui.components.v2.ShimmerListItem
 import com.tanush.bouncer.ui.components.v2.TextMenuV2
 import com.tanush.bouncer.ui.components.v2.TextTabBarV2
@@ -135,7 +138,16 @@ private fun ScheduleTab(
 private fun ScheduleList(days: List<SeriesMatchDay>, onMatchClick: (CricketMatch) -> Unit) {
     val colors = BouncerThemeV2.colors
     val spacing = BouncerThemeV2.spacing
-    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 80.dp)) {
+    // Opens on the day of the next match, results above it a scroll away. Computed once per
+    // schedule, so a rotation or a return from a match keeps wherever the reader scrolled to.
+    val listState = rememberSaveable(days, saver = LazyListState.Saver) {
+        LazyListState(firstVisibleItemIndex = scheduleAnchorIndex(days, System.currentTimeMillis()))
+    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        state = listState,
+        contentPadding = PaddingValues(bottom = 80.dp),
+    ) {
         days.forEachIndexed { dayIndex, day ->
             // Keys carry the index: the heading is scraped text, and two groups can share one.
             item(key = "day_${dayIndex}_${day.label}") {
@@ -152,6 +164,33 @@ private fun ScheduleList(days: List<SeriesMatchDay>, onMatchClick: (CricketMatch
         }
     }
 }
+
+/**
+ * The lazy-list index of the date heading over the series' next match: the first one live, or yet
+ * to be played. Each day is one heading item followed by one item per match. A finished series has
+ * no next match and opens at its start, 0.
+ *
+ * A match the status classifier cannot place as finished — an abandoned fixture with no score
+ * reads as upcoming — is only taken as "next" if it has not started more than a day ago, or every
+ * series with one washed-out game early on would open on that game.
+ */
+internal fun scheduleAnchorIndex(days: List<SeriesMatchDay>, nowMs: Long): Int {
+    var index = 0
+    for (day in days) {
+        val isNext = day.matches.any { match ->
+            when (determineMatchStatus(match)) {
+                MatchStatusType.Live -> true
+                MatchStatusType.Completed -> false
+                else -> (match.startDateMs ?: Long.MAX_VALUE) >= nowMs - STALE_FIXTURE_MS
+            }
+        }
+        if (isNext) return index
+        index += 1 + day.matches.size
+    }
+    return 0
+}
+
+private const val STALE_FIXTURE_MS = 24 * 60 * 60 * 1000L
 
 @Composable
 private fun StatsTab(viewModel: SeriesDetailViewModel, onPlayerClick: (String) -> Unit) {

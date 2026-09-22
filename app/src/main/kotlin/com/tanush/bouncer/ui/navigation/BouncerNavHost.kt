@@ -489,10 +489,16 @@ private fun NavGraphBuilder.matchDeepLinkDestination(
             ?: liveActivityViewModel.findMatchById(matchId)
 
         when {
-            match != null -> MatchDetailViewV2(
-                match = match,
-                onBackClick = { navController.popBackStack() }
-            )
+            match != null -> CompositionLocalProvider(
+                LocalOpenSeries provides { seriesId: String ->
+                    navController.navigateForward(BouncerScreen.SeriesDetail.createRoute(seriesId))
+                },
+            ) {
+                MatchDetailViewV2(
+                    match = match,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
             // Still fetching: the id may yet arrive. Show a loader instead of bouncing out
             // (cold notification/widget launch hits this before the first fetch completes).
             isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

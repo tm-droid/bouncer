@@ -17,6 +17,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import com.tanush.bouncer.ui.navigation.LocalOpenSeries
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -469,14 +472,11 @@ private fun ScoreHeaderV2(
             .background(flashOverlay)
             .padding(horizontal = spacing.lg, vertical = spacing.md),
     ) {
-        // Context line
+        // Context line. The teams are already the top bar's title, so this names what the top
+        // bar cannot: the series (a link to it, when the match knows its series id) and which match
+        // of it this is.
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "${match.matchTitle} • ${match.matchType}",
-                style = typography.bodySmall,
-                color = colors.textSecondary,
-                modifier = Modifier.weight(1f),
-            )
+            MatchContextLine(match = match, onSeriesClick = LocalOpenSeries.current, modifier = Modifier.weight(1f))
             StatusBadgeV2(statusType)
         }
         Spacer(Modifier.height(spacing.md))
@@ -584,6 +584,52 @@ private fun eventFlashColor(ball: String, cricket: CricketEventColors): Color? =
     ball == "6" -> cricket.six
     ball == "4" -> cricket.four
     else -> null
+}
+
+@Composable
+private fun MatchContextLine(
+    match: CricketMatch,
+    onSeriesClick: ((String) -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val seriesLink = onSeriesClick?.takeIf { match.seriesId.isNotBlank() && match.seriesName.isNotBlank() }
+    if (seriesLink == null) {
+        Text(
+            text = "${match.matchTitle} • ${match.matchType}",
+            style = typography.bodySmall,
+            color = colors.textSecondary,
+            modifier = modifier,
+        )
+        return
+    }
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.clickable { seriesLink(match.seriesId) },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = match.seriesName,
+                style = typography.bodySmall,
+                color = colors.primaryText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = colors.primaryText,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Text(
+            text = listOf(match.matchDesc, match.matchType).filter { it.isNotBlank() }.joinToString(" • "),
+            style = typography.bodySmall,
+            color = colors.textSecondary,
+        )
+    }
 }
 
 @Composable
