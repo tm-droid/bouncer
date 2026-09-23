@@ -128,9 +128,9 @@ Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` 
 
 **Navigation:** Single `BouncerNavHost` with Compose Navigation. Deep link entry via `app://bouncer/match/{matchId}` — scheme `app`, host `bouncer`, as registered in `AndroidManifest.xml` and parsed by `handleExternalDeepLink` in `ui/MainAppContainer.kt`. A `bouncer://` URI does not resolve.
 
-**Device-side commentary gate:** `LiveActivityViewModel.holdCommentary`/`releaseCommentary` subscribe to the `match-commentary` rows for a held match (and send the 90s presence ping); with no holder nothing is subscribed. `IntelligenceFeedScreenV2` is the only holder, via `probabilityEvents`. It used to run a whole commentary pipeline on the device instead — `LiveCommentaryManager` re-scraped Cricbuzz twice and Cricinfo once per held match on every 6s poll and called `bouncer-generate-commentary` for a line the server had already stored; before the hold existed it did that for every live match (~150 executions/minute, starving player search). Events are taken monotonically on `sort_key`, because the table channel also delivers the server's rewrites of older rows.
+**The More tab is Settings, Appearance, About (and DevTools in debug), nothing else.** Its "Explore" grid was removed in September 2026 because none of its four tiles was a feature: Stats opened a hub whose Analytics page was entirely hardcoded (a fixed "V Kohli 9.4" leaderboard and an India-vs-Australia bar); Trophies and Achievements both opened one badge gallery where 3 of 24 badges could ever unlock; and Activity (`IntelligenceFeedScreenV2`) was navigated to with no match and no ViewModel, so it was always empty. That feed was the only caller of `LiveActivityViewModel.holdCommentary`, so the device-side commentary hold, `probabilityEvents`, `aiCommentary` and `keyEvent` went with it — all had been unreachable. The match-detail screen's own commentary subscription and presence ping (`MatchDetailViewModel`) are unaffected. Do not re-add a tile without a real data source behind it.
 
-**Live data flow:** score polling (`ScorePollingWorker` + FCM, `LiveActivityViewModel` on the Live tab) → UI via StateFlow. Commentary is written server-side by `bouncer-match-sync` to `match-commentary` and read through `AppwriteMatchCommentaryClient` (match detail and the Activity feed); no commentary is generated on the device. `AICacheService` warms cache from Appwrite Realtime events.
+**Live data flow:** score polling (`ScorePollingWorker` + FCM, `LiveActivityViewModel` on the Live tab) → UI via StateFlow. Commentary is written server-side by `bouncer-match-sync` to `match-commentary` and read through `AppwriteMatchCommentaryClient` (match detail); no commentary is generated on the device. `AICacheService` warms cache from Appwrite Realtime events.
 
 **Every `match-sync` row carries an `updated_at`, and the device reads it.** `getForMatch` and
 `observeMatch` return `LiveDetailSnapshot`/`ScorecardSnapshot` — the payload plus the row's own
@@ -290,15 +290,6 @@ each side's latest innings — both are built from the same Cricbuzz totals, so 
 exact, but it is string equality and a formatting drift takes it out silently. Do not compare the names: `team1Name` is a short code
 ("EZONE", "RSAA") that matches no full team name, which is why every join onto the app's own teams
 goes by `teamId`.
-
-**`probabilityEvents` classifies from prose, and always has.** `classifyProbabilityEvent` used to
-prefer a structural read of the scraped recent-balls array — sound reasoning, since a "W" there is
-the scorer's own record rather than an interpretation of prose. That branch was never once
-reachable: the array's only writer sat inside the dead live-notification path, behind a
-`notificationManager ?: return` whose setter had no caller anywhere in the app. Restoring it needs
-a ball source `LiveActivityViewModel` does not have — the match-list scrape sets `recentBalls` to
-null and only the per-match detail scrape carries it, which on the six-second Live poll would be
-one scrape per live match per tick.
 
 **Match alerts are server-sent FCM data messages to a per-match topic, and until September 2026 nothing
 sent them.** `BouncerFirebaseMessagingService` always handled `wicket`/`boundary`/`milestone`/

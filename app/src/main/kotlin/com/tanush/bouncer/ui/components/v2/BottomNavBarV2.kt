@@ -84,9 +84,7 @@ fun BottomNavBarV2(
 }
 
 private val MORE_CHILD_ROUTES = setOf(
-    "stats", "trophy-room", "stats_overview", "settings",
-    "appearance", "about", "devtools", "achievements",
-    "ar-tracking", "activity-feed",
+    "settings", "appearance", "about", "devtools",
 )
 
 // Child routes that keep a tab highlighted. Home owns match detail and the full match list it links

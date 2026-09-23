@@ -5,19 +5,13 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.models.CricketMatch
-import com.tanush.bouncer.models.TimelineEventType
-import com.tanush.bouncer.utils.TimelineEventExtractor
 import com.tanush.bouncer.utils.bouncerExceptionHandler
 import com.tanush.bouncer.data.CricBuzzMatchRepository
 import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.data.PlayedMatchIndex
-import com.tanush.bouncer.data.remote.LiveMatchDetailSource
-import com.tanush.bouncer.data.remote.ProductionLiveDetailSource
-import com.tanush.bouncer.data.remote.RealtimeLifecycleController
 import com.tanush.bouncer.data.remote.WinProbabilityStore
 import com.tanush.bouncer.services.MatchCacheService
 import com.tanush.bouncer.network.CricBuzzUrls
-import com.tanush.bouncer.services.MatchPresenceReporter
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
@@ -29,10 +23,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.util.Date
 
 /**
  * The home screen's "All" status: not a Cricbuzz endpoint, a union of the three that are.
@@ -72,41 +63,18 @@ sealed class LoadingState {
     data class Error(val message: String) : LoadingState()
 }
 
-enum class ProbabilityEventType {
-    WICKET,
-    BOUNDARY,
-    DOT_BALL,
-    OTHER
-}
-
-data class ProbabilityEvent(
-    val timestamp: Date = Date(),
-    val ball: Int,
-    val over: Int,
-    val probability: Double,
-    val eventType: ProbabilityEventType,
-    val description: String,
-    val impact: Double = 0.0
-)
-
 class LiveActivityViewModel(
     private val matchRepository: MatchRepository = CricBuzzMatchRepository(),
-    private val commentarySource: LiveMatchDetailSource = ProductionLiveDetailSource,
 ) : ViewModel() {
     companion object {
         private const val TAG = "LiveActivityViewModel"
         private const val MIN_MANUAL_REFRESH_INTERVAL_MS = 10_000L
-        private const val MAX_PROBABILITY_EVENTS = 300
         private const val LIVE_POLL_INTERVAL_MS = 6_000L
         private const val SLOW_POLL_INTERVAL_MS = 60_000L
         private const val DEFAULT_POLL_INTERVAL_MS = 30_000L
         private const val MAX_BACKOFF_MULTIPLIER = 4
         private const val FAILURE_REPORT_THRESHOLD = 3
-        private const val PRESENCE_HEARTBEAT_MS = 90_000L
     }
-
-    private val _keyEvent = MutableStateFlow<Pair<String, String>?>(null)
-    val keyEvent: StateFlow<Pair<String, String>?> = _keyEvent.asStateFlow()
 
     private val _selectedStatus = MutableStateFlow(MatchCacheService.LIVE)
     val selectedStatus: StateFlow<String> = _selectedStatus.asStateFlow()
@@ -145,29 +113,6 @@ class LiveActivityViewModel(
 
     private var lastManualRefreshMs = 0L
 
-    private val _aiCommentary = MutableStateFlow<Map<String, String>>(emptyMap())
-    val aiCommentary: StateFlow<Map<String, String>> = _aiCommentary.asStateFlow()
-
-    private val _probabilityEvents = MutableStateFlow<Map<String, List<ProbabilityEvent>>>(emptyMap())
-    val probabilityEvents: StateFlow<Map<String, List<ProbabilityEvent>>> = _probabilityEvents.asStateFlow()
-
-    /**
-     * Matches a screen is currently displaying commentary-derived content for, refcounted.
-     *
-     * This is the device-side half of the viewer gate that `bouncer-match-sync` already applies
-     * server-side. [updateAllLiveCommentaries] used to loop every live match on every poll, and
-     * the Live tab polls every six seconds: with ten live matches that is ~100 commentary
-     * generations a minute, each one an Appwrite function execution running an LLM, produced for
-     * matches nobody was looking at. Measured on a fresh install it wanted ~150 executions/minute
-     * and saturated the EXECUTIONS rate cap within seconds of launch, which starved player search
-     * — a user-initiated action losing its budget to background work.
-     *
-     * A count rather than a set: two screens may hold the same match, and the second one closing
-     * must not release it for the first.
-     */
-    private val commentaryFocus = MutableStateFlow<Map<String, Int>>(emptyMap())
-    private val commentaryJobs = mutableMapOf<String, Job>()
-
     private val cachedMatches = mutableMapOf<String, List<CricketMatch>>()
     private val pollingTasks = ConcurrentHashMap<String, Job>()
     @Volatile private var isPollingActive = false
@@ -177,22 +122,6 @@ class LiveActivityViewModel(
 
     init {
         startPolling(forceInitialFetch = true)
-    }
-
-    private fun onLiveKeyEvent(title: String, body: String) {
-        viewModelScope.launch(bouncerExceptionHandler) {
-            try {
-                breadcrumb("live.event", "Key event: $title")
-                _keyEvent.value = title to body
-                // The inbox is written by BouncerFirebaseMessagingService when an alert arrives.
-                // It used to be written here, from whichever live match was FIRST in the list
-                // rather than the one the event came from, and only while the app was open.
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                Log.e(TAG, "Error processing key event: $title", e)
-                Sentry.captureException(e)
-            }
-        }
     }
 
     private fun breadcrumb(
@@ -207,13 +136,6 @@ class LiveActivityViewModel(
             this.level = level
             data.forEach { (k, v) -> setData(k, v) }
         })
-    }
-
-    // Allow UI to enable/disable AI insight generation at runtime
-    fun clearKeyEvent() {
-        viewModelScope.launch(bouncerExceptionHandler) {
-            _keyEvent.value = null
-        }
     }
 
     private fun getPollingInterval(status: String): Long = when (status) {
@@ -464,118 +386,6 @@ class LiveActivityViewModel(
         }
     }
 
-    /**
-     * Ask for commentary on [matchId] while a screen is showing it; release with [releaseCommentary].
-     *
-     * Nothing is subscribed for a match with no holder. There is deliberately no "focus everything"
-     * call — the whole cost of this path used to be exactly that.
-     *
-     * The first hold opens a subscription to the `match-commentary` rows `bouncer-match-sync` already
-     * writes for every live match, and sends the viewer heartbeat that earns the match its LLM
-     * rewrite budget. This replaced a second commentary pipeline on the device: every six-second
-     * poll re-scraped the Cricbuzz live page twice and Cricinfo once per held match and called
-     * `bouncer-generate-commentary`, to produce a line the server had already stored.
-     */
-    fun holdCommentary(matchId: String) {
-        val count = (commentaryFocus.value[matchId] ?: 0) + 1
-        commentaryFocus.value = commentaryFocus.value + (matchId to count)
-        if (count == 1) commentaryJobs[matchId] = viewModelScope.launch(bouncerExceptionHandler) {
-            launch { presenceHeartbeat(matchId) }
-            // Monotonic on sort_key: the channel also delivers UPDATES, and match-sync rewrites the
-            // oldest stored lines, so without this a rewrite would re-fire a Wicket! notification
-            // for a ball that happened minutes ago and duplicate it in the feed.
-            var newest = Double.NEGATIVE_INFINITY
-            commentarySource.observeCommentary(matchId).collect { ev ->
-                if (ev.sortKey <= newest) return@collect
-                newest = ev.sortKey
-                onCommentary(matchId, ev.commentary, ev.event)
-            }
-        }
-    }
-
-    /** Release a hold taken by [holdCommentary]. Unbalanced releases are ignored, not negative. */
-    fun releaseCommentary(matchId: String) {
-        val remaining = (commentaryFocus.value[matchId] ?: 0) - 1
-        if (remaining > 0) {
-            commentaryFocus.value = commentaryFocus.value + (matchId to remaining)
-        } else {
-            commentaryFocus.value = commentaryFocus.value - matchId
-            commentaryJobs.remove(matchId)?.cancel()
-        }
-    }
-
-    /** Same cadence and background rule as the match-detail heartbeat. */
-    private suspend fun presenceHeartbeat(matchId: String) {
-        while (viewModelScope.isActive) {
-            RealtimeLifecycleController.foreground.first { it }
-            MatchPresenceReporter.ping(matchId)
-            delay(PRESENCE_HEARTBEAT_MS)
-        }
-    }
-
-    private fun onCommentary(matchId: String, commentary: String, event: TimelineEventType?) {
-        _aiCommentary.value = _aiCommentary.value + (matchId to commentary)
-        // The server classifies from the raw Cricbuzz text before any rewrite; prose is the
-        // fallback for rows written before the `event` column existed.
-        val type = event ?: TimelineEventExtractor.detectBallType(commentary)
-        updateProbabilityEventsFromCommentary(matchId, commentary, type)
-        when (type) {
-            TimelineEventType.WICKET -> onLiveKeyEvent("Wicket!", commentary)
-            TimelineEventType.SIX -> onLiveKeyEvent("Six!", commentary)
-            TimelineEventType.FOUR -> onLiveKeyEvent("Boundary", commentary)
-            else -> Unit
-        }
-    }
-
-    /**
-     * Classify a key moment. The type is the server's verdict where the row carries one — it is
-     * taken from the raw Cricbuzz text before any rewrite, which prose classification of a rewritten
-     * line cannot match — and prose otherwise.
-     */
-    private fun classifyProbabilityEvent(type: TimelineEventType?): ProbabilityEventType =
-        when (type) {
-            TimelineEventType.WICKET -> ProbabilityEventType.WICKET
-            TimelineEventType.SIX, TimelineEventType.FOUR -> ProbabilityEventType.BOUNDARY
-            else -> ProbabilityEventType.OTHER
-        }
-
-    /**
-     * Record a key moment from commentary.
-     *
-     * This used to be a second win-probability model: it took the on-device heuristic as a base,
-     * added a fixed delta per event type (wicket/boundary/dot) and wrote the result back into the
-     * match. That made the displayed number the output of two different models layered on each
-     * other, and it drifted further from the real one with every ball. The probability now comes
-     * from the server alone; this timeline records WHAT happened, not what it is worth.
-     */
-    private fun updateProbabilityEventsFromCommentary(matchId: String, commentary: String, type: TimelineEventType?) {
-        val match = _currentMatches.value.find { it.id == matchId } ?: return
-        val eventType = classifyProbabilityEvent(type)
-
-        val currentEvents = _probabilityEvents.value[matchId].orEmpty()
-        val probability = match.winProbability ?: return
-        val ball = currentEvents.size
-
-        val newEvent = ProbabilityEvent(
-            timestamp = Date(),
-            ball = ball,
-            over = ball / 6,
-            probability = probability,
-            eventType = eventType,
-            description = commentary.take(100),
-            impact = probability - (currentEvents.lastOrNull()?.probability ?: probability),
-        )
-
-        // Keep only last 300 events (50 overs worth) to bound memory.
-        _probabilityEvents.value =
-            _probabilityEvents.value + (matchId to (currentEvents + newEvent).takeLast(MAX_PROBABILITY_EVENTS))
-    }
-
-    fun getAICommentaryForMatch(matchId: String): String? = _aiCommentary.value[matchId]
-
-    fun getProbabilityEventsForMatch(matchId: String): List<ProbabilityEvent> =
-        _probabilityEvents.value[matchId].orEmpty()
-
     private suspend fun fetchListFor(status: String): List<CricketMatch> {
         val fetched = matchRepository.fetchLiveMatches(CricBuzzUrls.urlForStatus(status), status).distinctBy { it.id }
         Sentry.metrics().gauge("live.matches.count", fetched.size.toDouble())
@@ -624,17 +434,6 @@ class LiveActivityViewModel(
         }
 
         updateHomeMatches()
-        if (status == MatchCacheService.LIVE) {
-            pruneStaleMatchData(matchesWithProbability)
-        }
-    }
-
-    private fun pruneStaleMatchData(currentLiveMatches: List<CricketMatch>) {
-        val liveIds = currentLiveMatches.map { it.id }.toSet()
-        val staleIds = _probabilityEvents.value.keys - liveIds
-        if (staleIds.isNotEmpty()) {
-            _probabilityEvents.value = _probabilityEvents.value - staleIds
-        }
     }
 
     private fun updateHomeMatches() {

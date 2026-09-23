@@ -1,6 +1,5 @@
 package com.tanush.bouncer.viewmodels
 
-import android.content.Context
 import androidx.lifecycle.ViewModelStore
 import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.data.remote.CommentaryEntry
@@ -190,7 +189,6 @@ class MatchDetailStaleDetailTest {
         val store = ViewModelStore()
         val vm = MatchDetailViewModel(
             match = m,
-            context = mockk<Context>(relaxed = true),
             matchRepository = repository(),
             liveSource = source,
         )

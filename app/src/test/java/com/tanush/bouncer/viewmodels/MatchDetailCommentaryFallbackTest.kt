@@ -1,6 +1,5 @@
 package com.tanush.bouncer.viewmodels
 
-import android.content.Context
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.data.remote.CommentaryEntry
@@ -90,7 +89,6 @@ class MatchDetailCommentaryFallbackTest {
     private fun viewModel(source: LiveMatchDetailSource, repo: MatchRepository) =
         MatchDetailViewModel(
             match = hundredMatch,
-            context = mockk<Context>(relaxed = true),
             matchRepository = repo,
             liveSource = source,
         )

@@ -27,10 +27,7 @@ sealed class BouncerScreen(val route: String) {
     /** Favourites - saved teams and matches (deep-link route, not a bottom tab) */
     data object Favorites : BouncerScreen("favourites")
 
-    /** Stats hub - achievements and statistics (reached via More, not a bottom tab) */
-    data object Stats : BouncerScreen("stats")
-
-    /** More tab - Settings, About, News, DevTools access */
+    /** More tab - Settings, Appearance, About, DevTools access */
     data object More : BouncerScreen("more")
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -54,9 +51,6 @@ sealed class BouncerScreen(val route: String) {
 
     /** Search screen */
     data object Search : BouncerScreen("search")
-
-    /** Achievements gallery screen */
-    data object Achievements : BouncerScreen("achievements")
 
     /** Series list screen */
     data object SeriesList : BouncerScreen("series")
@@ -103,12 +97,6 @@ sealed class BouncerScreen(val route: String) {
      * Player comparison screen.
      */
     data object PlayerComparison : BouncerScreen("compare-players")
-
-    /** Extended stats overview screen (analytics details) */
-    data object StatsOverview : BouncerScreen("stats_overview")
-
-    /** Intelligence/Activity Feed screen */
-    data object ActivityFeed : BouncerScreen("activity-feed")
 
     /** In-app notification inbox */
     data object Notifications : BouncerScreen("notifications")
@@ -216,14 +204,10 @@ sealed class BouncerScreen(val route: String) {
          * Routes that should highlight the "More" tab when active.
          */
         val moreChildRoutes = setOf(
-            Stats.route,
-            StatsOverview.route,
             Settings.route,
             Appearance.route,
             About.route,
             DevTools.route,
-            Achievements.route,
-            ActivityFeed.route,
             Search.route,
             PlayerComparison.route,
             Notifications.route,

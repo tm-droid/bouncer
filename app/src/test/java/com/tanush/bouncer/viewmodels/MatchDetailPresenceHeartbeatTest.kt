@@ -1,6 +1,5 @@
 package com.tanush.bouncer.viewmodels
 
-import android.content.Context
 import androidx.lifecycle.ViewModelStore
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.MatchRepository
@@ -108,7 +107,6 @@ class MatchDetailPresenceHeartbeatTest {
         val store = ViewModelStore()
         val vm = MatchDetailViewModel(
             match = m,
-            context = mockk<Context>(relaxed = true),
             matchRepository = repository(),
             liveSource = SilentLiveSource(),
         )

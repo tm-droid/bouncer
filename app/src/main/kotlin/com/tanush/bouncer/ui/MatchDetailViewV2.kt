@@ -117,7 +117,7 @@ fun MatchDetailViewV2(
     val context = LocalContext.current
     val vm: MatchDetailViewModel = viewModel(
         key = MatchDetailViewModel.storeKey(match.id),
-        factory = MatchDetailViewModel.factory(context, match),
+        factory = MatchDetailViewModel.factory(match),
     )
     val uiState by vm.uiState.collectAsStateWithLifecycle()
     val streamingCommentary by vm.streamingCommentary.collectAsStateWithLifecycle()

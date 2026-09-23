@@ -11,14 +11,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import com.tanush.bouncer.utils.PreferencesHelper
 import androidx.navigation.NavGraphBuilder
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.BuildConfig
-import com.tanush.bouncer.models.AchievementKind
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.HomeScreenV2
 import com.tanush.bouncer.ui.MatchDetailViewV2
@@ -116,9 +113,7 @@ private fun NavGraphBuilder.primaryTabDestinations(
             onMoreMatchesClick = {
                 navController.navigateForward(BouncerScreen.Matches.route)
             },
-            onAchievementsClick = {
-                navController.navigateForward(BouncerScreen.Stats.route)
-            },
+            onAchievementsClick = {},
             onNewsClick = {
                 navController.navigateToTab(BouncerScreen.News.route)
             },
@@ -192,29 +187,6 @@ private fun NavGraphBuilder.primaryTabDestinations(
         )
     }
 
-    // Stats Hub
-    composable(
-        BouncerScreen.Stats.route,
-        enterTransition = { BouncerMotion.Transitions.tabEnter() },
-        exitTransition = { BouncerMotion.Transitions.tabExit() },
-        popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
-        popExitTransition = { BouncerMotion.Transitions.tabExit() }
-    ) {
-        StatsHubScreenV2(
-            onBackClick = {
-                if (!navController.popBackStack()) {
-                    navController.navigateToTab(BouncerScreen.Home.route)
-                }
-            },
-            onOpenAnalytics = {
-                navController.navigateForward(BouncerScreen.StatsOverview.route)
-            },
-            onOpenAchievements = {
-                navController.navigateForward(BouncerScreen.Achievements.route)
-            }
-        )
-    }
-
     // More Tab
     composable(
         BouncerScreen.More.route,
@@ -227,23 +199,11 @@ private fun NavGraphBuilder.primaryTabDestinations(
             onSettingsClick = {
                 navController.navigateForward(BouncerScreen.Settings.route)
             },
-            onStatsClick = {
-                navController.navigateForward(BouncerScreen.Stats.route)
-            },
-            onAchievementsClick = {
-                navController.navigateForward(BouncerScreen.Achievements.route)
-            },
-            onActivityClick = {
-                navController.navigateForward(BouncerScreen.ActivityFeed.route)
-            },
             onAboutClick = {
                 navController.navigateForward(BouncerScreen.About.route)
             },
             onDevToolsClick = {
                 navController.navigateForward(BouncerScreen.DevTools.route)
-            },
-            onNewsClick = {
-                navController.navigateToTab(BouncerScreen.News.route)
             },
             onAppearanceClick = {
                 navController.navigateForward(BouncerScreen.Appearance.route)
@@ -308,9 +268,6 @@ private fun NavGraphBuilder.moreChildDestinations(
             onFavoritesClick = {
                 navController.navigateToTab(BouncerScreen.Favorites.route)
             },
-            onAchievementsClick = {
-                navController.navigateForward(BouncerScreen.Stats.route)
-            },
             onAboutClick = {
                 navController.navigateForward(BouncerScreen.About.route)
             },
@@ -349,41 +306,6 @@ private fun NavGraphBuilder.moreChildDestinations(
                 onBackClick = { navController.popBackStack() }
             )
         }
-    }
-
-    // Achievements
-    composable(BouncerScreen.Achievements.route) {
-        // Unlocks were hardcoded to emptySet() here, so the screen always read "0 / N" no matter
-        // what the user had earned. They are genuinely persisted — MatchDetailViewModel unlocks
-        // them through AchievementKind.unlock and reads them back with loadUnlocked — the screen
-        // simply was never handed them. Same shape as the no-op favourites tap fixed in 65ab126.
-        //
-        // Loaded off the main thread: AchievementKind.loadUnlocked hits SharedPreferences, and this
-        // is a navigation destination rather than the first frame, so a moment of "0 / N" while it
-        // resolves costs nothing and a disk read in composition would not.
-        val context = LocalContext.current
-        val unlocked by produceState(initialValue = emptySet<AchievementKind>(), context) {
-            value = withContext(Dispatchers.IO) {
-                runCatching { AchievementKind.loadUnlocked(context) }.getOrDefault(emptySet())
-            }
-        }
-        AchievementsScreenV2(
-            unlockedAchievements = unlocked,
-            onBackClick = { navController.popBackStack() }
-        )
-    }
-
-
-    // Stats Overview (analytics)
-    composable(BouncerScreen.StatsOverview.route) {
-        StatsOverviewScreenV2(onBackClick = { navController.popBackStack() })
-    }
-
-    // Activity / Intelligence Feed
-    composable(BouncerScreen.ActivityFeed.route) {
-        IntelligenceFeedScreenV2(
-            onBackClick = { navController.popBackStack() }
-        )
     }
 
     // Player Comparison

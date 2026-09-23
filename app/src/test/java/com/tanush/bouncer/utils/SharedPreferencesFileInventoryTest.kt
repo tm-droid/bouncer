@@ -32,7 +32,6 @@ class SharedPreferencesFileInventoryTest {
      * existing file already owns the keys you are about to write.
      */
     private val expected = setOf(
-        "bouncer_achievements",
         "bouncer_countdown_widget",
         "bouncer_glance_widget",
         "bouncer_lock_widget",

@@ -66,7 +66,7 @@ internal class ShowcaseActivity : ComponentActivity() {
         // instance and the production factory never runs.
         ViewModelProvider(
             this,
-            factoryFor { MatchDetailViewModel(ShowcaseScript.matchAt(0L), applicationContext, fakeRepo, fakeLive) },
+            factoryFor { MatchDetailViewModel(ShowcaseScript.matchAt(0L), fakeRepo, fakeLive) },
         ).get(ShowcaseScript.MATCH_ID, MatchDetailViewModel::class.java)
 
         lifecycleScope.launch { WidgetDemoSeeder.seed(applicationContext) }

@@ -76,7 +76,6 @@ object AnimationDuration {
     const val sheetEnter  = 350   // Bottom sheet enter
     const val scoreUpdate = 300   // Score update (spring)
     const val confetti    = 1500  // Celebration confetti
-    const val achieveUnlock = 800 // Achievement unlock
     const val progressFill  = 600 // Progress fill
 
     // Ambient / looping durations
@@ -103,7 +102,7 @@ object AnimationDelay {
     const val none    = 0
     const val stagger = 50     // Per-item stagger (design spec: 50ms)
     const val short   = 80
-    const val medium  = 200    // Achievement unlock delay
+    const val medium  = 200
     const val long    = 300
 
     @Deprecated("Use AnimationDelay.stagger") const val micro = stagger
@@ -261,7 +260,6 @@ object ReducedMotionDuration {
     const val sheetEnter    = 0
     const val scoreUpdate   = 0
     const val confetti      = 0
-    const val achieveUnlock = 0
     const val progressFill  = 0
 
     const val shimmer = 0

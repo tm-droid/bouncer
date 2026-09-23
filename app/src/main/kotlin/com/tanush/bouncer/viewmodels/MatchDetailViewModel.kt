@@ -1,10 +1,8 @@
 package com.tanush.bouncer.viewmodels
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.tanush.bouncer.models.AchievementKind
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.MatchFlowData
 import com.tanush.bouncer.models.MatchStatusClassifier
@@ -51,7 +49,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 class MatchDetailViewModel(
     private var match: CricketMatch,
-    context: Context,
     private val matchRepository: MatchRepository = CricBuzzMatchRepository(),
     private val liveSource: LiveMatchDetailSource = ProductionLiveDetailSource,
 ) : ViewModel() {
@@ -179,7 +176,6 @@ class MatchDetailViewModel(
 
     }
 
-    private val appContext = context.applicationContext
     private val firedMilestones = mutableSetOf<String>()
     private var espnMatchUrl: String? = null
 
@@ -207,8 +203,6 @@ class MatchDetailViewModel(
     private val _streamingCommentary = MutableStateFlow("")
     val streamingCommentary: StateFlow<String> = _streamingCommentary.asStateFlow()
     private var typewriterJob: Job? = null
-
-    private var unlockedAchievements: Set<AchievementKind> = emptySet()
 
     /**
      * How many feed rows the reader has explicitly paid for, i.e. the feed size after the last
@@ -299,8 +293,6 @@ class MatchDetailViewModel(
     }
 
     private suspend fun loadInitial() {
-        unlockedAchievements = runCatching { AchievementKind.loadUnlocked(appContext) }.getOrDefault(emptySet())
-
         try {
             // Live snapshot (batsmen/bowler/score/scorecard) + commentary feed from Appwrite.
             //
@@ -471,11 +463,6 @@ class MatchDetailViewModel(
         _uiState.update { st -> st.merge(p, alreadyOver) }
         if (alreadyOver) return
         p.batsmen.forEach { handleBatsmanMilestone(it) }
-        p.bowler?.let {
-            if ((it.wickets.toIntOrNull() ?: 0) >= 5) {
-                unlockedAchievements = unlockAchievement(appContext, AchievementKind.WICKETS_5, unlockedAchievements)
-            }
-        }
     }
 
     // New server commentary line: prepend to the feed (dedup) and typewriter-reveal it.
@@ -554,8 +541,6 @@ class MatchDetailViewModel(
 
     private fun handleBatsmanMilestone(b: ScrapedBatsman) {
         val runs = b.runs.toIntOrNull() ?: 0
-        if (runs >= 50) unlockedAchievements = unlockAchievement(appContext, AchievementKind.RUNS_50, unlockedAchievements)
-        if (runs >= 100) unlockedAchievements = unlockAchievement(appContext, AchievementKind.RUNS_100, unlockedAchievements)
         val milestoneType = milestoneTypeFor(runs) ?: return
         if (firedMilestones.add("${b.name}_${milestoneType.runs}")) emitBatsmanMilestone(b, runs, milestoneType)
     }
@@ -592,7 +577,6 @@ class MatchDetailViewModel(
         fun storeKey(matchId: String): String = "match_detail_$matchId"
 
         fun factory(
-            context: Context,
             match: CricketMatch,
             matchRepository: MatchRepository = CricBuzzMatchRepository(),
             liveSource: LiveMatchDetailSource = ProductionLiveDetailSource,
@@ -600,7 +584,7 @@ class MatchDetailViewModel(
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    MatchDetailViewModel(match, context.applicationContext, matchRepository, liveSource) as T
+                    MatchDetailViewModel(match, matchRepository, liveSource) as T
             }
     }
 }

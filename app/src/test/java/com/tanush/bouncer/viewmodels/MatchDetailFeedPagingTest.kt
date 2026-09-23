@@ -1,6 +1,5 @@
 package com.tanush.bouncer.viewmodels
 
-import android.content.Context
 import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
@@ -99,7 +98,6 @@ class MatchDetailFeedPagingTest {
 
     private fun viewModel(source: LiveMatchDetailSource) = MatchDetailViewModel(
         match = finishedMatch,
-        context = mockk<Context>(relaxed = true),
         matchRepository = repository(),
         liveSource = source,
     )

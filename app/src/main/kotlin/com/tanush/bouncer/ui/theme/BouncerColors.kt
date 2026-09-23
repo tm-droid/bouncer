@@ -311,13 +311,6 @@ val ChartGreen = Color(0xFF10B981)
 val ChartPurple = Color(0xFF8B5CF6)
 val ChartOrange = Color(0xFFF97316)
 
-// Achievement tiers
-val TierBronze = Color(0xFFCD7F32)
-val TierSilver = Color(0xFFC0C0C0)
-val TierGold = GoldPrimaryDark
-val TierPlatinum = Color(0xFFE5E4E2)
-val TierDiamond = Color(0xFFB9F2FF)
-
 // Surface aliases
 val BlackSurface = Surface1Dark
 val BlackElevated = Surface2Dark

@@ -319,13 +319,11 @@ private fun handleExternalDeepLink(
         "matches", "all_matches" -> navController.navigateForward(BouncerScreen.Matches.route)
         "series" -> navController.navigateToTab(BouncerScreen.SeriesList.route)
         "favorites", "favourites" -> navController.navigateToTab(BouncerScreen.Favorites.route)
-        "stats" -> navController.navigateForward(BouncerScreen.Stats.route)
         "more" -> navController.navigateToTab(BouncerScreen.More.route)
         "settings" -> navController.navigateForward(BouncerScreen.Settings.route)
         "appearance" -> navController.navigateForward(BouncerScreen.Appearance.route)
         "about" -> navController.navigateForward(BouncerScreen.About.route)
         "news" -> navController.navigateToTab(BouncerScreen.News.route)
-        "activity" -> navController.navigateForward(BouncerScreen.ActivityFeed.route)
         "match" -> {
             val deepLinkMatchId = pathSegments.getOrNull(1) ?: parsedUri.getQueryParameter("matchId")
             if (deepLinkMatchId != null) {
