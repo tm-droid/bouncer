@@ -7,7 +7,9 @@ import { selectSlowTier, nextSlowState, commentaryCapFor, isFinalised, finalKey 
 // Mirrored here rather than exported: a test that reads the constant it is checking cannot catch
 // a wrong constant. The interval and the per-pass cap are budget decisions against the LLM chain's
 // daily request budget, not free parameters — see the derivation above the constants in main.js.
-// Re-derived 2026-09-16 when three Gemini rungs took that budget from ~1000/day to ~2500.
+// Re-derived 2026-09-16 when three Gemini rungs were believed to take that budget from ~1000/day to
+// ~2500. That figure was never measured: two of the three rungs are 20 RPD (2026-09-24), so the real
+// Gemini supply is ~540/day. The constants below still stand; the headroom they assume does not.
 const NOW = 1_785_500_000_000;
 const INTERVAL = 15 * 60 * 1000;
 const MAX_SLOW_PER_RUN = 3;
@@ -29,7 +31,7 @@ test("the interval holds a match back until it elapses", () => {
   const live = matches("144783");
   assert.deepEqual(select({ live, state: { "144783": NOW - 5 * 60 * 1000 } }), []);
   // 5 and 10 minutes are the regressions that matter now: each halving of the interval doubles the
-  // daily LLM spend, and the ladder has ~2500 calls/day, not an unlimited supply.
+  // daily LLM spend, and the ladder is a finite daily budget (far below the ~2500 once assumed).
   assert.deepEqual(select({ live, state: { "144783": NOW - 10 * 60 * 1000 } }), []);
   assert.deepEqual(select({ live, state: { "144783": NOW - INTERVAL + 1 } }), []);
   assert.deepEqual(select({ live, state: { "144783": NOW - INTERVAL } }), ["144783"]);
@@ -133,7 +135,8 @@ test("the cap encodes the tier: 10 for a viewer, 2 for the slow tier, 0 otherwis
   assert.equal(commentaryCapFor("watched", viewed, slow), 10, "fast tier is unchanged");
   // Two rows a pass. Each row is one LLM call, so this number times the pass rate times the live
   // match count is the daily spend — at 11 concurrent unwatched matches and a 15-minute interval,
-  // 2 is ~1400/day against a ~2500/day ladder and 3 would be ~2100. It is a budget, not a taste.
+  // 2 is ~1400/day and 3 would be ~2100 — sized against a ~2500/day ladder that turned out to be
+  // ~540 Gemini + groq's token cap. It is a budget, not a taste.
   assert.equal(commentaryCapFor("unwatched", viewed, slow), 2);
   assert.equal(commentaryCapFor("idle", viewed, slow), 0, "0 means win-probability only, no writes");
   // A viewer arriving on a slow-tier match must promote it, never demote the fast tier.

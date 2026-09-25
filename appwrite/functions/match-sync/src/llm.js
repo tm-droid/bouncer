@@ -35,12 +35,21 @@
 // that is the whole point — see GEMINI_QUOTA_IS_PER_MODEL below.
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
-// WHY THREE GEMINI RUNGS ON ONE KEY (measured 2026-09-16, live account)
+// WHY THREE GEMINI RUNGS ON ONE KEY
 //
-// Gemini's free allowance is `GenerateRequestsPerMinutePerProjectPerModel-FreeTier` — the 429 body
-// names it, with `quotaDimensions: {model}` and `quotaValue: "15"`. Per project PER MODEL, so each
-// distinct model id is a distinct 15 RPM / 500 RPD bucket. Three ids is three allowances on one
-// key, which is how the chain gets back above one reachable provider without anyone paying.
+// Gemini's free allowance is per project PER MODEL — the 429 body names the quota, with
+// `quotaDimensions: {model}` — so each distinct model id is its own bucket on one key. The buckets
+// are NOT the same size, and the only number that counts is one measured for that model:
+//
+//   gemini-3.5-flash-lite   15 RPM (429 quotaValue, 2026-09-16); 500 RPD (read from AI Studio)
+//   gemini-3.6-flash        20 RPD (429 `GenerateRequestsPerDayPerProjectPerModel-FreeTier`,
+//   gemini-3-flash-preview  20 RPD  quotaValue "20", production, 2026-09-24)
+//
+// Until 2026-09-25 this comment said every id was "a distinct 15 RPM / 500 RPD bucket". Only
+// flash-lite's 500 was ever read; the other two were assumed to match, the ladder was budgeted at
+// ~2,500 calls a day on that assumption, and the real Gemini supply is ~540. Read a new rung's
+// limits from AI Studio (https://ai.dev/rate-limit) or from its first per-day 429 — never infer
+// them from a sibling model.
 //
 // An alias is NOT a fourth bucket. Bursting `gemini-flash-lite-latest` returns
 // `quotaDimensions: {"model":"gemini-3.5-flash-lite"}` — it bills the model it resolves to. Same
@@ -82,7 +91,7 @@ const PROVIDERS = [
   // cleared 320, but `verifyLine` asked for 256 and gpt-oss spent all of it reasoning: production
   // logged `groq: empty completion (length)` on every verify (ANDROID-38, 2026-09-25). Each of those
   // fell through to the two 2048-floor Gemini rungs, ~800 high-stakes balls a day, which spent both
-  // of their 500/day buckets and left groq as the only reachable rung (ANDROID-4T). The floor sits
+  // of their 20/day buckets and left groq as the only reachable rung (ANDROID-4T). The floor sits
   // here rather than in verifyLine because the flash-lite rung does not need it and the Gemini
   // rungs already carry larger ones.
   { name: "groq",                   account: "groq",   url: "https://api.groq.com/openai/v1/chat/completions", model: "openai/gpt-oss-20b",     keyEnv: "GROQ_API_KEY",   tokenFloor: 1024, extraBody: { reasoning_effort: "low" } },
@@ -214,11 +223,11 @@ const paymentBlocked = new Set();
 //
 // Google states which it is. A 429 body carries
 // `details[].@type = "...QuotaFailure"` with `violations[].quotaId`, and the id spells out the
-// window: `GenerateRequestsPerMinutePerProjectPerModel-FreeTier` versus a PerDay sibling. Measured
-// 2026-09-16: the per-minute id is confirmed verbatim, with `quotaValue: "15"`. The per-day id has
-// NOT been seen — reaching it costs 500 calls — so `PER_DAY_QUOTA_RE` is an inference, and
-// `unrecognizedQuotaIds` below exists precisely so the real id is learned from production instead
-// of staying a guess.
+// window: `GenerateRequestsPerMinutePerProjectPerModel-FreeTier` versus a PerDay sibling. Both are
+// now confirmed verbatim: the per-minute id with `quotaValue: "15"` (2026-09-16), and
+// `GenerateRequestsPerDayPerProjectPerModel-FreeTier` with `quotaValue: "20"` on gemini-3.6-flash
+// and gemini-3-flash-preview in production (2026-09-24), which `PER_DAY_QUOTA_RE` matches.
+// `unrecognizedQuotaIds` below still reports any id matching neither.
 const dailyExhausted = new Map();
 
 // Quota ids seen on a 429 that match neither window. Drained once per container by the caller.
@@ -617,10 +626,11 @@ export const BATCH_MAX_ITEMS = 12;
 /**
  * Rewrite many deliveries in ONE provider call, keyed so a partial answer cannot be misread.
  *
- * Why batch at all: measured 2026-09-16, the app stores 6,672 deliveries a day and the free ladder
- * is ~2,500 calls. One call per ball can therefore cover 31% of them and no more, which is why most
- * of the commentary tab was raw Cricbuzz text. Batched, the same coverage costs ~960 calls — every
- * ball, inside the free budget.
+ * Why batch at all: measured 2026-09-16, the app stores 6,672 deliveries a day, and one call per
+ * ball was why most of the commentary tab was raw Cricbuzz text. Batched, the rewrites cost ~960
+ * calls. That was sized against a ~2,500-call ladder which was never real — see the Gemini rungs
+ * above: the Gemini supply is ~540 a day — and ~800 high-stakes verify calls come on top, so the
+ * free ladder runs dry most days before the Pacific reset (measured 2026-09-24/25).
  *
  * Why batch across MATCHES rather than across time: filling a batch by waiting would delay the
  * ball. Batching by over needs ~10 minutes of accumulation, against the 0-60s a ball takes to

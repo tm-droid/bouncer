@@ -10,7 +10,7 @@ import {
 } from "../src/llm.js";
 
 // Batching exists because the arithmetic does not work otherwise: 6,672 deliveries a day against a
-// ~2,500-call free ladder is 31% coverage at one call per ball, which is why the commentary tab was
+// ~2,500-call free ladder (assumed, never measured — the real one is smaller) is 31% coverage at one call per ball, which is why the commentary tab was
 // mostly raw Cricbuzz text. One call per ~7 deliveries makes every ball affordable.
 //
 // It batches across MATCHES, not across time. Filling a batch by waiting would delay the ball;

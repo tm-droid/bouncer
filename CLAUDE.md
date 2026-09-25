@@ -539,7 +539,7 @@ the budget is sized by how long the model thinks before emitting them. An `empty
 reason: `length` (a spent budget) and `stop` (a model that answered nothing) need opposite fixes.
 **256 was still not enough for groq** — production logged `groq: empty completion (length)` on
 every verify on 2026-09-25, so each high-stakes ball fell through to the two 2048-floor Gemini rungs
-(~800/day), which spent both 500/day buckets and left groq alone (ANDROID-4T, and ANDROID-38 again).
+(~800/day), which spent both 20/day buckets and left groq alone (ANDROID-4T, and ANDROID-38 again).
 groq now carries `tokenFloor: 1024` in `PROVIDERS`; the floor lives on the rung, not in
 `verifyLine`. A line that was generated but could not be verified by anyone is
 `verifier_unavailable`, not `verification_failed` — the first is a spent chain, the second a
@@ -572,15 +572,22 @@ that retry has nothing to call, returns null, and every verification FAIL become
 structural. Groq's free tier is also 1,000 requests **per day** (`x-ratelimit-limit-requests`) and
 8,000 tokens per minute, against two groq calls per rewritten ball and four on a retry.
 
-**Gemini's free quota is per project PER MODEL, so one key buys three rungs.** The 429 body names
-it: `quotaId: "GenerateRequestsPerMinutePerProjectPerModel-FreeTier"`, with
-`quotaDimensions: {model}` and `quotaValue: "15"` (measured 2026-09-16; 500 RPD and 250k TPM read
-from AI Studio, which is now the only place they are published — `ai.google.dev`'s per-tier tables
-were replaced by "can be viewed in Google AI Studio"). The ladder is therefore groq +
-`gemini-3.5-flash-lite` + `gemini-3.6-flash` + `gemini-3-flash-preview` ≈ **2,500 calls/day**, all
-four probed against the real `SYSTEM_INSTRUCTION` on wicket/dot/six fixture balls before being
-added — the model list is not the set of models a key can call, and `gemini-2.5-flash-lite` proves
-it by appearing in `/v1/models` and answering 404 on a completion.
+**Gemini's free quota is per project PER MODEL, so one key buys three rungs — of very different
+sizes.** The 429 body names the quota and carries `quotaDimensions: {model}`. Measured limits:
+`gemini-3.5-flash-lite` 15 RPM (429 `quotaValue`, 2026-09-16) and 500 RPD / 250k TPM (read from AI
+Studio, the only place Google publishes them now); `gemini-3.6-flash` and `gemini-3-flash-preview`
+**20 RPD** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`, `quotaValue: "20"`, production
+2026-09-24). The ladder was sized on 2026-09-16 at "≈ 2,500 calls/day" by assuming flash-lite's 500
+applied to all three ids — it did not, and the real Gemini supply is **~540/day**, plus groq until
+its tokens-per-day cap (hit ~04:30 UTC on 2026-09-25). **Never infer a rung's limit from a sibling
+model**: read it at https://ai.dev/rate-limit or from its first per-day 429. All four rungs were
+probed against the real `SYSTEM_INSTRUCTION` on wicket/dot/six fixture balls before being added —
+the model list is not the set of models a key can call, and `gemini-2.5-flash-lite` proves it by
+appearing in `/v1/models` and answering 404 on a completion.
+
+**Using a second Google Cloud project to get a second free bucket is not an option.** The Google
+APIs Terms §2(d) "API Limitations": "You agree to, and will not attempt to circumvent, such
+limitations". Extra capacity is Tier 1 billing on the existing project, or a different provider.
 
 Three traps, each of which looks like free capacity and is not. **An alias is not a bucket**:
 bursting `gemini-flash-lite-latest` returns `quotaDimensions: {"model":"gemini-3.5-flash-lite"}` —
@@ -589,9 +596,9 @@ it bills what it resolves to. **A reasoning rung needs its own `tokenFloor`**: `
 `finish_reason: length`, the gpt-oss trap one rung down, so those two rungs carry `tokenFloor: 2048`
 while flash-lite keeps the caller's 100. And **a per-day 429 is not a per-minute one** — `unavailable`
 is per-line because a rate limit clears by the next ball, which is true of the 15 RPM bucket and
-false of the 500 RPD one, so `dailyExhausted` latches until the Pacific reset. Only the per-minute
-quotaId has been observed; the per-day pattern is inferred, and `drainUnknownQuotaIds` reports any
-429 matching neither so the guess gets corrected from production rather than standing forever.
+false of the per-day one, so `dailyExhausted` latches until the Pacific reset. Both quotaIds are now
+observed verbatim (per-day on 2026-09-24), and `drainUnknownQuotaIds` still reports any 429 matching
+neither.
 
 Rejected rungs, so nobody re-adds them: `gemini-3.1-flash-lite` (fast and a separate bucket, but
 dropped "ramp" and invented "sharp bouncer" — a hallucination ships, where a timeout merely falls
@@ -602,7 +609,8 @@ upstream" 429 on every call without even consuming the key's 50/day. Cerebras an
 `PROVIDERS` for the same reason and stay in `probeProviders()` alone, which is how a funded account
 would still be noticed. Pinned by `provider-ladder.test.js` in both function dirs.
 
-**The chain is not capacity-starved, and never was.** Measured 2026-09-16 over 13 days of
+**On 2026-09-16 the chain was not capacity-starved** — it became so once every ball was rewritten
+(see "Rewriting is batched" and the Gemini limits above). Measured 2026-09-16 over 13 days of
 `match-commentary`: **94 `ai_generated = true` rows/day** on average and 367 on the busiest day —
 ~11% of groq's 1,000/day on its own. The number that matters is the other one: **0.7-8.3% of stored
 commentary is AI-written**, so the tab is 91-99% raw Cricbuzz text. That is not an RPD problem. It
@@ -666,9 +674,10 @@ the check never runs. Prove a new guard bites by mutating one rule and watching 
 **Appwrite project:** single database `bouncer-db`. Known tables: `ai-commentary-cache`, `highlights`, `highlights-meta`, `user-favourites`, `player-profiles`, `match-commentary`, `match-live-detail`, `match-scorecard`.
 
 **Rewriting is batched across MATCHES, and that is what makes every ball affordable.** Measured
-2026-09-16: 6,672 deliveries a day against a ~2,500-call ladder is 31% coverage at one call per
-ball — which is why the tab was 91-99% raw Cricbuzz text. Batched it is ~960 calls, so every ball
-gets prose. The batch is filled by **breadth, not by waiting**: `handleRun` already runs the matches
+2026-09-16: 6,672 deliveries a day is ~960 calls batched, against the ~6,700 one call per ball
+would need. The "~2,500-call ladder" this was sized against was never real (Gemini is ~540/day), and
+~800 high-stakes verify calls come on top, so on 2026-09-24/25 the free ladder ran dry mid-evening
+UTC and rewrites fell to ~25% until the Pacific reset, then ran at ~94%. The batch is filled by **breadth, not by waiting**: `handleRun` already runs the matches
 concurrently, ~7 new deliveries arrive per run across them, and `queueRewrite` coalesces those on a
 250ms debounce into one `generateBatch` call. Filling a batch by over instead would need ~10 minutes
 of accumulation against the 0-60s a ball currently takes to appear — the cron stays the only thing
@@ -693,7 +702,7 @@ fabricated fact.
 
 **`match-scorecard` table:** written by `bouncer-match-sync` alongside the detail row. One row per match, row ID = sanitized `matchId`, columns `match_id`, `scorecard` (JSON `Scorecard`), `updated_at`. **No index** — read by `AppwriteMatchScorecardClient.getForMatch` (one `getRow` for first paint) then kept fresh by `observeMatch`, subscribed for the life of the detail screen. Exists because the scorecard measured 85–93% of the detail payload (4–9 KB of 4–9 KB) and was pushed to every subscriber of that row every minute; on its own row the live card's ~650-byte updates travel alone.
 
-**`bouncer-match-sync` Appwrite function:** scheduled `* * * * *`. Reads `live-matches.json` from `cricket-stats` bucket (written by `bouncer-poll-live-matches`); if file absent, returns 200 `{skipped:true}` (not an error). For each live match: fetches Cricbuzz live HTML + scorecard → upserts `match-live-detail` → writes EVERY new delivery to `match-commentary` → rewrites the oldest `commentaryCapFor` of them with the LLM. **Storage is not gated on a viewer; rewriting is.** It used to be the other way round, and a match nobody had open stored one ball per 45 minutes — so the commentary tab showed a sample of the match (overs missing outright, one boundary in an innings, a "recent" line hours old) rather than its commentary. `commentaryMatchSet` caps storage at 16 matches per run, viewers first. **Every stored delivery is now rewritten**, because the calls are batched: `commentaryCapFor` no longer rations rewriting and gates only the DETAIL tier (scorecard fetch, detail row, scorecard row — a write-budget decision), while the slow tier's 15-minute pass now decides detail freshness rather than prose. Those last two were 1 and 45 min while groq's 1,000/day was the whole budget; re-derived 2026-09-16 against the ~2,500/day Gemini ladder, from the measured 11 concurrent unwatched matches. The derivation is written above the constants in `main.js` and mirrored **deliberately** in `slow-tier.test.js` — a test that imports the constant it is checking cannot catch a wrong constant, so that mirror is the one place in this repo where duplication is the point. The watermark seeds from the newest `match-commentary` row (`limit(1)`, one billed read per cold container) and is no longer persisted to the detail row, because most live matches have no detail row. `innings` is stamped **per commentary item** from Cricbuzz's `inningsId`, falling back to the miniscore and then to the scorecard length — the old write-time stamp mislabelled an innings' tail as the next innings. Env vars: `APPWRITE_AI_CACHE_DB_ID`, `MATCH_COMMENTARY_COL_ID`, `MATCH_LIVE_DETAIL_COL_ID`, `MATCH_CACHE_BUCKET_ID`, `APPWRITE_API_KEY`, `GROQ_API_KEY` (+ fallbacks), `SENTRY_DSN` (optional — unset disables server-side reporting), `PROBE_SOURCES` (optional).
+**`bouncer-match-sync` Appwrite function:** scheduled `* * * * *`. Reads `live-matches.json` from `cricket-stats` bucket (written by `bouncer-poll-live-matches`); if file absent, returns 200 `{skipped:true}` (not an error). For each live match: fetches Cricbuzz live HTML + scorecard → upserts `match-live-detail` → writes EVERY new delivery to `match-commentary` → rewrites the oldest `commentaryCapFor` of them with the LLM. **Storage is not gated on a viewer; rewriting is.** It used to be the other way round, and a match nobody had open stored one ball per 45 minutes — so the commentary tab showed a sample of the match (overs missing outright, one boundary in an innings, a "recent" line hours old) rather than its commentary. `commentaryMatchSet` caps storage at 16 matches per run, viewers first. **Every stored delivery is now rewritten**, because the calls are batched: `commentaryCapFor` no longer rations rewriting and gates only the DETAIL tier (scorecard fetch, detail row, scorecard row — a write-budget decision), while the slow tier's 15-minute pass now decides detail freshness rather than prose. Those last two were 1 and 45 min while groq's 1,000/day was the whole budget; re-derived 2026-09-16 against a ~2,500/day Gemini ladder that was assumed rather than measured (it is ~540), from the measured 11 concurrent unwatched matches. The derivation is written above the constants in `main.js` and mirrored **deliberately** in `slow-tier.test.js` — a test that imports the constant it is checking cannot catch a wrong constant, so that mirror is the one place in this repo where duplication is the point. The watermark seeds from the newest `match-commentary` row (`limit(1)`, one billed read per cold container) and is no longer persisted to the detail row, because most live matches have no detail row. `innings` is stamped **per commentary item** from Cricbuzz's `inningsId`, falling back to the miniscore and then to the scorecard length — the old write-time stamp mislabelled an innings' tail as the next innings. Env vars: `APPWRITE_AI_CACHE_DB_ID`, `MATCH_COMMENTARY_COL_ID`, `MATCH_LIVE_DETAIL_COL_ID`, `MATCH_CACHE_BUCKET_ID`, `APPWRITE_API_KEY`, `GROQ_API_KEY` (+ fallbacks), `SENTRY_DSN` (optional — unset disables server-side reporting), `PROBE_SOURCES` (optional).
 
 **Server-side observability (`match-sync/src/observability.js`):** `@sentry/node`, initialized per container from `SENTRY_DSN` and flushed before every return (the container freezes on return, so an unflushed queue is lost). Reports: raw-text passthrough with the per-provider reasons from `generateLine`'s `attempts`, commentary write failures, a viewer-gated match that produced nothing, an unreadable `active-viewers` file (a 404 is normal and stays quiet), read-budget 402s, **a provider chain with fewer than two reachable rungs** (error level — generation still works, so every other signal looks healthy while `generateVerifiedLine`'s retry has nobody to fall back to; this is the state that went six weeks unnoticed), and **a 429 naming a quota id the per-day latch cannot classify**. The last two are also reported by `generate-commentary`, which on a day with no live match is the only caller talking to the providers at all. Setting `PROBE_SOURCES=1` turns one execution into an upstream reachability probe (status + bytes + markup markers for Cricinfo and Cricbuzz, from inside the Appwrite container) and returns without syncing — that is the only way to answer whether Cricinfo is reachable server-side, which is a different question from whether it is reachable from a laptop or a phone.
 

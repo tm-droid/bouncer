@@ -118,7 +118,9 @@ const MAX_PREMATCH = 60;
 //   30 min → 16 calls/hour → 384/day. Leaves 616 — barely two such hours.
 //   45 min → 11 calls/hour → 256/day. Leaves 744 — about three such hours. Chosen.
 //
-// Re-derived 2026-09-16, after three Gemini rungs took the ladder to ~2500 calls/day. What the old
+// Re-derived 2026-09-16, after three Gemini rungs were believed to take the ladder to ~2500
+// calls/day. They did not: two of the three are 20 RPD, and the real supply is ~540 Gemini calls
+// plus groq's daily token cap (measured 2026-09-24; see PROVIDERS in llm.js). What the old
 // numbers actually bought, measured on the live table: 998 commentary rows stored in an hour and
 // SIX of them rewritten — 0.6%. Eleven matches were live with no viewer, so `commentaryCapFor`
 // returned 0 for all of them and the slow tier's single 45-minute pass was the entire AI output of
@@ -160,8 +162,8 @@ let readsThisRun = 0;
 // ── Cross-match rewrite batching ─────────────────────────────────────────────
 //
 // Every delivery is now rewritten, which only fits the free ladder because the calls are batched:
-// 6,672 deliveries a day against ~2,500 calls is 31% coverage one-ball-at-a-time, and ~960 calls
-// batched. Measured 2026-09-16.
+// 6,672 deliveries a day is ~960 calls batched (measured 2026-09-16). The ~2,500-call ladder that
+// was sized against was an assumption, not a measurement — see PROVIDERS in llm.js.
 //
 // It batches across MATCHES, not across time, and that distinction is the whole design. Filling a
 // batch by waiting for an over would delay the ball by ~10 minutes against the 0-60s it takes to
