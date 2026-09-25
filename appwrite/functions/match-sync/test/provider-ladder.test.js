@@ -326,7 +326,7 @@ test("the verify-only rung never writes, and is asked FIRST for a verdict", asyn
   assert.ok(!writing.some((s) => s.provider === "groq-qwen"), "a verify-only rung wrote a line");
 
   const { seen: checking } = await withLadder(
-    () => completion("[1|1.1]: PASS"),
+    () => completion("[#1]: PASS"),
     () => verifyBatch([{ key: "1|1.1", source: "1.1 Bumrah to Root, no run", line: "Bumrah beats the edge." }])
   );
   assert.equal(checking[0].provider, "groq-qwen");
@@ -336,7 +336,8 @@ test("verifyBatch matches verdicts by key, and anything it cannot read is left u
   const items = ["a|1", "b|2", "c|3", "d|4"].map((key) => ({ key, source: `src ${key}`, line: `line ${key}` }));
   const { result } = await withLadder(
     // Reordered, one bolded, one unknown key, one duplicated, one missing (d|4).
-    () => completion("[b|2]: FAIL\n[a|1]: **PASS**\n[zz|9]: PASS\n[c|3]: PASS\n[c|3]: PASS"),
+    // Tags, not keys: #1..#4 are a|1..d|4. Reordered, bolded, an unknown tag, a duplicate, #4 missing.
+    () => completion("[#2]: FAIL\n[#1]: **PASS**\n[#9]: PASS\n[#3]: PASS\n[#3]: PASS"),
     () => verifyBatch(items)
   );
   assert.equal(result.available, true);
@@ -344,7 +345,7 @@ test("verifyBatch matches verdicts by key, and anything it cannot read is left u
   assert.equal(result.verdicts.get("b|2"), false);
   assert.equal(result.verdicts.get("c|3"), false, "a key answered twice is trusted neither time");
   assert.equal(result.verdicts.has("d|4"), false, "an unanswered key is absent, so the caller fails closed");
-  assert.equal(result.verdicts.has("zz|9"), false, "an invented key is dropped");
+  assert.equal(result.verdicts.size, 3, "an invented tag is dropped");
 });
 
 test("verifyBatch with no rung answering reports unavailable", async () => {
@@ -396,4 +397,17 @@ test("a 503 is retried once on the same rung; a second 503 moves on", async () =
   } finally {
     __setRetry503DelayMs(prev);
   }
+});
+
+test("the checker is sent short tags, so a long key cannot eat its reply budget", async () => {
+  // On 2026-09-25 the budget ran out part-way down the list once keys carried a timestamp, and the
+  // first five balls of an over came back unanswered.
+  const items = Array.from({ length: 12 }, (_, n) => ({ key: `142706|18.${n}|175881729${n}000`, source: `src ${n}`, line: `line ${n}` }));
+  const { result, seen } = await withLadder(
+    () => completion(items.map((_, n) => `[#${n + 1}]: PASS`).join("\n")),
+    () => verifyBatch(items)
+  );
+  assert.equal(result.verdicts.size, 12);
+  assert.equal(result.verdicts.get("142706|18.0|1758817290000"), true);
+  assert.ok(seen[0].maxTokens >= 16 * 12, "the budget covers every verdict line");
 });

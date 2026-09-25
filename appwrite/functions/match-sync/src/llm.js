@@ -968,15 +968,22 @@ export async function verifyBatch(items, { log, error, attempts, used } = {}) {
   const verdicts = new Map();
   if (!items?.length) return { verdicts, available: true };
 
+  // The checker sees short tags (#1, #2, …), not the caller's keys. Keys carry a timestamp so a
+  // wide and the ball after it cannot collide, and at ~20 tokens a verdict line the budget ran out
+  // part-way down the list: on 2026-09-25 the first five balls of an over came back unanswered and
+  // failed closed while the sixth got its verdict. A tag is a few tokens whatever the key is.
+  const tagged = items.map((item, n) => ({ ...item, tag: `#${n + 1}` }));
+  const byTag = new Map(tagged.map((t) => [t.tag, t.key]));
   const prompt =
     VERIFY_BATCH_RULES +
     "\n\n" +
-    items.map((i) => `[${i.key}]\nSource: ${i.source}\nCommentary: ${i.line}`).join("\n\n") +
-    `\n\nAnswer all ${items.length} items, one line each: [key]: PASS or [key]: FAIL`;
+    tagged.map((i) => `[${i.tag}]\nSource: ${i.source}\nCommentary: ${i.line}`).join("\n\n") +
+    `\n\nAnswer all ${items.length} items, one line each: [#n]: PASS or [#n]: FAIL`;
 
   const raw = await generateLine(prompt, {
-    // ~10 tokens a verdict. The reasoning rungs' floors apply on top when the checker falls through.
-    maxTokens: 12 * items.length + 64,
+    // A verdict line is ~6 tokens with a short tag; 16 leaves room for a model that adds a word.
+    // The reasoning rungs' floors apply on top when the checker falls through.
+    maxTokens: 16 * items.length + 64,
     temperature: 0,
     systemInstruction: VERIFY_BATCH_SYSTEM_INSTRUCTION,
     requireTerminated: false,
@@ -989,11 +996,12 @@ export async function verifyBatch(items, { log, error, attempts, used } = {}) {
   if (!raw) return { verdicts, available: false };
 
   for (const line of raw.split("\n").map((l) => l.trim()).filter(Boolean)) {
-    const m = line.match(/^\[([^\]]+)\]\s*:\s*\**\s*(PASS|FAIL)\b/i);
+    const m = line.match(/^\[(#\d+)\]\s*:\s*\**\s*(PASS|FAIL)\b/i);
     if (!m) continue;
-    const [, key, verdict] = m;
-    // A duplicated key is a checker that lost track of the list: trust neither answer.
-    if (!items.some((i) => i.key === key)) continue;
+    const key = byTag.get(m[1]);
+    const verdict = m[2];
+    // A duplicated tag is a checker that lost track of the list: trust neither answer.
+    if (!key) continue;
     if (verdicts.has(key)) {
       verdicts.set(key, false);
       continue;
