@@ -172,8 +172,10 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
         initTable(ApiKeys.appwriteAiCacheDbId, TABLE_ID)
     }
 
-    // Newest-first list of commentary lines for the match.
-    suspend fun getForMatch(matchId: String): List<CommentaryEntry> = fetchPage(matchId, olderThan = null)
+    // Newest-first list of commentary lines for the match. Null when the table could not be read
+    // (not ready, guard blocked, every fallback rung failed) — distinct from an empty list, which
+    // is a read that succeeded and found no rows for this match.
+    suspend fun getForMatch(matchId: String): List<CommentaryEntry>? = fetchPage(matchId, olderThan = null)
 
     /**
      * The next page back, strictly older than [olderThan].
@@ -184,10 +186,10 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
      * one.
      */
     suspend fun getOlderThan(matchId: String, olderThan: Double): List<CommentaryEntry> =
-        fetchPage(matchId, olderThan)
+        fetchPage(matchId, olderThan).orEmpty()
 
-    private suspend fun fetchPage(matchId: String, olderThan: Double?): List<CommentaryEntry> {
-        if (!isReady) return emptyList()
+    private suspend fun fetchPage(matchId: String, olderThan: Double?): List<CommentaryEntry>? {
+        if (!isReady) return null
         return withContext(Dispatchers.IO) {
             // Ordering on sort_key needs a user index; without it the query 400s. Degrade one rung
             // at a time rather than straight to an unordered fetch — `$createdAt` needs no index
@@ -207,7 +209,7 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
                 if (olderThan != null) emptyList() else queryRows(matchId, FeedOrder.NONE, null)
             }.onFailure { e ->
                 logSilentFailure("Commentary feed fetch failed", e)
-            }.getOrDefault(emptyList())
+            }.getOrNull()
         }
     }
 
@@ -215,7 +217,7 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
         matchId: String,
         order: FeedOrder,
         olderThan: Double?,
-    ): List<CommentaryEntry> {
+    ): List<CommentaryEntry>? {
         val queries = buildList {
             add(Query.equal("match_id", matchId))
             if (olderThan != null) add(Query.lessThan("sort_key", olderThan))
@@ -228,7 +230,7 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
         }
         val rows = guardedRead(order.queryName) {
             it.listRows(databaseId = dbId, tableId = tableId, queries = queries)
-        }?.rows ?: return emptyList()
+        }?.rows ?: return null
         // Every rung but SORT_KEY is sorted client-side: $createdAt is close to sort_key order but
         // is not it, and NONE is not ordered at all.
         val sorted = if (order == FeedOrder.SORT_KEY) {

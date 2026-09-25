@@ -35,13 +35,17 @@ object MatchPresenceReporter {
                 JSONObject().put("matchId", matchId).toString()
             )
             if (outcome !is FunctionOutcome.Success) {
-                sentryCaptureThrottled(
-                    key = "presence.ping.unavailable",
-                    message = "Match presence ping returned nothing — match-sync will treat this match as unwatched",
-                    data = buildMap {
-                        put("matchId", matchId)
-                        put("outcome", outcomeLabel(outcome))
-                    }
+                // A breadcrumb, not an event. Every way to get here is already reported, once, by
+                // `executeFunctionDetailed` under this function's id: an uninitialised SDK, a
+                // latched EXECUTIONS guard, a FAILED execution, and "returned HTTP <status>"
+                // (ANDROID-3H). The one case it deliberately does not report is the device being
+                // offline — and that case alone was most of what this capture raised (ANDROID-3M),
+                // because a `captureMessage` never reaches the exception filter that drops it.
+                sentryBreadcrumb(
+                    "service.presence",
+                    "Presence ping not accepted — match-sync will treat this match as unwatched",
+                    SentryLevel.WARNING,
+                    mapOf("matchId" to matchId, "outcome" to outcomeLabel(outcome))
                 )
                 false
             } else {

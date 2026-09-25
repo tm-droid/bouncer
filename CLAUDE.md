@@ -148,7 +148,7 @@ is called from composition on every list emission; `listLeadsDetail`
 payload has arrived, when the list entry has gone terminal, and when the row is older than
 `DETAIL_STALE_MS`. This is `eb91dcd` pointed the other way — there a frozen row overwrote the list
 on a finished match; here a **live** match that `match-sync` is not writing at all (position 13+
-under `MAX_MATCHES = 12`, or one nobody is viewing) sat on its open-time score while the list
+under `MAX_MATCHES`, or one nobody is viewing) sat on its open-time score while the list
 advanced behind it, because the state is seeded from the list at construction and so is never
 blank, and `MatchDetailViewV2`'s `ifBlank` fallback could therefore never fire. `seededFrom` touches
 only the fields the list actually carries: the batting pair, the bowler, the recent balls and the
@@ -537,6 +537,13 @@ raw Cricbuzz text — and generation was never the broken half. It is 256 now, p
 verified and the next returned `empty completion (length)` again. The verdict is four characters;
 the budget is sized by how long the model thinks before emitting them. An `empty completion` note carries its `finish_reason` for the same
 reason: `length` (a spent budget) and `stop` (a model that answered nothing) need opposite fixes.
+**256 was still not enough for groq** — production logged `groq: empty completion (length)` on
+every verify on 2026-09-25, so each high-stakes ball fell through to the two 2048-floor Gemini rungs
+(~800/day), which spent both 500/day buckets and left groq alone (ANDROID-4T, and ANDROID-38 again).
+groq now carries `tokenFloor: 1024` in `PROVIDERS`; the floor lives on the rung, not in
+`verifyLine`. A line that was generated but could not be verified by anyone is
+`verifier_unavailable`, not `verification_failed` — the first is a spent chain, the second a
+hallucination.
 
 **A 402 is account state, and it was being paid for on every ball while raising no alarm.** Measured
 2026-09-15 against the live keys: `GET /v1/models` returns **200** on all three providers and lists
@@ -693,7 +700,7 @@ fabricated fact.
 **The slow tier is an LLM budget, not a fetch cadence — and the real ball-loss mechanism is the
 upstream window.** `handleRun` does `Promise.allSettled(allLive.map(...))`: **every** live match has
 its Cricbuzz live page fetched and every new delivery stored, on every one-minute run.
-`commentaryMatchSet` caps storage at 16 but `MAX_MATCHES` is 12, so that slice never drops anything;
+`commentaryMatchSet` caps storage at 16 and `MAX_MATCHES` is also 16, so that slice never drops anything;
 `slowTier` feeds only `commentaryCapFor`, the 10/1/0 **rewrite** budget. `slow-sync-state` looks
 stale (entries 30+ minutes old while those matches sync every minute) because it is refreshed only
 for matches that were on the tier — that is not evidence of a 45-minute fetch cadence, and it was
@@ -712,16 +719,19 @@ is client-rendered and yields zero deliveries server-side, `/cricket-full-commen
 `/cricket-commentary/{id}` 307s back to the live page. Do not re-investigate recovery without new
 evidence.
 
-**`MAX_MATCHES = 12` silently drops live matches, and hides them from the viewer gate.** `allLive` is
-`matches.slice(0, MAX_MATCHES)` in Cricbuzz's list order, and anything past position 12 gets no
-commentary, no detail row and no win probability. Worse, `live` (the viewer set) is derived **after**
-the slice, so a viewer watching match 13 is invisible to the viewer gate entirely. The run log used
-to print only `allLive.length`, which can never exceed the cap — the cap censored the one number that
-would reveal it. It now logs the pre-slice count too and reports to Sentry when it binds, at `error`
-level if any dropped match had a viewer. The cap itself is unchanged; raising it is read-budget
-arithmetic, not a one-line edit.
+**`MAX_MATCHES` drops live matches past the cap, so it is filled viewers first.** Anything past
+the cap gets no commentary, no detail row and no win probability. It was 12 and sliced in Cricbuzz's
+list order *before* the viewer set was built, so a viewer watching match 13 was invisible to the
+viewer gate entirely; 13 live matches bound it on 2,219 runs in nine days (ANDROID-4P). Now
+`liveMatchSlice` puts watched matches first and the cap is 16 — bounded by `READ_BUDGET_PER_RUN` (20),
+because a cold container pays one watermark seed read per stored match. The run log prints the
+pre-slice count, and Sentry hears about a binding cap at most hourly per dropped-id set (`error` if a
+dropped match had a viewer). Steady-state server conditions — chain depth, Cricbuzz unreachable or
+blocked, this cap — go through `reportThrottled`; they were one event per one-minute run.
 
-**Viewer gate:** `MatchDetailViewModel` pings `bouncer-match-presence` every 90s while a match is open and **not over** — gated on `isMatchOver(match, liveStatus)`, never on `match.isLive`, which is a frozen list snapshot (same staleness class as `5b86664`). A dead heartbeat means every sync logs "0 with viewers" and the tab falls back to raw Cricbuzz text — but it does **not** stop deliveries being stored: the slow tier gates the LLM rewrite budget alone (see below); `MatchPresenceReporter.ping` therefore reports failures to Sentry instead of swallowing them.
+**Viewer gate:** `MatchDetailViewModel` pings `bouncer-match-presence` every 90s while a match is open and **not over** — gated on `isMatchOver(match, liveStatus)`, never on `match.isLive`, which is a frozen list snapshot (same staleness class as `5b86664`). A dead heartbeat means every sync logs "0 with viewers" and the tab falls back to raw Cricbuzz text — but it does **not** stop deliveries being stored: the slow tier gates the LLM rewrite budget alone (see below). `MatchPresenceReporter.ping` leaves a breadcrumb, not an event: every cause of a failed ping is already reported once by `AppwriteClient.executeFunctionDetailed` (uninitialised SDK, guard, FAILED, HTTP status), and the one it deliberately skips — the device being offline — was most of what the old capture raised (ANDROID-3M).
+
+**The Sentry exception filter never sees a `captureMessage`.** `shouldDropEvent` reads `event.exceptions`, and every `sentryCaptureThrottled` / `logSilentFailure` report is a message event, so an `UnknownHostException` inside one sailed through. Offline and already-reported causes are now skipped at each reporting site with `HttpClientProvider.isConnectivityException` — do not add a new message-level report without the same check. A `SentryHttpClientException` from a host other than `*.appwrite.io` is dropped: the Gradle-injected OkHttp integration captures every 5xx on every host and its targets cannot be set from options.
 
 **Appwrite Storage bucket `cricket-stats`:** read-only from Android via `AppwriteClient.downloadFile(bucketId, fileId)`; written only by Appwrite cloud functions. It is **not** four files — measured 2026-09-12 it holds fifteen, and most are inter-function state rather than app data:
 

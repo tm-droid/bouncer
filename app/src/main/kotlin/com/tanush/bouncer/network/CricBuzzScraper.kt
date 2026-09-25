@@ -200,6 +200,9 @@ class CricBuzzScraper {
         private const val COMMENTARY_TIMEOUT_MS = 12000
         private const val SCORECARD_TIMEOUT_MS = 15000
 
+        // ScrapeFetcher's message for a non-2xx: "HTTP <code> fetching <url>".
+        private val UPSTREAM_5XX = Regex("^HTTP 5\\d\\d fetching ")
+
         private val consecutiveEmptyParses = java.util.concurrent.atomic.AtomicInteger(0)
     }
 
@@ -779,6 +782,13 @@ class CricBuzzScraper {
             if (HttpClientProvider.isConnectivityException(e)) {
                 Log.w(TAG, "No internet fetching scorecard for $matchId")
                 crumb("No internet fetching scorecard", SentryLevel.WARNING, mapOf("matchId" to matchId))
+            } else if (UPSTREAM_5XX.containsMatchIn(e.message.orEmpty())) {
+                // Cricbuzz's own outage (ANDROID-48: a 504). ScrapeFetcher throws a plain
+                // IOException, so the HttpStatusException branch above never sees it; the caller
+                // already degrades to the stored scorecard, and nothing on this side can fix it.
+                Log.w(TAG, "Cricbuzz ${e.message}")
+                crumb("Cricbuzz 5xx fetching scorecard", SentryLevel.WARNING,
+                    mapOf("matchId" to matchId, "error" to e.message.orEmpty()))
             } else {
                 Log.e(TAG, "Error fetching scorecard", e)
                 crumb("Error fetching scorecard", SentryLevel.ERROR,

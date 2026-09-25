@@ -72,6 +72,16 @@ async function persistOffenders({ storage, error }) {
  * problem. The catch is not swallowing anything — it re-throws after reporting, so Appwrite still
  * marks the execution FAILED and the device still sees it.
  */
+const CHAIN_DEPTH_REPORT_MS = 60 * 60 * 1000;
+const chainDepthReportedAt = new Map();
+
+function shouldReportChainDepth(blocked, now = Date.now()) {
+  const last = chainDepthReportedAt.get(blocked);
+  if (last !== undefined && now - last < CHAIN_DEPTH_REPORT_MS) return false;
+  chainDepthReportedAt.set(blocked, now);
+  return true;
+}
+
 export default async (context) => {
   initObservability({ log: context.log });
   try {
@@ -100,7 +110,9 @@ export default async (context) => {
     if (depth < 2) {
       const blocked = rungs.filter((r) => !r.reachable).map((r) => `${r.provider}: ${r.reason}`).join("; ");
       context.error?.(`[CHAIN-DEPTH] only ${depth} reachable provider(s) — ${blocked}`);
-      report("Commentary provider chain is too short to fact-check — a verification FAIL now means raw text", {
+      // Once per blocked set per hour, as in match-sync: this ran on every invocation, and a
+      // day-latched rung holds the same state until the Pacific reset.
+      if (shouldReportChainDepth(blocked)) report("Commentary provider chain is too short to fact-check — a verification FAIL now means raw text", {
         depth: String(depth),
         reachable: rungs.filter((r) => r.reachable).map((r) => r.provider).join(",") || "none",
         blocked,

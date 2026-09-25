@@ -93,6 +93,14 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
             val type = sentryException.type ?: ""
             val value = sentryException.value ?: ""
 
+            // 0. A 5xx from a host we do not run. The OkHttp integration the Gradle plugin injects
+            //    captures every 5xx on every host (its targets are `.*` and are set only through
+            //    the interceptor's constructor, which the bytecode instrumentation never calls),
+            //    so Cricbuzz's own outages — the live-scores page, its image CDN — became five
+            //    issues (ANDROID-4A/4C/4R…) that no change here could ever fix. The scrapers
+            //    already degrade and breadcrumb on them. Appwrite's 5xx stay: that host is ours.
+            if (type == "SentryHttpClientException" && !isOwnBackend(event.request?.url)) return true
+
             // 1. Benign cancellations (Coil image loads, OkHttp lifecycle, coroutines)
             //    - type check: catches JobCancellationException, CancellationException, etc.
             //    - value fallback: catches cases where the SDK stores a fully-qualified class
@@ -131,6 +139,12 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
         }
 
         return false
+    }
+
+    /** Hosts whose 5xx are ours to act on. Everything else is upstream state. */
+    private fun isOwnBackend(url: String?): Boolean {
+        val host = url?.let { runCatching { java.net.URI(it).host }.getOrNull() } ?: return true
+        return host == "appwrite.io" || host.endsWith(".appwrite.io")
     }
 
     /**

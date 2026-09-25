@@ -244,9 +244,17 @@ export default async ({ req, res, log, error }) => {
       if (fetchedDates === 0) return await finish({ skipped: true, reason: "quota_exhausted" });
       break;
     }
+    // Both keep the pages this date already returned — `fetchDate` hands them back for exactly
+    // that, and a failure on page 2 used to throw away page 1.
+    if (result.outcome === "network_error") {
+      report("Highlightly request did not complete", { date, reason: result.message }, "warning");
+      collected.push(...result.items);
+      continue;
+    }
     if (result.outcome === "http_error") {
       error(`Highlightly API returned ${result.status} for ${date}`);
       report("Highlightly returned a non-2xx", { date, status: result.status }, "warning");
+      collected.push(...result.items);
       continue;
     }
     if (result.outcome === "unknown_shape") {
@@ -267,15 +275,17 @@ export default async ({ req, res, log, error }) => {
   // less than the back-window, so its emptiness says nothing about upstream.
   if (sweep && fetchedDates === dates.length) {
     const previous = await readDrySweeps(db, HIGHLIGHTS_DB_ID, META_COL_ID, error);
-    let sweeps = highlights.length === 0 ? previous + 1 : 0;
-    if (sweeps >= DRY_SWEEP_ALERT) {
+    const sweeps = highlights.length === 0 ? previous + 1 : 0;
+    // Once per dry streak. It used to reset the count after reporting, so an upstream that simply
+    // stopped publishing (Highlightly, from 2026-09-03) re-raised it every third sweep — twice a
+    // day for as long as the outage lasted, each event saying nothing the first did not. The
+    // streak ends, and the next one can report, only when a sweep finds something.
+    if (sweeps === DRY_SWEEP_ALERT) {
       report(
         "highlights-sync back-window has been empty for consecutive sweeps",
         { sweeps, dates: dates.join(","), remaining: remaining ?? -1 },
         "warning"
       );
-      // Reset so the next event needs another full run of dry sweeps rather than firing every 4h.
-      sweeps = 0;
     }
     // Written here rather than with the fetch-state payload below, because a dry run returns before
     // reaching it — which is precisely the run whose count must survive.
@@ -368,7 +378,7 @@ export default async ({ req, res, log, error }) => {
  * the HTTP status. A thrown fetch is `http_error` with status 0 — a network failure is a failure,
  * not an empty day.
  */
-async function fetchDate(date, highlightlyApiKey, log, error) {
+export async function fetchDate(date, highlightlyApiKey, log, error) {
   const items = [];
   let remaining = null;
   let offset = 0;
@@ -391,12 +401,14 @@ async function fetchDate(date, highlightlyApiKey, log, error) {
         // The only fetch in any function that was missing a timeout. It sits inside the
         // MAX_PAGES_PER_DATE loop, so a hung Highlightly connection blocked until Appwrite's own
         // execution timeout killed the container — throwing away every page already fetched.
-        // Caught below and reported as http_error, which keeps the pages collected so far.
+        // Caught below and reported as network_error, which keeps the pages collected so far.
         signal: AbortSignal.timeout(HIGHLIGHTLY_FETCH_TIMEOUT_MS),
       });
     } catch (e) {
       error(`Highlightly fetch failed for ${date}: ${e?.message}`);
-      return { outcome: "http_error", items, status: 0, remaining, keys: "" };
+      // Its own outcome, not `http_error` with status 0: no response ever arrived, and filing a
+      // timeout as "returned a non-2xx" sent the diagnosis to the wrong side of the wire.
+      return { outcome: "network_error", items, status: 0, remaining, keys: "", message: e?.name === "TimeoutError" ? "timeout" : (e?.message ?? "unknown") };
     }
 
     remaining = parseRemaining(response.headers) ?? remaining;
@@ -405,6 +417,9 @@ async function fetchDate(date, highlightlyApiKey, log, error) {
     try {
       body = await response.json();
     } catch {
+      // A 5xx from the gateway is an HTML page. That is an HTTP error, not an API shape change, and
+      // reporting it as `unknown_shape` raised the one error-level alert meant for a real change.
+      if (!response.ok) return { outcome: "http_error", items, status: response.status, remaining, keys: "(unparseable)" };
       return { outcome: "unknown_shape", items, status: response.status, remaining, keys: "(unparseable)" };
     }
 

@@ -353,10 +353,14 @@ class MatchDetailViewModel(
     }
 
     private suspend fun loadCommentaryFeed() {
+        // True only when the store answered and holds no rows for this match. A timeout, an
+        // offline device or a blocked guard is not that, and reporting them as "the server wrote
+        // nothing" is most of what ANDROID-37 was.
+        var storeAnsweredEmpty = false
         AppResult.runCatchingSuspend {
             val lines = withTimeoutOrNull(10_000L) { liveSource.getCommentaryForMatch(match.id) }
-                ?: emptyList()
-            if (lines.isNotEmpty()) _uiState.update { it.copy(commentary = lines, commentaryError = null) }
+            storeAnsweredEmpty = lines != null && lines.isEmpty()
+            if (!lines.isNullOrEmpty()) _uiState.update { it.copy(commentary = lines, commentaryError = null) }
         }.onError {
             sentryBreadcrumb("match_detail_v2.commentary_load", "Commentary feed load failed: ${it.message}", SentryLevel.WARNING)
             _uiState.update { st ->
@@ -371,19 +375,22 @@ class MatchDetailViewModel(
             val scraped = scrapeCommentary(matchRepository, match.id)
             if (scraped.isNotEmpty()) {
                 // This is the raw-Cricbuzz path: unrewritten scraper output rendered verbatim,
-                // visually indistinguishable from AI commentary. It is a legitimate last resort
-                // (a match nobody watched has no server rows and no way to gain any) but it means
-                // the server pipeline produced nothing for a match a user is looking at right now,
-                // so it is reported as degradation rather than logged as routine.
-                sentryCaptureThrottled(
-                    key = "commentary.raw-fallback",
-                    message = "Commentary tab served raw Cricbuzz text — no AI-generated rows for this match",
-                    data = mapOf(
-                        "matchId" to match.id,
-                        "appwriteLines" to 0,
-                        "scrapedLines" to scraped.size
+                // visually indistinguishable from stored commentary. It is a legitimate last resort
+                // but, when the store answered with nothing, it means match-sync stored no rows
+                // for a match a user is looking at right now, so that case is reported as
+                // degradation. It says nothing about AI coverage: the device never reads
+                // `ai_generated`, and a stored raw-text row is a row. A store that could not be
+                // read is the device's state and is already reported where the read failed.
+                if (storeAnsweredEmpty) {
+                    sentryCaptureThrottled(
+                        key = "commentary.raw-fallback",
+                        message = "Commentary tab fell back to scraping — match-commentary has no rows for this match",
+                        data = mapOf(
+                            "matchId" to match.id,
+                            "scrapedLines" to scraped.size
+                        )
                     )
-                )
+                }
                 // No server verdict on this path — the scraper's own words are what the device
                 // classifies from, and they still carry Cricbuzz's uppercase FOUR/SIX/OUT.
                 _uiState.update { st ->

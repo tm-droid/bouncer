@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { chainDepth, drainUnknownQuotaIds, generateLine, probeProviders, resetProviderHealth, verifyLine } from "../src/llm.js";
+import { chainDepth, drainUnknownQuotaIds, generateLine, generateVerifiedLine, probeProviders, resetProviderHealth, verifyLine } from "../src/llm.js";
 
 // The ladder became four rungs on two accounts on 2026-09-16, when cerebras and sambanova were
 // dropped for answering 402 to every call and three Gemini model ids took their place. Gemini bills
@@ -88,7 +88,7 @@ test("a reasoning rung is sent its own token floor, not the caller's budget", as
   );
 
   const sent = Object.fromEntries(seen.map((s) => [s.provider, s.maxTokens]));
-  assert.equal(sent.groq, 100, "groq has no floor — the caller's budget stands");
+  assert.equal(sent.groq, 1024, "gpt-oss reasons before it answers — it is floored like the Gemini reasoning rungs");
   assert.equal(sent["gemini-flash-lite"], 100, "flash-lite answered fine at 100 and must not be inflated");
   assert.equal(sent["gemini-3.6-flash"], 2048, "the reasoning rungs need room to think first");
   assert.equal(sent["gemini-3-flash-preview"], 2048);
@@ -126,6 +126,38 @@ test("the truncation guard does not eat a verification verdict", async () => {
     () => verifyLine({ line: "19.2: Rahul takes it.", snippet1: "Bumrah to Maxwell, out Caught by Rahul" })
   );
   assert.equal(result, true, "PASS must still be read as a pass");
+});
+
+test("a verify sent to groq carries groq's floor, not the verdict's 256", async () => {
+  // Production, 2026-09-25: `groq: empty completion (length)` on every verify. gpt-oss spent the
+  // 256 on reasoning, every high-stakes ball fell to the 2048-floor Gemini rungs, and those spent
+  // their daily buckets by evening (ANDROID-38 / ANDROID-4T).
+  const { seen } = await withLadder(
+    (name) => (name === "groq" ? completion("PASS") : quota429("x-PerMinute-y")),
+    () => verifyLine({ line: "19.2: Rahul takes it.", snippet1: "Bumrah to Maxwell, out Caught by Rahul" })
+  );
+  assert.equal(seen.find((s) => s.provider === "groq")?.maxTokens, 1024);
+});
+
+test("a line nobody could verify is verifier_unavailable, and is not regenerated", async () => {
+  // Opposite diagnosis to verification_failed: that one is a hallucination, this one a spent
+  // chain. Recording both as verification_failed is how a quota outage read as a quality problem.
+  const { result, seen } = await withLadder(
+    (name, nth) =>
+      name === "gemini-flash-lite" && nth === 1 ? completion("19.2: Rahul takes it.") : quota429("x-PerMinute-y"),
+    () =>
+      generateVerifiedLine("19.2: Bumrah to Maxwell, out Caught by Rahul", {
+        verify: true,
+        context: { snippet1: "Bumrah to Maxwell, out Caught by Rahul", ball: "19.2" },
+      })
+  );
+  assert.equal(result.line, null);
+  assert.equal(result.reason, "verifier_unavailable");
+
+  const outcome = {};
+  await withLadder(() => quota429("x-PerMinute-y"), () => verifyLine({ line: "x." }, { outcome }));
+  assert.equal(outcome.available, false);
+  assert.ok(seen.length <= 5, "no second generation is spent on a chain that cannot verify it");
 });
 
 test("a per-DAY 429 latches the rung; a per-MINUTE 429 does not", async () => {

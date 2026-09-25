@@ -103,7 +103,6 @@ class BouncerApp : Application() {
             }
         )
         Sentry.logger().info("BouncerApp startup begun")
-        Sentry.metrics().count("app_start", 1.0)
 
         // ── Initialize managers ──────────────────────────────────────────
         HttpClientProvider.initialize(cacheDir)
@@ -226,17 +225,23 @@ class BouncerApp : Application() {
             coil.Coil.setImageLoader(imageLoader)
         }
 
-        // ── Subscribe to FCM topic for live match state changes ─────────────
-        FirebaseMessaging.getInstance().subscribeToTopic("cricket-live-updates")
-            .addOnCompleteListener { task ->
-                if (!task.isSuccessful) {
-                    Log.w(TAG, "FCM topic subscription failed: ${task.exception?.message}")
-                    Sentry.captureException(task.exception ?: Exception("FCM subscribe failed"))
-                }
-            }
-
-        // ── Enqueue periodic workers after first frame — not needed for launch ──
+        // ── Off the main thread: FCM, startup metrics, periodic workers ─────
+        // `FirebaseMessaging.getInstance()` initialises the messaging component (disk, IPC to
+        // Play services) and the first `Sentry.metrics()` call starts the metrics batch
+        // processor's thread. Both ran here on the main thread inside `onCreate`, and both are
+        // the top frame of a startup ANR (ANDROID-4F, ANDROID-4V). Nothing in launch waits on
+        // either.
         applicationScope.launch(Dispatchers.IO) {
+            Sentry.metrics().count("app_start", 1.0)
+            Sentry.metrics().gauge("app_init_components", 4.0)
+            FirebaseMessaging.getInstance().subscribeToTopic("cricket-live-updates")
+                .addOnCompleteListener { task ->
+                    if (!task.isSuccessful) {
+                        Log.w(TAG, "FCM topic subscription failed: ${task.exception?.message}")
+                        Sentry.captureException(task.exception ?: Exception("FCM subscribe failed"))
+                    }
+                }
+            // Workers after first frame — not needed for launch.
             kotlinx.coroutines.delay(500L)
             initializeSafely("ScorePollingWorker") { ScorePollingWorker.enqueuePeriodicWork(this@BouncerApp) }
             initializeSafely("SeriesSyncWorker") { SeriesSyncWorker.enqueuePeriodicWork(this@BouncerApp) }
@@ -251,7 +256,6 @@ class BouncerApp : Application() {
             }
         )
         Sentry.logger().log(SentryLogLevel.INFO, "BouncerApp startup completed")
-        Sentry.metrics().gauge("app_init_components", 4.0)
         val failures = AppHealth.anyFailures()
         if (failures.isNotEmpty()) {
             Log.w(TAG, "Application initialized with degraded components: $failures")

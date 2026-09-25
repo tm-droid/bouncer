@@ -78,7 +78,14 @@ const PROVIDERS = [
   // is device-facing with a 30s timeout, and gemini-3-flash-preview measured up to 12s. A fast
   // second rung keeps the common failure path well inside that.
   { name: "gemini-flash-lite",      account: "gemini", url: GEMINI_URL,                                        model: "gemini-3.5-flash-lite",  keyEnv: "GEMINI_API_KEY", tokenFloor: 0 },
-  { name: "groq",                   account: "groq",   url: "https://api.groq.com/openai/v1/chat/completions", model: "openai/gpt-oss-20b",     keyEnv: "GROQ_API_KEY",   tokenFloor: 0,    extraBody: { reasoning_effort: "low" } },
+  // groq's floor is the verify call's, not the batch's. The batch budget is `120*n+200` and always
+  // cleared 320, but `verifyLine` asked for 256 and gpt-oss spent all of it reasoning: production
+  // logged `groq: empty completion (length)` on every verify (ANDROID-38, 2026-09-25). Each of those
+  // fell through to the two 2048-floor Gemini rungs, ~800 high-stakes balls a day, which spent both
+  // of their 500/day buckets and left groq as the only reachable rung (ANDROID-4T). The floor sits
+  // here rather than in verifyLine because the flash-lite rung does not need it and the Gemini
+  // rungs already carry larger ones.
+  { name: "groq",                   account: "groq",   url: "https://api.groq.com/openai/v1/chat/completions", model: "openai/gpt-oss-20b",     keyEnv: "GROQ_API_KEY",   tokenFloor: 1024, extraBody: { reasoning_effort: "low" } },
   { name: "gemini-3.6-flash",       account: "gemini", url: GEMINI_URL,                                        model: "gemini-3.6-flash",       keyEnv: "GEMINI_API_KEY", tokenFloor: 2048 },
   { name: "gemini-3-flash-preview", account: "gemini", url: GEMINI_URL,                                        model: "gemini-3-flash-preview", keyEnv: "GEMINI_API_KEY", tokenFloor: 2048 },
 ];
@@ -824,7 +831,7 @@ const VERIFY_SYSTEM_INSTRUCTION =
  */
 export async function verifyLine(
   { line, snippet1 = "", snippet2 = "", ball = "", bowler = "", batsman = "" },
-  { log, error, attempts, unavailable } = {}
+  { log, error, attempts, unavailable, outcome } = {}
 ) {
   const prompt = VERIFICATION_PROMPT_TEMPLATE
     .replace("{snippet1}", snippet1)
@@ -846,7 +853,9 @@ export async function verifyLine(
     // 64 was measured in production on 2026-09-12 and is still not enough: one ball verified, the
     // next returned `empty completion (length)` again. The verdict is four characters; the budget is
     // sized by how long the model thinks before emitting them, which is not a quantity this file can
-    // predict. 256 leaves room for that and still costs only what is actually generated.
+    // predict. 256 did not leave room for groq either — it is floored at 1024 in PROVIDERS, which
+    // is where a rung's reasoning budget belongs. 256 stays the request for the rungs that answer
+    // without thinking, and costs only what is actually generated.
     maxTokens: 256,
     temperature: 0,
     systemInstruction: VERIFY_SYSTEM_INSTRUCTION,
@@ -858,6 +867,10 @@ export async function verifyLine(
     attempts,
     unavailable,
   });
+  // `outcome.available` separates "a verifier said FAIL" from "no verifier answered". Both fail
+  // closed, but they are opposite diagnoses — a hallucination versus a spent chain — and recording
+  // the second as `verification_failed` is how a quota outage read as a quality problem.
+  if (outcome) outcome.available = Boolean(verdict);
   if (!verdict) {
     error?.("Verification unavailable — failing closed (FAIL)");
     return false;
@@ -886,8 +899,14 @@ export async function generateVerifiedLine(prompt, options = {}) {
   if (!first) return { line: null, provider: null, verified: false, reason: "providers_exhausted" };
   if (!verify) return { line: first, provider: used.provider, verified: null, reason: null };
 
-  if (await verifyLine({ line: first, ...context }, pass)) {
+  const firstOutcome = {};
+  if (await verifyLine({ line: first, ...context }, { ...pass, outcome: firstOutcome })) {
     return { line: first, provider: used.provider, verified: true, reason: null };
+  }
+  // Nobody could verify. A regenerated line would meet the same empty chain — `unavailable` is
+  // shared for the whole line — so the retry would only spend a generation on a certain FAIL.
+  if (!firstOutcome.available) {
+    return { line: null, provider: null, verified: false, reason: "verifier_unavailable" };
   }
 
   attempts?.push(`${used.provider ?? "unknown"}: verification FAIL`);

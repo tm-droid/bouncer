@@ -38,6 +38,7 @@ import {
   initObservability,
   report,
   reportError,
+  reportThrottled,
   flushObservability,
   probeSources,
   startCheckIn,
@@ -82,7 +83,14 @@ const MAX_NEW_PER_MATCH = 10; // max LLM-REWRITTEN rows per match per run
 // runs to 30+ once domestic fixtures are counted. Viewed matches take the slots first, then the
 // slow tier, then whatever is left; 16 covers every list observed (11 live at 2026-08-27T12:10Z).
 const MAX_COMMENTARY_MATCHES = 16;
-const MAX_MATCHES = 12; // cap live matches processed per run
+// Cap on live matches processed per run, filled VIEWERS FIRST (`liveMatchSlice`). 12 until
+// 2026-09-25, when 13 live matches bound it on 2,219 runs in nine days (ANDROID-4P) — and because
+// the slice ran in Cricbuzz's list order before the viewer set was built, a watched match at
+// position 13 was invisible to the viewer gate. 16 is bounded by READ_BUDGET_PER_RUN (20): a cold
+// container pays one watermark seed read per stored match, so the cap must stay under it.
+const MAX_MATCHES = 16;
+// How long a steady-state condition stays quiet in Sentry once reported. See reportThrottled.
+const STEADY_STATE_REPORT_MS = 60 * 60 * 1000;
 // Pre-match costs no network call per fixture — the model is already in memory — so this is a cap
 // on the written file rather than on work. Today's list is 20; a long tour week is not much more.
 const MAX_PREMATCH = 60;
@@ -484,11 +492,9 @@ async function handleRun({ req, res, log, error }) {
   // get commentary and a detail row.
   const activeViewers = await activeViewerIds({ storage, log, error });
   const eligible = matches.filter((m) => m && m.id);
-  const allLive = eligible.slice(0, MAX_MATCHES);
-  // The cap is kept as-is; what was wrong is that it was invisible. Only `allLive.length` was ever
-  // logged, and that number can never exceed MAX_MATCHES — so the one figure that would reveal the
-  // cap binding was the one the cap had already censored.
-  const dropped = eligible.slice(MAX_MATCHES);
+  // Only `allLive.length` used to be logged, and that number can never exceed MAX_MATCHES — so the
+  // one figure that would reveal the cap binding was the one the cap had already censored.
+  const { allLive, dropped } = liveMatchSlice(eligible, activeViewers);
   const live = allLive.filter((m) => activeViewers.has(String(m.id)));
   if (allLive.length === 0) {
     log(`No live matches — writing ${Object.keys(prematch).length} pre-match entries only`);
@@ -538,12 +544,13 @@ async function handleRun({ req, res, log, error }) {
   );
   // Only when it actually binds. A run that fits under the cap stays silent.
   if (dropped.length > 0) {
-    // `viewed` is built from allLive, i.e. AFTER the slice, so a watched match beyond position
-    // MAX_MATCHES is invisible to the viewer gate entirely. That is the case worth waking up for,
-    // and a bare count would not distinguish it. activeViewers is already in hand, so this is free.
+    // The slice is viewers-first, so a watched match is dropped only when more than MAX_MATCHES
+    // are watched at once. That is the case worth waking up for; a bare count would not
+    // distinguish it. Keyed on the dropped ids: the same overflow stays quiet for an hour, a new
+    // one reports at once.
     const droppedIds = dropped.map((m) => String(m.id));
     const droppedWithViewers = droppedIds.filter((id) => activeViewers.has(id));
-    report("MAX_MATCHES dropped live matches — they get no commentary, detail row or win probability", {
+    reportThrottled(`max-matches:${droppedIds.join(",")}`, STEADY_STATE_REPORT_MS, "MAX_MATCHES dropped live matches — they get no commentary, detail row or win probability", {
       cap: MAX_MATCHES,
       eligible: eligible.length,
       dropped: dropped.length,
@@ -587,6 +594,10 @@ async function handleRun({ req, res, log, error }) {
         // minute does not read as twelve independent failures.
         if (e?.blocked) {
           summary[matchId] = "blocked";
+        } else if (e?.appwriteNetwork) {
+          // Our own backend, not Cricbuzz. It used to fall into the branch below and read as
+          // "Cricbuzz is unreachable", which sent the diagnosis to the wrong host.
+          summary[matchId] = "appwrite_unreachable";
         } else if (isUpstreamNetworkError(e)) {
           // Cricbuzz timing out from this container is one upstream condition, not sixteen
           // independent defects. Counted per run below, the same shape `blocked` already uses.
@@ -603,7 +614,9 @@ async function handleRun({ req, res, log, error }) {
     const sent = (await Promise.all(alerts)).filter(Boolean).length;
     log(`Sent ${sent}/${alerts.length} match alert(s)`);
     if (sent < alerts.length) {
-      report("match-sync failed to send match alerts", { sent, queued: alerts.length }, "warning");
+      // Logged, not reported: every failed send is already its own event carrying the topic and
+    // FCM's error code, and a second event per run with only the tally would double-count them.
+    error(`[ALERTS] ${alerts.length - sent} of ${alerts.length} match alert(s) failed this run`);
     }
   }
 
@@ -628,16 +641,25 @@ async function handleRun({ req, res, log, error }) {
   const unreachableIds = Object.keys(summary).filter((id) => summary[id] === "unreachable");
   if (unreachableIds.length > 0) {
     error(`[UPSTREAM-UNREACHABLE] ${unreachableIds.length} match(es) failed to fetch this run`);
-    report("Cricbuzz is unreachable from this container — matches skipped", {
+    reportThrottled("cricbuzz-unreachable", STEADY_STATE_REPORT_MS, "Cricbuzz is unreachable from this container — matches skipped", {
       matches: unreachableIds.length,
       matchIds: unreachableIds.join(","),
+    });
+  }
+
+  const appwriteDownIds = Object.keys(summary).filter((id) => summary[id] === "appwrite_unreachable");
+  if (appwriteDownIds.length > 0) {
+    error(`[APPWRITE-UNREACHABLE] ${appwriteDownIds.length} match(es) could not read their watermark this run`);
+    reportThrottled("appwrite-unreachable", STEADY_STATE_REPORT_MS, "Appwrite is unreachable from match-sync — matches skipped", {
+      matches: appwriteDownIds.length,
+      matchIds: appwriteDownIds.join(","),
     });
   }
 
   const blockedIds = Object.keys(summary).filter((id) => summary[id] === "blocked");
   if (blockedIds.length > 0) {
     error(`[CRICBUZZ-BLOCKED] ${blockedIds.length} match(es) skipped this run`);
-    report("Cricbuzz is throttling this container — matches skipped", {
+    reportThrottled("cricbuzz-blocked", STEADY_STATE_REPORT_MS, "Cricbuzz is throttling this container — matches skipped", {
       matches: blockedIds.length,
       matchIds: blockedIds.join(","),
       backoffMs: BLOCK_BACKOFF_MS,
@@ -705,7 +727,8 @@ async function handleRun({ req, res, log, error }) {
  * measured 2026-09-16, ~97% of rows). Those need opposite responses and were indistinguishable in
  * storage. So: a rung name means rewritten, `cricbuzz` means nobody tried, and
  * `cricbuzz:<reason>` means somebody tried and failed — `providers_exhausted` if nobody answered,
- * `verification_failed` if somebody did and was rejected. The ladder's real mix becomes a GROUP BY
+ * `verification_failed` if somebody did and was rejected, `verifier_unavailable` if the line was
+ * generated but no rung could fact-check it. The ladder's real mix becomes a GROUP BY
  * rather than a guess, which is the thing nobody could do while cerebras and sambanova were dead.
  *
  * @param generated `generateVerifiedLine`'s result, or null when it was never called.
@@ -714,6 +737,17 @@ export function commentaryOrigin(generated) {
   if (!generated) return { aiGenerated: false, provider: "cricbuzz" };
   if (generated.line) return { aiGenerated: true, provider: generated.provider ?? "unknown" };
   return { aiGenerated: false, provider: `cricbuzz:${generated.reason ?? "unknown"}` };
+}
+
+/**
+ * The live matches processed this run: every match with a viewer first, then Cricbuzz's order,
+ * capped at [MAX_MATCHES]. Stable, so within each group the list order still decides.
+ */
+export function liveMatchSlice(eligible, activeViewers, cap = MAX_MATCHES) {
+  const watched = eligible.filter((m) => activeViewers.has(String(m.id)));
+  const rest = eligible.filter((m) => !activeViewers.has(String(m.id)));
+  const ordered = [...watched, ...rest];
+  return { allLive: ordered.slice(0, cap), dropped: ordered.slice(cap) };
 }
 
 export function commentaryCapFor(matchId, viewed, slowTier) {
@@ -1081,7 +1115,20 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   // that do not exercise alerts, and then nothing is sent.
   const alert = (data) => {
     if (!alerts || !data) return;
-    alerts.push(sendTopicMessage(matchTopic(matchId), data, { onError: error }));
+    alerts.push(sendTopicMessage(matchTopic(matchId), data, {
+      onError: (message, detail = {}) => {
+        error(message);
+        // Per failed send, with what FCM said. The run's tally alone ("1 of 2") could never say
+        // which alert, which topic or which FCM error it was.
+        report("match-sync could not deliver a match alert", {
+          matchId,
+          type: data.type ?? "unknown",
+          topic: detail.topic ?? matchTopic(matchId),
+          status: detail.status ?? "none",
+          fcmStatus: detail.fcmStatus ?? "none",
+        }, "warning");
+      },
+    }));
   };
   // 2. Fetch live page, plus the scorecard only when we are going to use it. A match with no
   // viewer needs the live page alone to produce a win probability — and, now, to store its
@@ -1264,13 +1311,17 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
       // would be a second unproven contract on top of a new one, and at ~813 high-stakes balls a
       // day the individual calls fit the budget comfortably.
       if (isHighStakesBall(qi.clean)) {
-        const attempts = out.attempts ?? [];
+        // A copy: `out.attempts` is the batch's one array, shared by every delivery in it, and
+        // appending this ball's verify notes to it put them in every other ball's report.
+        const attempts = [...(out.attempts ?? [])];
+        const outcome = {};
         const ok = await verifyLine(
           { line: out.line, snippet1: qi.clean, ball: qi.ball },
-          { log, error, attempts }
+          { log, error, attempts, outcome }
         );
         if (!ok) {
-          rewrites.set(qi.ts, { line: null, provider: null, verified: false, reason: "verification_failed", attempts });
+          const reason = outcome.available ? "verification_failed" : "verifier_unavailable";
+          rewrites.set(qi.ts, { line: null, provider: null, verified: false, reason, attempts });
           continue;
         }
       }
@@ -1292,6 +1343,11 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   // it. `advance` is what enforces it.
   let contiguous = true;
   const advance = (itemTs) => { if (contiguous) newWatermark = itemTs; };
+  // Raw-text rows and network write failures, reported once per match per run after the loop.
+  // Both were one Sentry event per ball — ~500 a day for the first — so a single upstream cause
+  // read as hundreds of independent failures.
+  const passthroughs = [];
+  let networkWriteFailures = 0;
   for (const item of fresh) {
     const rowId = docId(`${matchId}:${item.timestamp}`);
     const itemTs = Number(item.timestamp);
@@ -1320,12 +1376,7 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
       } else {
         const attempts = pre.attempts ?? [];
         error(`[PASSTHROUGH] ${matchId}/${ball} (${pre.reason}): writing raw Cricbuzz text — ${attempts.join("; ")}`);
-        report("match-sync wrote raw Cricbuzz text — AI generation produced nothing usable", {
-          matchId,
-          ball,
-          reason: pre.reason,
-          attempts: attempts.join("; "),
-        });
+        passthroughs.push({ ball, reason: pre.reason, attempts: attempts.join("; ") });
       }
     }
     if (!line) { advance(itemTs); continue; }
@@ -1384,7 +1435,10 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
         // starts from this ball instead of skipping it forever.
         contiguous = false;
         error(`Commentary write failed (${matchId}/${ball}): ${e?.message}`);
-        reportError(e, { matchId, ball, operation: "commentary_write" });
+        // A network failure to Appwrite fails every remaining ball the same way; it is one
+        // condition, tallied below. Anything else is a defect worth its own exception.
+        if (isUpstreamNetworkError(e)) networkWriteFailures++;
+        else reportError(e, { matchId, ball, operation: "commentary_write" });
       }
     }
   }
@@ -1394,6 +1448,23 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   // itself — which also works for a match that has no detail row, i.e. every match outside the
   // detail tier.
   if (newWatermark > watermark) watermarkByMatch.set(matchId, newWatermark);
+  if (passthroughs.length > 0) {
+    const reasons = [...new Set(passthroughs.map((p) => p.reason))].sort();
+    report("match-sync wrote raw Cricbuzz text — AI generation produced nothing usable", {
+      matchId,
+      rows: passthroughs.length,
+      balls: passthroughs.map((p) => p.ball).join(","),
+      reason: reasons.join(","),
+      // The last ball's provider log is representative: the rows of one run share a batch.
+      attempts: passthroughs[passthroughs.length - 1].attempts,
+    });
+  }
+  if (networkWriteFailures > 0) {
+    reportThrottled(`commentary-write-network:${matchId}`, STEADY_STATE_REPORT_MS, "match-sync could not reach Appwrite to write commentary", {
+      matchId,
+      failures: networkWriteFailures,
+    });
+  }
   reportCommentaryGaps({ matchId, writtenBalls, error });
   log(`Match ${matchId}: ${written} new commentary rows (${rewritten} rewritten)`);
   return { status: { commentaryWritten: written }, winProb, finalised };
@@ -1505,7 +1576,10 @@ function reportChainHealth(error) {
   if (depth < 2) {
     const blocked = rungs.filter((r) => !r.reachable).map((r) => `${r.provider}: ${r.reason}`).join("; ");
     error(`[CHAIN-DEPTH] only ${depth} reachable provider(s) — ${blocked}`);
-    report("Commentary provider chain is too short to fact-check — a verification FAIL now means raw text", {
+    // Keyed on the blocked set, so a rung going down or coming back reports at once and a chain
+    // that stays short (a day-latched rung holds until the Pacific reset) reports hourly, not on
+    // every one-minute run.
+    reportThrottled(`chain-depth:${blocked}`, STEADY_STATE_REPORT_MS, "Commentary provider chain is too short to fact-check — a verification FAIL now means raw text", {
       depth: String(depth),
       reachable: rungs.filter((r) => r.reachable).map((r) => r.provider).join(",") || "none",
       blocked,
@@ -1552,6 +1626,9 @@ async function commentaryWatermark({ db, matchId, error }) {
       throw e; // fail the match (and run) loudly instead of silently resetting the watermark
     }
     error(`Commentary watermark read failed (${matchId}): ${e?.message}`);
+    // Marked so the per-match catch does not file it under "Cricbuzz is unreachable" — a fetch
+    // failure here is Appwrite's, and isUpstreamNetworkError cannot tell the two hosts apart.
+    if (isUpstreamNetworkError(e)) e.appwriteNetwork = true;
     // Rethrow: returning 0 here would re-generate (and re-pay for) every line in the scan window.
     throw e;
   }

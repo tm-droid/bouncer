@@ -35,7 +35,7 @@ export function isEnabled() {
   return Boolean(process.env.SENTRY_DSN);
 }
 
-const UNTAGGED_KEYS = new Set(["attempts", "matchIds", "summary", "reason"]);
+const UNTAGGED_KEYS = new Set(["attempts", "matchIds", "summary", "reason", "balls"]);
 const MAX_TAG_LENGTH = 64;
 
 /** Report a degradation with structured context. Safe to call when Sentry is disabled. */
@@ -56,6 +56,36 @@ export function report(message, context = {}, level = "warning") {
     }
     Sentry.captureMessage(message);
   });
+}
+
+// Container-scoped, like every other latch in this function. A condition that holds for hours
+// (a spent chain, a list longer than the cap, an upstream outage) used to raise one event per
+// one-minute run — 3,221 for the chain-depth alert in a week — which buries every other signal in
+// the project and says nothing the first event did not. A new container re-reports once, which is
+// the right amount: it is a fresh observation.
+const lastReportedAt = new Map();
+
+/** True when [key] has not been reported within [intervalMs]; records the report when it has not. */
+export function shouldReport(key, intervalMs, now = Date.now()) {
+  const last = lastReportedAt.get(key);
+  if (last !== undefined && now - last < intervalMs) return false;
+  lastReportedAt.set(key, now);
+  return true;
+}
+
+/** Test seam. */
+export function resetReportThrottle() {
+  lastReportedAt.clear();
+}
+
+/**
+ * [report], at most once per [intervalMs] for a given [key]. Put whatever makes the condition a
+ * DIFFERENT condition into the key (the dropped ids, the blocked rungs), so a change re-reports at
+ * once while a steady state stays quiet.
+ */
+export function reportThrottled(key, intervalMs, message, context = {}, level = "warning") {
+  if (!shouldReport(key, intervalMs)) return;
+  report(message, context, level);
 }
 
 /** Report a thrown error with structured context. Safe to call when Sentry is disabled. */

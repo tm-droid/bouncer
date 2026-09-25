@@ -58,7 +58,7 @@ object HttpClientProvider {
      * to fail for all external hosts. These errors are expected and handled by
      * callers; they should not be reported to Sentry as actionable exceptions.
      */
-    internal fun isConnectivityException(e: Exception): Boolean {
+    internal fun isConnectivityException(e: Throwable): Boolean {
         if (e is UnknownHostException) return true
         if (e is ConnectException) return true
         if (e is java.net.SocketTimeoutException) return true

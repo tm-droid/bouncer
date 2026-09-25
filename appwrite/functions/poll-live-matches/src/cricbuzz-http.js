@@ -134,7 +134,7 @@ export async function fetchHtml(url, timeoutMs = 12_000) {
   // One retry, and only for a transport failure. syncMatch issues two of these per match inside
   // Promise.all and main.js runs up to MAX_MATCHES of those inside Promise.allSettled, so the
   // attempt count is multiplied by the whole fan-out — two is what keeps a bad minute clear of the
-  // 300s function timeout. The retry goes back through takeSlot(), so the container-wide 350ms
+  // 120s function timeout. The retry goes back through takeSlot(), so the container-wide 350ms
   // spacing still holds and a retry storm cannot become a burst.
   let resp;
   for (let attempt = 1; ; attempt++) {

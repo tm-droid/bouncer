@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { commentaryCapFor, commentaryMatchSet, commentaryOrigin } from "../src/main.js";
+import { commentaryCapFor, commentaryMatchSet, commentaryOrigin, liveMatchSlice } from "../src/main.js";
+import { resetReportThrottle, shouldReport } from "../src/observability.js";
 import { classifyEvent, outcomeClause } from "../src/llm.js";
 import { parseCommentary } from "../src/cricbuzz.js";
 
@@ -25,6 +26,28 @@ test("the cap keeps the per-run write count bounded, viewers first", () => {
   assert.equal(set.size, 16);
   assert.ok(set.has("m39"), "a viewed match lost its slot to an idle one");
   assert.ok(set.has("m38"), "a slow-tier match lost its slot to an idle one");
+});
+
+test("the MAX_MATCHES slice takes watched matches first, then list order", () => {
+  // ANDROID-4P: the slice ran in Cricbuzz's order before the viewer set existed, so a watched match
+  // at position 13 got no commentary, no detail row and no win probability, and the viewer gate
+  // never saw it.
+  const eligible = Array.from({ length: 20 }, (_, i) => ({ id: `m${i}` }));
+  const { allLive, dropped } = liveMatchSlice(eligible, new Set(["m19", "m17"]), 16);
+  assert.equal(allLive.length, 16);
+  assert.deepEqual(allLive.slice(0, 2).map((m) => m.id), ["m17", "m19"], "watched first, in list order");
+  assert.deepEqual(allLive.slice(2, 4).map((m) => m.id), ["m0", "m1"], "then Cricbuzz's order");
+  assert.deepEqual(dropped.map((m) => m.id), ["m14", "m15", "m16", "m18"]);
+});
+
+test("a steady-state report is throttled per key, and a new key reports at once", () => {
+  resetReportThrottle();
+  const hour = 3_600_000;
+  assert.equal(shouldReport("chain-depth:a", hour, 0), true);
+  assert.equal(shouldReport("chain-depth:a", hour, 60_000), false, "the next one-minute run stays quiet");
+  assert.equal(shouldReport("chain-depth:b", hour, 60_000), true, "a changed condition is news");
+  assert.equal(shouldReport("chain-depth:a", hour, hour), true, "and the steady state re-reports hourly");
+  resetReportThrottle();
 });
 
 test("the viewer gate now budgets LLM rewrites, and only those", () => {
@@ -124,6 +147,7 @@ test("origin: a rewritten row names the rung that wrote it", () => {
 test("origin: a failed rewrite carries WHY, because the two reasons are different bugs", () => {
   // providers_exhausted = nobody answered (keys, quota, network).
   // verification_failed = somebody answered and was rejected as a hallucination.
+  // verifier_unavailable = a line was generated but no rung could fact-check it (a spent chain).
   // Same stored text either way, so without this they are one undifferentiated blob.
   assert.deepEqual(
     commentaryOrigin({ line: null, reason: "providers_exhausted" }),
@@ -132,6 +156,10 @@ test("origin: a failed rewrite carries WHY, because the two reasons are differen
   assert.deepEqual(
     commentaryOrigin({ line: null, reason: "verification_failed" }),
     { aiGenerated: false, provider: "cricbuzz:verification_failed" }
+  );
+  assert.deepEqual(
+    commentaryOrigin({ line: null, reason: "verifier_unavailable" }),
+    { aiGenerated: false, provider: "cricbuzz:verifier_unavailable" }
   );
 });
 

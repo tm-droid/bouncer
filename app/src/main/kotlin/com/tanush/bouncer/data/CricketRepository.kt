@@ -67,10 +67,17 @@ object CricketRepository {
             // BANDWIDTH guard, a missing file, unparseable JSON — reach the user as the same empty
             // screen, and used to reach Sentry as the same single message. Only the tag separates
             // "we are rate-limiting ourselves" from "the server never wrote the file".
-            Sentry.withScope { scope ->
-                scope.setTag("storage_read_reason", reason)
-                scope.setTag("matches_type", type)
-                Sentry.captureException(error)
+            //
+            // Only the reasons nothing else reports. `download_failed` was already captured by
+            // `AppwriteClient.downloadFile` (or was the device being offline), and a breaker or
+            // rate cap is reported by `AppwriteReadGuard` when it trips — so capturing those here
+            // turned one condition into an event per poll (ANDROID-4H).
+            if (reason == "client_not_ready" || reason.startsWith("parse_")) {
+                Sentry.withScope { scope ->
+                    scope.setTag("storage_read_reason", reason)
+                    scope.setTag("matches_type", type)
+                    Sentry.captureException(error)
+                }
             }
             Sentry.metrics().count("repository.getMatches.error", 1.0)
             return AppResult.Error(error)

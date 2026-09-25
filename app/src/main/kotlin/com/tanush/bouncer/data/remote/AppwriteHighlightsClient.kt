@@ -81,7 +81,7 @@ object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient"
 
     // 50, not 100. Appwrite bills one read per row returned and `recordSuccess` counts them, so a
     // run costs MAX_PAGES_PER_RUN × PAGE_SIZE against CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE
-    // of 200. At 100 × 3 one drain run spent 300 and tripped the cap on its own, pausing DB_READ
+    // (200 when this was sized; 400 since 2026-09-15). At 100 × 3 one drain run spent 300 and tripped the cap on its own, pausing DB_READ
     // app-wide for five minutes; at 100 × 2 it spent the entire minute budget and left nothing for
     // the reads the open screen needs. 50 × 2 drains at the same rows-per-hour once paced, with
     // headroom for everything else.
@@ -91,7 +91,7 @@ object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient"
     // than fetching an unbounded table in one go.
     //
     // 2, not 3: Appwrite bills per row returned, so a run costs MAX_PAGES_PER_RUN × PAGE_SIZE
-    // billed reads. At 3 that is 300 against CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE of 200 —
+    // billed reads. At 3 that is 300 against the then-200 CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE —
     // a single drain run tripped the cap and paused DB_READ app-wide for five minutes.
     private const val MAX_PAGES_PER_RUN = 2
 

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyResponse, parseRemaining } from "../src/main.js";
+import { classifyResponse, fetchDate, parseRemaining } from "../src/main.js";
 
 // The bug these cover: `fetchHighlights` used to return a bare `[]` for a 429, a 5xx, an
 // unrecognised body and a genuine empty day alike, and the caller logged "Highlightly returned 0
@@ -67,4 +67,28 @@ test("a missing or unparseable remaining header is null, not zero", () => {
   assert.equal(parseRemaining(headers({ "x-ratelimit-requests-remaining": "" })), null);
   assert.equal(parseRemaining(headers({ "x-ratelimit-requests-remaining": "unknown" })), null);
   assert.equal(parseRemaining(undefined), null);
+});
+
+async function withFetch(stub, run) {
+  const saved = globalThis.fetch;
+  globalThis.fetch = stub;
+  try { return await run(); } finally { globalThis.fetch = saved; }
+}
+
+test("a request that never completed is network_error, not a non-2xx with status 0", async () => {
+  const r = await withFetch(
+    async () => { throw Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" }); },
+    () => fetchDate("2026-09-24", "k", () => {}, () => {})
+  );
+  assert.equal(r.outcome, "network_error");
+  assert.equal(r.message, "timeout");
+});
+
+test("an HTML 5xx is http_error, not the error-level 'shape unrecognised' alert", async () => {
+  const r = await withFetch(
+    async () => new Response("<html>502 Bad Gateway</html>", { status: 502 }),
+    () => fetchDate("2026-09-24", "k", () => {}, () => {})
+  );
+  assert.equal(r.outcome, "http_error");
+  assert.equal(r.status, 502);
 });

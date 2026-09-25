@@ -68,6 +68,23 @@ class SentryOptionsConfigTest {
     }
 
     @Test
+    fun `a 5xx from Cricbuzz is dropped - it is their outage, not ours`() {
+        // ANDROID-4A/4C/4R: the injected OkHttp integration captures every 5xx on every host.
+        val event = buildEvent("SentryHttpClientException" to "HTTP Client Error with status code: 504")
+        event.request = io.sentry.protocol.Request().apply { url = "https://www.cricbuzz.com/cricket-match/live-scores" }
+        assertTrue(config.shouldDropEvent(event))
+    }
+
+    @Test
+    fun `a 5xx from Appwrite is kept - that backend is ours`() {
+        val event = buildEvent("SentryHttpClientException" to "HTTP Client Error with status code: 503")
+        event.request = io.sentry.protocol.Request().apply {
+            url = "https://sgp.cloud.appwrite.io/v1/storage/buckets/cricket-stats/files/live-winprob/download"
+        }
+        assertFalse(config.shouldDropEvent(event))
+    }
+
+    @Test
     fun `a different upstream failure is not hidden by another's throttle`() {
         val appwrite = buildEvent("ConnectException" to "Failed to connect to sgp.cloud.appwrite.io/151.101.3.52:443")
         val other = buildEvent("ConnectException" to "Failed to connect to api.cricbuzz.com/1.2.3.4:443")

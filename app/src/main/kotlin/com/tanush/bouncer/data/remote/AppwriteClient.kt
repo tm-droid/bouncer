@@ -191,7 +191,9 @@ object AppwriteClient {
             Log.e(TAG, "executeFunction $functionId error: ${e.message}", e)
             AppwriteReadGuard.recordFailure("fn.$functionId", e, AppwriteReadGuard.Quota.EXECUTIONS)
             Sentry.addBreadcrumb("AppwriteClient.executeFunction[$functionId] failed: ${e.message}")
-            Sentry.captureException(e)
+            // Offline is the device's state, not a defect: breadcrumb only. The Appwrite SDK uses
+            // its own OkHttp client, so HttpClientProvider's connectivity filter never sees it.
+            if (!HttpClientProvider.isConnectivityException(e)) Sentry.captureException(e)
             FunctionOutcome.Unavailable
         }
     }
@@ -240,14 +242,24 @@ object AppwriteClient {
         } catch (e: Exception) {
             Log.d(TAG, "downloadFile $bucketId/$fileId failed: ${e.message}")
             AppwriteReadGuard.recordFailure("storage.$fileId", e, AppwriteReadGuard.Quota.BANDWIDTH)
-            if (e is AppwriteException && e.code == 404) {
-                sentryBreadcrumb("appwrite", "downloadFile $bucketId/$fileId: not found (404)", SentryLevel.WARNING)
-            } else {
-                sentryBreadcrumb("appwrite", "downloadFile $bucketId/$fileId failed: ${e.message}", SentryLevel.WARNING)
-                Sentry.captureException(e)
-            }
+            reportDownloadFailure(bucketId, fileId, e)
             null
         }
+    }
+
+    private fun reportDownloadFailure(bucketId: String, fileId: String, e: Exception) {
+        val code = (e as? AppwriteException)?.code
+        if (code == 404) {
+            sentryBreadcrumb("appwrite", "downloadFile $bucketId/$fileId: not found (404)", SentryLevel.WARNING)
+            return
+        }
+        sentryBreadcrumb("appwrite", "downloadFile $bucketId/$fileId failed: ${e.message}", SentryLevel.WARNING)
+        // Offline, or a 5xx the shared client's failed-request capture has already reported as a
+        // SentryHttpClientException. Capturing it here too made one Appwrite 504 into three events
+        // (ANDROID-4D, the auto-captured one, and ANDROID-4H upstream).
+        val alreadyReported = HttpClientProvider.isConnectivityException(e) ||
+            (code ?: 0) >= HTTP_SERVER_ERROR_FLOOR
+        if (!alreadyReported) Sentry.captureException(e)
     }
 
     /**

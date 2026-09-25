@@ -21,8 +21,11 @@ interface LiveMatchDetailSource {
      */
     suspend fun getForMatch(matchId: String): LiveDetailSnapshot?
 
-    /** Newest-first commentary lines for a match, each with the server's event verdict. */
-    suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry>
+    /**
+     * Newest-first commentary lines for a match, each with the server's event verdict. Null when
+     * the store could not be read; empty when it was read and holds nothing for this match.
+     */
+    suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry>?
 
     /**
      * The page of commentary strictly older than [olderThan], newest-first, or empty when there is
@@ -57,7 +60,7 @@ object ProductionLiveDetailSource : LiveMatchDetailSource {
     override suspend fun getForMatch(matchId: String): LiveDetailSnapshot? =
         AppwriteMatchDetailClient.getForMatch(matchId)
 
-    override suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry> =
+    override suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry>? =
         AppwriteMatchCommentaryClient.getForMatch(matchId)
 
     override suspend fun getOlderCommentary(matchId: String, olderThan: Double): List<CommentaryEntry> =

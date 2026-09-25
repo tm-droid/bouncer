@@ -3,6 +3,7 @@ package com.tanush.bouncer.data.remote
 import android.os.SystemClock
 import android.util.Log
 import com.tanush.bouncer.data.CacheConfig
+import com.tanush.bouncer.network.HttpClientProvider
 import com.tanush.bouncer.services.backoffDelayMs
 import com.tanush.bouncer.utils.sentryCaptureThrottled
 import io.appwrite.services.Realtime
@@ -327,6 +328,11 @@ abstract class AppwriteTableClient(private val tag: String) {
             Log.d(tag, "$prefix (silent): ${e.message}")
         }
         if (e is CancellationException) return
+        // A device with no route to Appwrite is not a failure of this client. These are
+        // `captureMessage` events, so the exception filter in SentryOptionsConfig never saw the
+        // UnknownHostException inside them, and every offline page load raised up to three
+        // (ANDROID-3Y, ANDROID-3Z) — one per rung of the commentary fallback ladder.
+        if (HttpClientProvider.isConnectivityException(e)) return
         sentryCaptureThrottled(
             key = "appwrite.table.$tag.$prefix",
             message = "$tag: $prefix — ${e.message}",

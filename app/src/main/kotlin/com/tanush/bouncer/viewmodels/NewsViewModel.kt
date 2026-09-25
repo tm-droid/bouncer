@@ -171,7 +171,14 @@ class NewsViewModel(
                 // the throw site, not inferred here — the version of this that shipped as a PR
                 // compared `e.message` against the literal default message, which is one string
                 // edit away from silently reporting everything again.
-                if ((e as? NewsUnavailableException)?.transportFailure != true) Sentry.captureException(e)
+                //
+                // An HTTP error status is skipped too: `executeFunctionDetailed` has already
+                // reported "Appwrite function bouncer-news-sync returned HTTP <status>" with the
+                // server's error body, and capturing it again here made one failure two issues
+                // (ANDROID-3P). What is left is the unreadable or empty 200 — which nothing else
+                // sees.
+                val unavailable = e as? NewsUnavailableException
+                if (unavailable?.transportFailure != true && unavailable?.statusCode == null) Sentry.captureException(e)
                 Sentry.metrics().count("news.fetch.error", 1.0)
                 _error.value = messageFor(e)
             } finally {
