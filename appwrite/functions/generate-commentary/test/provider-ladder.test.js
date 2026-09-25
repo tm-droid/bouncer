@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { chainDepth, drainUnknownQuotaIds, generateLine, generateVerifiedLine, probeProviders, resetProviderHealth, verifyLine } from "../src/llm.js";
+import { chainDepth, drainUnknownQuotaIds, generateBatch, generateLine, generateVerifiedLine, probeProviders, resetProviderHealth, verifyBatch, verifyLine } from "../src/llm.js";
 
 // The ladder became four rungs on two accounts on 2026-09-16, when cerebras and sambanova were
 // dropped for answering 402 to every call and three Gemini model ids took their place. Gemini bills
@@ -20,6 +20,8 @@ const MODEL_TO_PROVIDER = {
   "gemini-3.5-flash-lite": "gemini-flash-lite",
   "gemini-3.6-flash": "gemini-3.6-flash",
   "gemini-3-flash-preview": "gemini-3-flash-preview",
+  "gemini-3.1-flash-lite-preview": "gemini-3.1-flash-lite-preview",
+  "qwen/qwen3.8-27b": "groq-qwen",
 };
 
 const completion = (text, finish = "stop") =>
@@ -157,7 +159,9 @@ test("a line nobody could verify is verifier_unavailable, and is not regenerated
   const outcome = {};
   await withLadder(() => quota429("x-PerMinute-y"), () => verifyLine({ line: "x." }, { outcome }));
   assert.equal(outcome.available, false);
-  assert.ok(seen.length <= 5, "no second generation is spent on a chain that cannot verify it");
+  // One generation, then one verify walk over every rung — and no second generation after it.
+  assert.equal(seen.filter((x) => x.provider === "gemini-flash-lite").length, 2, "flash-lite: the generate, then its verify turn");
+  assert.ok(seen.length <= 7, "no second generation is spent on a chain that cannot verify it");
 });
 
 test("a per-DAY 429 latches the rung; a per-MINUTE 429 does not", async () => {
@@ -169,6 +173,8 @@ test("a per-DAY 429 latches the rung; a per-MINUTE 429 does not", async () => {
     (name) => {
       if (name === "groq") return quota429(perMinute, "30");
       if (name === "gemini-flash-lite") return quota429(perDay, "500");
+      // Busy too, so the walk reaches groq — this rung sits between the two under test.
+      if (name === "gemini-3.1-flash-lite-preview") return quota429(perMinute, "15");
       return completion("19.2: Rahul takes it.");
     },
     async () => {
@@ -243,19 +249,19 @@ test("chainDepth counts what could actually answer, and says why the rest cannot
     delete process.env.GEMINI_API_KEY;
 
     const { depth, rungs } = chainDepth();
-    assert.equal(depth, 1, "one key configured means one reachable rung");
+    assert.equal(depth, 2, "one groq key reaches two rungs: the writer and the verify-only checker");
     assert.deepEqual(
       rungs.filter((r) => !r.reachable).map((r) => r.reason),
-      ["no GEMINI_API_KEY", "no GEMINI_API_KEY", "no GEMINI_API_KEY"]
+      ["no GEMINI_API_KEY", "no GEMINI_API_KEY", "no GEMINI_API_KEY", "no GEMINI_API_KEY"]
     );
 
     // Depth 1 is the state that broke verification for six weeks: generation still works, so every
     // other signal looks healthy, while `generateVerifiedLine`'s retry has nobody to fall back to.
     process.env.GEMINI_API_KEY = "k";
-    assert.equal(chainDepth().depth, 4, "both keys present restores the full ladder");
+    assert.equal(chainDepth().depth, 6, "both keys present restores the full ladder");
 
     // The per-line Set narrows it further without being module state.
-    assert.equal(chainDepth(new Set(["groq", "gemini-3.6-flash"])).depth, 2);
+    assert.equal(chainDepth(new Set(["groq", "gemini-3.6-flash"])).depth, 4);
   } finally {
     resetProviderHealth();
     for (const [k, v] of saved) {
@@ -308,4 +314,62 @@ test("the probe recognises a Gemini model id despite its models/ prefix", async 
       else process.env[k] = v;
     }
   }
+});
+
+test("the verify-only rung never writes, and is asked FIRST for a verdict", async () => {
+  // qwen3.8-27b invented "Babar Zaman" and turned a catch into a run-out when asked to write
+  // (probed 2026-09-25), and was 8/8 as a checker. It must stay on the right side of that line.
+  const { seen: writing } = await withLadder(
+    () => completion("[1|1.1]: Bumrah beats the edge."),
+    () => generateBatch([{ key: "1|1.1", text: "1.1 Bumrah to Root, no run" }])
+  );
+  assert.ok(!writing.some((s) => s.provider === "groq-qwen"), "a verify-only rung wrote a line");
+
+  const { seen: checking } = await withLadder(
+    () => completion("[1|1.1]: PASS"),
+    () => verifyBatch([{ key: "1|1.1", source: "1.1 Bumrah to Root, no run", line: "Bumrah beats the edge." }])
+  );
+  assert.equal(checking[0].provider, "groq-qwen");
+});
+
+test("verifyBatch matches verdicts by key, and anything it cannot read is left unverified", async () => {
+  const items = ["a|1", "b|2", "c|3", "d|4"].map((key) => ({ key, source: `src ${key}`, line: `line ${key}` }));
+  const { result } = await withLadder(
+    // Reordered, one bolded, one unknown key, one duplicated, one missing (d|4).
+    () => completion("[b|2]: FAIL\n[a|1]: **PASS**\n[zz|9]: PASS\n[c|3]: PASS\n[c|3]: PASS"),
+    () => verifyBatch(items)
+  );
+  assert.equal(result.available, true);
+  assert.equal(result.verdicts.get("a|1"), true);
+  assert.equal(result.verdicts.get("b|2"), false);
+  assert.equal(result.verdicts.get("c|3"), false, "a key answered twice is trusted neither time");
+  assert.equal(result.verdicts.has("d|4"), false, "an unanswered key is absent, so the caller fails closed");
+  assert.equal(result.verdicts.has("zz|9"), false, "an invented key is dropped");
+});
+
+test("verifyBatch with no rung answering reports unavailable", async () => {
+  const { result } = await withLadder(
+    () => quota429("x-PerMinute-y"),
+    () => verifyBatch([{ key: "a|1", source: "s", line: "l" }])
+  );
+  assert.equal(result.available, false);
+  assert.equal(result.verdicts.size, 0);
+});
+
+test("a groq tokens-per-day 429 pauses that rung instead of re-asking it every call", async () => {
+  // 399 re-asks of an exhausted gpt-oss-20b on 2026-09-25: groq names its window in prose, not in
+  // a QuotaFailure, so the Gemini classifier never latched it.
+  const groqTpd = () =>
+    new Response(
+      JSON.stringify({ error: { message: "Rate limit reached for model `openai/gpt-oss-20b` in organization `org_x` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199800, Requested 800.", type: "tokens", code: "rate_limit_exceeded" } }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
+    );
+  const { seen } = await withLadder(
+    (name) => (name === "groq" ? groqTpd() : quota429("x-PerMinute-y")),
+    async () => {
+      await generateLine("first ball");
+      await generateLine("second ball");
+    }
+  );
+  assert.equal(seen.filter((s) => s.provider === "groq").length, 1, "asked once, then paused");
 });

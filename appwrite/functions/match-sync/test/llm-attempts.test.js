@@ -29,18 +29,20 @@ test("with no keys configured, every provider records why it was skipped", async
     const line = await generateLine("18.5: Bumrah to Root, no run", { attempts });
 
     assert.equal(line, null, "no provider can answer without a key");
-    assert.equal(attempts.length, 4, "all four rungs must account for themselves");
+    assert.equal(attempts.length, 5, "every WRITING rung must account for itself");
     assert.deepEqual(
       attempts,
       [
         // Rung order, and it is asserted as order: gemini-3.5-flash-lite leads because it was
         // measured more accurate on real deliveries than gpt-oss-20b.
         "gemini-flash-lite: no GEMINI_API_KEY",
+        "gemini-3.1-flash-lite-preview: no GEMINI_API_KEY",
         "groq: no GROQ_API_KEY",
         // Three rungs, one key: the missing variable is named once per RUNG, not once per key.
         // Collapsing them would hide which models the chain still believes it has.
         "gemini-3.6-flash: no GEMINI_API_KEY",
         "gemini-3-flash-preview: no GEMINI_API_KEY",
+        // groq-qwen is absent on purpose: it is verify-only and never writes a line.
       ],
       "the reason must name the missing variable, not just say 'failed'"
     );

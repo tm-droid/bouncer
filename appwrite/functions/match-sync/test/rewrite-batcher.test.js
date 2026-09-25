@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { __queueRewrite as queueRewrite, __setBatchFn, resetRewriteBatcher } from "../src/main.js";
+import { __queueRewrite as queueRewrite, __setBatchFn, __setVerifyBatchFn, resetRewriteBatcher } from "../src/main.js";
 
 // The batcher is what makes "rewrite every ball" affordable, and it is also the one piece that can
 // hang a whole run: `handleRun` awaits every match, each match awaits its queued deliveries, and a
@@ -16,9 +16,14 @@ const reply = (text) =>
     headers: { "Content-Type": "application/json" },
   });
 
-async function withStub(handler, body) {
+// The fact-check runs inside the batch now; these tests are about batching, so it passes everything
+// unless a test swaps in its own checker.
+const passAll = async (items) => ({ verdicts: new Map(items.map((i) => [i.key, true])), available: true });
+
+async function withStub(handler, body, checker = passAll) {
   const saved = KEYS.map((k) => [k, process.env[k]]);
   const savedFetch = globalThis.fetch;
+  const prevChecker = __setVerifyBatchFn(checker);
   for (const k of KEYS) process.env[k] = "test-key";
   const calls = [];
   globalThis.fetch = async (_url, init) => {
@@ -30,6 +35,7 @@ async function withStub(handler, body) {
     return { result: await body(), calls };
   } finally {
     globalThis.fetch = savedFetch;
+    __setVerifyBatchFn(prevChecker);
     resetRewriteBatcher();
     for (const [k, v] of saved) {
       if (v === undefined) delete process.env[k];
@@ -151,4 +157,52 @@ test("a batched row records the rung that answered, not a placeholder", async ()
   for (const r of result) {
     assert.equal(r.provider, "gemini-flash-lite", "the rung that actually answered");
   }
+});
+
+test("every rewritten line is fact-checked against its OWN raw text, and a FAIL stores raw", async () => {
+  const seen = [];
+  const checker = async (items) => {
+    seen.push(...items);
+    return { verdicts: new Map(items.map((i) => [i.key, i.key !== "2|1.2"])), available: true };
+  };
+  const { result } = await withStub(
+    echo,
+    () => Promise.all(["1|1.1", "2|1.2"].map((key) => queueRewrite({ key, text: `raw ${key}` }))),
+    checker
+  );
+  // Every ball, not just wickets and boundaries: both lines went to the checker.
+  assert.deepEqual(seen.map((i) => [i.key, i.source]), [["1|1.1", "raw 1|1.1"], ["2|1.2", "raw 2|1.2"]]);
+  assert.equal(result[0].line, "rewritten 1|1.1.");
+  assert.equal(result[1].line, null, "a FAIL is stored as raw text, never as the rejected line");
+  assert.equal(result[1].reason, "verification_failed");
+});
+
+test("a line the checker did not answer is unverified, and fails closed", async () => {
+  const { result } = await withStub(
+    echo,
+    () => Promise.all(["1|1.1", "2|1.2"].map((key) => queueRewrite({ key, text: `raw ${key}` }))),
+    async () => ({ verdicts: new Map([["1|1.1", true]]), available: true })
+  );
+  assert.equal(result[0].line, "rewritten 1|1.1.");
+  assert.equal(result[1].line, null);
+  assert.equal(result[1].reason, "verifier_unavailable");
+});
+
+test("no checker at all means every line is stored raw, and says why", async () => {
+  const { result } = await withStub(
+    echo,
+    () => Promise.all(["1|1.1"].map((key) => queueRewrite({ key, text: `raw ${key}` }))),
+    async () => ({ verdicts: new Map(), available: false })
+  );
+  assert.equal(result[0].line, null);
+  assert.equal(result[0].reason, "verifier_unavailable");
+});
+
+test("a checker that throws still resolves every queued delivery", async () => {
+  const { result } = await withStub(
+    echo,
+    () => Promise.all(["1|1.1", "2|1.2"].map((key) => queueRewrite({ key, text: `raw ${key}` }))),
+    async () => { throw new Error("checker blew up"); }
+  );
+  assert.deepEqual(result.map((r) => r.line), [null, null]);
 });

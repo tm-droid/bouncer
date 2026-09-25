@@ -87,6 +87,11 @@ const PROVIDERS = [
   // is device-facing with a 30s timeout, and gemini-3-flash-preview measured up to 12s. A fast
   // second rung keeps the common failure path well inside that.
   { name: "gemini-flash-lite",      account: "gemini", url: GEMINI_URL,                                        model: "gemini-3.5-flash-lite",  keyEnv: "GEMINI_API_KEY", tokenFloor: 0 },
+  // Probed 2026-09-25 with the real batch prompt, 11 deliveries (LBW, run out, wide, dropped catch)
+  // x 3 runs: no factual error in any run, 4-8s. A different model id — and bucket — from the
+  // `gemini-3.1-flash-lite` rejected on 2026-09-16 for inventing a "sharp bouncer". Its daily
+  // limit is not yet measured; the per-day latch handles whatever it turns out to be.
+  { name: "gemini-3.1-flash-lite-preview", account: "gemini", url: GEMINI_URL,                               model: "gemini-3.1-flash-lite-preview", keyEnv: "GEMINI_API_KEY", tokenFloor: 0 },
   // groq's floor is the verify call's, not the batch's. The batch budget is `120*n+200` and always
   // cleared 320, but `verifyLine` asked for 256 and gpt-oss spent all of it reasoning: production
   // logged `groq: empty completion (length)` on every verify (ANDROID-38, 2026-09-25). Each of those
@@ -97,7 +102,20 @@ const PROVIDERS = [
   { name: "groq",                   account: "groq",   url: "https://api.groq.com/openai/v1/chat/completions", model: "openai/gpt-oss-20b",     keyEnv: "GROQ_API_KEY",   tokenFloor: 1024, extraBody: { reasoning_effort: "low" } },
   { name: "gemini-3.6-flash",       account: "gemini", url: GEMINI_URL,                                        model: "gemini-3.6-flash",       keyEnv: "GEMINI_API_KEY", tokenFloor: 2048 },
   { name: "gemini-3-flash-preview", account: "gemini", url: GEMINI_URL,                                        model: "gemini-3-flash-preview", keyEnv: "GEMINI_API_KEY", tokenFloor: 2048 },
+  // VERIFY ONLY. Probed 2026-09-25: its commentary invents names ("Babar Zaman", "Rohit Sha") and
+  // turned a catch into a run-out, so it never writes a line — but as a fact-checker it was 8/8
+  // correct on planted-good and planted-bad lines, in 2 output tokens and ~200ms. Its own groq
+  // bucket (1,000 RPD), so fact-checking stops spending the quota the writers need. Asked FIRST for
+  // a verdict; the writers are the fallback. An independent checker is also the better design: a
+  // model grading its own prose shares its blind spots.
+  { name: "groq-qwen",              account: "groq",   url: "https://api.groq.com/openai/v1/chat/completions", model: "qwen/qwen3.8-27b",       keyEnv: "GROQ_API_KEY",   tokenFloor: 0,    verifyOnly: true },
 ];
+
+/** The rungs to walk for [purpose], in order. Verify-only rungs never write; they check first. */
+function rungsFor(purpose) {
+  if (purpose === "verify") return [...PROVIDERS.filter((p) => p.verifyOnly), ...PROVIDERS.filter((p) => !p.verifyOnly)];
+  return PROVIDERS.filter((p) => !p.verifyOnly);
+}
 
 // Not in the chain, still worth probing. Both answer 200 on `GET /v1/models` and 402 on every
 // completion (spent Cerebras trial, unfunded SambaNova), so calling them costs a doomed 15s round
@@ -229,6 +247,7 @@ const paymentBlocked = new Set();
 // and gemini-3-flash-preview in production (2026-09-24), which `PER_DAY_QUOTA_RE` matches.
 // `unrecognizedQuotaIds` below still reports any id matching neither.
 const dailyExhausted = new Map();
+const GROQ_DAY_LATCH_MS = 30 * 60 * 1000;
 
 // Quota ids seen on a 429 that match neither window. Drained once per container by the caller.
 const unknownQuotaIds = new Set();
@@ -268,7 +287,17 @@ function noteQuota429(providerName, parsedBody, now = Date.now()) {
   const failure = details.find((d) => String(d?.["@type"] ?? "").includes("QuotaFailure"));
   const violation = failure?.violations?.[0];
   const quotaId = violation?.quotaId;
-  if (!quotaId) return null;
+  if (!quotaId) {
+    // groq names the window in prose: "Rate limit reached for model `…` … on tokens per day (TPD)".
+    // Its day is a rolling window, not a fixed reset, so the latch is short — but without one an
+    // exhausted groq rung is re-asked on every call all night (399 times on 2026-09-25).
+    const message = String(err?.message ?? "");
+    if (/per day \((?:TPD|RPD)\)/.test(message)) {
+      dailyExhausted.set(providerName, now + GROQ_DAY_LATCH_MS);
+      return { quotaId: /TPD/.test(message) ? "groq-tokens-per-day" : "groq-requests-per-day", quotaValue: null, window: "day" };
+    }
+    return null;
+  }
   if (PER_DAY_QUOTA_RE.test(quotaId)) {
     dailyExhausted.set(providerName, nextPacificMidnight(now));
     return { quotaId, quotaValue: violation?.quotaValue, window: "day" };
@@ -494,6 +523,8 @@ export async function generateLine(
     // because that is what a stored commentary line must never be; `verifyLine` turns it off, since
     // its whole answer is the unpunctuated word PASS.
     requireTerminated = true,
+    // "generate" walks the writers; "verify" asks the verify-only rungs first, then the writers.
+    purpose = "generate",
   } = {}
 ) {
   const note = (provider, reason) => attempts?.push(`${provider}: ${reason}`);
@@ -507,7 +538,7 @@ export async function generateLine(
     return null;
   }
 
-  for (const provider of PROVIDERS) {
+  for (const provider of rungsFor(purpose)) {
     if (exclude.includes(provider.name) || unavailable?.has(provider.name)) continue;
     // Skipped without a call, but still written to `attempts`. Dropping it silently would shrink
     // the record to the providers that were tried, and a three-rung chain that has quietly become
@@ -872,6 +903,7 @@ export async function verifyLine(
     // The verdict is the bare word PASS or FAIL — no terminal punctuation, by instruction. The
     // truncation guard would throw away every correct verdict in the chain.
     requireTerminated: false,
+    purpose: "verify",
     log,
     error,
     attempts,
@@ -886,6 +918,70 @@ export async function verifyLine(
     return false;
   }
   return verdict.trim().toUpperCase().startsWith("PASS");
+}
+
+// The batch checker's rules follow SYSTEM_INSTRUCTION's own licence — "The atmosphere is yours —
+// the facts are not" — so colour the writer was told it may add does not fail, and every fact it was
+// told it may not invent does. A checker stricter than the writer's brief rejects most good lines.
+export const VERIFY_BATCH_SYSTEM_INSTRUCTION =
+  "You are a precise cricket commentary fact-checker. For every item, answer PASS or FAIL.\n" +
+  "Output exactly one line per item, in the same order: the item's [key] tag exactly as given, a colon, then PASS or FAIL. Nothing else.";
+
+const VERIFY_BATCH_RULES =
+  "Judge each item ONLY against its own Source; the items come from unrelated matches.\n" +
+  "FAIL if the commentary: names a player not in its Source; gets the outcome wrong (runs scored, a four called a six or the reverse, a dismissal method changed — caught, bowled, lbw, run out, stumped); has the bowler playing the shot or the batter bowling; credits a catch, throw or stop to the wrong fielder; or states a score, total, milestone or event the Source does not.\n" +
+  "PASS if every fact matches its Source. Descriptive colour that does not contradict the Source — the feel of the shot, the crowd, the tension — is allowed.";
+
+/**
+ * Fact-check many generated lines in ONE call, each against its own source.
+ *
+ * Why batched: every ball is checked, ~6,500 a day, and one call per line would be ~6,500 calls
+ * against a free ladder of ~2,000. A checked batch costs one extra call per generation batch.
+ *
+ * Returns `{ verdicts, available }`. `verdicts` maps key -> true (PASS) / false (FAIL) for the
+ * items the checker answered, matched **by key, never by position** — the same rule as
+ * `generateBatch`, for the same reason. A key the checker did not answer is absent, and the caller
+ * must treat absent as unverified: fail closed. `available` is false when no rung answered at all.
+ *
+ * @param items [{ key, source, line }]
+ */
+export async function verifyBatch(items, { log, error, attempts, used } = {}) {
+  const verdicts = new Map();
+  if (!items?.length) return { verdicts, available: true };
+
+  const prompt =
+    VERIFY_BATCH_RULES +
+    "\n\n" +
+    items.map((i) => `[${i.key}]\nSource: ${i.source}\nCommentary: ${i.line}`).join("\n\n") +
+    `\n\nAnswer all ${items.length} items, one line each: [key]: PASS or [key]: FAIL`;
+
+  const raw = await generateLine(prompt, {
+    // ~10 tokens a verdict. The reasoning rungs' floors apply on top when the checker falls through.
+    maxTokens: 12 * items.length + 64,
+    temperature: 0,
+    systemInstruction: VERIFY_BATCH_SYSTEM_INSTRUCTION,
+    requireTerminated: false,
+    purpose: "verify",
+    log,
+    error,
+    attempts,
+    used,
+  });
+  if (!raw) return { verdicts, available: false };
+
+  for (const line of raw.split("\n").map((l) => l.trim()).filter(Boolean)) {
+    const m = line.match(/^\[([^\]]+)\]\s*:\s*\**\s*(PASS|FAIL)\b/i);
+    if (!m) continue;
+    const [, key, verdict] = m;
+    // A duplicated key is a checker that lost track of the list: trust neither answer.
+    if (!items.some((i) => i.key === key)) continue;
+    if (verdicts.has(key)) {
+      verdicts.set(key, false);
+      continue;
+    }
+    verdicts.set(key, verdict.toUpperCase() === "PASS");
+  }
+  return { verdicts, available: true };
 }
 
 /**

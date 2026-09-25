@@ -33,7 +33,7 @@ import {
   parseScorecard,
   BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
-import { BATCH_MAX_ITEMS, chainDepth, classifyEvent, deadProviders, drainUnknownQuotaIds, generateBatch, isHighStakesBall, sanitize, stripPreamble, verifyLine } from "./llm.js";
+import { BATCH_MAX_ITEMS, chainDepth, classifyEvent, deadProviders, drainUnknownQuotaIds, generateBatch, sanitize, stripPreamble, verifyBatch } from "./llm.js";
 import {
   initObservability,
   report,
@@ -183,6 +183,7 @@ let batchTimer = null;
 // provider failure rather than throwing, so no fetch stub can reach the catch — and an unreachable
 // catch is exactly where a hang would hide if that ever changed.
 let batchFn = generateBatch;
+let verifyBatchFn = verifyBatch;
 
 /** Queue one delivery for the next batch. Resolves to its rewritten line, or null. */
 function queueRewrite(entry) {
@@ -210,14 +211,32 @@ function flushBatch() {
   // rather than a placeholder. Every delivery in a batch shares one rung by construction.
   const used = {};
   batchFn(taken.map((t) => ({ key: t.key, text: t.text })), { log, error, attempts, used })
-    .then((lines) => {
+    .then(async (lines) => {
+      // EVERY rewritten line is fact-checked, each against its own raw Cricbuzz text, in one call
+      // per batch. It used to be wickets and boundaries only, one call each — which left the
+      // dot balls and singles, most of the tab, unchecked, and cost a call per ball it did check.
+      const toCheck = taken.filter((t) => lines.get(t.key)).map((t) => ({ key: t.key, source: t.text, line: lines.get(t.key) }));
+      const checkAttempts = [];
+      const { verdicts, available } = await verifyBatchFn(toCheck, { log, error, attempts: checkAttempts });
       for (const t of taken) {
-        t.resolve({ line: lines.get(t.key) ?? null, provider: used.provider ?? null, attempts });
+        // Per item: one array per delivery, never shared, so a report names only its own ball.
+        const own = [...attempts, ...checkAttempts];
+        const line = lines.get(t.key) ?? null;
+        if (!line) {
+          t.resolve({ line: null, provider: null, reason: "providers_exhausted", attempts: own });
+        } else if (!available || !verdicts.has(t.key)) {
+          // Fail closed: a line nobody vouched for is stored raw, never unchecked.
+          t.resolve({ line: null, provider: null, reason: "verifier_unavailable", attempts: own });
+        } else if (!verdicts.get(t.key)) {
+          t.resolve({ line: null, provider: null, reason: "verification_failed", attempts: [...own, `${used.provider ?? "unknown"}: verification FAIL`] });
+        } else {
+          t.resolve({ line, provider: used.provider ?? null, reason: null, attempts: own });
+        }
       }
     })
     .catch((e) => {
       error?.(`Rewrite batch threw: ${e?.message}`);
-      for (const t of taken) t.resolve({ line: null, provider: null, attempts });
+      for (const t of taken) t.resolve({ line: null, provider: null, reason: "providers_exhausted", attempts });
     });
 }
 
@@ -225,6 +244,13 @@ function flushBatch() {
 export function __setBatchFn(fn) {
   const prev = batchFn;
   batchFn = fn ?? generateBatch;
+  return prev;
+}
+
+/** Test seam: swap the batch fact-checker. Returns the previous one. */
+export function __setVerifyBatchFn(fn) {
+  const prev = verifyBatchFn;
+  verifyBatchFn = fn ?? verifyBatch;
   return prev;
 }
 
@@ -1305,27 +1331,11 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
       })
     );
     for (const { qi, out } of results) {
+      // The fact-check already ran inside the batch (`flushBatch`), so a line arrives here either
+      // verified or null with the reason it is not.
       if (!out.line) {
-        rewrites.set(qi.ts, { line: null, provider: null, verified: false, reason: "providers_exhausted", attempts: out.attempts });
+        rewrites.set(qi.ts, { line: null, provider: null, verified: false, reason: out.reason ?? "providers_exhausted", attempts: out.attempts });
         continue;
-      }
-      // Verification stays PER LINE and high-stakes only, unchanged. Batching the fact-check too
-      // would be a second unproven contract on top of a new one, and at ~813 high-stakes balls a
-      // day the individual calls fit the budget comfortably.
-      if (isHighStakesBall(qi.clean)) {
-        // A copy: `out.attempts` is the batch's one array, shared by every delivery in it, and
-        // appending this ball's verify notes to it put them in every other ball's report.
-        const attempts = [...(out.attempts ?? [])];
-        const outcome = {};
-        const ok = await verifyLine(
-          { line: out.line, snippet1: qi.clean, ball: qi.ball },
-          { log, error, attempts, outcome }
-        );
-        if (!ok) {
-          const reason = outcome.available ? "verification_failed" : "verifier_unavailable";
-          rewrites.set(qi.ts, { line: null, provider: null, verified: false, reason, attempts });
-          continue;
-        }
       }
       rewrites.set(qi.ts, { line: out.line, provider: out.provider, verified: true, reason: null, attempts: out.attempts });
     }
