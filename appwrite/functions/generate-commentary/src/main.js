@@ -112,7 +112,8 @@ export default async (context) => {
       context.error?.(`[CHAIN-DEPTH] only ${depth} reachable provider(s) — ${blocked}`);
       // Once per blocked set per hour, as in match-sync: this ran on every invocation, and a
       // day-latched rung holds the same state until the Pacific reset.
-      if (shouldReportChainDepth(blocked)) report("Commentary provider chain is too short to fact-check — a verification FAIL now means raw text", {
+      const blockedNames = rungs.filter((r) => !r.reachable).map((r) => r.provider).sort().join(",");
+      if (shouldReportChainDepth(blockedNames)) report("Commentary provider chain is too short to fact-check — a verification FAIL now means raw text", {
         depth: String(depth),
         reachable: rungs.filter((r) => r.reachable).map((r) => r.provider).join(",") || "none",
         blocked,

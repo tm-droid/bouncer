@@ -1450,7 +1450,10 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   if (newWatermark > watermark) watermarkByMatch.set(matchId, newWatermark);
   if (passthroughs.length > 0) {
     const reasons = [...new Set(passthroughs.map((p) => p.reason))].sort();
-    report("match-sync wrote raw Cricbuzz text — AI generation produced nothing usable", {
+    // Hourly per match and reason set. When the chain is out of quota every live match passes
+    // through on every run, and one event per match per minute (80 an hour on 2026-09-25) restated
+    // the chain-depth alert without adding a fact. The execution log still has every ball.
+    reportThrottled(`passthrough:${matchId}:${reasons.join(",")}`, STEADY_STATE_REPORT_MS, "match-sync wrote raw Cricbuzz text — AI generation produced nothing usable", {
       matchId,
       rows: passthroughs.length,
       balls: passthroughs.map((p) => p.ball).join(","),
@@ -1579,7 +1582,11 @@ function reportChainHealth(error) {
     // Keyed on the blocked set, so a rung going down or coming back reports at once and a chain
     // that stays short (a day-latched rung holds until the Pacific reset) reports hourly, not on
     // every one-minute run.
-    reportThrottled(`chain-depth:${blocked}`, STEADY_STATE_REPORT_MS, "Commentary provider chain is too short to fact-check — a verification FAIL now means raw text", {
+    // The key is the blocked rung NAMES, not their reasons: a reason carries the provider's error
+    // text, which varies call to call (groq's 429 names its limit and usage), so keying on it
+    // re-reported the same outage dozens of times an hour.
+    const blockedNames = rungs.filter((r) => !r.reachable).map((r) => r.provider).sort().join(",");
+    reportThrottled(`chain-depth:${blockedNames}`, STEADY_STATE_REPORT_MS, "Commentary provider chain is too short to fact-check — a verification FAIL now means raw text", {
       depth: String(depth),
       reachable: rungs.filter((r) => r.reachable).map((r) => r.provider).join(",") || "none",
       blocked,
