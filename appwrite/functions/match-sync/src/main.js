@@ -228,6 +228,9 @@ function flushBatch() {
           // Fail closed: a line nobody vouched for is stored raw, never unchecked.
           t.resolve({ line: null, provider: null, reason: "verifier_unavailable", attempts: own });
         } else if (!verdicts.get(t.key)) {
+          // The rejected line is not stored anywhere else — the row gets the raw text — so this log
+          // is the only way to audit whether the checker is catching errors or being over-strict.
+          error?.(`[VERIFY-FAIL] ${t.key}: ${line.slice(0, 240)} || source: ${String(t.text).slice(0, 240)}`);
           t.resolve({ line: null, provider: null, reason: "verification_failed", attempts: [...own, `${used.provider ?? "unknown"}: verification FAIL`] });
         } else {
           t.resolve({ line, provider: used.provider ?? null, reason: null, attempts: own });
