@@ -778,6 +778,11 @@ export function liveMatchSlice(eligible, activeViewers, cap = MAX_MATCHES) {
   return { allLive: ordered.slice(0, cap), dropped: ordered.slice(cap) };
 }
 
+/** A delivery's key in a cross-match batch. Unique per delivery, not per ball label. */
+export function batchKey(matchId, ball, timestamp) {
+  return `${matchId}|${ball}|${timestamp}`;
+}
+
 export function commentaryCapFor(matchId, viewed, slowTier) {
   if (viewed.has(matchId)) return MAX_NEW_PER_MATCH;
   if (slowTier.has(matchId)) return SLOW_MAX_NEW_PER_MATCH;
@@ -1305,9 +1310,12 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   // new balls would issue six calls of one. Queued up front, this match's deliveries batch with
   // each other AND with every other match's, because `handleRun` runs the matches concurrently.
   //
-  // Bounded by BATCH_MAX_ITEMS per match per run. In steady state a match produces about one
-  // delivery a run so the bound never binds; it binds on a Cricbuzz backlog republish, and the
-  // remainder is simply stored raw and not retried — the watermark has moved past it.
+  // Every fresh delivery is queued, not the first BATCH_MAX_ITEMS. The batcher already splits a
+  // queue into batches of BATCH_MAX_ITEMS, so the old per-match slice bought nothing but raw text:
+  // in steady state a match produces about one delivery a run, and the slice bound only on a new
+  // match's first sync or a Cricbuzz backlog republish — ~395 deliveries a day stored raw and never
+  // retried, because the watermark moves past them (measured 2026-09-24/25). `fresh` is bounded by
+  // the live page's ~20-item window, so this is at most two batches per match.
   //
   // Note this is NOT gated on `commentaryCap`. That still gates the detail tier (`detailTier`
   // above) and its scorecard writes, which are a write-budget decision; rewriting is now a
@@ -1315,7 +1323,7 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   const rewrites = new Map();
   if (storeCommentary) {
     const queued = [];
-    for (const item of fresh.slice(0, BATCH_MAX_ITEMS)) {
+    for (const item of fresh) {
       const classified = classifyCommentaryItem(item);
       if (!classified) continue;
       queued.push({ ts: Number(item.timestamp), clean: classified.clean, ball: classified.ball });
@@ -1326,7 +1334,11 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
         // the bowler and the batter ("Hassan Khan to Chris Green, 1 run, ..."), which is what the
         // measured 7/7 run used; the per-match bowler/batsman/score context cannot travel in a
         // cross-match batch, and a score carried from the wrong match would be a fabricated fact.
-        const out = await queueRewrite({ key: `${matchId}|${qi.ball}`, text: qi.clean, log, error });
+        // The key is `match|ball|timestamp`, not `match|ball`: an extra repeats its ball label —
+        // "2.2 wide" and then "2.2 no run" are two deliveries — so the shorter key collided. The
+        // batch kept one line and the checker, seeing the key twice, rejected both, which is most
+        // of what ANDROID-38's `verification_failed` rows were on 2026-09-25.
+        const out = await queueRewrite({ key: batchKey(matchId, qi.ball, qi.ts), text: qi.clean, log, error });
         return { qi, out };
       })
     );

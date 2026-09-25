@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { __queueRewrite as queueRewrite, __setBatchFn, __setVerifyBatchFn, resetRewriteBatcher } from "../src/main.js";
+import { __queueRewrite as queueRewrite, __setBatchFn, __setVerifyBatchFn, batchKey, resetRewriteBatcher } from "../src/main.js";
 
 // The batcher is what makes "rewrite every ball" affordable, and it is also the one piece that can
 // hang a whole run: `handleRun` awaits every match, each match awaits its queued deliveries, and a
@@ -205,4 +205,16 @@ test("a checker that throws still resolves every queued delivery", async () => {
     async () => { throw new Error("checker blew up"); }
   );
   assert.deepEqual(result.map((r) => r.line), [null, null]);
+});
+
+test("a wide and the ball after it share a ball label, but never a batch key", async () => {
+  // "2.2 wide" then "2.2 no run" are two deliveries. Keyed on match|ball they collided: the batch
+  // kept one line and the checker rejected both as a duplicated key.
+  const wide = batchKey("142695", "2.2", 1758815100000);
+  const legal = batchKey("142695", "2.2", 1758815130000);
+  assert.notEqual(wide, legal);
+  const { result } = await withStub(echo, () =>
+    Promise.all([wide, legal].map((key) => queueRewrite({ key, text: `raw ${key}` })))
+  );
+  assert.deepEqual(result.map((r) => r.line), [`rewritten ${wide}.`, `rewritten ${legal}.`]);
 });
