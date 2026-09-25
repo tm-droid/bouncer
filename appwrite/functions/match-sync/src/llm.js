@@ -83,9 +83,10 @@ const PROVIDERS = [
   // only liberties were shot descriptions, which the prompt explicitly licenses. It costs ~1056ms
   // against groq's ~584ms, which is nothing against a 120s function timeout.
   //
-  // groq stays at rung 2 rather than below the other Gemini rungs on purpose: generate-commentary
-  // is device-facing with a 30s timeout, and gemini-3-flash-preview measured up to 12s. A fast
-  // second rung keeps the common failure path well inside that.
+  // groq stays above the two reasoning Gemini rungs on purpose: generate-commentary is
+  // device-facing with a 30s timeout, and gemini-3-flash-preview measured up to 12s. A fast rung
+  // early keeps the common failure path well inside that. (It is rung 3 since 2026-09-25, behind
+  // gemini-3.1-flash-lite-preview at 4-8s.)
   { name: "gemini-flash-lite",      account: "gemini", url: GEMINI_URL,                                        model: "gemini-3.5-flash-lite",  keyEnv: "GEMINI_API_KEY", tokenFloor: 0 },
   // Probed 2026-09-25 with the real batch prompt, 11 deliveries (LBW, run out, wide, dropped catch)
   // x 3 runs: no factual error in any run, 4-8s. A different model id — and bucket — from the
@@ -248,6 +249,14 @@ const paymentBlocked = new Set();
 // `unrecognizedQuotaIds` below still reports any id matching neither.
 const dailyExhausted = new Map();
 const GROQ_DAY_LATCH_MS = 30 * 60 * 1000;
+
+let retry503DelayMs = 2_000;
+/** Test seam: the 503 retry's wait. Returns the previous value. */
+export function __setRetry503DelayMs(ms) {
+  const prev = retry503DelayMs;
+  retry503DelayMs = ms;
+  return prev;
+}
 
 // Quota ids seen on a 429 that match neither window. Drained once per container by the caller.
 const unknownQuotaIds = new Set();
@@ -562,7 +571,9 @@ export async function generateLine(
       continue;
     }
     try {
-      const resp = await fetch(provider.url, {
+      let resp;
+      for (let attempt = 1; ; attempt++) {
+      resp = await fetch(provider.url, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
@@ -579,6 +590,14 @@ export async function generateLine(
         }),
         signal: AbortSignal.timeout(15_000),
       });
+        // A 503 is Google's "this model is currently experiencing high demand": the server, not our
+        // quota, and gone in seconds. On 2026-09-25 it was the only thing between the one writer
+        // still in quota and 53 raw-text balls. Exactly one retry, only on 503, so an outage costs
+        // one extra round trip per rung rather than a storm.
+        if (resp.status !== 503 || attempt >= 2) break;
+        note(provider.name, "HTTP 503 (overloaded) — retrying once");
+        await new Promise((r) => setTimeout(r, retry503DelayMs));
+      }
       if (!resp.ok) {
         // The status alone is not diagnosable. Groq answers 404 both for a decommissioned model
         // and for one this key's tier cannot reach; a 402 may be a spent budget or an unpaid

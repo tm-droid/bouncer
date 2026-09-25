@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { chainDepth, drainUnknownQuotaIds, generateBatch, generateLine, generateVerifiedLine, probeProviders, resetProviderHealth, verifyBatch, verifyLine } from "../src/llm.js";
+import { __setRetry503DelayMs, chainDepth, drainUnknownQuotaIds, generateBatch, generateLine, generateVerifiedLine, probeProviders, resetProviderHealth, verifyBatch, verifyLine } from "../src/llm.js";
 
 // The ladder became four rungs on two accounts on 2026-09-16, when cerebras and sambanova were
 // dropped for answering 402 to every call and three Gemini model ids took their place. Gemini bills
@@ -372,4 +372,28 @@ test("a groq tokens-per-day 429 pauses that rung instead of re-asking it every c
     }
   );
   assert.equal(seen.filter((s) => s.provider === "groq").length, 1, "asked once, then paused");
+});
+
+test("a 503 is retried once on the same rung; a second 503 moves on", async () => {
+  const prev = __setRetry503DelayMs(0);
+  const overloaded = () => new Response(JSON.stringify([{ error: { code: 503, message: "This model is currently experiencing high demand.", status: "UNAVAILABLE" } }]), { status: 503 });
+  try {
+    // Busy once, then fine: the same rung answers, nothing further down is asked.
+    const once = await withLadder(
+      (name, nth) => (name === "gemini-flash-lite" && nth === 1 ? overloaded() : completion("19.2: Rahul takes it.")),
+      () => generateLine("19.2: Bumrah to Maxwell, out Caught by Rahul")
+    );
+    assert.equal(once.result, "19.2: Rahul takes it.");
+    assert.deepEqual(once.seen.map((s) => s.provider), ["gemini-flash-lite", "gemini-flash-lite"]);
+
+    // Busy twice: exactly one retry, then the next rung.
+    const twice = await withLadder(
+      (name) => (name === "gemini-flash-lite" ? overloaded() : completion("19.2: Rahul takes it.")),
+      () => generateLine("19.2: Bumrah to Maxwell, out Caught by Rahul")
+    );
+    assert.equal(twice.seen.filter((s) => s.provider === "gemini-flash-lite").length, 2);
+    assert.equal(twice.seen[2].provider, "gemini-3.1-flash-lite-preview");
+  } finally {
+    __setRetry503DelayMs(prev);
+  }
 });
