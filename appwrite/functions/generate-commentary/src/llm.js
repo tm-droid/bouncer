@@ -946,10 +946,15 @@ export const VERIFY_BATCH_SYSTEM_INSTRUCTION =
   "You are a precise cricket commentary fact-checker. For every item, answer PASS or FAIL.\n" +
   "Output exactly one line per item, in the same order: the item's [key] tag exactly as given, a colon, then PASS or FAIL. Nothing else.";
 
+// Tuned on 2026-09-25 against the checker's own rejections, logged with [VERIFY-FAIL]. It was
+// failing plain dot balls for "defends it firmly back to the bowler" and "hits the channel outside
+// off" — exactly the colour the writer is told to add — while rightly failing "a maiden over
+// concludes" on a single no-run ball. The line is between what HAPPENED (a fact: who, how many runs,
+// how out, which fielder, anything about the over, innings or match) and how it LOOKED.
 const VERIFY_BATCH_RULES =
-  "Judge each item ONLY against its own Source; the items come from unrelated matches.\n" +
-  "FAIL if the commentary: names a player not in its Source; gets the outcome wrong (runs scored, a four called a six or the reverse, a dismissal method changed — caught, bowled, lbw, run out, stumped); has the bowler playing the shot or the batter bowling; credits a catch, throw or stop to the wrong fielder; or states a score, total, milestone or event the Source does not.\n" +
-  "PASS if every fact matches its Source. Descriptive colour that does not contradict the Source — the feel of the shot, the crowd, the tension — is allowed.";
+  "Judge each item ONLY against its own Source; the items come from unrelated matches. The ball number is part of the Source: the first ball of an over is x.1 and the last legal one is x.6.\n" +
+  "FAIL only if the commentary changes or invents a FACT: a player not named in its Source; the wrong runs or outcome (a four called a six or the reverse, a dot ball given runs, runs given to a dot ball); a dismissal where there was none, or the wrong method (caught, bowled, lbw, run out, stumped); the bowler playing the shot or the batter bowling; a catch, throw or stop credited to the wrong fielder; or a score, total, milestone, maiden, partnership, spell or other claim about the over, innings or match that the Source does not state.\n" +
+  "PASS if every fact matches its Source. Describing how the ball was bowled or played — line, length, pace, a defensive push, a leave, where a single was nudged, the tension — is colour, not a fact, and must PASS unless it contradicts the Source.";
 
 /**
  * Fact-check many generated lines in ONE call, each against its own source.

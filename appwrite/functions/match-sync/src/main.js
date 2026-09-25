@@ -215,7 +215,14 @@ function flushBatch() {
       // EVERY rewritten line is fact-checked, each against its own raw Cricbuzz text, in one call
       // per batch. It used to be wickets and boundaries only, one call each — which left the
       // dot balls and singles, most of the tab, unchecked, and cost a call per ball it did check.
-      const toCheck = taken.filter((t) => lines.get(t.key)).map((t) => ({ key: t.key, source: t.text, line: lines.get(t.key) }));
+      // The checker gets the ball number the writer saw (it is in the writer's key). Without it,
+      // "closes the over" on x.6 was unverifiable and failed — the first and last balls of overs
+      // were most of the rejections on 2026-09-25.
+      const toCheck = taken.filter((t) => lines.get(t.key)).map((t) => ({
+        key: t.key,
+        source: t.ball ? `Ball ${t.ball}: ${t.text}` : t.text,
+        line: lines.get(t.key),
+      }));
       const checkAttempts = [];
       const { verdicts, available } = await verifyBatchFn(toCheck, { log, error, attempts: checkAttempts });
       for (const t of taken) {
@@ -1341,7 +1348,7 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
         // "2.2 wide" and then "2.2 no run" are two deliveries — so the shorter key collided. The
         // batch kept one line and the checker, seeing the key twice, rejected both, which is most
         // of what ANDROID-38's `verification_failed` rows were on 2026-09-25.
-        const out = await queueRewrite({ key: batchKey(matchId, qi.ball, qi.ts), text: qi.clean, log, error });
+        const out = await queueRewrite({ key: batchKey(matchId, qi.ball, qi.ts), ball: qi.ball, text: qi.clean, log, error });
         return { qi, out };
       })
     );

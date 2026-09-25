@@ -709,7 +709,13 @@ a FAIL is `verification_failed`, and an unanswered key or no checker at all is
 `verifier_unavailable` — never an unchecked line. Measured before shipping on real lines plus six
 planted errors (four→six, wrong fielder, lbw→bowled, wrong thrower, bowler batting, invented
 milestone): all six caught in 3/3 runs via qwen (~700ms for 14 lines) and 2/2 via the Gemini
-fallback; ~1 in 14 good lines FAILed, the cautious direction. The rules follow
+fallback. The checker is sent the ball number with each source ("Ball 58.6: …") — without it
+"closes the over" was unverifiable, and first/last balls of overs were most of the rejections — and
+its rules separate a FACT (who, runs, outcome, dismissal, fielder, anything about the over, innings
+or match — a "maiden", a "fifty partnership") from COLOUR (line, length, a defensive push), tuned on
+2026-09-25 against its own `[VERIFY-FAIL]` log lines, which carry the rejected text because nothing
+else stores it. qwen scored 14/14 × 3 on real rejections plus planted errors; the Gemini fallback
+misses over/innings claims (passed "a maiden over" 3/3), so qwen staying reachable matters. The rules follow
 `SYSTEM_INSTRUCTION`'s own licence ("the atmosphere is yours — the facts are not"), because a checker
 stricter than the writer's brief rejects most good lines. The batch prompt carries the raw Cricbuzz line alone: it already names bowler and
 batter, and per-match score context cannot travel in a cross-match batch without becoming a
