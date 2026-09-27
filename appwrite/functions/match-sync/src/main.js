@@ -205,49 +205,90 @@ function flushBatch() {
   // debounce — it is already late by a full window.
   if (pendingRewrites.length) batchTimer = setTimeout(flushBatch, 0);
 
-  const { log, error } = taken[0];
+  rewriteWithRetry(taken)
+    .then((results) => {
+      for (const t of taken) t.resolve(results.get(t.key));
+    })
+    .catch((e) => {
+      taken[0].error?.(`Rewrite batch threw: ${e?.message}`);
+      for (const t of taken) t.resolve({ line: null, provider: null, reason: "providers_exhausted", attempts: [] });
+    });
+}
+
+/**
+ * Rewrite and fact-check a batch, then give every delivery that came back rejected or missing ONE
+ * more attempt before the run gives up on it.
+ *
+ * There was no second attempt until 2026-09-27, and that was most of the raw text left in the tab:
+ * of 133 raw rows written over 09-26/27, ~90% were `verification_failed`, and the rejections were
+ * right — groq had written "Mahipal Lomror sends a blistering drive… for a FOUR" when Lomror was
+ * bowling. A rejected line cannot be stored, but a rejected DELIVERY can be written again.
+ *
+ * The retry goes to a different writer first (`exclude` the one that just failed), because the
+ * rung that got it wrong once is the likeliest to get it wrong again. When no other writer answers
+ * — the evening, when both flash-lite buckets are spent and groq writes alone — the same rung is
+ * re-sampled once; the checker still gates whatever comes back. A batch nobody answered at all is
+ * not retried: every rung already failed at the transport level, and asking again this second
+ * repeats the same 429s. Those deliveries are held by the caller and retried next run.
+ */
+async function rewriteWithRetry(taken) {
+  const first = await rewriteAndCheck(taken, []);
+  const failed = taken.filter((t) => !first.results.get(t.key).line);
+  if (!failed.length || !first.provider) return first.results;
+
+  let retry = await rewriteAndCheck(failed, [first.provider]);
+  if (!retry.provider) retry = await rewriteAndCheck(failed, []);
+  for (const t of failed) {
+    const again = retry.results.get(t.key);
+    const before = first.results.get(t.key);
+    first.results.set(t.key, again.line ? again : { ...again, attempts: [...before.attempts, ...again.attempts] });
+  }
+  return first.results;
+}
+
+/** One writer call and one checker call. Returns a result for EVERY item, plus the writer rung. */
+async function rewriteAndCheck(items, exclude) {
+  const { log, error } = items[0];
   const attempts = [];
   // Mutated by generateLine with the rung that answered, so each row records its real provider
   // rather than a placeholder. Every delivery in a batch shares one rung by construction.
   const used = {};
-  batchFn(taken.map((t) => ({ key: t.key, text: t.text })), { log, error, attempts, used })
-    .then(async (lines) => {
-      // EVERY rewritten line is fact-checked, each against its own raw Cricbuzz text, in one call
-      // per batch. It used to be wickets and boundaries only, one call each — which left the
-      // dot balls and singles, most of the tab, unchecked, and cost a call per ball it did check.
-      // The checker gets the ball number the writer saw (it is in the writer's key). Without it,
-      // "closes the over" on x.6 was unverifiable and failed — the first and last balls of overs
-      // were most of the rejections on 2026-09-25.
-      const toCheck = taken.filter((t) => lines.get(t.key)).map((t) => ({
-        key: t.key,
-        source: t.ball ? `Ball ${t.ball}: ${t.text}` : t.text,
-        line: lines.get(t.key),
-      }));
-      const checkAttempts = [];
-      const { verdicts, available } = await verifyBatchFn(toCheck, { log, error, attempts: checkAttempts });
-      for (const t of taken) {
-        // Per item: one array per delivery, never shared, so a report names only its own ball.
-        const own = [...attempts, ...checkAttempts];
-        const line = lines.get(t.key) ?? null;
-        if (!line) {
-          t.resolve({ line: null, provider: null, reason: "providers_exhausted", attempts: own });
-        } else if (!available || !verdicts.has(t.key)) {
-          // Fail closed: a line nobody vouched for is stored raw, never unchecked.
-          t.resolve({ line: null, provider: null, reason: "verifier_unavailable", attempts: own });
-        } else if (!verdicts.get(t.key)) {
-          // The rejected line is not stored anywhere else — the row gets the raw text — so this log
-          // is the only way to audit whether the checker is catching errors or being over-strict.
-          error?.(`[VERIFY-FAIL] ${t.key}: ${line.slice(0, 240)} || source: ${String(t.text).slice(0, 240)}`);
-          t.resolve({ line: null, provider: null, reason: "verification_failed", attempts: [...own, `${used.provider ?? "unknown"}: verification FAIL`] });
-        } else {
-          t.resolve({ line, provider: used.provider ?? null, reason: null, attempts: own });
-        }
-      }
-    })
-    .catch((e) => {
-      error?.(`Rewrite batch threw: ${e?.message}`);
-      for (const t of taken) t.resolve({ line: null, provider: null, reason: "providers_exhausted", attempts });
-    });
+  const lines = await batchFn(items.map((t) => ({ key: t.key, text: t.text })), { log, error, attempts, used, exclude });
+  // EVERY rewritten line is fact-checked, each against its own raw Cricbuzz text, in one call
+  // per batch. It used to be wickets and boundaries only, one call each — which left the
+  // dot balls and singles, most of the tab, unchecked, and cost a call per ball it did check.
+  // The checker gets the ball number the writer saw (it is in the writer's key). Without it,
+  // "closes the over" on x.6 was unverifiable and failed — the first and last balls of overs
+  // were most of the rejections on 2026-09-25.
+  const toCheck = items.filter((t) => lines.get(t.key)).map((t) => ({
+    key: t.key,
+    source: t.ball ? `Ball ${t.ball}: ${t.text}` : t.text,
+    line: lines.get(t.key),
+  }));
+  const checkAttempts = [];
+  const { verdicts, available } = toCheck.length
+    ? await verifyBatchFn(toCheck, { log, error, attempts: checkAttempts })
+    : { verdicts: new Map(), available: false };
+  const results = new Map();
+  for (const t of items) {
+    // Per item: one array per delivery, never shared, so a report names only its own ball.
+    const own = [...attempts, ...checkAttempts];
+    const line = lines.get(t.key) ?? null;
+    if (!line) {
+      results.set(t.key, { line: null, provider: null, reason: "providers_exhausted", attempts: own });
+    } else if (!available || !verdicts.has(t.key)) {
+      // Fail closed: a line nobody vouched for is never stored.
+      results.set(t.key, { line: null, provider: null, reason: "verifier_unavailable", attempts: own });
+    } else if (!verdicts.get(t.key)) {
+      // The rejected line is not stored anywhere else, so this log is the only way to audit
+      // whether the checker is catching errors or being over-strict.
+      error?.(`[VERIFY-FAIL] ${t.key}: ${line.slice(0, 240)} || source: ${String(t.text).slice(0, 240)}`);
+      results.set(t.key, { line: null, provider: null, reason: "verification_failed", attempts: [...own, `${used.provider ?? "unknown"}: verification FAIL`] });
+    } else {
+      results.set(t.key, { line, provider: used.provider ?? null, reason: null, attempts: own });
+    }
+  }
+  return { results, provider: used.provider ?? null };
 }
 
 /** Test seam: swap the batch generator, e.g. for one that throws. Returns the previous one. */
@@ -272,6 +313,207 @@ export function resetRewriteBatcher() {
   if (batchTimer) { clearTimeout(batchTimer); batchTimer = null; }
   for (const t of pendingRewrites) t.resolve({ line: null, attempts: [] });
   pendingRewrites = [];
+}
+
+// ── Rewrite backlog ──────────────────────────────────────────────────────────────────────────────
+//
+// A delivery with no verified line is HELD, never written. Until 2026-09-27 it was stored as raw
+// Cricbuzz text (`ai_generated: false`, `provider: cricbuzz:<reason>`), 2-3% of every day's rows.
+// Now it waits here and is offered to the writer again on every run until a line passes the
+// checker; the row then lands with its original `sort_key`, and the device inserts a row by
+// `sortKey` position, so a late line sits where the ball was bowled.
+//
+// Held entries carry everything the row needs, because the live page is a ~20-item window: after a
+// few minutes the ball is no longer on it, and the watermark has already moved past it.
+//
+// The cost is lateness, never a wrong line: when every writer is spent (groq's tokens-per-day latch
+// before the Pacific reset), the tab shows no new lines for that stretch and then catches up in
+// order. Alerts do not wait — `syncMatch` sends a held delivery's alert when it first sees it.
+const BACKLOG_FILE = "rewrite-backlog";
+// Report thresholds. A backlog that clears within a run or two is the retry working; one that is
+// still there after 15 minutes means nothing is writing.
+const BACKLOG_REPORT_AGE_MS = 15 * 60 * 1000;
+const BACKLOG_REPORT_SIZE = 200;
+// ~100 holds a day were measured when this was written. Past this something is broken, not slow.
+const BACKLOG_ALARM_SIZE = 2000;
+// Oldest-first, per run: three batches. A backlog built while every writer was spent (a couple of
+// hours of play) would otherwise go out as a dozen calls in one second the moment a rung reopens,
+// straight into flash-lite's 15 RPM. ~7 new deliveries arrive per run, so this still clears a
+// backlog five times faster than it can grow.
+const BACKLOG_DRAIN_PER_RUN = 3 * BATCH_MAX_ITEMS;
+
+// rowId -> held delivery. Null until this container has read the file; the file is written only by
+// this function, so a warm container already holds what it says.
+let backlog = null;
+// Whether `backlog` reflects the file. False after an unreadable (non-404) read: the file must not
+// be overwritten with only this run's holds, or every older one would be lost.
+let backlogLoaded = false;
+let backlogSaved = null;
+
+function heldMap() {
+  if (!backlog) backlog = new Map();
+  return backlog;
+}
+
+/** Take ownership of a delivery that has no verified line yet. */
+export function holdDelivery(entry) {
+  heldMap().set(entry.rowId, entry);
+}
+
+/** Whether a delivery is already owned by the backlog, so a match sync must not queue it again. */
+export function isHeld(rowId) {
+  return heldMap().has(rowId);
+}
+
+/** Test seam. */
+export function __resetBacklog(entries = []) {
+  backlog = new Map(entries.map((e) => [e.rowId, e]));
+  backlogLoaded = true;
+  backlogSaved = null;
+}
+
+export function __backlogEntries() {
+  return [...heldMap().values()];
+}
+
+async function loadBacklog({ storage, error }) {
+  if (backlogLoaded) return;
+  try {
+    const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, BACKLOG_FILE));
+    // Memory wins over the file: an entry held since the last unreadable read is the newer word.
+    const held = heldMap();
+    for (const e of Array.isArray(parsed) ? parsed : []) if (e?.rowId && !held.has(e.rowId)) held.set(e.rowId, e);
+    backlogSaved = JSON.stringify(Array.isArray(parsed) ? parsed : []);
+    backlogLoaded = true;
+  } catch (e) {
+    if (e?.code === 404) {
+      heldMap();
+      backlogSaved = "[]";
+      backlogLoaded = true;
+    } else {
+      error(`Could not read ${BACKLOG_FILE} (${e?.message}) — holding in memory until it can be read`);
+    }
+  }
+}
+
+/** Write the backlog only when it changed, and never over a file this container could not read. */
+async function saveBacklog({ storage, log, error }) {
+  if (!backlogLoaded) return;
+  const payload = JSON.stringify([...heldMap().values()]);
+  if (payload === backlogSaved) return;
+  try {
+    await storage.deleteFile(BUCKET_ID, BACKLOG_FILE).catch(() => {});
+    await storage.createFile(
+      BUCKET_ID,
+      BACKLOG_FILE,
+      InputFile.fromBuffer(Buffer.from(payload, "utf8"), "rewrite-backlog.json"),
+      READ_ANY
+    );
+    backlogSaved = payload;
+    log(`Wrote ${BACKLOG_FILE} (${heldMap().size} held)`);
+  } catch (e) {
+    // The entries are still in memory and the next run retries the write.
+    error(`Failed to write ${BACKLOG_FILE}: ${e?.message}`);
+  }
+}
+
+/**
+ * The text a verified line is stored as, or null when nothing usable is left after cleaning.
+ * Prefixed with the ball when the model left it off, so every row reads the same.
+ */
+function storedLine(raw, ball) {
+  let line = sanitize(stripPreamble(raw ?? ""));
+  if (line && !line.startsWith(ball)) line = `${ball}: ${line}`;
+  return line || null;
+}
+
+/** The `match-commentary` row for one delivery. One builder, so a late row and an on-time row match. */
+function commentaryRowData({ matchId, innings, ball, sortKey, line, clean, provider }) {
+  // Classified from `clean` — the RAW Cricbuzz text — NOT from `line`. By this point `line` is
+  // broadcast prose in which a four reads "races away to the rope", so the event is no longer
+  // recoverable from it; that is precisely why the commentary tab's Boundaries filter could only
+  // ever match the passthrough rows. Always written, "NONE" included: an absent column means
+  // "no verdict" to the device and sends it back to guessing from the prose.
+  const event = classifyEvent(clean);
+  // Same source and the same reason as `event`: both the number and the KIND of delivery live
+  // only in Cricbuzz's outcome clause, and `line` is broadcast prose by now — a wide reads
+  // "strays down leg", so the device's `text.contains("wide")` test was the same guess-from-prose
+  // failure in a different field. Omitted rather than written as 0/"" when the clause is not
+  // recognised: the device draws no pill for an absent value and a fabricated dot ball is exactly
+  // the bug these columns exist to end.
+  const { runs, kind: extra } = parseBallOutcome(clean);
+  const origin = commentaryOrigin({ line, provider });
+  return {
+    match_id: matchId,
+    innings,
+    ball,
+    sort_key: sortKey,
+    commentary: line,
+    ai_generated: origin.aiGenerated,
+    provider: origin.provider,
+    created_at: new Date().toISOString(),
+    event,
+    ...(runs === null ? {} : { runs }),
+    ...(extra === null ? {} : { extra }),
+  };
+}
+
+/**
+ * Offer every held delivery to the writer again, and write the ones that come back verified.
+ *
+ * Runs at the top of every run, whether or not anything is live: a match that ends with deliveries
+ * still held has no more match syncs to carry them. Its calls go through the same batcher, so a
+ * backlog costs a batch of its own only while it is non-empty.
+ */
+export async function drainBacklog({ db, log, error }) {
+  const entries = [...heldMap().values()].sort((a, b) => a.ts - b.ts).slice(0, BACKLOG_DRAIN_PER_RUN);
+  if (!entries.length) return { written: 0, held: 0 };
+  const outs = await Promise.all(entries.map((e) =>
+    queueRewrite({ key: batchKey(e.matchId, e.ball, e.ts), ball: e.ball, text: e.clean, log, error })
+  ));
+  let written = 0;
+  const reasons = new Set();
+  let lastAttempts = [];
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    const out = outs[i];
+    const line = out?.line ? storedLine(out.line, e.ball) : null;
+    if (!line) {
+      reasons.add(out?.reason ?? "unknown");
+      lastAttempts = out?.attempts ?? lastAttempts;
+      continue;
+    }
+    try {
+      await db.createDocument(DB_ID, COMMENTARY_COL, e.rowId, commentaryRowData({
+        matchId: e.matchId, innings: e.innings, ball: e.ball, sortKey: e.sortKey, line, clean: e.clean, provider: out.provider,
+      }), READ_ANY);
+      heldMap().delete(e.rowId);
+      written++;
+    } catch (err) {
+      // 409: the row exists — another execution wrote it. Either way the delivery is stored.
+      if (err?.code === 409) heldMap().delete(e.rowId);
+      else error(`Backlog write failed (${e.matchId}/${e.ball}): ${err?.message}`);
+    }
+  }
+  const held = heldMap().size;
+  log(`Backlog: wrote ${written} late line(s), ${held} still held`);
+  reportBacklog({ reasons, attempts: lastAttempts });
+  return { written, held };
+}
+
+function reportBacklog({ reasons, attempts }) {
+  const held = [...heldMap().values()];
+  if (!held.length) return;
+  const oldestMs = Math.min(...held.map((e) => e.firstSeenMs ?? Date.now()));
+  const ageMs = Date.now() - oldestMs;
+  if (ageMs < BACKLOG_REPORT_AGE_MS && held.length < BACKLOG_REPORT_SIZE) return;
+  reportThrottled("rewrite-backlog", STEADY_STATE_REPORT_MS, "Commentary is being held — no writer has produced a verified line for these deliveries", {
+    held: held.length,
+    oldestMinutes: Math.round(ageMs / 60000),
+    matches: [...new Set(held.map((e) => e.matchId))].join(","),
+    reasons: [...reasons].sort().join(","),
+    attempts: attempts.join("; "),
+  }, held.length >= BACKLOG_ALARM_SIZE ? "error" : "warning");
 }
 
 // Dedupe watermark: matchId -> highest commentary sort_key already written. Survives warm 1-min
@@ -498,6 +740,15 @@ async function handleRun({ req, res, log, error }) {
   const storage = new Storage(client);
   const db = new Databases(client);
 
+  // Held deliveries are offered to the writer first thing, and the backlog is saved on every path
+  // out of this run — including the early returns with nothing live, because a match that ended
+  // with balls still held has no more syncs of its own to carry them.
+  const backlogRun = loadBacklog({ storage, error }).then(() => drainBacklog({ db, log, error }));
+  const settleBacklog = async () => {
+    await backlogRun.catch((e) => error(`Backlog drain failed: ${e?.message}`));
+    await saveBacklog({ storage, log, error });
+  };
+
   // 1. Read the live-matches list written by poll-live-matches.
   // node-appwrite auto-parses JSON files (returns the object); older/plain files return bytes.
   // The model is loaded before anything is gated on, because the pre-match pass below needs it even
@@ -517,6 +768,7 @@ async function handleRun({ req, res, log, error }) {
     // written: an upcoming fixture has a probability whether or not anything is in play, and
     // returning early used to leave yesterday's live numbers as the newest thing on the device.
     await writeWinProbFile({ storage, winProb: prematch, log, error });
+    await settleBacklog();
     runStatus = "ok";
     return res.json({ skipped: true, reason: "no_live_matches", prematch: Object.keys(prematch).length }, 200);
   }
@@ -537,6 +789,7 @@ async function handleRun({ req, res, log, error }) {
   if (allLive.length === 0) {
     log(`No live matches — writing ${Object.keys(prematch).length} pre-match entries only`);
     await writeWinProbFile({ storage, winProb: prematch, log, error });
+    await settleBacklog();
     runStatus = "ok";
     return res.json({ skipped: true, reason: "no_live_matches", prematch: Object.keys(prematch).length }, 200);
   }
@@ -719,6 +972,7 @@ async function handleRun({ req, res, log, error }) {
     error,
   });
 
+  await settleBacklog();
   reportDeadProviders(error);
   reportChainHealth(error);
 
@@ -749,9 +1003,8 @@ async function handleRun({ req, res, log, error }) {
  * unconditional (see `commentaryMatchSet`) and costs no LLM call; this budget only decides which
  * of those rows get broadcast prose instead of Cricbuzz's own words.
  *
- * A row that misses the budget is written with `ai_generated: false` — the same shape the
- * passthrough path already produced, and fully filterable, because `event`/`runs`/`extra` are
- * classified from the raw text either way.
+ * Every delivery is rewritten now, and one without a verified line is held rather than stored raw
+ * (see "Rewrite backlog"), so this no longer decides whether a row carries Cricbuzz's words.
  */
 /**
  * Where a stored row's TEXT came from, as the two columns that record it.
@@ -768,6 +1021,10 @@ async function handleRun({ req, res, log, error }) {
  * `verification_failed` if somebody did and was rejected, `verifier_unavailable` if the line was
  * generated but no rung could fact-check it. The ladder's real mix becomes a GROUP BY
  * rather than a guess, which is the thing nobody could do while cerebras and sambanova were dead.
+ *
+ * Since 2026-09-27 no new row takes a `cricbuzz*` value: a delivery with no verified line is held
+ * in the backlog instead of written. The branches stay because the table still holds older rows
+ * and the invariant between the two columns is pinned against them.
  *
  * @param generated `generateVerifiedLine`'s result, or null when it was never called.
  */
@@ -1310,8 +1567,10 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   // Oldest-first among items past the watermark. Order matters twice over: the watermark can only
   // advance contiguously from the bottom, and the LLM budget is spent in this order, so the oldest
   // unrewritten deliveries are the ones that get broadcast prose rather than an arbitrary slice.
+  // A held delivery belongs to the backlog. It is still on the page after a cold start re-seeds the
+  // watermark below it, and queueing it here as well would rewrite it twice in one run.
   const fresh = commentary
-    .filter((i) => Number(i.timestamp) > watermark)
+    .filter((i) => Number(i.timestamp) > watermark && !isHeld(docId(`${matchId}:${i.timestamp}`)))
     .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
 
   // Rewrite every fresh delivery in one batched call, BEFORE the write loop.
@@ -1377,11 +1636,10 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   // it. `advance` is what enforces it.
   let contiguous = true;
   const advance = (itemTs) => { if (contiguous) newWatermark = itemTs; };
-  // Raw-text rows and network write failures, reported once per match per run after the loop.
-  // Both were one Sentry event per ball — ~500 a day for the first — so a single upstream cause
-  // read as hundreds of independent failures.
-  const passthroughs = [];
+  // Network write failures, reported once per match per run after the loop — one Sentry event per
+  // ball read a single upstream cause as hundreds of independent failures.
   let networkWriteFailures = 0;
+  let heldNow = 0;
   for (const item of fresh) {
     const rowId = docId(`${matchId}:${item.timestamp}`);
     const itemTs = Number(item.timestamp);
@@ -1390,77 +1648,41 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
     const classified = classifyCommentaryItem(item);
     if (!classified) { advance(itemTs); continue; }
     const { clean, ball } = classified;
+    const innings = item.innings ?? fallbackInnings;
 
-    let line = clean;
-    // False when this row carries the scraper's own words — either the AI chain produced nothing,
-    // or this delivery was past the run's LLM budget. The row is written either way: a raw line
-    // beats a missing ball, and it is fully filterable because `event`/`runs`/`extra` below are
-    // read from the raw text regardless. "We wrote raw Cricbuzz text" and "we wrote generated
-    // commentary" were previously the same event in the data and in the logs, so a dead provider
-    // chain was indistinguishable from a working one.
-    // Null until the rewrite is attempted; commentaryOrigin reads that as "no budget this run".
-    let generated = null;
     const pre = rewrites.get(itemTs);
-    if (pre) {
-      generated = pre;
-      if (pre.line) {
-        line = sanitize(stripPreamble(pre.line));
-        if (line && !line.startsWith(ball)) line = `${ball}: ${line}`;
-        rewritten++;
-      } else {
-        const attempts = pre.attempts ?? [];
-        error(`[PASSTHROUGH] ${matchId}/${ball} (${pre.reason}): writing raw Cricbuzz text — ${attempts.join("; ")}`);
-        passthroughs.push({ ball, reason: pre.reason, attempts: attempts.join("; ") });
-      }
+    const line = pre?.line ? storedLine(pre.line, ball) : null;
+    if (!line) {
+      // No verified line: the backlog takes the delivery and the next runs retry it. Raw Cricbuzz
+      // text is never stored — see "Rewrite backlog" above. The watermark still advances, because
+      // the backlog now owns this ball; blocking the mark on it would stall every ball behind it.
+      const attempts = pre?.attempts ?? [];
+      error(`[HOLD] ${matchId}/${ball} (${pre?.reason ?? "not_attempted"}): no verified line yet — ${attempts.join("; ")}`);
+      holdDelivery({ matchId, rowId, ts: itemTs, sortKey: item.timestamp, ball, innings, clean, firstSeenMs: Date.now() });
+      heldNow++;
+      advance(itemTs);
+      // The alert does not wait for the line: a wicket alert that arrives with the prose, minutes
+      // later, is past ALERT_MAX_AGE_MS and would never be sent. Classified from the raw text, the
+      // same as a written row's.
+      alert(deliveryAlert({
+        matchId, title, event: classifyEvent(clean), ball, text: clean, timestampMs: itemTs, now: Date.now(), score: detail.score,
+      }));
+      // Present for the gap check: a held ball was captured, it just has no row yet.
+      writtenBalls.push({ innings, ball });
+      continue;
     }
-    if (!line) { advance(itemTs); continue; }
+    rewritten++;
 
-    // Classified from `clean` — the RAW Cricbuzz text — NOT from `line`. By this point `line` is
-    // broadcast prose in which a four reads "races away to the rope", so the event is no longer
-    // recoverable from it; that is precisely why the commentary tab's Boundaries filter could only
-    // ever match the passthrough rows. Always written, "NONE" included: an absent column means
-    // "no verdict" to the device and sends it back to guessing from the prose.
-    const event = classifyEvent(clean);
-    // Same source and the same reason as `event`: the number lives only in Cricbuzz's outcome
-    // clause and `line` is broadcast prose by now. Omitted rather than written as 0 when the clause
-    // is not recognised — the device draws no pill for an absent value and a fabricated dot ball is
-    // exactly the bug this column exists to end.
-    // Same source and the same reason as `event`: both the number and the KIND of delivery live
-    // only in Cricbuzz's outcome clause, and `line` is broadcast prose by now — a wide reads
-    // "strays down leg", so the device's `text.contains("wide")` test was the same guess-from-prose
-    // failure in a different field. Omitted rather than written as 0/"" when the clause is not
-    // recognised: the device draws no pill for an absent value and a fabricated dot ball is exactly
-    // the bug these columns exist to end.
-    const { runs, kind: extra } = parseBallOutcome(clean);
-    const { aiGenerated, provider } = commentaryOrigin(generated);
-
+    const data = commentaryRowData({ matchId, innings, ball, sortKey: item.timestamp, line, clean, provider: pre.provider });
     try {
-      await db.createDocument(
-        DB_ID,
-        COMMENTARY_COL,
-        rowId,
-        {
-          match_id: matchId,
-          innings: item.innings ?? fallbackInnings,
-          ball,
-          sort_key: item.timestamp,
-          commentary: line,
-          ai_generated: aiGenerated,
-          provider,
-          created_at: new Date().toISOString(),
-          event,
-          ...(runs === null ? {} : { runs }),
-          ...(extra === null ? {} : { extra }),
-        },
-        READ_ANY
-      );
+      await db.createDocument(DB_ID, COMMENTARY_COL, rowId, data, READ_ANY);
       advance(itemTs);
       written++;
       // Only on a first write: a 409 means another execution stored this ball and alerted for it.
       alert(deliveryAlert({
-        matchId, title, event, ball, text: clean, timestampMs: itemTs, now: Date.now(), score: detail.score,
+        matchId, title, event: data.event, ball, text: clean, timestampMs: itemTs, now: Date.now(), score: detail.score,
       }));
-      writtenBalls.push({ innings: item.innings ?? fallbackInnings, ball });
+      writtenBalls.push({ innings, ball });
     } catch (e) {
       // 409 = row already exists (race / watermark behind): it is durably written, so advance.
       if (e?.code === 409) advance(itemTs);
@@ -1482,20 +1704,6 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   // itself — which also works for a match that has no detail row, i.e. every match outside the
   // detail tier.
   if (newWatermark > watermark) watermarkByMatch.set(matchId, newWatermark);
-  if (passthroughs.length > 0) {
-    const reasons = [...new Set(passthroughs.map((p) => p.reason))].sort();
-    // Hourly per match and reason set. When the chain is out of quota every live match passes
-    // through on every run, and one event per match per minute (80 an hour on 2026-09-25) restated
-    // the chain-depth alert without adding a fact. The execution log still has every ball.
-    reportThrottled(`passthrough:${matchId}:${reasons.join(",")}`, STEADY_STATE_REPORT_MS, "match-sync wrote raw Cricbuzz text — AI generation produced nothing usable", {
-      matchId,
-      rows: passthroughs.length,
-      balls: passthroughs.map((p) => p.ball).join(","),
-      reason: reasons.join(","),
-      // The last ball's provider log is representative: the rows of one run share a batch.
-      attempts: passthroughs[passthroughs.length - 1].attempts,
-    });
-  }
   if (networkWriteFailures > 0) {
     reportThrottled(`commentary-write-network:${matchId}`, STEADY_STATE_REPORT_MS, "match-sync could not reach Appwrite to write commentary", {
       matchId,
@@ -1503,7 +1711,7 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
     });
   }
   reportCommentaryGaps({ matchId, writtenBalls, error });
-  log(`Match ${matchId}: ${written} new commentary rows (${rewritten} rewritten)`);
+  log(`Match ${matchId}: ${written} new commentary rows (${rewritten} rewritten, ${heldNow} held)`);
   return { status: { commentaryWritten: written }, winProb, finalised };
 }
 

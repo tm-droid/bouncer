@@ -81,9 +81,9 @@ test("each delivery gets ITS OWN line back, not the batch's first", async () => 
   assert.equal(result[1].line, "rewritten B|2.2.");
 });
 
-test("a delivery the model skipped resolves to null rather than hanging", async () => {
-  // Every queued promise must settle. A skipped key resolving to null is a raw row; a skipped key
-  // never resolving is a stalled run.
+test("a delivery the model skipped is retried once elsewhere, then resolves null rather than hanging", async () => {
+  // Every queued promise must settle. A skipped key resolving to null is a held delivery; a skipped
+  // key never resolving is a stalled run.
   const { result, calls } = await withStub(
     (sent) => {
       const keys = [...sent.messages[1].content.matchAll(/^\[([^\]]+)\]:/gm)].map((m) => m[1]);
@@ -91,9 +91,12 @@ test("a delivery the model skipped resolves to null rather than hanging", async 
     },
     () => Promise.all([queueRewrite({ key: "A|1.1", text: "a" }), queueRewrite({ key: "B|2.2", text: "b" })])
   );
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 2, "the skipped delivery gets one retry");
+  assert.notEqual(calls[1].model, calls[0].model, "on a different rung from the one that skipped it");
+  assert.match(calls[1].messages[1].content, /^\[B\|2\.2\]:/m, "and only the skipped delivery is resent");
+  assert.doesNotMatch(calls[1].messages[1].content, /\[A\|1\.1\]/);
   assert.equal(result[0].line, "only the first.");
-  assert.equal(result[1].line, null, "the skipped delivery resolves null, and the run continues");
+  assert.equal(result[1].line, "only the first.", "the retry answered it");
 });
 
 test("a provider failure resolves every queued delivery", async () => {
@@ -159,7 +162,7 @@ test("a batched row records the rung that answered, not a placeholder", async ()
   }
 });
 
-test("every rewritten line is fact-checked against its OWN raw text, and a FAIL stores raw", async () => {
+test("every rewritten line is fact-checked against its OWN raw text, and a FAIL is never stored", async () => {
   const seen = [];
   const checker = async (items) => {
     seen.push(...items);
@@ -170,10 +173,11 @@ test("every rewritten line is fact-checked against its OWN raw text, and a FAIL 
     () => Promise.all(["1|1.1", "2|1.2"].map((key) => queueRewrite({ key, text: `raw ${key}` }))),
     checker
   );
-  // Every ball, not just wickets and boundaries: both lines went to the checker.
-  assert.deepEqual(seen.map((i) => [i.key, i.source]), [["1|1.1", "raw 1|1.1"], ["2|1.2", "raw 2|1.2"]]);
+  // Every ball, not just wickets and boundaries: both lines went to the checker, and the rejected
+  // one went back to it once more after a retry.
+  assert.deepEqual(seen.map((i) => [i.key, i.source]), [["1|1.1", "raw 1|1.1"], ["2|1.2", "raw 2|1.2"], ["2|1.2", "raw 2|1.2"]]);
   assert.equal(result[0].line, "rewritten 1|1.1.");
-  assert.equal(result[1].line, null, "a FAIL is stored as raw text, never as the rejected line");
+  assert.equal(result[1].line, null, "a line rejected twice is never handed back");
   assert.equal(result[1].reason, "verification_failed");
 });
 
