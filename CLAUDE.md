@@ -596,10 +596,6 @@ Interactions-API only. groq's per-day 429 is prose ("tokens per day (TPD)"), not
 latches for 30 minutes (`GROQ_DAY_LATCH_MS`) — without it an exhausted groq rung was re-asked 399
 times in one night.
 
-**Using a second Google Cloud project to get a second free bucket is not an option.** The Google
-APIs Terms §2(d) "API Limitations": "You agree to, and will not attempt to circumvent, such
-limitations". Extra capacity is Tier 1 billing on the existing project, or a different provider.
-
 Three traps, each of which looks like free capacity and is not. **An alias is not a bucket**:
 bursting `gemini-flash-lite-latest` returns `quotaDimensions: {"model":"gemini-3.5-flash-lite"}` —
 it bills what it resolves to. **A reasoning rung needs its own `tokenFloor`**: `gemini-3.6-flash` at
