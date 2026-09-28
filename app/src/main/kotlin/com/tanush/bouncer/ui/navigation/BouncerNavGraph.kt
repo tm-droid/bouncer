@@ -49,8 +49,25 @@ sealed class BouncerScreen(val route: String) {
     /** News tab - cricket headlines (bottom-nav destination) */
     data object News : BouncerScreen("news")
 
-    /** Search screen */
-    data object Search : BouncerScreen("search")
+    /**
+     * Search screen. The optional `tab` opens it on one result tab — the Series and News tabs
+     * open it on Tournaments and News.
+     */
+    data object Search : BouncerScreen("search") {
+        const val ROUTE_PATTERN = "search?tab={tab}"
+        const val ARG_TAB = "tab"
+
+        fun createRoute(tab: String? = null): String =
+            if (tab == null) route else "search?tab=${tab.encodeUrlSafe()}"
+
+        val arguments = listOf(
+            navArgument(ARG_TAB) {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            }
+        )
+    }
 
     /** Series list screen */
     data object SeriesList : BouncerScreen("series")
@@ -157,16 +174,27 @@ sealed class BouncerScreen(val route: String) {
      */
     data class PlayerDetail(val playerId: String) : BouncerScreen("player/$playerId") {
         companion object {
-            const val ROUTE_PATTERN = "player/{playerId}"
+            const val ROUTE_PATTERN = "player/{playerId}?cbId={cbId}"
             const val ARG_PLAYER_ID = "playerId"
 
-            fun createRoute(playerId: String): String = "player/${playerId.encodeUrlSafe()}"
+            /** Cricbuzz profile id, when the caller has one. Opens that exact player. */
+            const val ARG_CRICBUZZ_ID = "cbId"
+
+            fun createRoute(playerId: String, cricbuzzId: String? = null): String {
+                val base = "player/${playerId.encodeUrlSafe()}"
+                return if (cricbuzzId.isNullOrBlank()) base else "$base?cbId=${cricbuzzId.encodeUrlSafe()}"
+            }
 
             val arguments = listOf(
                 navArgument(ARG_PLAYER_ID) {
                     type = NavType.StringType
                     nullable = false
-                }
+                },
+                navArgument(ARG_CRICBUZZ_ID) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
             )
         }
     }
@@ -217,7 +245,8 @@ sealed class BouncerScreen(val route: String) {
          * Check if a route is a child of the "More" tab.
          */
         fun isMoreChildRoute(route: String?): Boolean {
-            return route in moreChildRoutes
+            // Compared without the query string: "search?tab={tab}" is Search.
+            return route?.substringBefore('?') in moreChildRoutes
         }
 
         /**

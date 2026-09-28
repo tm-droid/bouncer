@@ -10,24 +10,17 @@ import com.tanush.bouncer.data.local.entities.PlayerCacheEntity
 @Dao
 interface PlayerCacheDao {
     /**
-     * Substring search over the columns a user actually types.
+     * The columns search ranks on, for every cached profile.
      *
-     * This used to go through a `player_fts MATCH` subquery. That FTS table is declared `@Fts4`
-     * with no `contentEntity`, so Room creates it with no sync triggers — the triggers that
-     * populated it existed only inside MIGRATION_1_2, which a fresh install never runs. Every
-     * install created after schema v1 therefore searched a permanently empty index. The table
-     * holds at most a few hundred rows, so LIKE is both correct and cheap enough.
+     * Search scores these in memory (`SearchRepository.searchCachedPlayers`). It used to be a LIKE
+     * over name, country and team with `LIMIT 10` and no `ORDER BY`: rows were dropped before they
+     * were ranked, a typo matched nothing, and a country hit listed every player from it. Before
+     * that it went through a `player_fts MATCH` subquery whose table, declared `@Fts4` with no
+     * `contentEntity`, was never populated on any install created after schema v1.
+     * `statsJson` is left out; it is the one large column and search never reads it.
      */
-    @Query(
-        """
-        SELECT * FROM player_cache
-        WHERE name LIKE '%' || :query || '%'
-           OR country LIKE '%' || :query || '%'
-           OR teamName LIKE '%' || :query || '%'
-        LIMIT 10
-        """
-    )
-    suspend fun searchPlayers(query: String): List<PlayerCacheEntity>
+    @Query("SELECT name, teamName, role FROM player_cache")
+    suspend fun searchCorpus(): List<PlayerSearchRow>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(player: PlayerCacheEntity)
@@ -53,3 +46,6 @@ interface PlayerCacheDao {
     @Query("DELETE FROM player_cache WHERE lastUpdated < :before")
     suspend fun deleteOlderThan(before: Long)
 }
+
+/** The slice of [PlayerCacheEntity] search needs. */
+data class PlayerSearchRow(val name: String, val teamName: String, val role: String)

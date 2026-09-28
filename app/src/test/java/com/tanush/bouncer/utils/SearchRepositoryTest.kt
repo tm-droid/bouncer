@@ -202,7 +202,7 @@ class SearchRepositoryTest {
             currentBowler = bowler,
         )
         kotlinx.coroutines.runBlocking {
-            val results = SearchRepository.search("kohli", listOf(fakeMatch), emptyList(), emptyList())
+            val results = SearchRepository.search("kohli", listOf(fakeMatch), emptyList(), emptyList<String>())
             val playerCount = results.players.count { it.playerName == "Kohli" }
             assertEquals("Kohli should appear once even when in both roles", 1, playerCount)
         }
@@ -226,7 +226,7 @@ class SearchRepositoryTest {
             currentBowler = bowler,
         )
         kotlinx.coroutines.runBlocking {
-            val results = SearchRepository.search("bumrah", listOf(fakeMatch), emptyList(), emptyList())
+            val results = SearchRepository.search("bumrah", listOf(fakeMatch), emptyList(), emptyList<String>())
             assertTrue("Bumrah should be found via currentBowler", results.players.any { it.playerName == "Bumrah" })
         }
     }

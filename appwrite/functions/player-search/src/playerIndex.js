@@ -113,24 +113,103 @@ export async function buildIndex(log) {
 }
 
 /**
+ * Accent-folded, lowercased, punctuation-free, single-spaced.
+ *
+ * Mirrors `normalizeForSearch` in the app's `utils/SearchText.kt`. Both are pinned against
+ * `test/fixtures/search-normalization.json` — the device re-scores these results with its own
+ * scorer, so the two sides must agree on what a name is before they can agree on a ranking.
+ */
+export function normalizeForSearch(text) {
+  return String(text ?? "")
+    .normalize("NFD")
+    .replace(/\p{M}+/gu, "")
+    .toLowerCase()
+    .replace(/[.'’`]/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+/** Optimal-string-alignment distance: Levenshtein plus adjacent transposition ("kolhi"). */
+export function editDistance(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let prevPrev = new Array(b.length + 1).fill(0);
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  let curr = new Array(b.length + 1).fill(0);
+  for (let i = 1; i <= a.length; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let best = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        best = Math.min(best, prevPrev[j - 2] + 1);
+      }
+      curr[j] = best;
+    }
+    [prevPrev, prev, curr] = [prev, curr, prevPrev];
+  }
+  return prev[b.length];
+}
+
+/** Permitted edits for a query word: roughly one per three characters, at least one. */
+const editTolerance = (word) => Math.max(1, Math.ceil(word.length * 0.34));
+
+/**
+ * Every query word prefixes some name word ("kohli virat"), or — when [allowFuzzy] — is within its
+ * edit tolerance of one ("virat kolhi"). Returns the share of query characters that needed no
+ * correction (1 = all exact), or 0 when any word finds nothing.
+ */
+function tokenAgreement(tokens, words, allowFuzzy) {
+  let weighted = 0;
+  let total = 0;
+  for (const token of tokens) {
+    total += token.length;
+    if (words.some((w) => w.startsWith(token))) {
+      weighted += token.length;
+      continue;
+    }
+    if (!allowFuzzy) return 0;
+    const distance = Math.min(...words.map((w) => editDistance(token, w)));
+    if (distance > editTolerance(token)) return 0;
+    weighted += token.length * (1 - distance / token.length);
+  }
+  return weighted / total;
+}
+
+/**
  * Rank index entries against a query.
  *
- * Tiers mirror `SearchRepository.fuzzyMatchScore` on the device so the two agree on what "best
- * match" means — exact, then prefix, then any-word prefix, then substring. `scrapeProfile` takes
- * `first()`, so the ordering here decides which profile a player screen loads.
+ * Tiers mirror `SearchScore.of` on the device so the two agree on what "best match" means — exact,
+ * prefix, any-word prefix, every word a prefix in any order, substring, then typo-tolerant. The
+ * typo tier runs only when the exact tiers leave room under `limit`, so a query that already has
+ * ten real answers never pays for a distance scan. `scrapeProfile` takes `first()` when it has no
+ * id, so the ordering here decides which profile a name-only player screen loads.
  */
 export function rankPlayers(players, query, limit = 10) {
-  const q = query.trim().toLowerCase();
+  const q = normalizeForSearch(query);
   if (!q) return [];
+  const tokens = q.split(" ");
   const scored = [];
+  const unmatched = [];
   for (const p of players) {
-    const name = p.name.toLowerCase();
+    const name = normalizeForSearch(p.name);
+    const words = name.split(" ");
     let score = 0;
     if (name === q) score = 4;
     else if (name.startsWith(q)) score = 3;
-    else if (name.split(/[\s-]+/).some((w) => w.startsWith(q))) score = 2;
+    else if (words.some((w) => w.startsWith(q))) score = 2;
+    else if (tokens.length > 1 && tokenAgreement(tokens, words, false) === 1) score = 1.5;
     else if (name.includes(q)) score = 1;
     if (score > 0) scored.push({ p, score, len: name.length });
+    else unmatched.push({ p, words, len: name.length });
+  }
+  if (scored.length < limit) {
+    for (const { p, words, len } of unmatched) {
+      const agreement = tokenAgreement(tokens, words, true);
+      // Below 1: the exact tiers above already took every candidate that needed no correction.
+      if (agreement > 0) scored.push({ p, score: agreement * 0.5, len });
+    }
   }
   // Shorter names first within a tier: "Virat Kohli" should beat "Virat Kohli Jr" for "virat".
   scored.sort((a, b) => b.score - a.score || a.len - b.len || a.p.name.localeCompare(b.p.name));

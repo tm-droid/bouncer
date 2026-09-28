@@ -57,7 +57,7 @@
     <!-- ── Search ───────────────────────────────────────────────────────── -->
     <string name="search_error_title">Search interrupted</string>
     <string name="search_did_you_mean">Did you mean:\u0020</string>
-    <string name="search_recent_title">Recent Searches</string>
+    <string name="search_recent_title">Recent searches</string>
     <string name="search_trending_title">Trending</string>
     <string name="search_no_results_title">No results found</string>
     <string name="search_no_results_subtitle">Try a different search term</string>
@@ -70,6 +70,17 @@
     <string name="action_clear_short">Clear</string>
     <string name="cd_clear">Clear</string>
     <string name="cd_back">Back</string>
+    <string name="search_live_now_title">Live now</string>
+    <string name="search_tab_all">All</string>
+    <string name="search_see_all">See all (%1$d)</string>
+    <string name="search_players_searching">Searching all players…</string>
+    <string name="search_players_unavailable">Online player search is unavailable right now</string>
+    <string name="search_no_results_hint">Try a team code like RCB, a surname, or a competition like IPL 2026</string>
+    <plurals name="search_team_fixtures">
+        <item quantity="one">%1$s · %2$d match</item>
+        <item quantity="other">%1$s · %2$d matches</item>
+    </plurals>
+    <string name="cd_remove_recent">Remove %1$s from recent searches</string>
     <string name="search_placeholder">Search matches, players, teams, tournaments\u2026</string>
 
     <!-- ── Onboarding ───────────────────────────────────────────────────── -->

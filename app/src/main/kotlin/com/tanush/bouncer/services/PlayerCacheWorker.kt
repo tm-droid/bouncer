@@ -165,6 +165,16 @@ class PlayerCacheWorker(
         fun playerIdFor(playerName: String): String = playerName.lowercase().replace(" ", "_")
 
         /**
+         * The cache row for a player: their Cricbuzz id when the caller has one, else the name key.
+         *
+         * Name keys collide for two players who share a name, so a profile opened by id must not
+         * read or overwrite the name-keyed row — that is how the wrong player's stats would reach
+         * the right player's screen. Id-keyed rows are new rows; existing name-keyed ones stay.
+         */
+        fun cacheKeyFor(playerName: String, cricbuzzId: String?): String =
+            cricbuzzId?.takeIf { it.isNotBlank() }?.let { "cb_$it" } ?: playerIdFor(playerName)
+
+        /**
          * A cached profile for [playerName], from Room and then the shared Appwrite table.
          *
          * The same order this worker already uses, exposed so the profile screen can take it too.
@@ -177,8 +187,12 @@ class PlayerCacheWorker(
          * whose stats did not survive. A profile with a name and no figures is worse than a
          * scrape, so it is not offered as one.
          */
-        suspend fun cachedProfile(context: Context, playerName: String): PlayerProfile? {
-            val playerId = playerIdFor(playerName)
+        suspend fun cachedProfile(
+            context: Context,
+            playerName: String,
+            cricbuzzId: String? = null,
+        ): PlayerProfile? {
+            val playerId = cacheKeyFor(playerName, cricbuzzId)
             val dao = BouncerDatabase.getInstance(context).playerCacheDao()
             val local = dao.getById(playerId)
             if (local != null && System.currentTimeMillis() - local.lastUpdated < FRESH_MS) {

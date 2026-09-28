@@ -1,8 +1,10 @@
 package com.tanush.bouncer.data
 
 import androidx.annotation.VisibleForTesting
+import com.tanush.bouncer.utils.SearchScore
 import com.tanush.bouncer.utils.acronymFor
-import com.tanush.bouncer.utils.competitionAliasesFor
+import com.tanush.bouncer.utils.expandedSearchQueries
+import com.tanush.bouncer.utils.normalizeForSearch
 import android.content.Context
 import android.content.SharedPreferences
 import com.tanush.bouncer.models.CricketMatch
@@ -11,8 +13,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * SearchRepository — Aggregates search results across matches, teams, players, and news.
- * Supports fuzzy matching via Levenshtein distance for "did you mean?" suggestions.
+ * SearchRepository — Aggregates search results across matches, teams, players, series and news.
+ *
+ * Every comparison goes through [normalizeForSearch] and [SearchScore]; see there for the bands.
  * Persists recent search queries in SharedPreferences.
  */
 object SearchRepository {
@@ -20,18 +23,33 @@ object SearchRepository {
     private const val KEY_RECENT_QUERIES = "recent_queries"
     private const val MAX_RECENT_QUERIES = 10
 
-    // Score bands for fuzzyMatchScore. Each tier's floor sits above the next tier's ceiling, so the
-    // kind of match always dominates and coverage only orders candidates within a kind.
-    private const val PREFIX_MIN = 0.95        // target starts with query      → [0.95, 1.00]
-    private const val WORD_PREFIX_MIN = 0.85   // some word starts with query   → [0.85, 0.95)
-    private const val SUBSTRING_MIN = 0.70     // query appears somewhere       → [0.70, 0.85)
-    private const val FUZZY_MAX = 0.65         // within edit distance          → [0.00, 0.65]
-
-    /** Permitted edit distance as a fraction of query length — roughly one typo per three chars. */
-    private const val FUZZY_EDIT_RATIO = 0.34
-
     /** Candidates scanned by generateSuggestion before giving up, to bound the empty-results path. */
     private const val MAX_SUGGESTION_CANDIDATES = 200
+
+    private const val MIN_QUERY_LENGTH = 2
+    private const val MATCH_THRESHOLD = 0.3
+    private const val ENTITY_THRESHOLD = 0.4
+    private const val NEWS_THRESHOLD = 0.3
+
+    private const val MAX_MATCHES = 20
+    private const val MAX_TEAMS = 10
+    private const val MAX_PLAYERS = 10
+    private const val MAX_NEWS = 10
+    private const val MAX_SERIES = 10
+
+    // Secondary fields count for less than the thing a row is named by.
+    private const val SERIES_NAME_WEIGHT = 0.9
+    private const val MATCH_DESC_WEIGHT = 0.6
+    private const val VENUE_WEIGHT = 0.5
+    private const val NEWS_CONTEXT_WEIGHT = 0.8
+    private const val NEWS_INTRO_WEIGHT = 0.7
+    private const val STATUS_HIT_SCORE = 0.3
+
+    /**
+     * A series matched on its category alone ("international", "league"). Real, but it says
+     * nothing about which series, so it sits just above the entity threshold.
+     */
+    private const val CATEGORY_ONLY_SERIES_SCORE = 0.45
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Search Result Models
@@ -50,6 +68,8 @@ object SearchRepository {
             val teamAcronym: String,
             val logoUrl: String?,
             override val relevanceScore: Double,
+            /** Loaded fixtures this team plays in, so a row can say it has some. */
+            val fixtureCount: Int = 0,
         ) : SearchResult()
 
         data class PlayerResult(
@@ -58,6 +78,12 @@ object SearchRepository {
             val role: String,
             override val relevanceScore: Double,
             val imageUrl: String? = null,
+            /**
+             * Cricbuzz profile id, when a source carried one. The player screen opens this id
+             * directly; without it the screen can only re-search by name and take the first hit,
+             * which opens the wrong profile for two players who share a name.
+             */
+            val cricbuzzId: String? = null,
         ) : SearchResult()
 
         data class NewsResult(
@@ -92,9 +118,41 @@ object SearchRepository {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Known Teams (static list so search works even with no live matches loaded)
+    // Corpora
     // ═══════════════════════════════════════════════════════════════════════════
 
+    /**
+     * One searchable team. [acronym] is a *curated* code (TeamAcronyms.json or Cricbuzz's own
+     * short name) or null — never the computed initials, which would let "si" match every team
+     * whose words happen to start with S and I.
+     */
+    class TeamEntry(val name: String, val acronym: String?, val logoUrl: String? = null) {
+        internal val normalized = normalizeForSearch(name)
+        internal val normalizedAcronym = acronym?.let(::normalizeForSearch)?.takeIf { it.isNotEmpty() }
+    }
+
+    /** One searchable series. Names are normalised once, not on every keystroke. */
+    class SeriesEntry(
+        val seriesId: String,
+        val name: String,
+        val category: String,
+        val startDate: String,
+        val endDate: String,
+    ) {
+        internal val normalized = normalizeForSearch(name)
+        internal val normalizedCategory = normalizeForSearch(category)
+    }
+
+    /** One cached player profile. */
+    class PlayerEntry(val name: String, val teamName: String, val role: String) {
+        internal val normalized = normalizeForSearch(name)
+    }
+
+    /**
+     * Fallback team list for when `TeamAcronyms.json` could not be read — so search still finds
+     * the major sides on a device where the asset failed. The asset holds ~1,000 teams and is the
+     * real corpus.
+     */
     val KNOWN_CRICKET_TEAMS: List<String> = listOf(
         // International
         "India", "Australia", "England", "Pakistan", "South Africa",
@@ -102,7 +160,7 @@ object SearchRepository {
         "Afghanistan", "Ireland", "Netherlands", "Scotland", "Namibia",
         "Papua New Guinea", "UAE", "Nepal", "Oman", "USA",
         // IPL
-        "Mumbai Indians", "Chennai Super Kings", "Royal Challengers Bangalore",
+        "Mumbai Indians", "Chennai Super Kings", "Royal Challengers Bengaluru",
         "Kolkata Knight Riders", "Delhi Capitals", "Sunrisers Hyderabad",
         "Punjab Kings", "Rajasthan Royals", "Lucknow Super Giants",
         "Gujarat Titans",
@@ -119,147 +177,207 @@ object SearchRepository {
         "St Kitts and Nevis Patriots",
     )
 
+    /**
+     * Every team search knows: the teams in loaded matches first (they carry Cricbuzz's logo and
+     * short name), then the curated asset, then [KNOWN_CRICKET_TEAMS]. Deduplicated on the
+     * normalised name, first source wins.
+     */
+    fun buildTeamCorpus(
+        matches: List<CricketMatch>,
+        curatedAcronyms: Map<String, String>,
+    ): List<TeamEntry> {
+        val byName = LinkedHashMap<String, TeamEntry>()
+        fun add(entry: TeamEntry) {
+            if (entry.normalized.isNotEmpty()) byName.putIfAbsent(entry.normalized, entry)
+        }
+        matches.forEach { match ->
+            match.teams.forEach { team ->
+                val acronym = curatedAcronyms[team.name] ?: team.acronym.takeIf { it.isNotBlank() }
+                add(TeamEntry(team.name, acronym, team.logoUrl))
+            }
+        }
+        curatedAcronyms.forEach { (name, acronym) -> add(TeamEntry(name, acronym)) }
+        KNOWN_CRICKET_TEAMS.forEach { add(TeamEntry(it, null)) }
+        return byName.values.toList()
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // Search Logic
     // ═══════════════════════════════════════════════════════════════════════════
 
+    /** Names-only overload, kept for the ranking tests that predate the team corpus. */
+    @JvmName("searchByTeamNames")
     suspend fun search(
         query: String,
         matches: List<CricketMatch>,
         news: List<NewsArticleData>,
         teamNames: List<String>,
+    ): SearchResults = search(query, matches, news, teamNames.map { TeamEntry(it, null) })
+
+    /**
+     * In-memory search over everything already loaded. [favourites] only breaks ties — a
+     * favourite never outranks a better match, it wins between equals. [logoFor] fills logos for
+     * teams that came from the asset rather than a loaded match.
+     */
+    suspend fun search(
+        query: String,
+        matches: List<CricketMatch>,
+        news: List<NewsArticleData>,
+        teams: List<TeamEntry>,
+        favourites: Set<String> = emptySet(),
+        logoFor: (String) -> String? = { null },
     ): SearchResults = withContext(Dispatchers.Default) {
-        val q = query.trim().lowercase()
-        if (q.length < 2) return@withContext SearchResults()
+        val q = normalizeForSearch(query)
+        if (q.length < MIN_QUERY_LENGTH) return@withContext SearchResults()
 
-        // A query that is itself the exact name of a known entity is not a typo, so nothing should
-        // be fuzzy-corrected towards. "india" is two edits from "indies", the same distance
-        // "kholi" is from "kohli" — distance alone cannot separate them, but "did the user type a
-        // real team name?" can. Without this, searching a country with no current fixtures filled
-        // the Matches section with every West Indies game.
-        val queryIsExactEntity = teamNames.any { it.lowercase() == q }
+        // A query that is itself the exact name or code of a known team is not a typo, so nothing
+        // should be fuzzy-corrected towards it. "india" is two edits from "indies", the same
+        // distance "kholi" is from "kohli" — distance alone cannot separate them, but "did the user
+        // type a real team?" can. Without this, searching a country with no current fixtures
+        // filled the Matches section with every West Indies game.
+        val queryIsExactEntity = teams.any { it.normalized == q || it.normalizedAcronym == q }
+        val queries = expandedSearchQueries(q)
 
-        val matchResults = searchMatches(q, matches, allowFuzzy = !queryIsExactEntity)
-        val teamResults = searchTeams(q, teamNames, matches)
+        val matchResults = searchMatches(q, queries, matches, teams, !queryIsExactEntity, favourites)
+        val teamResults = searchTeams(q, teams, matches, favourites, logoFor)
         val playerResults = searchPlayers(q, matches)
         val newsResults = searchNews(q, news)
 
-        // Generate suggestion if no exact results
         val suggestion = if (matchResults.isEmpty() && teamResults.isEmpty() && playerResults.isEmpty()) {
-            generateSuggestion(q, teamNames, matches)
+            generateSuggestion(q, teams, matches)
         } else null
 
         SearchResults(
-            matches = matchResults.sortedByDescending { it.relevanceScore }.take(10),
-            teams = teamResults.sortedByDescending { it.relevanceScore }.take(5),
-            players = playerResults.sortedByDescending { it.relevanceScore }.take(10),
-            news = newsResults.sortedByDescending { it.relevanceScore }.take(5),
+            matches = matchResults.take(MAX_MATCHES),
+            teams = teamResults.take(MAX_TEAMS),
+            players = playerResults.sortedByDescending { it.relevanceScore }.take(MAX_PLAYERS),
+            news = newsResults.sortedByDescending { it.relevanceScore }.take(MAX_NEWS),
             suggestion = suggestion,
         )
     }
 
     /**
-     * Cached series matching [query], widened by [competitionAliasesFor] so an acronym finds the
-     * full name the corpus actually stores ("IPL" → "Indian Premier League 2026").
+     * Series ranked in memory over the whole cached corpus.
      *
-     * The alias terms are searched in order and the first non-empty result wins, so a query that
-     * matches literally is never displaced by its own expansion.
+     * This was a `LIKE … LIMIT 5` with no `ORDER BY`, so SQLite kept five arbitrary rows before
+     * anything was ranked, and a multi-word query only matched if it appeared contiguously in the
+     * stored name. The corpus is a few hundred rows; scoring all of them costs less than the
+     * debounce it runs behind.
      */
-    suspend fun searchSeriesFromDb(
-        query: String,
-        db: com.tanush.bouncer.data.local.BouncerDatabase,
-    ): AppResult<List<SearchResult.SeriesResult>> {
-        if (query.trim().length < 2) return AppResult.Success(emptyList())
-        return AppResult.runCatchingSuspend {
-            withContext(Dispatchers.IO) {
-                val (term, rows) = competitionAliasesFor(query)
-                    .firstNotNullOfOrNull { candidate ->
-                        db.seriesCacheDao().searchSeries(candidate)
-                            .takeIf { it.isNotEmpty() }
-                            ?.let { candidate to it }
-                    } ?: return@withContext emptyList()
-
-                // Score against the term that actually matched, not the raw query. "IPL" scores 0.0
-                // against "Indian Premier League 2026" at every tier, so scoring the raw query
-                // would rank the one result the alias table exists to find dead last.
-                val scoreAgainst = term.lowercase()
-                rows.map { entity ->
+    suspend fun searchSeries(query: String, corpus: List<SeriesEntry>): List<SearchResult.SeriesResult> =
+        withContext(Dispatchers.Default) {
+            val q = normalizeForSearch(query)
+            if (q.length < MIN_QUERY_LENGTH) return@withContext emptyList()
+            val queries = expandedSearchQueries(q)
+            corpus.mapNotNull { entry ->
+                val nameScore = queries.maxOf { SearchScore.of(it, entry.normalized) }
+                val categoryHit = entry.normalizedCategory.isNotEmpty() && entry.normalizedCategory.startsWith(q)
+                val score = maxOf(nameScore, if (categoryHit) CATEGORY_ONLY_SERIES_SCORE else 0.0)
+                if (score > ENTITY_THRESHOLD) {
                     SearchResult.SeriesResult(
-                        seriesId = entity.seriesId,
-                        name = entity.name,
-                        category = entity.category,
-                        startDate = entity.startDate,
-                        endDate = entity.endDate,
-                        // A flat 1.0 would put any LIKE hit — including a weak mid-string one —
-                        // level with an exact team name, and section order is decided by these now.
-                        relevanceScore = fuzzyMatchScore(scoreAgainst, entity.name.lowercase()),
+                        seriesId = entry.seriesId,
+                        name = entry.name,
+                        category = entry.category,
+                        startDate = entry.startDate,
+                        endDate = entry.endDate,
+                        relevanceScore = score,
                     )
-                }
+                } else null
             }
+                // Stable: equal scores keep the corpus order, which is newest-started first.
+                .sortedByDescending { it.relevanceScore }
+                .take(MAX_SERIES)
         }
-    }
 
-    suspend fun searchPlayersFromDb(
-        query: String,
-        db: com.tanush.bouncer.data.local.BouncerDatabase,
-    ): AppResult<List<SearchResult.PlayerResult>> {
-        val q = query.trim().lowercase()
-        if (q.length < 2) return AppResult.Success(emptyList())
-        return AppResult.runCatchingSuspend {
-            withContext(Dispatchers.IO) {
-                db.playerCacheDao().searchPlayers(query.trim()).map { entity ->
-                    SearchResult.PlayerResult(
-                        playerName = entity.name,
-                        teamName = entity.teamName,
-                        role = entity.role,
-                        // Real score, not a flat 1.0: the caller uses it to decide whether a local
-                        // hit is confident enough to skip the billed network lookup, and a LIKE
-                        // match on a substring is not evidence of that.
-                        relevanceScore = fuzzyMatchScore(q, entity.name.lowercase()),
-                    )
-                }
-            }
+    /**
+     * Cached player profiles, scored on the name alone.
+     *
+     * The old SQL also matched `country` and `teamName`, and nothing thresholded the result, so
+     * "india" listed every cached Indian player at a score of zero.
+     */
+    suspend fun searchCachedPlayers(query: String, corpus: List<PlayerEntry>): List<SearchResult.PlayerResult> =
+        withContext(Dispatchers.Default) {
+            val q = normalizeForSearch(query)
+            if (q.length < MIN_QUERY_LENGTH) return@withContext emptyList()
+            corpus.mapNotNull { entry ->
+                val score = SearchScore.of(q, entry.normalized)
+                if (score > ENTITY_THRESHOLD) {
+                    SearchResult.PlayerResult(entry.name, entry.teamName, entry.role, score)
+                } else null
+            }.sortedByDescending { it.relevanceScore }.take(MAX_PLAYERS)
         }
-    }
 
     private fun searchMatches(
-        query: String,
+        q: String,
+        queries: List<String>,
         matches: List<CricketMatch>,
-        allowFuzzy: Boolean = true,
+        teams: List<TeamEntry>,
+        allowFuzzy: Boolean,
+        favourites: Set<String>,
     ): List<SearchResult.MatchResult> {
-        return matches.mapNotNull { match ->
-            val titleScore = fuzzyMatchScore(query, match.matchTitle.lowercase(), allowFuzzy)
-            val team1Score = match.teams.getOrNull(0)?.let { fuzzyMatchScore(query, it.name.lowercase(), allowFuzzy) } ?: 0.0
-            val team2Score = match.teams.getOrNull(1)?.let { fuzzyMatchScore(query, it.name.lowercase(), allowFuzzy) } ?: 0.0
-            val venueScore = fuzzyMatchScore(query, match.venue.lowercase(), allowFuzzy) * 0.5
-            val statusScore = if (match.currentStatus.lowercase().contains(query)) 0.3 else 0.0
+        val acronymByName = teams.associate { it.normalized to it.normalizedAcronym }
+        return matches.distinctBy { it.id }.mapNotNull { match ->
+            val teamScore = match.teams.maxOfOrNull { team ->
+                val name = normalizeForSearch(team.name)
+                val acronym = acronymByName[name] ?: normalizeForSearch(team.acronym)
+                if (acronym == q) SearchScore.ACRONYM else SearchScore.of(q, name, allowFuzzy)
+            } ?: 0.0
+            val titleScore = SearchScore.of(q, normalizeForSearch(match.matchTitle), allowFuzzy)
+            // Alias-expanded, so "ipl" finds every IPL fixture by its series name.
+            val seriesName = normalizeForSearch(match.seriesName)
+            val seriesScore = queries.maxOf { SearchScore.of(it, seriesName, allowFuzzy) } * SERIES_NAME_WEIGHT
+            val descScore = SearchScore.of(q, normalizeForSearch(match.matchDesc), allowFuzzy) * MATCH_DESC_WEIGHT
+            val venueScore = SearchScore.of(q, normalizeForSearch(match.venue), allowFuzzy) * VENUE_WEIGHT
+            val statusScore = if (normalizeForSearch(match.currentStatus).contains(q)) STATUS_HIT_SCORE else 0.0
 
-            val best = maxOf(titleScore, team1Score, team2Score, venueScore, statusScore)
-            if (best > 0.3) SearchResult.MatchResult(match, best) else null
-        }
+            val best = maxOf(teamScore, titleScore, seriesScore, descScore, venueScore, statusScore)
+            if (best > MATCH_THRESHOLD) SearchResult.MatchResult(match, best) else null
+        }.sortedWith(
+            compareByDescending<SearchResult.MatchResult> { it.relevanceScore }
+                .thenBy { stateRank(it.match) }
+                .thenByDescending { r -> r.match.teams.any { it.name in favourites } }
+        )
+    }
+
+    /** Live before upcoming before finished, among equally relevant matches. */
+    private fun stateRank(match: CricketMatch): Int = when {
+        match.isLive -> 0
+        match.isUpcoming -> 1
+        else -> 2
     }
 
     private fun searchTeams(
-        query: String,
-        teamNames: List<String>,
+        q: String,
+        teams: List<TeamEntry>,
         matches: List<CricketMatch>,
+        favourites: Set<String>,
+        logoFor: (String) -> String?,
     ): List<SearchResult.TeamResult> {
-        val logoUrlMap = buildMap<String, String?> {
-            matches.forEach { m -> m.teams.forEach { put(it.name.lowercase(), it.logoUrl) } }
-        }
-        return teamNames.mapNotNull { team ->
-            val score = fuzzyMatchScore(query, team.lowercase())
-            if (score > 0.4) {
-                // Shared with TeamAcronymManager. This file used to carry a second, incompatible
-                // initials algorithm that took every word including "of"/"Cricket" and imposed no
-                // length cap, so the same team abbreviated differently here than everywhere else.
-                val acronym = acronymFor(team)
-                SearchResult.TeamResult(team, acronym, logoUrlMap[team.lowercase()], score)
-            } else null
-        }
+        val loadedTeams = matches.distinctBy { it.id }.flatMap { it.teams }
+        val fixtures = loadedTeams.groupingBy { normalizeForSearch(it.name) }.eachCount()
+        val matchLogos = loadedTeams.filter { it.logoUrl != null }
+            .associate { normalizeForSearch(it.name) to it.logoUrl }
+        return teams.mapNotNull { team ->
+            val nameScore = SearchScore.of(q, team.normalized)
+            val score = if (team.normalizedAcronym == q) maxOf(nameScore, SearchScore.ACRONYM) else nameScore
+            if (score <= ENTITY_THRESHOLD) return@mapNotNull null
+            SearchResult.TeamResult(
+                teamName = team.name,
+                // Shared with TeamAcronymManager's fallback, so a team with no curated code still
+                // abbreviates the same way here as everywhere else.
+                teamAcronym = team.acronym ?: acronymFor(team.name),
+                logoUrl = team.logoUrl ?: matchLogos[team.normalized] ?: logoFor(team.name),
+                relevanceScore = score,
+                fixtureCount = fixtures[team.normalized] ?: 0,
+            )
+        }.sortedWith(
+            compareByDescending<SearchResult.TeamResult> { it.relevanceScore }
+                .thenByDescending { it.teamName in favourites }
+                .thenByDescending { it.fixtureCount }
+        )
     }
 
-    private fun searchPlayers(query: String, matches: List<CricketMatch>): List<SearchResult.PlayerResult> {
+    private fun searchPlayers(q: String, matches: List<CricketMatch>): List<SearchResult.PlayerResult> {
         data class Candidate(val name: String, val team: String, val role: String)
 
         return matches
@@ -275,19 +393,20 @@ object SearchRepository {
                 )
                 batsmen + bowler
             }
-            .distinctBy { it.name.lowercase() }
+            .distinctBy { normalizeForSearch(it.name) }
             .mapNotNull { c ->
-                val score = fuzzyMatchScore(query, c.name.lowercase())
-                if (score > 0.4) SearchResult.PlayerResult(c.name, c.team, c.role, score) else null
+                val score = SearchScore.of(q, normalizeForSearch(c.name))
+                if (score > ENTITY_THRESHOLD) SearchResult.PlayerResult(c.name, c.team, c.role, score) else null
             }
     }
 
-    private fun searchNews(query: String, news: List<NewsArticleData>): List<SearchResult.NewsResult> {
+    private fun searchNews(q: String, news: List<NewsArticleData>): List<SearchResult.NewsResult> {
         return news.mapNotNull { article ->
-            val titleScore = fuzzyMatchScore(query, article.headline.lowercase())
-            val descScore = fuzzyMatchScore(query, article.intro.lowercase()) * 0.7
-            val best = maxOf(titleScore, descScore)
-            if (best > 0.3) SearchResult.NewsResult(article, best) else null
+            val titleScore = SearchScore.of(q, normalizeForSearch(article.headline))
+            val contextScore = SearchScore.of(q, normalizeForSearch(article.context.orEmpty())) * NEWS_CONTEXT_WEIGHT
+            val introScore = SearchScore.of(q, normalizeForSearch(article.intro)) * NEWS_INTRO_WEIGHT
+            val best = maxOf(titleScore, contextScore, introScore)
+            if (best > NEWS_THRESHOLD) SearchResult.NewsResult(article, best) else null
         }
     }
 
@@ -296,65 +415,13 @@ object SearchRepository {
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * Agreement between a query and a candidate string, 0–1.
-     *
-     * Four tiers, ordered strongest first, each occupying its own band so a weaker kind of match can
-     * never outrank a stronger one. Within a band the score varies with how much of the target the
-     * query covers, which is what makes the ranking meaningful: `"in"` now orders India (0.97) above
-     * West Indies (0.87) above Sunrisers Hyderabad (0.71).
-     *
-     * Previously `if (target.contains(query)) return 1.0` came first, so every substring hit tied at
-     * exactly 1.0 and `sortedByDescending` degraded to arbitrary input order. It also made the
-     * `startsWith` 0.95 tier below it unreachable — `startsWith` implies `contains`.
-     *
-     * [allowFuzzy] switches off the last tier only. The three exact tiers above it are always on;
-     * callers disable the fuzzy tier when the query is known to be a real entity name rather than
-     * something worth correcting.
-     */
-    /**
-     * [fuzzyMatchScore] for tests. Exposed because the scoring is what section ordering and the
-     * acronym path both hinge on, and both bugs it guards were invisible from the public API.
+     * [SearchScore.of] over normalised text, for tests. Exposed because the scoring is what
+     * section ordering and the acronym path both hinge on, and both bugs it guards were invisible
+     * from the public API.
      */
     @VisibleForTesting
-    internal fun relevanceOf(query: String, target: String): Double = fuzzyMatchScore(query, target)
-
-    private fun fuzzyMatchScore(query: String, target: String, allowFuzzy: Boolean = true): Double {
-        if (query.isEmpty() || target.isEmpty()) return 0.0
-        val coverage = (query.length.toDouble() / target.length).coerceIn(0.0, 1.0)
-
-        if (target.startsWith(query)) {
-            // An exact equality has coverage 1.0 and so lands on exactly 1.0.
-            return PREFIX_MIN + (1.0 - PREFIX_MIN) * coverage
-        }
-
-        val words = target.split(" ", "-", "_")
-        if (words.any { it.startsWith(query) }) {
-            return WORD_PREFIX_MIN + (PREFIX_MIN - WORD_PREFIX_MIN) * coverage
-        }
-
-        val index = target.indexOf(query)
-        if (index >= 0) {
-            // A match late in the string is weaker evidence than one near the front.
-            val position = 1.0 - index.toDouble() / target.length
-            return SUBSTRING_MIN + (WORD_PREFIX_MIN - SUBSTRING_MIN) * coverage * position
-        }
-
-        return if (allowFuzzy) fuzzyWordScore(query, words) else 0.0
-    }
-
-    /**
-     * Levenshtein tier.
-     *
-     * The tolerance is proportional to the query length rather than a flat 3 edits: three edits on a
-     * two-character query is not a typo, it is a different word, and `"in"` used to fuzzy-match
-     * `"won"`.
-     */
-    private fun fuzzyWordScore(query: String, words: List<String>): Double {
-        val minDistance = words.minOfOrNull { levenshteinDistance(query, it) } ?: return 0.0
-        if (minDistance > editTolerance(query)) return 0.0
-        val ratio = 1.0 - minDistance.toDouble() / query.length
-        return (ratio * FUZZY_MAX).coerceIn(0.0, FUZZY_MAX)
-    }
+    internal fun relevanceOf(query: String, target: String): Double =
+        SearchScore.of(normalizeForSearch(query), normalizeForSearch(target))
 
     /** Levenshtein distance between two strings. Two-row DP: O(min(m,n)) space. */
     internal fun levenshteinDistance(a: String, b: String): Int {
@@ -380,9 +447,8 @@ object SearchRepository {
     /**
      * "Did you mean…" for the empty-results path.
      *
-     * This runs on **every keystroke** once a query stops matching anything, and used to compute a
-     * full Levenshtein against every team name *and* every match title with no prefilter and no
-     * early exit. Three bounds fix that without changing which suggestion wins:
+     * This runs on **every keystroke** once a query stops matching anything. Three bounds keep it
+     * cheap without changing which suggestion wins:
      *  - a length prefilter, since a candidate whose length differs by more than the tolerance
      *    cannot possibly be within it (length difference is a lower bound on edit distance);
      *  - an early exit on an exact hit, which cannot be beaten;
@@ -390,21 +456,19 @@ object SearchRepository {
      */
     private fun generateSuggestion(
         query: String,
-        teamNames: List<String>,
+        teams: List<TeamEntry>,
         matches: List<CricketMatch>,
     ): String? {
-        val maxDist = editTolerance(query)
-        // Team names first: they are the higher-value suggestions and there are few of them. The
-        // length prefilter is exact, not heuristic — the difference in lengths is a lower bound on
-        // the edit distance, so a candidate it rejects could never have been within tolerance.
-        val candidates = (teamNames.asSequence() + matches.asSequence().map { it.matchTitle })
+        val maxDist = SearchScore.editTolerance(query)
+        // Team names first: they are the higher-value suggestions.
+        val candidates = (teams.asSequence().map { it.name } + matches.asSequence().map { it.matchTitle })
             .filter { kotlin.math.abs(it.length - query.length) <= maxDist }
             .take(MAX_SUGGESTION_CANDIDATES)
 
         var bestCandidate: String? = null
         var bestDist = maxDist + 1
         for (candidate in candidates) {
-            val dist = levenshteinDistance(query, candidate.lowercase())
+            val dist = SearchScore.editDistance(query, normalizeForSearch(candidate))
             if (dist < bestDist) {
                 bestDist = dist
                 bestCandidate = candidate
@@ -413,10 +477,6 @@ object SearchRepository {
         }
         return bestCandidate
     }
-
-    /** Permitted edit distance for [query], proportional to its length with a floor of one. */
-    private fun editTolerance(query: String): Int =
-        maxOf(1, kotlin.math.ceil(query.length * FUZZY_EDIT_RATIO).toInt())
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Search History
@@ -430,24 +490,45 @@ object SearchRepository {
 
     fun addRecentQuery(context: Context, query: String) {
         val trimmed = query.trim()
-        if (trimmed.length < 2) return
+        if (trimmed.length < MIN_QUERY_LENGTH) return
         val current = getRecentQueries(context).toMutableList()
-        current.remove(trimmed)
+        current.removeAll { it.equals(trimmed, ignoreCase = true) }
         current.add(0, trimmed)
-        val limited = current.take(MAX_RECENT_QUERIES)
-        getPrefs(context).edit().putString(KEY_RECENT_QUERIES, limited.joinToString("|||")).apply()
+        saveRecentQueries(context, current.take(MAX_RECENT_QUERIES))
+    }
+
+    fun removeRecentQuery(context: Context, query: String) {
+        saveRecentQueries(context, getRecentQueries(context).filterNot { it == query })
     }
 
     fun clearRecentQueries(context: Context) {
         getPrefs(context).edit().remove(KEY_RECENT_QUERIES).apply()
     }
 
+    private fun saveRecentQueries(context: Context, queries: List<String>) {
+        getPrefs(context).edit().putString(KEY_RECENT_QUERIES, queries.joinToString("|||")).apply()
+    }
+
     private fun getPrefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Trending / Popular Searches
+    // Suggestions before typing
     // ═══════════════════════════════════════════════════════════════════════════
+
+    private const val MAX_LIVE_SUGGESTIONS = 8
+
+    /**
+     * What is on right now: the series of live matches, then their teams. Replaces a fixed list
+     * that suggested "Champions Trophy" and "Ashes" whatever was actually being played.
+     */
+    fun liveSuggestions(matches: List<CricketMatch>): List<String> {
+        val live = matches.filter { it.isLive }
+        return (live.map { it.seriesName } + live.flatMap { m -> m.teams.map { it.name } })
+            .filter { it.isNotBlank() }
+            .distinctBy { normalizeForSearch(it) }
+            .take(MAX_LIVE_SUGGESTIONS)
+    }
 
     fun getTrendingSearches(): List<String> = listOf(
         "India", "Australia", "IPL", "World Cup", "Virat Kohli",

@@ -152,14 +152,21 @@ object PlayerProfileScraper {
 
     /**
      * Scrape full player profile and stats from CricBuzz.
+     *
+     * With a [cricbuzzId] — which search now carries through — the profile page is fetched
+     * directly. Without one the name is searched and the first hit taken, which for two players
+     * who share a name is whichever the index happens to list first.
      */
-    suspend fun scrapeProfile(playerName: String): PlayerProfile? = withContext(Dispatchers.IO) {
+    suspend fun scrapeProfile(
+        playerName: String,
+        cricbuzzId: String? = null,
+    ): PlayerProfile? = withContext(Dispatchers.IO) {
         breadcrumb("network.player_profile", "Scraping profile for: $playerName")
 
         var lastException: Exception? = null
 
         for (attempt in 1..MAX_RETRIES) {
-            val outcome = attemptScrape(playerName)
+            val outcome = attemptScrape(playerName, cricbuzzId?.takeIf { it.isNotBlank() })
             when (outcome) {
                 is ScrapeOutcome.Success -> return@withContext outcome.profile
                 is ScrapeOutcome.NotFound -> return@withContext null
@@ -183,9 +190,10 @@ object PlayerProfileScraper {
         data class Fatal(val error: Exception) : ScrapeOutcome()
     }
 
-    private suspend fun attemptScrape(playerName: String): ScrapeOutcome {
+    private suspend fun attemptScrape(playerName: String, cricbuzzId: String?): ScrapeOutcome {
         return try {
-            val bestMatch = searchPlayers(playerName).firstOrNull()
+            val bestMatch = cricbuzzId?.let { PlayerSearchResult(id = it, name = playerName, country = "") }
+                ?: searchPlayers(playerName).firstOrNull()
                 ?: return ScrapeOutcome.NotFound
 
             val profileUrl = buildProfileUrl(bestMatch)

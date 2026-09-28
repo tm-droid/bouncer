@@ -27,9 +27,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,6 +59,8 @@ import com.tanush.bouncer.ui.components.v2.TextTabBarV2
 import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
+private val SERIES_FILTER_OPTIONS = listOf("All", "International", "League", "Domestic", "Women")
+
 /**
  * Screen showing a list of active cricket series/tournaments.
  */
@@ -66,10 +70,9 @@ fun SeriesListScreen(
     viewModel: SeriesListViewModel = viewModel(),
     // Null on the Series tab, which has no back destination.
     onBackClick: (() -> Unit)? = null,
+    onSearchClick: (() -> Unit)? = null,
 ) {
     val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
 
     val allSeries by viewModel.series.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -80,11 +83,20 @@ fun SeriesListScreen(
 
     val filteredSeries = filterSeries(allSeries, selectedFilter)
 
-    val filterOptions = listOf("All", "International", "League", "Domestic", "Women")
-
     Scaffold(
         topBar = {
-            BouncerTopBarV2(title = stringResource(R.string.series_series), showBack = onBackClick != null, onBack = onBackClick)
+            BouncerTopBarV2(
+                title = stringResource(R.string.series_series),
+                showBack = onBackClick != null,
+                onBack = onBackClick,
+                actions = {
+                    if (onSearchClick != null) {
+                        IconButton(onClick = onSearchClick) {
+                            Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.cd_search))
+                        }
+                    }
+                },
+            )
         },
         containerColor = colors.background,
     ) { innerPadding ->
@@ -111,7 +123,7 @@ fun SeriesListScreen(
                 hasError = hasError,
                 allSeries = allSeries,
                 filteredSeries = filteredSeries,
-                filterOptions = filterOptions,
+                filterOptions = SERIES_FILTER_OPTIONS,
                 selectedFilter = selectedFilter,
                 onFilterSelected = { selectedFilter = it },
                 onSeriesClick = onSeriesClick,

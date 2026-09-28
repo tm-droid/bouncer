@@ -102,6 +102,14 @@ class LiveActivityViewModel(
     private val _allMatchesForHome = MutableStateFlow<List<CricketMatch>>(emptyList())
     val allMatchesForHome: StateFlow<List<CricketMatch>> = _allMatchesForHome.asStateFlow()
 
+    /**
+     * Every cached match across Live, Upcoming and Recent, with no filter applied. Search reads
+     * this: it used to get [currentMatches], which Home's status, type and gender filters had
+     * already narrowed, so a women's match or last week's result was unfindable from the wrong tab.
+     */
+    private val _allMatches = MutableStateFlow<List<CricketMatch>>(emptyList())
+    val allMatches: StateFlow<List<CricketMatch>> = _allMatches.asStateFlow()
+
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -434,6 +442,30 @@ class LiveActivityViewModel(
         }
 
         updateHomeMatches()
+        val all = matchesForStatus(cachedMatches, STATUS_ALL).orEmpty()
+        if (_allMatches.value != all) _allMatches.value = all
+    }
+
+    /**
+     * Fetches whichever of Live, Upcoming and Recent has not been loaded yet, so search can find a
+     * match on a status Home never opened. Each fetch is the same cached, single-flight path the
+     * tabs use, so an already-warm status costs nothing.
+     */
+    fun warmAllStatuses() {
+        val missing = FETCHABLE_STATUSES.filterNot(cachedMatches::containsKey)
+        if (missing.isEmpty()) return
+        viewModelScope.launch(bouncerExceptionHandler) {
+            missing.forEach { status ->
+                try {
+                    updateMatches(status)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Search still has whatever else is loaded; the tabs report their own failures.
+                    breadcrumb("search.warm", "Could not warm $status: ${e.message}")
+                }
+            }
+        }
     }
 
     private fun updateHomeMatches() {

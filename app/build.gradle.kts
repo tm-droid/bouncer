@@ -246,6 +246,15 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
         inputs.files(rootProject.file("tools/update_logos.py"))
             .withPropertyName("teamLogoSyncParitySource")
             .withPathSensitivity(PathSensitivity.RELATIVE)
+
+        // SearchNormalizationParityTest pins the app's normalizeForSearch to the fixture that
+        // player-search's own test pins its JS copy to. Same reasoning: undeclared, an edit to the
+        // fixture leaves the task UP-TO-DATE and only one side ever gets checked against it.
+        inputs.files(
+            rootProject.file("appwrite/functions/player-search/test/fixtures/search-normalization.json"),
+        )
+            .withPropertyName("searchNormalizationParityFixture")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
     }
 
     // MigrationTestHelper loads the exported Room schemas from the instrumentation APK's assets.

@@ -668,9 +668,30 @@ offline, and replaced the list with an error screen on any failure. `PlayerDetai
 disagreed with search about the same player and the global cache bought the one screen that shows a
 profile nothing at all. `statsJson` had no reader until `deserializeStats` existed.
 
+**Search ranks in memory over what the app already holds, and it carries the Cricbuzz id.**
+Every comparison goes through `normalizeForSearch` + `SearchScore.of` (`utils/SearchText.kt`):
+accent-folded, punctuation-free, and word by word for multi-word queries, with
+optimal-string-alignment distance so a swapped pair ("kolhi") is one edit. The corpora are
+`LiveActivityViewModel.allMatches` (every cached status, **not** `currentMatches`, which Home's
+filters had already narrowed), `TeamAcronymManager.allTeams()` (~1,000 curated sides and their codes;
+a query equal to a curated code scores `ACRONYM` and counts as an exact entity, so "mi" is not
+fuzzy-corrected), all of `series_cache` and the name columns of `player_cache` — loaded once per
+screen by `SearchCorpusLoader` and ranked in Kotlin. The DAOs' `LIKE … LIMIT 5/10` searches had no
+`ORDER BY`, dropped rows before ranking, and matched a player on `country`, so "india" listed every
+cached Indian player; do not reintroduce SQL-side search. `expandedSearchQueries` expands competition
+acronyms per word ("ipl 2026"). Network players are re-scored by the device (`mergePlayers`) instead
+of a flat 0.9, keep their `cricbuzzId`, and the player route carries it (`player/{name}?cbId=`):
+`scrapeProfile` then skips the name search whose `first()` opened the wrong profile for two players
+who share a name, and the cache row is `cb_{id}` so a name-keyed row cannot mask the right player.
+The server's `rankPlayers` mirrors the same normalisation and typo tier; both are pinned to
+`player-search/test/fixtures/search-normalization.json` by `SearchNormalizationParityTest` and the
+function's own test. A score tick re-runs only the local leg (`onSourcesChanged`) — never the billed
+player lookup.
+
 **Cross-language rules are pinned, not commented.** `LlmJsVendorParityTest` (llm.js),
 `NextFlightVendorParityTest` (nextflight.js), `WinProbJsVendorParityTest` (winprob.js),
-`SeriesClassificationParityTest` (`SeriesClassification.kt` ↔ `series.js`) and
+`SeriesClassificationParityTest` (`SeriesClassification.kt` ↔ `series.js`),
+`SearchNormalizationParityTest` (`normalizeForSearch` ↔ `player-search`'s, via a shared fixture) and
 `MatchStatusParityTest` (all three classifier lists, Kotlin ↔ `matchstate.js`, plus `cricbuzz.js`'s
 copy of the terminal one). Every one of those files is declared via `inputs.files(...)` in
 `app/build.gradle.kts`; undeclared, an edit outside the module leaves the test task UP-TO-DATE and

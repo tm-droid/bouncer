@@ -7,7 +7,7 @@ import java.io.IOException
 import io.sentry.Sentry
 
 object TeamAcronymManager {
-    private var acronyms: Map<String, String> = emptyMap()
+    @Volatile private var acronyms: Map<String, String> = emptyMap()
 
     fun initialize(context: Context) {
         try {
@@ -17,6 +17,9 @@ object TeamAcronymManager {
             Sentry.captureException(e)
         }
     }
+
+    /** Every curated team, name to code. Search's team corpus: ~1,000 sides, not the 51 it hardcoded. */
+    fun allTeams(): Map<String, String> = acronyms
 
     fun getAcronym(teamName: String): String {
         try {

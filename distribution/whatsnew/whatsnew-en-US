@@ -1,7 +1,5 @@
-Match alerts now arrive. Tap the bell on a match to pick wickets, boundaries, milestones, start, result and the live score card.
+Search finds far more. Team codes like RCB and CSK work, a typo like "virat kolhi" still finds the player, and "IPL 2026" finds the season. Every match is searchable whatever Home's filter is set to, along with about 1,000 teams and every series.
 
-Series pages have real Schedule and Stats tabs, and a Past view. Back from a match returns to its series.
+Tapping a player opens that exact player, even when two share a name.
 
-More drops the Stats, Trophies, Achievements and Activity tiles, which only showed sample data.
-
-Faster, steadier startup, and more balls get written commentary instead of the raw feed.
+Results update as scores change, show what matched, and Series and News have their own search button.

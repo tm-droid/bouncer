@@ -9,7 +9,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -35,6 +40,7 @@ import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.viewmodels.NewsViewModel
+import com.tanush.bouncer.viewmodels.StaleHeadlines
 
 /**
  * NewsScreenV2 — News tab with featured article hero + list.
@@ -43,6 +49,7 @@ import com.tanush.bouncer.viewmodels.NewsViewModel
 fun NewsScreenV2(
     viewModel: NewsViewModel,
     onArticleClick: (NewsArticleData) -> Unit,
+    onSearchClick: (() -> Unit)? = null,
 ) {
     val articles by viewModel.articles.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -51,11 +58,6 @@ fun NewsScreenV2(
     val staleHeadlines by viewModel.staleHeadlines.collectAsStateWithLifecycle()
 
     val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-
-    val featuredArticle = articles.firstOrNull()
-    val otherArticles = if (articles.size > 1) articles.drop(1) else emptyList()
 
     // Refresh failed while headlines are on screen: keep the stale list, say so.
     val snackbarHostState = remember { SnackbarHostState() }
@@ -66,7 +68,7 @@ fun NewsScreenV2(
     }
 
     Scaffold(
-        topBar = { BouncerTopBarV2(title = stringResource(R.string.news_news)) },
+        topBar = { NewsTopBar(onSearchClick) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = colors.background,
     ) { innerPadding ->
@@ -75,81 +77,102 @@ fun NewsScreenV2(
             onRefresh = { viewModel.refreshNews() },
             modifier = Modifier.padding(innerPadding),
         ) {
+            val spacing = BouncerThemeV2.spacing
+            val emptySubtitle = stringResource(R.string.news_pull_down_to_refresh_and_try)
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(vertical = spacing.md),
                 verticalArrangement = Arrangement.spacedBy(spacing.sm),
             ) {
-                // Loading
-                if (isLoading && articles.isEmpty()) {
-                    items(4, key = { "shimmer_$it" }) {
-                        ShimmerMatchCard(
-                            modifier = Modifier.padding(horizontal = spacing.lg),
-                        )
-                    }
-                    return@LazyColumn
-                }
-
-                // Empty or error state.
-                //
-                // The message comes straight from the ViewModel, which builds it from the HTTP
-                // status. This used to re-derive it by substring-matching the message for "403"
-                // and "429" — codes the repository had already collapsed into one fixed string,
-                // so every failure rendered as "Something went wrong". Retry is offered in BOTH
-                // branches: an empty tab with no way out was this bug's most visible symptom.
-                if (articles.isEmpty() && !isLoading) {
-                    item(key = "empty") {
-                        val error = error // capture delegated property to enable smart cast
-                        EmptyStateV2(
-                            title = error ?: "No news yet",
-                            subtitle = stringResource(R.string.news_pull_down_to_refresh_and_try),
-                            onRetry = { viewModel.refreshNews() },
-                        )
-                    }
-                    return@LazyColumn
-                }
-
-                // Headlines are the server's cache because the live source was unreachable. Say
-                // how old they are — presenting them as current is the failure this replaces.
-                staleHeadlines?.let { stale ->
-                    item(key = "stale_banner") {
-                        StaleHeadlinesBanner(
-                            ageMs = stale.ageMs,
-                            modifier = Modifier.padding(horizontal = spacing.lg),
-                        )
-                    }
-                }
-
-                // Featured article (hero card)
-                if (featuredArticle != null) {
-                    item(key = "featured_${featuredArticle.id}") {
-                        FeaturedNewsCard(
-                            article = featuredArticle,
-                            onClick = { onArticleClick(featuredArticle) },
-                            modifier = Modifier.padding(horizontal = spacing.lg),
-                        )
-                    }
-                }
-
-                // Regular article list
-                items(otherArticles, key = { "article_${it.id}" }) { article ->
-                    NewsCardV2(
-                        headline = article.headline,
-                        source = article.source,
-                        timeAgo = article.timeAgo,
-                        imageUrl = article.imageUrl,
-                        onClick = { onArticleClick(article) },
-                        modifier = Modifier.padding(horizontal = spacing.lg),
-                    )
-                }
-
-                // Bottom spacing
-                item(key = "bottom_spacer") {
-                    Spacer(Modifier.height(80.dp))
-                }
+                newsItems(
+                    state = NewsListState(articles, isLoading, error, staleHeadlines),
+                    emptySubtitle = emptySubtitle,
+                    rowPadding = Modifier.padding(horizontal = spacing.lg),
+                    onArticleClick = onArticleClick,
+                    onRetry = { viewModel.refreshNews() },
+                )
             }
         }
     }
+}
+
+@Composable
+private fun NewsTopBar(onSearchClick: (() -> Unit)?) {
+    BouncerTopBarV2(
+        title = stringResource(R.string.news_news),
+        actions = {
+            if (onSearchClick != null) {
+                IconButton(onClick = onSearchClick) {
+                    Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.cd_search))
+                }
+            }
+        },
+    )
+}
+
+/** Everything the news list renders from, as one value. */
+private class NewsListState(
+    val articles: List<NewsArticleData>,
+    val isLoading: Boolean,
+    val error: String?,
+    val staleHeadlines: StaleHeadlines?,
+)
+
+private fun LazyListScope.newsItems(
+    state: NewsListState,
+    emptySubtitle: String,
+    rowPadding: Modifier,
+    onArticleClick: (NewsArticleData) -> Unit,
+    onRetry: () -> Unit,
+) {
+    val articles = state.articles
+
+    // Loading
+    if (state.isLoading && articles.isEmpty()) {
+        items(4, key = { "shimmer_$it" }) { ShimmerMatchCard(modifier = rowPadding) }
+        return
+    }
+
+    // Empty or error state.
+    //
+    // The message comes straight from the ViewModel, which builds it from the HTTP status. This
+    // used to re-derive it by substring-matching the message for "403" and "429" — codes the
+    // repository had already collapsed into one fixed string, so every failure rendered as
+    // "Something went wrong". Retry is offered in BOTH branches: an empty tab with no way out was
+    // this bug's most visible symptom.
+    if (articles.isEmpty()) {
+        item(key = "empty") {
+            EmptyStateV2(title = state.error ?: "No news yet", subtitle = emptySubtitle, onRetry = onRetry)
+        }
+        return
+    }
+
+    // Headlines are the server's cache because the live source was unreachable. Say how old they
+    // are — presenting them as current is the failure this replaces.
+    state.staleHeadlines?.let { stale ->
+        item(key = "stale_banner") { StaleHeadlinesBanner(ageMs = stale.ageMs, modifier = rowPadding) }
+    }
+
+    // Featured article (hero card)
+    val featuredArticle = articles.first()
+    item(key = "featured_${featuredArticle.id}") {
+        FeaturedNewsCard(article = featuredArticle, onClick = { onArticleClick(featuredArticle) }, modifier = rowPadding)
+    }
+
+    // Regular article list
+    items(articles.drop(1), key = { "article_${it.id}" }) { article ->
+        NewsCardV2(
+            headline = article.headline,
+            source = article.source,
+            timeAgo = article.timeAgo,
+            imageUrl = article.imageUrl,
+            onClick = { onArticleClick(article) },
+            modifier = rowPadding,
+        )
+    }
+
+    // Bottom spacing
+    item(key = "bottom_spacer") { Spacer(Modifier.height(80.dp)) }
 }
 
 /**

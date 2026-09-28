@@ -53,3 +53,31 @@ fun competitionAliasesFor(query: String): List<String> {
     val expansions = COMPETITION_ALIASES[normalized].orEmpty()
     return (listOf(query.trim()) + expansions).distinct()
 }
+
+private val NORMALIZED_ALIASES: Map<String, List<String>> =
+    COMPETITION_ALIASES.entries.associate { (key, values) ->
+        normalizeForSearch(key) to values.map(::normalizeForSearch)
+    }
+
+/**
+ * [competitionAliasesFor] for an already-normalised query, expanded word by word as well as whole.
+ *
+ * The whole-query form only fired when the query *was* the acronym, so "ipl 2026" — how anyone
+ * looks for a season — expanded to nothing and matched nothing. Here each word that is an acronym
+ * is replaced in place ("indian premier 2026"), and the multi-word scorer matches that against
+ * "indian premier league 2026". The query itself always comes first, so this only widens.
+ */
+fun expandedSearchQueries(normalizedQuery: String): List<String> {
+    if (normalizedQuery.isEmpty()) return emptyList()
+    val whole = NORMALIZED_ALIASES[normalizedQuery].orEmpty()
+    val tokens = normalizedQuery.split(' ')
+    val perToken = if (tokens.size < 2 || tokens.none { it in NORMALIZED_ALIASES }) {
+        emptyList()
+    } else {
+        tokens.fold(listOf("")) { prefixes, token ->
+            val options = listOf(token) + NORMALIZED_ALIASES[token].orEmpty()
+            prefixes.flatMap { prefix -> options.map { "$prefix $it".trim() } }
+        }
+    }
+    return (listOf(normalizedQuery) + whole + perToken).distinct()
+}

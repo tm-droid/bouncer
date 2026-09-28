@@ -1,0 +1,19 @@
+{
+  "_comment": "Input -> normalizeForSearch output. Read by playerIndex.test.js AND the app's SearchNormalizationParityTest; both sides must produce exactly these. Edit only together with both implementations.",
+  "cases": [
+    ["Virat Kohli", "virat kohli"],
+    ["  VIRAT   KOHLI  ", "virat kohli"],
+    ["St. Kitts and Nevis Patriots", "st kitts and nevis patriots"],
+    ["U.A.E", "uae"],
+    ["Women's Big Bash League", "womens big bash league"],
+    ["Women’s Premier League", "womens premier league"],
+    ["Sunrisers-Hyderabad", "sunrisers hyderabad"],
+    ["Thomas Müller", "thomas muller"],
+    ["José Buttler", "jose buttler"],
+    ["Dunith Wellalage (c)", "dunith wellalage c"],
+    ["Quinton de Kock/wk", "quinton de kock wk"],
+    ["SA20, 2026", "sa20 2026"],
+    ["Mohammed_Siraj", "mohammed siraj"],
+    ["", ""]
+  ]
+}

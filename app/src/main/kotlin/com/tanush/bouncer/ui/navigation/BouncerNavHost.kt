@@ -27,6 +27,7 @@ import com.tanush.bouncer.ui.screens.NotificationsScreen
 import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.v2.ThemeModeV2
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
+import com.tanush.bouncer.viewmodels.SearchTab
 import com.tanush.bouncer.viewmodels.NewsViewModel
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -147,6 +148,9 @@ private fun NavGraphBuilder.primaryTabDestinations(
             onSeriesClick = { seriesId ->
                 navController.navigateForward(BouncerScreen.SeriesDetail.createRoute(seriesId))
             },
+            onSearchClick = {
+                navController.navigateForward(BouncerScreen.Search.createRoute(SearchTab.TOURNAMENTS.name))
+            },
         )
     }
 
@@ -163,7 +167,10 @@ private fun NavGraphBuilder.primaryTabDestinations(
             onArticleClick = { article ->
                 newsViewModel.selectArticle(article)
                 navController.navigateForward(BouncerScreen.NewsDetail.createRoute(article.id.toString()))
-            }
+            },
+            onSearchClick = {
+                navController.navigateForward(BouncerScreen.Search.createRoute(SearchTab.NEWS.name))
+            },
         )
     }
 
@@ -225,19 +232,28 @@ private fun NavGraphBuilder.moreChildDestinations(
     onThemeModeChanged: (ThemeModeV2) -> Unit
 ) {
     // Search
-    composable(BouncerScreen.Search.route) {
-        val currentMatches by liveActivityViewModel.currentMatches.collectAsStateWithLifecycle()
+    composable(
+        route = BouncerScreen.Search.ROUTE_PATTERN,
+        arguments = BouncerScreen.Search.arguments,
+    ) { backStackEntry ->
+        // Every cached match, not Home's filtered list: search must find a women's fixture or
+        // last week's result whichever filter Home was left on.
+        val allMatches by liveActivityViewModel.allMatches.collectAsStateWithLifecycle()
         val news by newsViewModel.articles.collectAsStateWithLifecycle()
+        val initialTab = backStackEntry.arguments?.getString(BouncerScreen.Search.ARG_TAB)
+            ?.let { tab -> SearchTab.entries.firstOrNull { it.name == tab } }
+        LaunchedEffect(Unit) { liveActivityViewModel.warmAllStatuses() }
 
         SearchScreen(
-            matches = currentMatches,
+            matches = allMatches,
             news = news,
+            initialTab = initialTab,
             onMatchClick = { match ->
                 onMatchClick(match)
             },
-            onPlayerClick = { playerName ->
+            onPlayerClick = { playerName, cricbuzzId ->
                 navController.navigateForward(
-                    BouncerScreen.PlayerDetail.createRoute(playerName)
+                    BouncerScreen.PlayerDetail.createRoute(playerName, cricbuzzId)
                 )
             },
             onTeamClick = { teamName ->
@@ -372,6 +388,8 @@ private fun NavGraphBuilder.detailDestinations(
     ) { backStackEntry ->
         val playerId = backStackEntry.arguments?.getString(BouncerScreen.PlayerDetail.ARG_PLAYER_ID)
             ?.decodeUrlSafe() ?: return@composable
+        val cricbuzzId = backStackEntry.arguments?.getString(BouncerScreen.PlayerDetail.ARG_CRICBUZZ_ID)
+            ?.decodeUrlSafe()
 
         PlayerDetailScreenV2(
             playerName = playerId,
@@ -380,7 +398,8 @@ private fun NavGraphBuilder.detailDestinations(
             isCaptain = false,
             isWicketKeeper = false,
             onBackClick = { navController.popBackStack() },
-            onCompareClick = { navController.navigateForward(BouncerScreen.PlayerComparison.route) }
+            onCompareClick = { navController.navigateForward(BouncerScreen.PlayerComparison.route) },
+            cricbuzzId = cricbuzzId,
         )
     }
 

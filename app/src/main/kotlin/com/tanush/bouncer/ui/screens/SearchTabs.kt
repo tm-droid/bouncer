@@ -1,0 +1,88 @@
+package com.tanush.bouncer.ui.screens
+
+import androidx.annotation.StringRes
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.tanush.bouncer.R
+import com.tanush.bouncer.data.SearchRepository
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.viewmodels.SearchTab
+
+/** The search screen's result tabs: what each shows, what it is called, and how many it holds. */
+
+internal fun displayResultsFor(
+    tab: SearchTab,
+    results: SearchRepository.SearchResults,
+): SearchRepository.SearchResults = when (tab) {
+    SearchTab.ALL -> results
+    SearchTab.MATCHES -> results.copy(
+        teams = emptyList(), players = emptyList(), news = emptyList(), series = emptyList()
+    )
+    SearchTab.PLAYERS -> results.copy(
+        matches = emptyList(), teams = emptyList(), news = emptyList(), series = emptyList()
+    )
+    SearchTab.TEAMS -> results.copy(
+        matches = emptyList(), players = emptyList(), news = emptyList(), series = emptyList()
+    )
+    SearchTab.TOURNAMENTS -> results.copy(
+        matches = emptyList(), teams = emptyList(), players = emptyList(), news = emptyList()
+    )
+    SearchTab.NEWS -> results.copy(
+        matches = emptyList(), teams = emptyList(), players = emptyList(), series = emptyList()
+    )
+}
+
+@StringRes
+private fun tabLabel(tab: SearchTab): Int = when (tab) {
+    SearchTab.ALL -> R.string.search_tab_all
+    SearchTab.MATCHES -> R.string.section_matches
+    SearchTab.PLAYERS -> R.string.search_section_players
+    SearchTab.TEAMS -> R.string.search_section_teams
+    SearchTab.TOURNAMENTS -> R.string.search_section_tournaments
+    SearchTab.NEWS -> R.string.search_section_news
+}
+
+@Composable
+internal fun SearchResultsTabRow(
+    selectedTab: SearchTab,
+    results: SearchRepository.SearchResults,
+    onTabSelected: (SearchTab) -> Unit,
+) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    // A tab with nothing in it is a dead end; only All and the current tab show when empty.
+    val tabs = SearchTab.entries.filter { it == SearchTab.ALL || it == selectedTab || tabCount(it, results) > 0 }
+    ScrollableTabRow(
+        selectedTabIndex = tabs.indexOf(selectedTab).coerceAtLeast(0),
+        containerColor = colors.background,
+        contentColor = colors.primaryText,
+        edgePadding = BouncerThemeV2.spacing.md,
+    ) {
+        tabs.forEach { tab ->
+            Tab(
+                selected = selectedTab == tab,
+                onClick = { onTabSelected(tab) },
+                text = {
+                    val count = tabCount(tab, results)
+                    val label = stringResource(tabLabel(tab))
+                    Text(
+                        if (count > 0) stringResource(R.string.search_section_with_count, label, count) else label,
+                        style = typography.labelMedium,
+                    )
+                },
+            )
+        }
+    }
+}
+
+private fun tabCount(tab: SearchTab, results: SearchRepository.SearchResults): Int = when (tab) {
+    SearchTab.ALL -> results.totalCount
+    SearchTab.MATCHES -> results.matches.size
+    SearchTab.PLAYERS -> results.players.size
+    SearchTab.TEAMS -> results.teams.size
+    SearchTab.TOURNAMENTS -> results.series.size
+    SearchTab.NEWS -> results.news.size
+}

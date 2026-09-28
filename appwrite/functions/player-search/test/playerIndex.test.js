@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   countryFromSlug,
+  editDistance,
+  normalizeForSearch,
   parsePlayerLinks,
   parseTeamLinks,
   rankPlayers,
@@ -92,4 +94,59 @@ test("rankPlayers returns nothing for a blank query rather than everything", () 
 test("rankPlayers honours the limit", () => {
   const players = Array.from({ length: 30 }, (_, i) => ({ id: String(i), name: `Test Player ${i}` }));
   assert.equal(rankPlayers(players, "test", 10).length, 10);
+});
+
+test("normalizeForSearch agrees with the shared fixture the app also pins", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const fixture = JSON.parse(
+    await readFile(new URL("./fixtures/search-normalization.json", import.meta.url), "utf8"),
+  );
+  for (const [input, expected] of fixture.cases) {
+    assert.equal(normalizeForSearch(input), expected, `normalizeForSearch(${JSON.stringify(input)})`);
+  }
+});
+
+test("rankPlayers matches a name typed surname-first", () => {
+  const players = [
+    { id: "1413", name: "Virat Kohli", country: "India" },
+    { id: "2", name: "Virat Singh", country: "India" },
+  ];
+  assert.deepEqual(rankPlayers(players, "kohli virat", 5).map((p) => p.id), ["1413"]);
+});
+
+test("rankPlayers tolerates a transposed surname", () => {
+  const players = [
+    { id: "1413", name: "Virat Kohli", country: "India" },
+    { id: "9", name: "Kieron Pollard", country: "West Indies" },
+  ];
+  assert.deepEqual(rankPlayers(players, "virat kolhi", 5).map((p) => p.id), ["1413"]);
+  assert.deepEqual(rankPlayers(players, "kolhi", 5).map((p) => p.id), ["1413"]);
+});
+
+test("rankPlayers ranks every exact tier above any typo match", () => {
+  const players = [
+    { id: "1", name: "Kohler Test", country: "" },   // "kohli" is 2 edits from "kohler"
+    { id: "2", name: "Kohli Mark", country: "" },    // exact word prefix
+  ];
+  assert.deepEqual(rankPlayers(players, "kohli", 5).map((p) => p.id), ["2", "1"]);
+});
+
+test("rankPlayers folds accents on both sides", () => {
+  const players = [{ id: "5", name: "José Buttler", country: "England" }];
+  assert.deepEqual(rankPlayers(players, "jose", 5).map((p) => p.id), ["5"]);
+  assert.deepEqual(rankPlayers([{ id: "6", name: "Jose Smith" }], "José", 5).map((p) => p.id), ["6"]);
+});
+
+test("rankPlayers skips the typo scan when the exact tiers already fill the limit", () => {
+  const players = [
+    ...Array.from({ length: 10 }, (_, i) => ({ id: `p${i}`, name: `Kohli ${i}` })),
+    { id: "typo", name: "Kolhi Zed" },
+  ];
+  assert.ok(!rankPlayers(players, "kohli", 10).some((p) => p.id === "typo"));
+});
+
+test("editDistance counts an adjacent swap as one edit", () => {
+  assert.equal(editDistance("kolhi", "kohli"), 1);
+  assert.equal(editDistance("kitten", "sitting"), 3);
+  assert.equal(editDistance("", "abc"), 3);
 });
