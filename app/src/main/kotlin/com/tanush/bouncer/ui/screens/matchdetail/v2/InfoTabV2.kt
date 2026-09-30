@@ -12,11 +12,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.PreMatchData
+import com.tanush.bouncer.network.MatchSquads
+import com.tanush.bouncer.network.MatchSquadsSource
 import com.tanush.bouncer.ui.components.premium.ConditionsCard
 import com.tanush.bouncer.ui.components.premium.CurrentWeatherInfo
 import com.tanush.bouncer.ui.components.premium.PitchCondition
@@ -40,6 +44,10 @@ fun InfoTabV2(
     val spacing = BouncerThemeV2.spacing
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
+    // Fetched only when this tab is opened: one Cricbuzz page, no Appwrite, cached for the process.
+    val squads by produceState<MatchSquads?>(initialValue = null, match.id) {
+        value = MatchSquadsSource.get(match.id)
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -124,6 +132,8 @@ fun InfoTabV2(
                 Spacer(Modifier.height(spacing.sm))
             }
         }
+
+        teamSheetItems(match, squads)
 
         if (match.info.isNotBlank()) {
             val tossInfo = extractTossInfo(match.info, match.currentStatus)

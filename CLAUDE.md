@@ -426,6 +426,10 @@ Home. The navController is now hoisted there, the list poll pauses while the ove
 (`isCovered`), and the match screen reaches navigation through `LocalOpenSeries` rather than a
 parameter.
 
+**Team sheets come from `/cricket-match-squads/{id}`, fetched only when the Info tab opens.** The page is server-rendered (unlike `/live-cricket-over-by-over/{id}`, which is client-rendered and carries no per-over data server-side — the same dead end as the full-commentary page): its flight stream holds `{team1: {team, players}, team2: …}` where `players` is keyed `"playing XI"` + `"bench"` after the toss and `"Squad"` before it. `MatchSquadsRsc` parses it; `MatchSquadsSource` caches an XI for the process and a pre-toss squad for 10 minutes. No Appwrite cost. Aligned to `match.teams` by team id. Pinned by `MatchSquadsRscTest` against both captured shapes.
+
+**Match reminders are listed at Notifications › Reminders.** `ReminderBottomSheet` used to schedule an alarm and record nothing (`RemindersManager.saveReminder` had no caller), and `RemindersActivity` was never launched, so a reminder could be set but never seen or cancelled. The sheet now upserts into `RemindersManager`; `upcoming()` drops fired ones.
+
 **Cricbuzz profile pages are App Router.** `/profiles/{id}/{slug}` carries no `__NEXT_DATA__` block — only `self.__next_f.push(...)` chunks — and the legacy Jsoup selectors (`cb-font-40`, `cb-plyr-inf`, `cb-plyr-thead`, …) match **zero** elements on it. Both of `PlayerProfileScraper`'s original strategies were therefore dead, and the fallback produced a profile with a name and every other field empty rather than an error. `PlayerProfileRsc` reads the flight stream via `forEachNextFlightPayload` — the same parser the match pages use — and runs first; the other two stay as fallbacks. Pinned by `PlayerProfileRscTest` against captured markup.
 
 **Scorecard player names are in a span, not the row's link.** A `div.grid.scorecard-bat-grid` /

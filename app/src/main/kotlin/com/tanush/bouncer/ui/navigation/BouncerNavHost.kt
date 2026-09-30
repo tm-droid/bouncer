@@ -337,7 +337,14 @@ private fun NavGraphBuilder.moreChildDestinations(
 
     // Notification Inbox
     composable(BouncerScreen.Notifications.route) {
-        NotificationsScreen(onBack = { navController.popBackStack() })
+        NotificationsScreen(
+            onBack = { navController.popBackStack() },
+            onRemindersClick = { navController.navigateForward(BouncerScreen.Reminders.route) },
+        )
+    }
+
+    composable(BouncerScreen.Reminders.route) {
+        RemindersScreen(onBack = { navController.popBackStack() })
     }
 }
 

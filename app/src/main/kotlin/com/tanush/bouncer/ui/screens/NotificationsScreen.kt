@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,7 +50,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationsScreen(onBack: () -> Unit) {
+fun NotificationsScreen(onBack: () -> Unit, onRemindersClick: () -> Unit = {}) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
@@ -80,9 +81,8 @@ fun NotificationsScreen(onBack: () -> Unit) {
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colors.background,
-                ),
+                actions = { RemindersAction(onRemindersClick) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.background),
             )
         },
         containerColor = colors.background,
@@ -104,11 +104,20 @@ fun NotificationsScreen(onBack: () -> Unit) {
                 items(items, key = { it.id }) { item ->
                     NotificationRow(item = item)
                 }
-                item {
-                    Spacer(Modifier.height(80.dp))
-                }
+                item { Spacer(Modifier.height(80.dp)) }
             }
         }
+    }
+}
+
+/**
+ * Reminders are the other half of "what will tell me about a match": alerts that have arrived are
+ * listed on this screen, the ones still to come one tap away.
+ */
+@Composable
+private fun RemindersAction(onClick: () -> Unit) {
+    TextButton(onClick = onClick) {
+        Text(stringResource(R.string.reminders_scheduled_reminders), color = BouncerThemeV2.colors.primaryText)
     }
 }
 

@@ -6,7 +6,6 @@
     <string name="widget_configuration_title">Configure Widget</string>
     <string name="countdown_widget_description">Upcoming match countdown and schedule highlights.</string>
     <string name="title_stats_detail">Statistics Details</string>
-    <string name="title_reminders">Match Reminders</string>
     <string name="onboarding_title">Welcome to Bouncer</string>
 
     <!-- Tab Titles -->
@@ -307,11 +306,17 @@
     <string name="premium_no_forecast_for_this_match_yet">No forecast for this match yet</string>
     <string name="premium_required_run_rate">REQUIRED RUN RATE</string>
     <string name="premium_wicket">Wicket</string>
+    <string name="squads_playing_xi">Playing XI</string>
+    <string name="squads_squads">Squads</string>
+    <string name="squads_show_bench">Show bench</string>
+    <string name="squads_hide_bench">Hide bench</string>
+    <string name="squads_captain_mark">c</string>
+    <string name="squads_keeper_mark">wk</string>
     <string name="reminders_clear_all">Clear all</string>
-    <string name="reminders_delete">Delete</string>
+    <string name="reminders_delete">Cancel</string>
     <string name="reminders_no_reminders_set">No reminders set</string>
-    <string name="reminders_reschedule">Reschedule</string>
-    <string name="reminders_scheduled_reminders">Scheduled Reminders</string>
+    <string name="reminders_empty_subtitle">Set one from an upcoming match\'s page.</string>
+    <string name="reminders_scheduled_reminders">Reminders</string>
     <string name="series_active_cricket_series_will_appear_here">Active cricket series will appear here</string>
     <string name="series_check_your_connection_and_try_again">Check your connection and try again</string>
     <string name="series_couldn_t_load_series">Couldn\'t load series</string>

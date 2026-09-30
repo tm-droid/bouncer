@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -27,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -49,6 +51,9 @@ import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 
+private const val MAX_RESULTS = 10
+private const val FORM_LENGTH = 5
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TeamDetailScreen(
@@ -60,14 +65,18 @@ fun TeamDetailScreen(
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
 
-    val allMatches by liveActivityViewModel.currentMatches.collectAsStateWithLifecycle()
+    // Every cached status, not Home's filtered list: a team page left on the Live filter showed
+    // no results at all.
+    val allMatches by liveActivityViewModel.allMatches.collectAsStateWithLifecycle()
     val isLoading by liveActivityViewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by liveActivityViewModel.isRefreshing.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { liveActivityViewModel.warmAllStatuses() }
     val teamMatches = remember(allMatches, teamName) {
         allMatches.filter { match ->
-            match.teams.any { it.name.equals(teamName, ignoreCase = true) }
-        }
+            !match.isCompleted && match.teams.any { it.name.equals(teamName, ignoreCase = true) }
+        }.distinctBy { it.id }.sortedBy { it.startDateMs ?: Long.MAX_VALUE }
     }
+    val results = remember(allMatches, teamName) { resultsFor(allMatches, teamName).take(MAX_RESULTS) }
     val acronym = remember(teamName) {
         teamName.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
     }
@@ -103,6 +112,7 @@ fun TeamDetailScreen(
         ) {
             TeamDetailContent(
                 teamMatches = teamMatches,
+                results = results,
                 isLoading = isLoading,
                 teamName = teamName,
                 logoUrl = logoUrl,
@@ -116,6 +126,7 @@ fun TeamDetailScreen(
 @Composable
 private fun TeamDetailContent(
     teamMatches: List<CricketMatch>,
+    results: List<CricketMatch>,
     isLoading: Boolean,
     teamName: String,
     logoUrl: String?,
@@ -133,13 +144,13 @@ private fun TeamDetailContent(
             HorizontalDivider(color = colors.divider)
         }
 
-        if (isLoading && teamMatches.isEmpty()) {
+        if (isLoading && teamMatches.isEmpty() && results.isEmpty()) {
             items(3, key = { "shimmer_$it" }) {
                 ShimmerMatchCard(
                     modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
                 )
             }
-        } else if (teamMatches.isEmpty()) {
+        } else if (teamMatches.isEmpty() && results.isEmpty()) {
             item(key = "no_matches") {
                 EmptyStateV2(
                     icon = Icons.Outlined.SportsCricket,
@@ -148,19 +159,33 @@ private fun TeamDetailContent(
                 )
             }
         } else {
-            item(key = "matches_header") {
-                SectionHeaderV2(title = "Matches (${teamMatches.size})")
-            }
-            items(teamMatches, key = { "m_${it.id}" }) { match ->
-                MatchCardV2(
-                    match = match,
-                    onClick = { onMatchClick(match) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+            teamMatchSections(teamMatches, results, teamName, onMatchClick)
         }
 
         item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
+    }
+}
+
+/** "Live and upcoming", then "Results" headed by the side's last five results as letters. */
+private fun LazyListScope.teamMatchSections(
+    teamMatches: List<CricketMatch>,
+    results: List<CricketMatch>,
+    teamName: String,
+    onMatchClick: (CricketMatch) -> Unit,
+) {
+    if (teamMatches.isNotEmpty()) {
+        item(key = "matches_header") { SectionHeaderV2(title = "Live and upcoming") }
+        items(teamMatches, key = { "m_${it.id}" }) { match ->
+            MatchCardV2(match = match, onClick = { onMatchClick(match) }, modifier = Modifier.fillMaxWidth())
+        }
+    }
+    if (results.isEmpty()) return
+    val form = results.mapNotNull { formResult(it, teamName) }.take(FORM_LENGTH)
+    item(key = "results_header") {
+        SectionHeaderV2(title = if (form.isEmpty()) "Results" else "Results · Form ${form.joinToString(" ") { it.letter }}")
+    }
+    items(results, key = { "r_${it.id}" }) { match ->
+        MatchCardV2(match = match, onClick = { onMatchClick(match) }, modifier = Modifier.fillMaxWidth())
     }
 }
 

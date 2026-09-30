@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.components.v2
 
+import com.tanush.bouncer.utils.Reminder
+import com.tanush.bouncer.utils.RemindersManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.clickable
@@ -138,13 +140,18 @@ private fun scheduleReminder(
     // reads), so even the right class would have fired a notification with default text.
     try {
         val label = if (minutesBefore == 0) "at match start" else "$minutesBefore min before"
+        val id = matchId.hashCode() + minutesBefore
+        val body = if (minutesBefore == 0) "Starting now" else "Starts in $minutesBefore minutes"
         ReminderScheduler.scheduleReminder(
             context = context,
-            id = matchId.hashCode() + minutesBefore,
+            id = id,
             title = matchTitle,
-            body = if (minutesBefore == 0) "Starting now" else "Starts in $minutesBefore minutes",
+            body = body,
             delayMillis = triggerTime - System.currentTimeMillis(),
         )
+        // Recorded so Settings › Match reminders can list and cancel it. The alarm alone left no
+        // trace a user could find.
+        RemindersManager.updateReminder(context, Reminder(id, matchTitle, body, triggerTime))
         saveReminderPreference(context, matchId, minutesBefore)
         Toast.makeText(context, "Reminder set: $label", Toast.LENGTH_SHORT).show()
     } catch (e: Exception) {

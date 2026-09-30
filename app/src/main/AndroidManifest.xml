@@ -73,11 +73,6 @@
             android:exported="false"
             android:label="@string/title_stats_detail" />
 
-        <activity
-            android:name=".ui.screens.RemindersActivity"
-            android:exported="false"
-            android:label="@string/title_reminders" />
-
         <receiver android:name=".ui.widgets.LiveMatchWidgetProvider"
                   android:exported="true">
             <intent-filter>

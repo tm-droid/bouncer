@@ -118,6 +118,9 @@ sealed class BouncerScreen(val route: String) {
     /** In-app notification inbox */
     data object Notifications : BouncerScreen("notifications")
 
+    /** Match reminders set from match pages */
+    data object Reminders : BouncerScreen("reminders")
+
     /** First-launch onboarding flow */
     data object Onboarding : BouncerScreen("onboarding")
 

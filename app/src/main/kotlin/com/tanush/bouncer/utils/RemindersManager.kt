@@ -97,6 +97,19 @@ object RemindersManager {
         }
     }
 
+    /**
+     * Reminders still to fire, soonest first. Ones already past are dropped from storage here: an
+     * alarm that has fired leaves its record behind, and nothing else removes it.
+     */
+    fun upcoming(context: Context, nowMs: Long): List<Reminder> {
+        val all = getReminders(context)
+        val live = upcomingOf(all, nowMs)
+        if (live.size != all.size) {
+            all.filter { it !in live }.forEach { deleteReminder(context, it.id) }
+        }
+        return live
+    }
+
     fun clearAll(context: Context) {
         try {
             PreferenceStore.initialize(context)
@@ -107,3 +120,7 @@ object RemindersManager {
         }
     }
 }
+
+/** Pure half of [RemindersManager.upcoming]. */
+internal fun upcomingOf(reminders: List<Reminder>, nowMs: Long): List<Reminder> =
+    reminders.filter { it.triggerAt > nowMs }.sortedBy { it.triggerAt }

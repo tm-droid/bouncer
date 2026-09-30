@@ -13,6 +13,7 @@ object CricBuzzUrls {
 
     fun liveScoresUrl(matchId: String) = "$BASE/live-cricket-scores/$matchId"
     fun scorecardUrl(matchId: String) = "$BASE/live-cricket-scorecard/$matchId"
+    fun squadsUrl(matchId: String) = "$BASE/cricket-match-squads/$matchId"
 
     /**
      * Returns the appropriate match list URL for the given status tab.

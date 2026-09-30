@@ -9,6 +9,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import java.time.ZoneId
+import java.time.LocalDate
+import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
@@ -50,27 +58,21 @@ fun AllMatchesScreenV2(
     onBackClick: () -> Unit,
 ) {
     val selectedStatus by viewModel.selectedStatus.collectAsStateWithLifecycle()
-    val currentMatches by viewModel.currentMatches.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val loadingState by viewModel.loadingState.collectAsStateWithLifecycle()
     val selectedFormat by viewModel.selectedFormat.collectAsStateWithLifecycle()
     val isOffline = rememberIsOffline()
-
-    // Apply local format filter (memoized — list recomposes on live score ticks)
-    val filteredMatches = remember(currentMatches, selectedFormat) {
-        if (selectedFormat == "All") {
-            currentMatches
-        } else {
-            currentMatches.filter { it.matchType.contains(selectedFormat, ignoreCase = true) }
-        }
-    }
+    var byDate by rememberSaveable { mutableStateOf(false) }
+    val source = rememberMatchSource(viewModel, byDate)
+    // Memoized — the list recomposes on live score ticks.
+    val filteredMatches = remember(source, selectedFormat) { source.withFormat(selectedFormat) }
 
     // Refresh failed while content is on screen: keep the stale list, say so.
     val snackbarHostState = remember { SnackbarHostState() }
     RefreshFailureSnackbarEffect(
         loadingState = loadingState,
-        hasContent = currentMatches.isNotEmpty(),
+        hasContent = source.isNotEmpty(),
         snackbarHostState = snackbarHostState,
     )
 
@@ -91,14 +93,17 @@ fun AllMatchesScreenV2(
         ) {
             AllMatchesList(
                 state = AllMatchesListState(
-                    selectedStatus = selectedStatus,
+                    selectedStatus = if (byDate) BY_DATE else selectedStatus,
                     selectedFormat = selectedFormat,
                     matches = filteredMatches,
-                    showSkeleton = isLoading && currentMatches.isEmpty(),
+                    showSkeleton = isLoading && source.isEmpty(),
                     showEmpty = filteredMatches.isEmpty() && !isLoading,
                     error = loadingState as? LoadingState.Error,
                 ),
-                onStatusSelected = { viewModel.setAndFetchMatches(it) },
+                onStatusSelected = {
+                    byDate = it == BY_DATE
+                    if (!byDate) viewModel.setAndFetchMatches(it)
+                },
                 onFormatSelected = { viewModel.setFormat(it) },
                 onRetry = { viewModel.refreshMatches() },
                 onMatchClick = onMatchClick,
@@ -107,7 +112,26 @@ fun AllMatchesScreenV2(
     }
 }
 
-private val STATUS_OPTIONS = listOf("Live", "Upcoming", "Recent")
+/**
+ * The status list, or — for "By date" — every status the app has cached. By date is a view over
+ * what is already held, not a fourth fetch; opening it only warms the statuses not yet loaded.
+ */
+@Composable
+private fun rememberMatchSource(viewModel: LiveActivityViewModel, byDate: Boolean): List<CricketMatch> {
+    val currentMatches by viewModel.currentMatches.collectAsStateWithLifecycle()
+    val allMatches by viewModel.allMatches.collectAsStateWithLifecycle()
+    LaunchedEffect(byDate) { if (byDate) viewModel.warmAllStatuses() }
+    return if (byDate) allMatches else currentMatches
+}
+
+private fun List<CricketMatch>.withFormat(format: String): List<CricketMatch> =
+    if (format == "All") this else filter { it.matchType.contains(format, ignoreCase = true) }
+
+private const val BY_DATE = "By date"
+
+/** The status and format chip rows above the list. */
+private const val FILTER_ROWS = 2
+private val STATUS_OPTIONS = listOf("Live", "Upcoming", "Recent", BY_DATE)
 private val FORMAT_OPTIONS = listOf("All", "T20", "ODI", "Test", "First Class")
 
 private data class AllMatchesListState(
@@ -128,14 +152,22 @@ private fun AllMatchesList(
     onMatchClick: (CricketMatch) -> Unit,
 ) {
     val spacing = BouncerThemeV2.spacing
+    val listState = rememberLazyListState()
+    // By date opens on today, not on the oldest cached result a week back.
+    LaunchedEffect(state.selectedStatus == BY_DATE, state.matches.isNotEmpty()) {
+        if (state.selectedStatus == BY_DATE && state.matches.isNotEmpty()) {
+            listState.scrollToItem(FILTER_ROWS + todayOffset(state.matches, ZoneId.systemDefault()))
+        }
+    }
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize().bouncerScreenBackground(),
         contentPadding = PaddingValues(vertical = spacing.md),
     ) {
         item(key = "status_filter") {
             FilterChipRowV2(
                 items = STATUS_OPTIONS,
-                selectedItem = mapStatusToChip(state.selectedStatus),
+                selectedItem = if (state.selectedStatus == BY_DATE) BY_DATE else mapStatusToChip(state.selectedStatus),
                 onItemSelected = onStatusSelected,
             )
             Spacer(Modifier.height(spacing.xs))
@@ -156,6 +188,7 @@ private fun AllMatchesList(
             state.showEmpty -> item(key = "empty") {
                 AllMatchesEmptyState(error = state.error, selectedFormat = state.selectedFormat, onRetry = onRetry)
             }
+            state.selectedStatus == BY_DATE -> matchesByDayItems(state.matches, onMatchClick)
             else -> {
                 // Flat — the card already shows series/match info
                 items(state.matches, key = { "match_${it.id}" }) { match ->
@@ -209,4 +242,19 @@ internal fun RefreshFailureSnackbarEffect(
             snackbarHostState.showSnackbar(errorState.message)
         }
     }
+}
+
+/** One header per day, then that day's matches; days ascending, so results sit above fixtures. */
+private fun LazyListScope.matchesByDayItems(matches: List<CricketMatch>, onMatchClick: (CricketMatch) -> Unit) {
+    val zone = ZoneId.systemDefault()
+    val today = LocalDate.now(zone)
+    groupByDay(matches, zone).forEach { (day, dayMatches) ->
+        item(key = "day_$day") {
+            SectionHeaderV2(title = dayLabel(day, today))
+        }
+        items(dayMatches, key = { "day_${day}_match_${it.id}" }) { match ->
+            MatchCardV2(match = match, onClick = { onMatchClick(match) }, modifier = Modifier.fillMaxWidth())
+        }
+    }
+    item(key = "bottom_spacer") { Spacer(Modifier.height(80.dp)) }
 }
