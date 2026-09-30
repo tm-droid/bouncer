@@ -4,10 +4,12 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.remote.AppwriteClient
+import com.tanush.bouncer.data.remote.RealtimeLifecycleController
 import com.tanush.bouncer.data.repository.CricbuzzNewsRepository
 import com.tanush.bouncer.data.repository.NewsRepository
 import com.tanush.bouncer.data.repository.NewsUnavailableException
 import com.tanush.bouncer.models.NewsArticleData
+import com.tanush.bouncer.utils.BoundedLruCache
 import com.tanush.bouncer.utils.bouncerExceptionHandler
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -19,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -41,6 +44,7 @@ class NewsViewModel(
         private const val TAG = "NewsViewModel"
         private const val REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000L
         private const val MIN_REFRESH_INTERVAL_MS = 5 * 60 * 1000L
+        private const val ARTICLE_BODY_CACHE_SIZE = 20
         private fun newsFetchMessageFor(statusCode: Int): String = when (statusCode) {
             401, 403 -> "News is temporarily unavailable."
             429 -> "News is temporarily rate limited. Please try again later."
@@ -101,7 +105,21 @@ class NewsViewModel(
     private var pollingJob: Job? = null
     private var lastFetchTime: Long = 0L
 
-    init {
+    private var loadStarted = false
+
+    // Opened story bodies, so reopening one does not execute `bouncer-news-sync` again.
+    private val bodies = BoundedLruCache<Long, List<String>>(ARTICLE_BODY_CACHE_SIZE)
+
+    /**
+     * Starts the first fetch and the auto-refresh loop, once. Called by the screens that show
+     * headlines (the News tab, Search).
+     *
+     * Not done in `init`: this ViewModel is hoisted to the app container, so `init` ran on every
+     * launch and executed `bouncer-news-sync` for users who never opened News.
+     */
+    fun ensureLoaded() {
+        if (loadStarted) return
+        loadStarted = true
         fetchNews()
         startAutoRefresh()
     }
@@ -209,6 +227,8 @@ class NewsViewModel(
         pollingJob = viewModelScope.launch(bouncerExceptionHandler) {
             while (true) {
                 delay(REFRESH_INTERVAL_MS)
+                // A backgrounded app cannot show headlines; wait for it to come back.
+                RealtimeLifecycleController.foreground.first { it }
                 try {
                     Log.d(TAG, "Auto-refreshing news (every 4 hours)")
                     lastFetchTime = 0L
@@ -250,11 +270,16 @@ class NewsViewModel(
 
     private fun fetchArticleBody(storyId: Long, url: String) {
         lastArticleRef = storyId to url
+        bodies[storyId]?.let { cached ->
+            _articleBody.value = cached
+            return
+        }
         viewModelScope.launch(bouncerExceptionHandler) {
             _isLoadingArticle.value = true
             try {
                 val paragraphs = repository.fetchArticleBody(storyId, url)
                 _articleBody.value = paragraphs
+                if (paragraphs.isNotEmpty()) bodies[storyId] = paragraphs
                 Sentry.metrics().distribution("news.article.paragraphs", paragraphs.size.toDouble())
                 Log.d(TAG, "Loaded ${paragraphs.size} paragraphs for article $storyId")
             } catch (e: CancellationException) {

@@ -239,4 +239,10 @@ class BouncerLockScreenWidget : GlanceAppWidget() {
  */
 class BouncerLockScreenWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = BouncerLockScreenWidget()
+
+    // See BouncerGlanceWidgetReceiver.onEnabled.
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        WidgetUpdateWorker.triggerImmediateUpdate(context)
+    }
 }

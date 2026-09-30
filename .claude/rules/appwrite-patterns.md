@@ -16,8 +16,8 @@ a quota. Read it before adding any Appwrite call.
 | Function execution | `AppwriteClient.executeFunction(id, body)` | `EXECUTIONS` |
 
 The funnels are what make the circuit breaker, the rate windows and `AppwriteUsageTracker` work. A
-call that bypasses them is invisible to all three — which is exactly how `AppwriteFavouritesSync`
-spent a year outside the guard.
+call that bypasses them is invisible to all three — which is exactly how the (since-deleted)
+favourites sync spent a year outside the guard.
 
 All four return **null** when the guard is blocking. Null is already every caller's not-ready path,
 so degradation costs no new branches: `CricketRepository` falls through to the Vercel API, the AI
@@ -117,10 +117,10 @@ Two lifetimes, and nothing else:
    `Flow` via `callbackFlow` + `awaitClose { handle.close() }`, and let `viewModelScope`'s
    cancellation in `onCleared()` be the release boundary — no `DisposableEffect`. Release lingers
    `REALTIME_LINGER_MS` so a rotation does not re-handshake. Ten screens on one channel = one socket.
-2. **Always-on** (`AppwriteHighlightsClient`, `AppwriteAICache`). Registered with
-   `RealtimeLifecycleController`, which stops them ~60s after the app backgrounds and restarts them
-   on foreground. Realtime bandwidth bills from the same pool as API and Storage, and a backgrounded
-   app can render none of it.
+2. **Always-on** (`AppwriteHighlightsClient`). Registered with
+   `RealtimeLifecycleController`, which starts it on the first activity start, stops it ~60s after
+   the app backgrounds and restarts it on foreground. Realtime bandwidth bills from the same pool
+   as API and Storage, and a backgrounded app can render none of it.
 
 `stop()` cancels the scope's **children**, never the scope — a cancelled `CoroutineScope` cannot
 relaunch, so `cancel()` would kill realtime permanently on the first background cycle.

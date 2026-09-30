@@ -25,6 +25,7 @@ import com.tanush.bouncer.data.remote.H2HPair
 import com.tanush.bouncer.data.remote.H2HRepository
 import com.tanush.bouncer.data.remote.RealtimeLifecycleController
 import com.tanush.bouncer.data.remote.WinProbabilityStore
+import com.tanush.bouncer.data.remote.toEvent
 import com.tanush.bouncer.network.CricBuzzUrls
 import com.tanush.bouncer.services.MatchPresenceReporter
 import com.tanush.bouncer.ui.components.BatsmanMilestoneInfo
@@ -223,13 +224,32 @@ class MatchDetailViewModel(
         // `match.isCompleted` and not `liveStatus`: terminal is sticky, a match never un-completes,
         // and a match that ends while this screen is open was constructed with it false, so it
         // keeps the subscription and receives the payload that reports the result.
+        //
+        // All three streams are held only while the app is in the foreground (`whileForeground`):
+        // this ViewModel outlives a backgrounded activity, and the sockets used to stay open until
+        // the process died. On return, detail catches up with one getRow; commentary asks only for
+        // rows newer than the newest on screen; the scorecard waits for its next push.
+        val foreground = RealtimeLifecycleController.foreground
         if (!match.isCompleted) {
             viewModelScope.launch(bouncerExceptionHandler) {
-                liveSource.observeDetail(match.id).collect { applyDetail(it) }
+                whileForeground(
+                    foreground,
+                    catchUp = { listOfNotNull(liveSource.getForMatch(match.id)) },
+                ) { liveSource.observeDetail(match.id) }.collect { applyDetail(it) }
             }
-        }
-        viewModelScope.launch(bouncerExceptionHandler) {
-            liveSource.observeCommentary(match.id).collect { onNewCommentaryEvent(it) }
+            // Gated like the other two: a table channel carries every commentary write for every
+            // live match, and a finished match's feed will never gain another row.
+            viewModelScope.launch(bouncerExceptionHandler) {
+                whileForeground(
+                    foreground,
+                    catchUp = {
+                        _uiState.value.commentary.mapNotNull { it.sortKey }.maxOrNull()
+                            ?.let { newest -> liveSource.getNewerCommentary(match.id, newest) }
+                            .orEmpty()
+                            .mapNotNull { it.toEvent(match.id) }
+                    },
+                ) { liveSource.observeCommentary(match.id) }.collect { onNewCommentaryEvent(it) }
+            }
         }
         // The scorecard has its own row and its own channel — it was 85-93% of the detail payload
         // and was pushed to every subscriber of that row every minute. Subscribed for the whole
@@ -238,7 +258,7 @@ class MatchDetailViewModel(
         // reason the detail stream above is: that row froze when the match left the live list.
         if (!match.isCompleted) {
             viewModelScope.launch(bouncerExceptionHandler) {
-                liveSource.observeScorecard(match.id).collect { sc ->
+                whileForeground(foreground) { liveSource.observeScorecard(match.id) }.collect { sc ->
                     val card = sc.scorecard
                     if (card.innings.isNotEmpty()) _uiState.update { it.copy(scorecard = card) }
                 }
@@ -276,6 +296,12 @@ class MatchDetailViewModel(
                 // download, and neither can reach a screen nobody is looking at. The ViewModel
                 // outlives a backgrounded activity, so without this the loop ran until the process died.
                 RealtimeLifecycleController.foreground.first { it }
+                // A fixture more than PRESENCE_LEAD_MS away is not synced by match-sync yet, so a
+                // ping and a win-probability download would buy nothing.
+                if (!shouldPingPresence(match, System.currentTimeMillis())) {
+                    delay(PRESENCE_HEARTBEAT_MS)
+                    continue
+                }
                 MatchPresenceReporter.ping(match.id)
                 WinProbabilityStore.refresh()
                 WinProbabilityStore.probabilityFor(match.id)?.alignedTo(match.teams)?.let { probability ->
@@ -358,7 +384,7 @@ class MatchDetailViewModel(
         // nothing" is most of what ANDROID-37 was.
         var storeAnsweredEmpty = false
         AppResult.runCatchingSuspend {
-            val lines = withTimeoutOrNull(10_000L) { liveSource.getCommentaryForMatch(match.id) }
+            val lines = withTimeoutOrNull(10_000L) { liveSource.firstCommentaryPage(match) }
             storeAnsweredEmpty = lines != null && lines.isEmpty()
             if (!lines.isNullOrEmpty()) _uiState.update { it.copy(commentary = lines, commentaryError = null) }
         }.onError {

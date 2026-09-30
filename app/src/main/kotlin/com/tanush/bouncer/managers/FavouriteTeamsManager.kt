@@ -3,19 +3,12 @@ package com.tanush.bouncer.managers
 import com.tanush.bouncer.data.AppJson
 import android.content.Context
 import android.content.SharedPreferences
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.util.Log
-import com.tanush.bouncer.data.remote.AppwriteFavouritesSync
 import com.tanush.bouncer.data.remote.DeviceIdentity
 import io.sentry.Sentry
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
 /**
  * Manages user's favourite teams with persistence, reordering, and max limit enforcement.
@@ -28,7 +21,6 @@ object FavouriteTeamsManager {
     const val MAX_FAVOURITES = 10
 
     private lateinit var prefs: SharedPreferences
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _favourites = MutableStateFlow<List<String>>(emptyList())
     val favourites: StateFlow<List<String>> = _favourites.asStateFlow()
@@ -55,24 +47,11 @@ object FavouriteTeamsManager {
             // favourites sync shipped, and is initialized here so it is ready before the first
             // function call rather than depending on this client's own lifecycle.
             DeviceIdentity.initialize(prefs)
-            AppwriteFavouritesSync.initialize(prefs)
-            // Pull remote favourites; adopt if local is empty (e.g. fresh install)
-            scope.launch {
-                runCatching {
-                    val cm = context.getSystemService(ConnectivityManager::class.java)
-                    val caps = cm?.getNetworkCapabilities(cm.activeNetwork)
-                    if (caps == null || !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return@runCatching
-                    val remote = AppwriteFavouritesSync.pull()
-                    if (remote != null && _favourites.value.isEmpty()) {
-                        Log.d(TAG, "Adopting ${remote.size} favourites from remote")
-                        _favourites.value = remote
-                        prefs.edit().putString(KEY, AppJson.encodeToString(remote)).apply()
-                    }
-                }.onFailure { e ->
-                    Log.d(TAG, "Remote favourites pull failed: ${e.message}")
-                    Sentry.captureException(e)
-                }
-            }
+            // No remote favourites sync. AppwriteFavouritesSync wrote a List into `user-favourites.teams`,
+            // a non-array text column, so every push failed and the table never held a row; its
+            // pull still cost a billed read on every process start, background wakes included. The
+            // row was keyed by a per-install UUID, so it could never have followed a user to a new
+            // device anyway — Android backup restores these prefs, which is the working path.
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -201,13 +180,6 @@ object FavouriteTeamsManager {
             val json = AppJson.encodeToString(list)
             prefs.edit().putString(KEY, json).apply()
             _favourites.value = list
-            scope.launch {
-                try {
-                    AppwriteFavouritesSync.push(list)
-                } catch (e: Exception) {
-                    Sentry.captureException(e)
-                }
-            }
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e

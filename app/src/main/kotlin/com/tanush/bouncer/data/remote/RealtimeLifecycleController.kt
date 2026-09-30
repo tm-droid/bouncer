@@ -48,8 +48,9 @@ object RealtimeLifecycleController {
     /**
      * False once the app has been in the background past the grace period, true again on return.
      * The same boundary as the socket pause, for loops that bill per tick (the match-detail presence
-     * heartbeat) and should not keep firing for a screen nobody can see. True until [attach] has
-     * observed a background, so code running without an Application (unit tests) is unaffected.
+     * heartbeat) and should not keep firing for a screen nobody can see. True until [attach] runs,
+     * so code running without an Application (unit tests) is unaffected; false from [attach] until
+     * the first activity starts.
      */
     val foreground: StateFlow<Boolean> = _foreground.asStateFlow()
 
@@ -61,7 +62,17 @@ object RealtimeLifecycleController {
         managed += Managed(name, start, stop)
     }
 
+    /**
+     * Starts in the paused state: every managed subscription waits for the first activity to start.
+     * `Application.onCreate` also runs for WorkManager and FCM wakes, which never start an activity
+     * and so never reach [onBackground] — anything started before this point stayed open for the
+     * life of that background process.
+     */
     fun attach(application: Application, scope: CoroutineScope) {
+        synchronized(lock) {
+            running = false
+            _foreground.value = false
+        }
         application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityStarted(activity: Activity) = onForeground()
             override fun onActivityStopped(activity: Activity) = onBackground(scope)

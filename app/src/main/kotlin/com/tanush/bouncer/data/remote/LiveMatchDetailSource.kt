@@ -1,5 +1,6 @@
 package com.tanush.bouncer.data.remote
 
+import com.tanush.bouncer.utils.BoundedLruCache
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -28,10 +29,22 @@ interface LiveMatchDetailSource {
     suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry>?
 
     /**
+     * [getCommentaryForMatch] for a match that is over, whose feed will never gain another row, so
+     * a source may answer a re-open from memory instead of billing the first page again.
+     */
+    suspend fun getFinishedCommentary(matchId: String): List<CommentaryEntry>? = getCommentaryForMatch(matchId)
+
+    /**
      * The page of commentary strictly older than [olderThan], newest-first, or empty when there is
      * none. Fetched only when a reader asks for it — reads bill per row.
      */
     suspend fun getOlderCommentary(matchId: String, olderThan: Double): List<CommentaryEntry>
+
+    /**
+     * Commentary strictly newer than [newerThan], newest-first — what a feed missed while its
+     * socket was down. Empty by default, so a source without it simply does not catch up.
+     */
+    suspend fun getNewerCommentary(matchId: String, newerThan: Double): List<CommentaryEntry> = emptyList()
 
     /**
      * The full scorecard, from its own table. Separate from [getForMatch] because it was 85-93% of
@@ -54,6 +67,8 @@ interface LiveMatchDetailSource {
     fun observeCommentary(matchId: String): Flow<CommentaryEvent>
 }
 
+private const val FINISHED_FEED_CACHE_SIZE = 8
+
 /** Production wiring: Appwrite Realtime clients + CricketRepository. */
 object ProductionLiveDetailSource : LiveMatchDetailSource {
 
@@ -65,6 +80,20 @@ object ProductionLiveDetailSource : LiveMatchDetailSource {
 
     override suspend fun getOlderCommentary(matchId: String, olderThan: Double): List<CommentaryEntry> =
         AppwriteMatchCommentaryClient.getOlderThan(matchId, olderThan)
+
+    // First pages of finished matches. Reopening one billed its 48 rows every time, for a feed that
+    // cannot change. Small: the realistic re-open set is the handful of results on the Recent tab.
+    private val finishedFeeds = BoundedLruCache<String, List<CommentaryEntry>>(FINISHED_FEED_CACHE_SIZE)
+
+    override suspend fun getFinishedCommentary(matchId: String): List<CommentaryEntry>? =
+        synchronized(finishedFeeds) { finishedFeeds[matchId] }
+            ?: AppwriteMatchCommentaryClient.getForMatch(matchId)?.also { lines ->
+                // An empty answer is not cached: the rows may simply not have landed yet.
+                if (lines.isNotEmpty()) synchronized(finishedFeeds) { finishedFeeds[matchId] = lines }
+            }
+
+    override suspend fun getNewerCommentary(matchId: String, newerThan: Double): List<CommentaryEntry> =
+        AppwriteMatchCommentaryClient.getNewerThan(matchId, newerThan)
 
     override suspend fun getScorecardForMatch(matchId: String): ScorecardSnapshot? =
         AppwriteMatchScorecardClient.getForMatch(matchId)

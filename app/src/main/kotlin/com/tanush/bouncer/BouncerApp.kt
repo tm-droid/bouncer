@@ -162,31 +162,16 @@ class BouncerApp : Application() {
                     }
                 )
             }
-            val startAiCache = {
-                AppwriteAICache.startRealtimeSubscription(
-                    scope = applicationScope,
-                    onNewEntry = { key, commentary ->
-                        // Dispatchers.IO required — ingestFromRealtime acquires a mutex and writes
-                        // to Room. Running on Main risks jank if the mutex is contested or Room
-                        // suspends.
-                        applicationScope.launch(Dispatchers.IO) {
-                            AICacheService.ingestFromRealtime(key, commentary)
-                        }
-                    }
-                )
-            }
-            startHighlights()
-            startAiCache()
-
-            // These two stay app-lifetime while foregrounded (the AI-cache stream is what warms the
-            // local commentary cache from other devices' work), but are dropped once the app has
-            // been backgrounded a while — they cannot be shown, and Realtime bandwidth is billed
-            // from the same pool as API and Storage.
+            // Not started here. attach() holds every managed subscription until the first activity
+            // starts: onCreate also runs for WorkManager and FCM wakes, which never show a screen
+            // and never reach onActivityStopped, so a socket opened here stayed open for the whole
+            // life of a background process.
+            //
+            // The ai-commentary-cache table channel that used to be registered next to this one is
+            // gone: it fed AICacheService.ingestFromRealtime, whose rows nothing reads (the device
+            // generates no commentary), so every device paid Realtime bandwidth for a dead cache.
             RealtimeLifecycleController.register(
                 "highlights", startHighlights, AppwriteHighlightsClient::stop
-            )
-            RealtimeLifecycleController.register(
-                "aiCache", startAiCache, AppwriteAICache::stop
             )
             RealtimeLifecycleController.attach(this, applicationScope)
 

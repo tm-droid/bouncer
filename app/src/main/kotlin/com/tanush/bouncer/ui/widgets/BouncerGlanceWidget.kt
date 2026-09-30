@@ -404,4 +404,10 @@ class BouncerGlanceWidget : GlanceAppWidget() {
 
 class BouncerGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = BouncerGlanceWidget()
+
+    // The refresh chain stops when no widget is placed, so the first one placed restarts it.
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        WidgetUpdateWorker.triggerImmediateUpdate(context)
+    }
 }

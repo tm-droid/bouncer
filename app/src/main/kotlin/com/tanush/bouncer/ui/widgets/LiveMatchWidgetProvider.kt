@@ -83,6 +83,12 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
         }
     }
 
+    // See BouncerGlanceWidgetReceiver.onEnabled.
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        WidgetUpdateWorker.triggerImmediateUpdate(context)
+    }
+
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
         scope.cancel()

@@ -15,7 +15,7 @@ Order matters for dependency + error isolation:
 9. **AppwriteAICache.initialize()** — Reads DB/table IDs, validates readiness
 10. **AppwriteHighlightsClient.initialize()** — Same pattern
 11. **NotificationInboxManager.initialize()** — Local notification inbox state
-12. **AppwriteRealtime subscriptions** — Subscribes highlights → Room upsert; AI cache → AICacheService.ingestFromRealtime
+12. **AppwriteRealtime subscriptions** — Registers highlights → Room upsert with `RealtimeLifecycleController`, which starts it on the first activity start (never in a background-only process). No AI-cache subscription.
 13. **CoilImageLoader** — Configure HTTP client + image loader (depends on cache directory from step 6)
 14. **ScorePollingWorker.enqueuePeriodicWork()** — Schedule background score updates via WorkManager
 

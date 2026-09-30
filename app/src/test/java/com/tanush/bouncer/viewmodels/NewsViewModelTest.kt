@@ -94,12 +94,24 @@ class NewsViewModelTest {
         val store = ViewModelStore()
         val viewModel = NewsViewModel(repo)
         store.put("news", viewModel)
+        viewModel.ensureLoaded()
         try {
             body(viewModel)
         } finally {
             store.clear()
             advanceUntilIdle()
         }
+    }
+
+    /** The ViewModel lives at the app container, so constructing it must not fetch. */
+    @Test
+    fun `construction alone does not fetch`() = runTest(dispatcher) {
+        val repo = FakeNewsRepository()
+        val store = ViewModelStore()
+        store.put("news", NewsViewModel(repo))
+        settle()
+        assertEquals(0, repo.headlineCalls)
+        store.clear()
     }
 
     @Test

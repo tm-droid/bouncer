@@ -99,6 +99,10 @@ data class CommentaryEvent(
     val innings: Int? = null,
 )
 
+/** The same line as a realtime event, or null for a line with no `sort_key` (it has no identity). */
+internal fun CommentaryEntry.toEvent(matchId: String): CommentaryEvent? =
+    sortKey?.let { CommentaryEvent(matchId, text, it, event, ball, runs, extra, innings) }
+
 /**
  * Parse the `event` column. Unknown or absent values are null, never a throw: the column is a
  * string rather than an enum precisely so a server-side vocabulary change degrades to "the client
@@ -134,6 +138,10 @@ private const val FEED_LIMIT = 150
 // page, so reading deep costs what it always did and only the entry price moved.
 private const val FIRST_PAGE_LIMIT = 48
 
+// Every column `queryRows` reads. A name here that the table lacks fails the query, which the
+// fallback ladder would then serve degraded — add the column to the table before listing it.
+private val SELECTED_COLUMNS = listOf("commentary", "event", "ball", "sort_key", "runs", "extra", "innings")
+
 /**
  * Rows to ask for. The first page of a feed is [FIRST_PAGE_LIMIT]; everything else is [FEED_LIMIT].
  *
@@ -144,6 +152,27 @@ private const val FIRST_PAGE_LIMIT = 48
  */
 internal fun commentaryPageLimit(olderThan: Double?, degraded: Boolean = false): Int =
     if (olderThan == null && !degraded) FIRST_PAGE_LIMIT else FEED_LIMIT
+
+/** One feed query: a match, an optional cursor either side, an order, a page size, the columns read. */
+private fun feedQueries(matchId: String, order: FeedOrder, olderThan: Double?, newerThan: Double?): List<String> =
+    buildList {
+        add(Query.equal("match_id", matchId))
+        if (olderThan != null) add(Query.lessThan("sort_key", olderThan))
+        if (newerThan != null) add(Query.greaterThan("sort_key", newerThan))
+        when (order) {
+            FeedOrder.SORT_KEY -> add(Query.orderDesc("sort_key"))
+            FeedOrder.CREATED_AT -> add(Query.orderDesc("\$createdAt"))
+            FeedOrder.NONE -> Unit
+        }
+        // A catch-up is sized as a deep page: it replaces whatever the socket missed.
+        add(Query.limit(if (newerThan != null) FEED_LIMIT else pageLimitFor(order, olderThan)))
+        // Bandwidth only — reads still bill per row. Skips `provider`, `ai_generated`,
+        // `created_at` and `match_id`, which nothing on the device reads.
+        add(Query.select(SELECTED_COLUMNS))
+    }
+
+private fun pageLimitFor(order: FeedOrder, olderThan: Double?): Int =
+    commentaryPageLimit(olderThan, degraded = order != FeedOrder.SORT_KEY)
 
 /**
  * What a page is ordered by, which is also the ladder it degrades down.
@@ -188,6 +217,22 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
     suspend fun getOlderThan(matchId: String, olderThan: Double): List<CommentaryEntry> =
         fetchPage(matchId, olderThan).orEmpty()
 
+    /**
+     * Rows strictly newer than [newerThan], newest-first, capped at one deep page — what the feed
+     * missed while its socket was down. Bills only the rows missed, where re-reading the first page
+     * would bill all of it. Only the `sort_key` rung: the fallbacks cannot filter on the attribute
+     * whose index just failed, and a missed-rows catch-up is not worth an arbitrary window.
+     */
+    suspend fun getNewerThan(matchId: String, newerThan: Double): List<CommentaryEntry> {
+        if (!isReady) return emptyList()
+        return withContext(Dispatchers.IO) {
+            runCatching { queryRows(matchId, FeedOrder.SORT_KEY, olderThan = null, newerThan = newerThan) }
+                .onFailure { logSilentFailure("Commentary catch-up fetch failed", it) }
+                .getOrNull()
+                .orEmpty()
+        }
+    }
+
     private suspend fun fetchPage(matchId: String, olderThan: Double?): List<CommentaryEntry>? {
         if (!isReady) return null
         return withContext(Dispatchers.IO) {
@@ -217,17 +262,9 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
         matchId: String,
         order: FeedOrder,
         olderThan: Double?,
+        newerThan: Double? = null,
     ): List<CommentaryEntry>? {
-        val queries = buildList {
-            add(Query.equal("match_id", matchId))
-            if (olderThan != null) add(Query.lessThan("sort_key", olderThan))
-            when (order) {
-                FeedOrder.SORT_KEY -> add(Query.orderDesc("sort_key"))
-                FeedOrder.CREATED_AT -> add(Query.orderDesc("\$createdAt"))
-                FeedOrder.NONE -> Unit
-            }
-            add(Query.limit(commentaryPageLimit(olderThan, degraded = order != FeedOrder.SORT_KEY)))
-        }
+        val queries = feedQueries(matchId, order, olderThan, newerThan)
         val rows = guardedRead(order.queryName) {
             it.listRows(databaseId = dbId, tableId = tableId, queries = queries)
         }?.rows ?: return null

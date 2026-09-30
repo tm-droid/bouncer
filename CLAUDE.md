@@ -89,7 +89,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 │   ├── CacheConfig.kt  # All cache TTLs + realtime reconnect backoff + permanent-cache sentinel — no magic numbers
 │   └── remote/         # AppwriteClient (singleton) + table clients extending AppwriteTableClient
 │                       # AppwriteAICache, AppwriteHighlightsClient, AppwritePlayerProfilesClient,
-│                       # AppwriteFavouritesSync, H2HRepository,
+│                       # H2HRepository,
 │                       # AppwriteMatchCommentaryClient (match-commentary table),
 │                       # AppwriteMatchDetailClient (match-live-detail table),
 │                       # AppwriteMatchScorecardClient (match-scorecard table, never subscribed)
@@ -311,7 +311,7 @@ configured` when they are missing. **The bell opens `MatchFollowSheet`**, which 
 things in `MatchSubscriptionManager`: `subscriptions` (the Live Update card) and `alertPrefs` (which
 alerts; any on ⇒ subscribed to the topic). `ScorePollingWorker` no longer posts notifications.
 
-**AI cache (3-tier):** `MemoryFifoCache` (256 entries; FIFO eviction, not LRU — `utils/BoundedLruCache` is the real LRU) → Room `ai_commentary_cache` → Appwrite `ai-commentary-cache` table. All four commentary functions (`generateBallCommentary`, `fuse`, `streamCommentary`, `summarizeOversWithAI`) check cache before calling any AI provider. Completed matches use **permanent TTL** (`Long.MAX_VALUE` in Room, `expires_at = "2099-01-01T00:00:00.000Z"` in Appwrite) — `isMatchComplete` flag threads from ViewModels → `AICacheService`. Never set permanent=true for live matches.
+**AI cache: dormant on the device.** `AICacheService` (`MemoryFifoCache` → Room `ai_commentary_cache` → Appwrite `ai-commentary-cache`) has no caller: the device generates no commentary, so `getCommentary`/`setCommentary` are unreachable. Its Realtime table subscription was removed in September 2026 — it fed `ingestFromRealtime`, whose rows nothing reads, so every device paid Realtime bandwidth for a dead cache. The class and the startup replay stay until an R8 `usage.txt` pass removes them; do not re-add the subscription.
 
 **The visual grammar is restraint, and it is load-bearing.** The August 2026 pass exists because
 the app read as generated rather than designed. Four rules, each written into the file that owns it:
@@ -804,6 +804,8 @@ pre-slice count, and Sentry hears about a binding cap at most hourly per dropped
 dropped match had a viewer). Steady-state server conditions — chain depth, Cricbuzz unreachable or
 blocked, this cap — go through `reportThrottled`; they were one event per one-minute run.
 
+**App-lifetime Realtime starts with the first activity, not with the process.** `RealtimeLifecycleController.attach` begins paused: `Application.onCreate` also runs for WorkManager and FCM wakes, which never start an activity and so never reach `onActivityStopped`, and the highlights channel used to stay open for the whole life of such a process. The match-detail streams (`MatchDetailViewModel`) go through `whileForeground` (`viewmodels/ForegroundGate.kt`) for the same reason — the ViewModel outlives a backgrounded activity — and catch up on return: one `getRow` for detail, `getNewerThan(sort_key)` for commentary (bills only the rows missed). A finished match subscribes to no stream at all, and its first commentary page is served from `ProductionLiveDetailSource`'s small LRU on re-open. `WidgetUpdateWorker` does nothing — and does not re-arm — when no Bouncer widget is placed; the receivers' `onEnabled` restart it.
+
 **Viewer gate:** `MatchDetailViewModel` pings `bouncer-match-presence` every 90s while a match is open and **not over** — gated on `isMatchOver(match, liveStatus)`, never on `match.isLive`, which is a frozen list snapshot (same staleness class as `5b86664`). A dead heartbeat means every sync logs "0 with viewers" and the tab falls back to raw Cricbuzz text — but it does **not** stop deliveries being stored: the slow tier gates the LLM rewrite budget alone (see below). `MatchPresenceReporter.ping` leaves a breadcrumb, not an event: every cause of a failed ping is already reported once by `AppwriteClient.executeFunctionDetailed` (uninitialised SDK, guard, FAILED, HTTP status), and the one it deliberately skips — the device being offline — was most of what the old capture raised (ANDROID-3M).
 
 **The Sentry exception filter never sees a `captureMessage`.** `shouldDropEvent` reads `event.exceptions`, and every `sentryCaptureThrottled` / `logSilentFailure` report is a message event, so an `UnknownHostException` inside one sailed through. Offline and already-reported causes are now skipped at each reporting site with `HttpClientProvider.isConnectivityException` — do not add a new message-level report without the same check. A `SentryHttpClientException` from a host other than `*.appwrite.io` is dropped: the Gradle-injected OkHttp integration captures every 5xx on every host and its targets cannot be set from options.
@@ -829,7 +831,7 @@ blocked, this cap — go through `reportThrottled`; they were one event per one-
 
 **Appwrite MCP workflow:** `appwrite_search_tools` → `appwrite_call_tool` → `ReadMcpResourceTool` (server: `plugin:appwrite:appwrite-api`, URI from truncated result) for full output. Column creation returns `status: "processing"` — call `tables_db_list_columns` to confirm `"available"` before using. Table-level permissions at creation: `["read(\"any\")", "create(\"any\")", "update(\"any\")"]`.
 
-**New Appwrite client pattern:** `object` singleton extending `AppwriteTableClient(tag)`. The base provides `initTable()`, `isReady`, the billed-operation funnels `guardedRead()`/`guardedWrite()`, the refcounted Realtime `acquireChannel(channel) { … }` + reconnect backoff, `stop()`/`stopAll()`, and `logSilentFailure()` — don't reimplement these, and never construct a raw `TablesDB(client)`. Subclass adds `initialize()` (calls `initTable(dbId, tableId)`) and its table ops as `runCatching` + `logSilentFailure` on failure. Register in `BouncerApp.kt` via `initializeSafely("Name") { Client.initialize() }`. Exception: `AppwriteFavouritesSync` is in `data/remote/` but is **not** registered in `BouncerApp` via `initializeSafely` — do not assume it follows the standard init pattern.
+**New Appwrite client pattern:** `object` singleton extending `AppwriteTableClient(tag)`. The base provides `initTable()`, `isReady`, the billed-operation funnels `guardedRead()`/`guardedWrite()`, the refcounted Realtime `acquireChannel(channel) { … }` + reconnect backoff, `stop()`/`stopAll()`, and `logSilentFailure()` — don't reimplement these, and never construct a raw `TablesDB(client)`. Subclass adds `initialize()` (calls `initTable(dbId, tableId)`) and its table ops as `runCatching` + `logSilentFailure` on failure. Register in `BouncerApp.kt` via `initializeSafely("Name") { Client.initialize() }`.
 
 **API keys:** Always access via `ApiKeys` object (`ApiKeys.kt`), never `BuildConfig` directly. Add new keys to `ApiKeys.kt` + `build.gradle.kts` + `local.properties.template`.
 

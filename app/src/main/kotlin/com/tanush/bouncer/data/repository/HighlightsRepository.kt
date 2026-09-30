@@ -45,6 +45,9 @@ interface HighlightsSyncMarker {
     fun recordPageRun(nowMs: Long)
 }
 
+/** Matches the 7-day highlight retention in SeriesSyncWorker. */
+private const val HIGHLIGHTS_BACKFILL_MS = CacheConfig.HIGHLIGHTS_FRESHNESS_MS * 7 * 24
+
 /** [HighlightsSyncMarker] over the app's main preference store — survives process death. */
 class PrefsHighlightsSyncMarker(context: Context) : HighlightsSyncMarker {
     private val prefs = BouncerPreferences.also { PreferenceStore.initialize(context) }
@@ -56,8 +59,12 @@ class PrefsHighlightsSyncMarker(context: Context) : HighlightsSyncMarker {
         prefs.putLong(PrefsRegistry.Highlights.LAST_FULL_SYNC_AT, nowMs)
     }
 
+    // A fresh install has no watermark, and 0 asked for the whole `highlights` table — paid for 100
+    // rows per 5-minute drain until it caught up, for clips SeriesSyncWorker deletes from Room
+    // after 7 days anyway. So a missing watermark starts at that same retention edge.
     override fun lastRowFetchedAt(): Long =
-        prefs.getLong(PrefsRegistry.Highlights.LAST_ROW_FETCHED_AT, 0L)
+        prefs.getLong(PrefsRegistry.Highlights.LAST_ROW_FETCHED_AT, 0L).takeIf { it > 0L }
+            ?: (System.currentTimeMillis() - HIGHLIGHTS_BACKFILL_MS)
 
     override fun recordRowFetchedAt(value: Long) {
         prefs.putLong(PrefsRegistry.Highlights.LAST_ROW_FETCHED_AT, value)

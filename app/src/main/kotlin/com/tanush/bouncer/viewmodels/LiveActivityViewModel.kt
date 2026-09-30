@@ -412,7 +412,7 @@ class LiveActivityViewModel(
         // Win probability is computed server-side by bouncer-match-sync and published as one
         // aggregate file; the device only joins it on. A match the server has no number for keeps
         // a null probability and renders no bar.
-        WinProbabilityStore.refresh()
+        refreshWinProbabilityFor(distinctMatches)
         val matchesWithProbability = distinctMatches.map { match ->
             when {
                 match.isCompleted -> match.copy(winProbability = match.resolvedWinProbability())
@@ -526,4 +526,12 @@ class LiveActivityViewModel(
         // loop ran for the whole life of the Activity, backgrounded included.
         stopPolling()
     }
+}
+
+/**
+ * Only when something in the list can carry a number: a Recent-only list has none to show, and
+ * this runs on every list poll.
+ */
+private suspend fun refreshWinProbabilityFor(matches: List<CricketMatch>) {
+    if (matches.any { it.isLive || it.isUpcoming }) WinProbabilityStore.refresh()
 }

@@ -162,6 +162,7 @@ private fun NavGraphBuilder.primaryTabDestinations(
         popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
         popExitTransition = { BouncerMotion.Transitions.tabExit() }
     ) {
+        LaunchedEffect(Unit) { newsViewModel.ensureLoaded() }
         NewsScreenV2(
             viewModel = newsViewModel,
             onArticleClick = { article ->
@@ -242,7 +243,10 @@ private fun NavGraphBuilder.moreChildDestinations(
         val news by newsViewModel.articles.collectAsStateWithLifecycle()
         val initialTab = backStackEntry.arguments?.getString(BouncerScreen.Search.ARG_TAB)
             ?.let { tab -> SearchTab.entries.firstOrNull { it.name == tab } }
-        LaunchedEffect(Unit) { liveActivityViewModel.warmAllStatuses() }
+        LaunchedEffect(Unit) {
+            liveActivityViewModel.warmAllStatuses()
+            newsViewModel.ensureLoaded()
+        }
 
         SearchScreen(
             matches = allMatches,

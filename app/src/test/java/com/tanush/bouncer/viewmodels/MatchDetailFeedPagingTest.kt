@@ -1,5 +1,6 @@
 package com.tanush.bouncer.viewmodels
 
+import androidx.lifecycle.ViewModelStore
 import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
@@ -10,16 +11,19 @@ import com.tanush.bouncer.data.remote.ScorecardSnapshot
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.TimelineEventType
+import com.tanush.bouncer.services.MatchPresenceReporter
 import io.mockk.coEvery
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -74,8 +78,7 @@ class MatchDetailFeedPagingTest {
         }
     }
 
-    // Terminal, so no presence heartbeat starts — see MatchDetailPresenceHeartbeatTest.
-    private val finishedMatch = CricketMatch(
+    private val baseMatch = CricketMatch(
         id = "170667",
         seriesId = "0",
         matchTitle = "Australia vs India, 3rd Test",
@@ -96,41 +99,54 @@ class MatchDetailFeedPagingTest {
         coEvery { fetchScorecard(any()) } returns Scorecard(emptyList())
     }
 
-    private fun viewModel(source: LiveMatchDetailSource) = MatchDetailViewModel(
-        match = finishedMatch,
-        matchRepository = repository(),
-        liveSource = source,
-    )
-
+    /**
+     * Live, because a finished match subscribes to no commentary stream at all. A live match runs
+     * the presence heartbeat — an unbounded loop — so this test steps with `runCurrent` and clears
+     * the ViewModel itself instead of draining the scheduler.
+     */
     @Test
     fun `a realtime line never truncates pages the reader paid for`() = runTest(dispatcher) {
+        mockkObject(MatchPresenceReporter)
+        coEvery { MatchPresenceReporter.ping(any()) } returns true
+        val liveMatch = baseMatch.copy(status = "Live", currentStatus = "India need 120 runs")
+        require(!liveMatch.isCompleted) { "fixture must not be terminal" }
         val events = MutableSharedFlow<CommentaryEvent>(extraBufferCapacity = 4)
-        val vm = viewModel(PagingSource(events))
-        advanceUntilIdle()
-        assertEquals("the match opens on one small page", 48, vm.uiState.value.commentary.size)
+        val store = ViewModelStore()
+        val vm = MatchDetailViewModel(
+            match = liveMatch,
+            matchRepository = repository(),
+            liveSource = PagingSource(events),
+        ).also { store.put("match", it) }
+        try {
+            runCurrent()
+            assertEquals("the match opens on one small page", 48, vm.uiState.value.commentary.size)
 
-        repeat(3) {
-            vm.loadOlderCommentary()
-            advanceUntilIdle()
-        }
-        val paged = vm.uiState.value.commentary.size
-        assertEquals("48 + three 150-row pages", 498, paged)
+            repeat(3) {
+                vm.loadOlderCommentary()
+                runCurrent()
+            }
+            val paged = vm.uiState.value.commentary.size
+            assertEquals("48 + three 150-row pages", 498, paged)
 
-        events.tryEmit(
-            CommentaryEvent(
-                matchId = finishedMatch.id,
-                commentary = "a new delivery",
-                sortKey = 2_000_000.0,
-                event = TimelineEventType.OTHER,
+            events.tryEmit(
+                CommentaryEvent(
+                    matchId = liveMatch.id,
+                    commentary = "a new delivery",
+                    sortKey = 2_000_000.0,
+                    event = TimelineEventType.OTHER,
+                )
             )
-        )
-        advanceUntilIdle()
+            runCurrent()
 
-        // The cap is 400. Truncating to it here would delete 99 rows that cost billed reads.
-        assertEquals(paged + 1, vm.uiState.value.commentary.size)
-        assertTrue(
-            "the reader's oldest paid-for line is still there",
-            vm.uiState.value.commentary.last().text.startsWith("page 3 "),
-        )
+            // The cap is 400. Truncating to it here would delete 99 rows that cost billed reads.
+            assertEquals(paged + 1, vm.uiState.value.commentary.size)
+            assertTrue(
+                "the reader's oldest paid-for line is still there",
+                vm.uiState.value.commentary.last().text.startsWith("page 3 "),
+            )
+        } finally {
+            store.clear()
+            unmockkObject(MatchPresenceReporter)
+        }
     }
 }

@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.widgets
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.work.*
@@ -121,6 +123,28 @@ object WidgetUpdateWorker {
         }
     }
 
+    /**
+     * Whether any widget this worker renders is on a home or lock screen.
+     *
+     * Every install subscribes to the `cricket-live-updates` topic and runs `ScorePollingWorker`,
+     * and both trigger this worker. Before this check it refreshed the snapshot — a billed
+     * `match-live-detail` read or a `live-matches` download — and re-armed its 30-minute chain on
+     * every device, widget or not, so the cost scaled with installs rather than with widgets.
+     * Fails open: an error reading the ids keeps the old behaviour rather than silently stopping a
+     * widget someone has placed.
+     */
+    internal suspend fun hasAnyWidget(context: Context): Boolean = try {
+        val glance = GlanceAppWidgetManager(context)
+        glance.getGlanceIds(BouncerGlanceWidget::class.java).isNotEmpty() ||
+            glance.getGlanceIds(BouncerLockScreenWidget::class.java).isNotEmpty() ||
+            AppWidgetManager.getInstance(context)
+                .getAppWidgetIds(ComponentName(context, LiveMatchWidgetProvider::class.java))
+                .isNotEmpty()
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        true
+    }
+
     /** Cancel any pending scheduled update. */
     fun cancelUpdates(context: Context) {
         try {
@@ -148,6 +172,9 @@ class WidgetUpdateWorkManagerWorker(
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
+        // No widget placed: no refresh, and no re-arm, so the chain ends here. Placing one starts
+        // it again through the receivers' onEnabled.
+        if (!WidgetUpdateWorker.hasAnyWidget(context)) return Result.success()
         return try {
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "widget"

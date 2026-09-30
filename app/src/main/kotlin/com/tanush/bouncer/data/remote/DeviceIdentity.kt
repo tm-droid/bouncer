@@ -12,22 +12,18 @@ import java.util.UUID
  * limits per device so one runaway client cannot burn the project's provider spend, and a request
  * without it simply lands in the server's shared IP bucket rather than being let through.
  *
- * The id itself predates this file — [AppwriteFavouritesSync] has persisted `appwrite_device_id`
- * since favourites sync shipped, and the same value is reused so a device does not acquire a second
- * identity. It lives here instead because that client is **not** registered in `BouncerApp`'s
- * `initializeSafely` sequence, so anything depending on its `initialize()` having run is depending
- * on a lifecycle nobody guarantees.
+ * The id itself predates this file — the since-deleted favourites sync persisted
+ * `appwrite_device_id`, and the same value is reused so a device does not acquire a second identity.
  */
 object DeviceIdentity {
-    /** Shared with [AppwriteFavouritesSync] on purpose — one device, one id. */
+    /** The key the deleted favourites sync used, kept so no install acquires a second id. */
     const val PREF_DEVICE_ID = "appwrite_device_id"
 
     /**
      * `favourite_teams`, because that is where the id already is.
      *
-     * `FavouriteTeamsManager` hands its own prefs to `AppwriteFavouritesSync.initialize`, so every
-     * existing install's UUID is stored in that file. Reading from a tidier-sounding file would
-     * mint a second id for every device already out there and orphan its favourites row.
+     * The favourites sync stored every existing install's UUID in that file. Reading from a
+     * tidier-sounding file would mint a second id for every device already out there.
      */
     private const val PREFS_NAME = "favourite_teams"
 
