@@ -31,6 +31,7 @@ import {
   parseCommentary,
   parseLiveDetail,
   parseScorecard,
+  parseOverHistory,
   BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
 import { BATCH_MAX_ITEMS, chainDepth, classifyEvent, deadProviders, drainUnknownQuotaIds, generateBatch, sanitize, stripPreamble, verifyBatch } from "./llm.js";
@@ -45,6 +46,7 @@ import {
   finishCheckIn,
 } from "./observability.js";
 import { deliveryAlert, milestoneAlerts, resultAlert } from "./alerts.js";
+import { runPoll } from "./poll.js";
 import { fcmConfigured, matchTopic, sendTopicMessage } from "./fcm.js";
 import { evaluate, evaluateLong, evaluatePrematch, formatFromText, ballsRemainingFor } from "./winprob.js";
 import {
@@ -134,7 +136,17 @@ const MAX_PREMATCH = 60;
 // That is ~6x the rewrite rate per match and still only ~9% of deliveries: 11 matches bowling for
 // 16 hours is ~15,800 balls, so full coverage is not a budget away, it is an order of magnitude
 // away. Do not read this pair as "enough" — read it as what fits.
-const SLOW_TIER_INTERVAL_MS = 15 * 60 * 1000;
+//
+// 2026-09-30: 15 → 60 minutes. Since rewriting became batched the tier no longer decides prose at
+// all — only the DETAIL tier (scorecard fetch, detail row, scorecard row) for a match nobody has
+// open — so what it buys is a row for a screen nobody is looking at. The one reader that did depend
+// on it was the Live Update card of a followed-but-not-open match, which subscribed to the detail
+// row without ever pinging presence and so updated every 15 minutes at best; `LiveUpdateService`
+// now pings for every followed match, putting it on the per-minute fast tier. What is left for this
+// tier is a safety net for older app builds and a not-too-old row for a first paint, where the
+// match list already outranks a stale row (`listLeadsDetail`). ~1,050 fewer DB writes a day at 11
+// unwatched matches.
+const SLOW_TIER_INTERVAL_MS = 60 * 60 * 1000;
 const SLOW_MAX_NEW_PER_MATCH = 2;
 const SLOW_MAX_MATCHES_PER_RUN = 3;
 const SLOW_STATE_FILE = "slow-sync-state";
@@ -536,7 +548,73 @@ const batterRunsByMatch = new Map();
 // the watermark.
 const lastDetailBody = new Map();
 const lastScorecardBody = new Map();
+// When each match's scorecard row was last written, and what it looked like in outline.
+const lastScorecardWrite = new Map();
+
+// ── Over history (the worm and the manhattan) ─────────────────────────────────────────────────
+//
+// Every over of every innings, accumulated from the ~2 overs the live page shows each run. The
+// live page is fetched for every live match every minute, so a match's history builds whether or
+// not anyone is watching; it is published inside the scorecard row (`scorecard.overs`), which is
+// written only for the detail tier and at finalisation. A cold container starts empty and seeds
+// from that row the first time it would write it — one billed read per match per cold container,
+// counted against READ_BUDGET_PER_RUN and skipped (retried next run) if the budget is spent. Overs
+// bowled while no container held the history are simply absent; the device plots the points it
+// has and never interpolates a figure it was not given.
+const overHistoryByMatch = new Map();
+const overHistorySeeded = new Set();
+
+/** [stored] ∪ [fresh] by (innings, over), the fresh reading winning, sorted. Malformed entries drop. */
+export function mergeOverHistory(stored, fresh) {
+  const byKey = new Map();
+  for (const e of [...(Array.isArray(stored) ? stored : []), ...(fresh ?? [])]) {
+    if (!e || typeof e !== "object" || !Number.isInteger(e.innings) || !Number.isInteger(e.over)) continue;
+    byKey.set(`${e.innings}:${e.over}`, e);
+  }
+  return [...byKey.values()].sort((a, b) => a.innings - b.innings || a.over - b.over);
+}
+
+/** Seeds a cold container's history for [matchId] from its scorecard row, once. Never throws. */
+async function seedOverHistory({ db, matchId, error }) {
+  if (overHistorySeeded.has(matchId)) return;
+  if (readsThisRun + 1 > READ_BUDGET_PER_RUN) return; // next run
+  readsThisRun++;
+  try {
+    const row = await db.getDocument(DB_ID, SCORECARD_COL, sanitizeMatchId(matchId));
+    const stored = JSON.parse(row?.scorecard ?? "{}")?.overs;
+    overHistoryByMatch.set(matchId, mergeOverHistory(stored, overHistoryByMatch.get(matchId)));
+    overHistorySeeded.add(matchId);
+  } catch (e) {
+    if (e?.code === 404) overHistorySeeded.add(matchId); // no row yet: nothing to seed from
+    else if (isBudget402(e)) budget402UntilMs = Date.now() + READ_402_BACKOFF_MS;
+    else error(`Over history seed failed (${matchId}): ${e?.message}`);
+  }
+}
 let lastWinProbBody = null;
+
+// The scorecard changes with every ball (batter and bowler figures), so the unchanged-body skip
+// above never fired during play: a viewed match cost one scorecard write a minute. The live card —
+// score, batters, bowler, recent balls — travels in the detail row every minute regardless, so the
+// scorecard now moves on a WICKET or a new INNINGS at once, and otherwise at most this often.
+export const SCORECARD_MIN_INTERVAL_MS = 3 * 60 * 1000;
+
+/** Innings count and wickets fallen — the two changes a scorecard reader must see at once. */
+export function scorecardOutline(scorecard) {
+  const innings = scorecard?.innings ?? [];
+  const wickets = innings.reduce((n, i) => n + (i?.fallOfWickets?.length ?? 0), 0);
+  return `${innings.length}:${wickets}`;
+}
+
+/**
+ * Whether the scorecard row is due a write. [force] is the finalising run: the last write of a
+ * match's life must never be throttled away, because nothing writes the row again.
+ */
+export function scorecardWriteDue({ previous, body, outline, now, force = false }) {
+  if (!previous) return true;
+  if (previous.body === body) return false;
+  if (force || previous.outline !== outline) return true;
+  return now - previous.at >= SCORECARD_MIN_INTERVAL_MS;
+}
 
 // `upcoming-matches` feeds pre-match priors only, and a fixture list does not change minute to
 // minute; one download per 10 minutes instead of one per run.
@@ -715,6 +793,24 @@ async function handleRun({ req, res, log, error }) {
     return res.json({ probe }, 200);
   }
 
+  const client = new Client()
+    .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
+    .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
+    .setKey(process.env.APPWRITE_API_KEY);
+  const storage = new Storage(client);
+
+  // 0. The match lists. Polled here, in this run, rather than by a sibling function a few seconds
+  // earlier: the live list then arrives in memory instead of as a download of the file that sibling
+  // had just uploaded. First, and ahead of every early return below — the lists, the widgets and
+  // the start alerts must not stop because commentary is paused on a read budget or a broken
+  // classifier; the poll spends no database reads. A poll that fails, or a live fetch that failed
+  // inside it, falls back to the file, which is what this run read before the merge.
+  const polled = await runPoll({ storage, log, error }).catch((e) => {
+    error(`Match-list poll failed: ${e?.message}`);
+    reportError(e, { operation: "poll_lists" });
+    return null;
+  });
+
   if (Date.now() < budget402UntilMs) {
     error(`[READ-BUDGET-402] skipping run — read budget exhausted, cooldown until ${new Date(budget402UntilMs).toISOString()}`);
     report("match-sync skipped a run — read budget 402 latched", {
@@ -733,11 +829,6 @@ async function handleRun({ req, res, log, error }) {
   }
 
   readsThisRun = 0;
-  const client = new Client()
-    .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
-    .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
-    .setKey(process.env.APPWRITE_API_KEY);
-  const storage = new Storage(client);
   const db = new Databases(client);
 
   // Held deliveries are offered to the writer first thing, and the backlog is saved on every path
@@ -749,7 +840,7 @@ async function handleRun({ req, res, log, error }) {
     await saveBacklog({ storage, log, error });
   };
 
-  // 1. Read the live-matches list written by poll-live-matches.
+  // 1. The live list: from this run's poll above, or the `live-matches` file when the poll failed.
   // node-appwrite auto-parses JSON files (returns the object); older/plain files return bytes.
   // The model is loaded before anything is gated on, because the pre-match pass below needs it even
   // on a run with nothing live — which is most of the night, and exactly when the app is showing
@@ -759,8 +850,13 @@ async function handleRun({ req, res, log, error }) {
 
   let matches = [];
   try {
-    const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, LIVE_FILE));
-    matches = parsed?.data?.matches ?? [];
+    const live = polled?.lists?.live;
+    if (live && Array.isArray(live.matches)) {
+      matches = live.matches;
+    } else {
+      const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, LIVE_FILE));
+      matches = parsed?.data?.matches ?? [];
+    }
   } catch (e) {
     log(`No live-matches file — writing ${Object.keys(prematch).length} pre-match entries only`);
     // A healthy run. poll-live-matches simply has nothing for us, which is the normal state
@@ -802,9 +898,10 @@ async function handleRun({ req, res, log, error }) {
   for (const id of watermarkByMatch.keys()) {
     if (!liveIds.has(id)) watermarkByMatch.delete(id);
   }
-  for (const cache of [lastDetailBody, lastScorecardBody]) {
+  for (const cache of [lastDetailBody, lastScorecardBody, lastScorecardWrite, overHistoryByMatch]) {
     for (const id of cache.keys()) if (!liveIds.has(id)) cache.delete(id);
   }
+  for (const id of overHistorySeeded) if (!liveIds.has(id)) overHistorySeeded.delete(id);
   const summary = {};
   // Seeded with the pre-match entries so a fixture that has not started still has a number.
   // A live entry for the same id overwrites it, which is the right precedence: a position beats a
@@ -1459,6 +1556,7 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
 
   // 3. Build + upsert the live-detail snapshot.
   const detail = parseLiveDetail(liveHtml);
+  overHistoryByMatch.set(matchId, mergeOverHistory(overHistoryByMatch.get(matchId), parseOverHistory(liveHtml)));
 
   // 3a. Finalisation. A match leaves `live-matches.json` the moment it is over and never comes
   // back, and nothing else writes these two rows — so whatever the detail tier last left behind is
@@ -1531,7 +1629,10 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
     // write is the sole source for the Scorecard tab and for the Overview's scorecard-derived
     // widgets. The app subscribes to this row's own channel for the life of the detail screen.
     if ((detail.scorecard?.innings?.length || 0) > 0) {
-      await upsertScorecard({ db, matchId, scorecard: detail.scorecard, error });
+      await seedOverHistory({ db, matchId, error });
+      const overs = overHistoryByMatch.get(matchId) ?? [];
+      if (overs.length > 0) detail.scorecard.overs = overs;
+      await upsertScorecard({ db, matchId, scorecard: detail.scorecard, force: finalising, error });
     }
   } else if (writeDetail) {
     log(`Match ${matchId}: hollow live-detail, skipping upsert`);
@@ -1758,22 +1859,28 @@ async function upsertDetail({ db, matchId, detail, error }) {
 // Same deterministic rowId as the detail row, in a table with no index and no realtime subscriber.
 // Costs one extra write per viewed match per minute and saves ~60 KB on every realtime message
 // that match sends to every device watching it.
-async function upsertScorecard({ db, matchId, scorecard, error }) {
+async function upsertScorecard({ db, matchId, scorecard, force = false, error }) {
   const rowId = sanitizeMatchId(matchId);
   const data = {
     match_id: matchId,
     scorecard: JSON.stringify(scorecard),
     updated_at: new Date().toISOString(),
   };
-  if (lastScorecardBody.get(matchId) === data.scorecard) return;
+  const now = Date.now();
+  const outline = scorecardOutline(scorecard);
+  if (!scorecardWriteDue({ previous: lastScorecardWrite.get(matchId), body: data.scorecard, outline, now, force })) return;
+  const remember = () => {
+    lastScorecardBody.set(matchId, data.scorecard);
+    lastScorecardWrite.set(matchId, { body: data.scorecard, outline, at: now });
+  };
   try {
     await db.updateDocument(DB_ID, SCORECARD_COL, rowId, data);
-    lastScorecardBody.set(matchId, data.scorecard);
+    remember();
   } catch (e) {
     if (e?.code === 404) {
       try {
         await db.createDocument(DB_ID, SCORECARD_COL, rowId, data, READ_ANY);
-        lastScorecardBody.set(matchId, data.scorecard);
+        remember();
       } catch (e2) {
         if (e2?.code !== 409) error(`Scorecard create failed (${matchId}): ${e2?.message}`);
       }

@@ -204,12 +204,11 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
             .withPropertyName("commentaryConstantParitySource")
             .withPathSensitivity(PathSensitivity.RELATIVE)
 
-        // Same reasoning for CricbuzzHttpVendorParityTest, which byte-compares the two vendored
+        // Same reasoning for CricbuzzHttpVendorParityTest, which byte-compares the vendored
         // copies of cricbuzz-http.js. Both paths must be declared: with only one, editing the
         // other leaves the task UP-TO-DATE and the drift ships.
         inputs.files(
             rootProject.file("appwrite/functions/match-sync/src/cricbuzz-http.js"),
-            rootProject.file("appwrite/functions/poll-live-matches/src/cricbuzz-http.js"),
             rootProject.file("appwrite/functions/player-search/src/cricbuzz-http.js"),
         )
             .withPropertyName("cricbuzzHttpVendorParitySources")
@@ -229,13 +228,10 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
         inputs.files(
             rootProject.file("appwrite/functions/match-sync/src/winprob.js"),
             rootProject.file("appwrite/functions/win-probability/src/winprob.js"),
-            rootProject.file("appwrite/functions/poll-live-matches/src/series.js"),
-            rootProject.file("appwrite/functions/match-sync/src/nextflight.js"),
-            rootProject.file("appwrite/functions/poll-live-matches/src/nextflight.js"),
-            rootProject.file("appwrite/functions/poll-live-matches/src/matchstate.js"),
-            // FcmJsVendorParityTest: the push sender both functions deploy, and matchTopic's rule.
+            rootProject.file("appwrite/functions/match-sync/src/series.js"),
+            rootProject.file("appwrite/functions/match-sync/src/matchstate.js"),
+            // FcmJsVendorParityTest: matchTopic's rule, which the device mirrors.
             rootProject.file("appwrite/functions/match-sync/src/fcm.js"),
-            rootProject.file("appwrite/functions/poll-live-matches/src/fcm.js"),
         )
             .withPropertyName("winProbAndSeriesParitySources")
             .withPathSensitivity(PathSensitivity.RELATIVE)

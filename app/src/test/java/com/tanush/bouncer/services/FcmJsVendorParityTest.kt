@@ -7,38 +7,25 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The two copies of `fcm.js` must stay byte-identical, and the device's [matchTopic] must build the
- * same topic name the server sends to.
+ * The device's [matchTopic] must build the same topic name the server sends to.
  *
- * `match-sync` sends wicket/boundary/milestone/result alerts and `poll-live-matches` sends the start,
- * each from its own copy (a deployment contains only its own directory). A drift in `matchTopic`
- * would be completely silent: the device subscribes to one name, the server sends to another, and
- * nothing errors anywhere — which is the exact state "notifications never arrive" was in before.
+ * `match-sync` sends every match alert — wicket, boundary, milestone, result, and (since the
+ * match-list poll moved into it on 2026-09-30) the start — from its `fcm.js`. There used to be a
+ * second copy in `poll-live-matches`, byte-compared here; with the function merged there is one.
+ * A drift in `matchTopic` would be completely silent: the device subscribes to one name, the server
+ * sends to another, and nothing errors anywhere — which is the exact state "notifications never
+ * arrive" was in before.
  *
- * Both paths are declared as test-task inputs in `app/build.gradle.kts`, or an edit outside the
+ * The path is declared as a test-task input in `app/build.gradle.kts`, or an edit outside the
  * module leaves this task UP-TO-DATE.
  */
 class FcmJsVendorParityTest {
 
     private val canonicalPath = "appwrite/functions/match-sync/src/fcm.js"
-    private val vendoredPath = "appwrite/functions/poll-live-matches/src/fcm.js"
 
     @Test
-    fun `both copies are found and look like the fcm module`() {
-        for (path in listOf(canonicalPath, vendoredPath)) {
-            val text = read(path)
-            assertTrue("$path does not look like fcm.js", text.contains("export function matchTopic"))
-        }
-    }
-
-    @Test
-    fun `the vendored copy is byte-identical`() {
-        assertEquals(
-            "fcm.js drifted between $canonicalPath and $vendoredPath. Copy the canonical file over " +
-                "the other — do not delete this check.",
-            read(canonicalPath),
-            read(vendoredPath),
-        )
+    fun `the server copy is found and looks like the fcm module`() {
+        assertTrue("$canonicalPath does not look like fcm.js", read(canonicalPath).contains("export function matchTopic"))
     }
 
     @Test

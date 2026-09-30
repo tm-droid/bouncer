@@ -151,7 +151,7 @@ fun OverviewTabV2(
         overviewWinProbability(match, winProb, probabilityHistory, currentRunRate, requiredRunRate)
         overviewPhaseCards(match, matchFlow, derived.ppPhaseList, derived.matchPhases)
         overviewScoringCharts(
-            match, hasOverData, derived.cumulativeScores, maxOver,
+            match, derived.worm, hasOverData, derived.cumulativeScores, maxOver,
             derived.wicketOvers, derived.perOverRuns, requiredRunRate,
         )
         overviewScorecardSections(

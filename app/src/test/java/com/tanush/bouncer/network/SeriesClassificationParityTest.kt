@@ -6,9 +6,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Fails the build when the Kotlin series classifier and `poll-live-matches/src/series.js` disagree.
+ * Fails the build when the Kotlin series classifier and `match-sync/src/series.js` disagree.
  *
- * The same series is classified on both sides of the wire: `bouncer-poll-live-matches` writes
+ * The same series is classified on both sides of the wire: `bouncer-match-sync` (its match-list poll) writes
  * `category` and `isWomens` into the `active-series` bucket file, and the device recomputes both
  * whenever it falls back to its own scrape. A drift therefore shows up as one competition changing
  * category depending on which path happened to run — and nothing in either file would report it.
@@ -22,7 +22,7 @@ import org.junit.Test
  */
 class SeriesClassificationParityTest {
 
-    private val relativePath = "appwrite/functions/poll-live-matches/src/series.js"
+    private val relativePath = "appwrite/functions/match-sync/src/series.js"
 
     /** Each `/pattern/flags.test(` in source order — the only regex shape either function uses. */
     private val literals: List<Pair<String, String>> by lazy {

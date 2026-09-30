@@ -1,4 +1,3 @@
-import { Client, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { createHash } from "crypto";
 import { seriesCategory, isWomensSeries } from "./series.js";
@@ -111,15 +110,21 @@ const SERIES_ARCHIVE_URL = (year) => `https://www.cricbuzz.com/cricket-scorecard
 // Bound the remembered formats so the state file cannot grow without limit.
 const MAX_REMEMBERED_FORMATS = 400;
 
-export default async ({ req, res, log, error }) => {
-  if (!process.env.APPWRITE_API_KEY) {
-    return res.json({ error: "Missing APPWRITE_API_KEY" }, 500);
-  }
-  const client = new Client()
-    .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
-    .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
-    .setKey(process.env.APPWRITE_API_KEY);
-  const storage = new Storage(client);
+/**
+ * One poll: Cricbuzz's live, recent and upcoming lists → the three Storage files, match-start
+ * alerts, the live-count broadcast and the daily series walk.
+ *
+ * This was the whole of the `bouncer-poll-live-matches` function, scheduled every minute on its
+ * own. It now runs at the top of every `bouncer-match-sync` run instead, which hands match-sync
+ * the live list in memory: two schedules on the same minute cost ~1,440 extra executions a day,
+ * and match-sync then downloaded the `live-matches` file its sibling had just uploaded. The files
+ * are still written — the widgets, Android Auto, `ScorePollingWorker` and the Upcoming fallback
+ * read them.
+ *
+ * @returns `{ results, lists }` — per-type outcome, and each type's parsed data (`null` for a type
+ *   whose fetch failed this run, in which case the caller reads the file instead).
+ */
+export async function runPoll({ storage, log, error }) {
 
   // Previous content hashes. Missing/corrupt state just means every type is rewritten this run.
   //
@@ -158,7 +163,7 @@ export default async ({ req, res, log, error }) => {
     // to a `CricbuzzBlockedError`.
     if (data.matches.length === 0 && prevState[type]?.writtenAt) {
       error(`Parsed 0 ${type} matches — keeping the previous file rather than emptying it`);
-      return { type, data, hash: prevState[type].hash, writtenAt: prevState[type].writtenAt, skipped: true };
+      return { type, data, hash: prevState[type].hash, writtenAt: prevState[type].writtenAt, skipped: true, keptPrevious: true };
     }
 
     // Hash the DATA only. The stored payload embeds `fetchedAt`, so hashing it would differ on
@@ -272,8 +277,15 @@ export default async ({ req, res, log, error }) => {
   // exists for the next cold start.
   stateMemo = nextState;
 
-  return res.json(results);
-};
+  const lists = {};
+  // Null where this run has no list the caller should trust: a failed fetch, or an empty parse that
+  // kept the previous file — handing back that empty list would read as "nothing is live".
+  types.forEach((t, i) => {
+    const v = settled[i].status === "fulfilled" ? settled[i].value : null;
+    lists[t] = v && !v.keptPrevious ? v.data : null;
+  });
+  return { results, lists };
+}
 
 const SERIES_REFRESH_MS = 24 * 3600 * 1000;
 // A failed or empty scrape retries after this, not on the next one-minute run: each retry downloads

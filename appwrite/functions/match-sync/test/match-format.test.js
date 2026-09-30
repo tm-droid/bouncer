@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseFormats } from "../src/main.js";
+import { parseFormats } from "../src/poll.js";
 
 // Shaped like the real page: a Next.js flight payload, so every quote arrives escaped.
 const page = (objects) => objects.map((o) => JSON.stringify(o).replace(/"/g, '\\"')).join(",");

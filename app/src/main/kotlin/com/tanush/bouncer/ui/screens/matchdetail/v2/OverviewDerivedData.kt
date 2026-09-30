@@ -35,6 +35,8 @@ internal class OverviewDerivedData(
     val fallOfWicketsByInnings: List<List<UiFallOfWicket>>,
     val keyMoments: List<HighlightMoment>,
     val meaningfulCommentary: List<String>,
+    /** Both innings from the server's over history; null falls back to the Cricinfo milestones. */
+    val worm: OverWorm? = null,
 )
 
 @Composable
@@ -77,6 +79,7 @@ internal fun rememberOverviewDerivedData(
             } else emptyList()
         },
         keyMoments = buildKeyMoments(probabilityHistory),
+        worm = scorecard?.overs?.let(::overWormOf),
         meaningfulCommentary = TimelineEventExtractor.deduplicateByBall(
             commentary
                 .map { it.trimEnd('/').trim() }

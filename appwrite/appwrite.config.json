@@ -165,37 +165,6 @@
             ]
         },
         {
-            "$id": "bouncer-poll-live-matches",
-            "name": "bouncer-poll-live-matches",
-            "enabled": true,
-            "logging": true,
-            "runtime": "node-22",
-            "schedule": "* * * * *",
-            "timeout": 30,
-            "entrypoint": "src/main.js",
-            "commands": "npm install",
-            "version": "v3",
-            "path": "functions/poll-live-matches",
-            "vars": [
-                {
-                    "key": "APPWRITE_API_KEY",
-                    "value": ""
-                },
-                {
-                    "key": "MATCH_CACHE_BUCKET_ID",
-                    "value": "cricket-stats"
-                },
-                {
-                    "key": "FIREBASE_SERVICE_ACCOUNT_JSON",
-                    "value": ""
-                },
-                {
-                    "key": "FIREBASE_PROJECT_ID",
-                    "value": ""
-                }
-            ]
-        },
-        {
             "$id": "bouncer-news-sync",
             "name": "bouncer-news-sync",
             "$permissions": [

@@ -158,6 +158,7 @@ internal fun LazyListScope.overviewPhaseCards(
 
 internal fun LazyListScope.overviewScoringCharts(
     match: CricketMatch,
+    worm: OverWorm?,
     hasOverData: Boolean,
     cumulativeScores: List<Int>,
     maxOver: Int,
@@ -165,6 +166,10 @@ internal fun LazyListScope.overviewScoringCharts(
     perOverRuns: List<OverRunRate>,
     requiredRunRate: String?,
 ) {
+    if (worm != null) {
+        wormCharts(match, worm, wicketOvers, requiredRunRate)
+        return
+    }
     if (hasOverData) {
         item(key = "scoring_graph") {
             LiveScoringGraphCard(

@@ -5,7 +5,7 @@ import com.tanush.bouncer.models.Series
 /**
  * Series classification from a competition name.
  *
- * Mirrors `appwrite/functions/poll-live-matches/src/series.js` — the server writes the same two
+ * Mirrors `appwrite/functions/match-sync/src/series.js` — the server writes the same two
  * fields into the `active-series` bucket file, so the two must agree. That agreement is pinned by
  * `SeriesClassificationParityTest`, which reads the regexes out of the real JS file; the three
  * patterns below are `internal` rather than private so it can compare them one for one. A comment

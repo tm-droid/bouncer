@@ -4,5 +4,8 @@
   "type": "module",
   "dependencies": {
     "node-appwrite": "^15.0.0"
+  },
+  "scripts": {
+    "test": "node --test"
   }
 }

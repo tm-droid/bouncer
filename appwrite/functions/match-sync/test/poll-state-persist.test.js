@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { shouldPersistState } from "../src/main.js";
+import { shouldPersistState } from "../src/poll.js";
 
 const NOW = 1_800_000_000_000;
 const base = {

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mergeArchiveSeries, parseSeriesAnchors } from "../src/main.js";
+import { mergeArchiveSeries, parseSeriesAnchors } from "../src/poll.js";
 import { CricbuzzBlockedError } from "../src/cricbuzz-http.js";
 
 const noop = () => {};

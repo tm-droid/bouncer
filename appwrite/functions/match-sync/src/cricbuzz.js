@@ -383,6 +383,56 @@ function parseRecentBallsNext(html) {
   return { balls: latest.summary.trim().split(" ").filter(Boolean), over: latest.over };
 }
 
+/**
+ * Every completed over the live page shows, as the worm and the manhattan need it.
+ *
+ * Cricbuzz hangs an `overSeparator` off the commentary item that ends an over; the separator holds
+ * the over number, its runs and the batting side's score after it (`"319-7"`), and the item holding
+ * it carries the `inningsId`. The page is a ~20-item window, so one parse yields the last two overs
+ * or so — the whole history exists only because match-sync accumulates these run after run (see
+ * `overHistory` in main.js). No other server-rendered Cricbuzz page has it: the over-by-over page
+ * is client-rendered.
+ *
+ * An item with no `inningsId` is dropped rather than guessed: over 5 of innings 1 and over 5 of
+ * innings 2 are different points, and a wrong innings would plot a score against the wrong side.
+ */
+export function parseOverHistory(html) {
+  const out = new Map();
+  forEachNextFlightPayload(html, (d) => collectOverSeparators(d, out));
+  return [...out.values()].sort((a, b) => a.innings - b.innings || a.over - b.over);
+}
+
+function collectOverSeparators(node, out) {
+  if (Array.isArray(node)) {
+    for (const item of node) collectOverSeparators(item, out);
+    return;
+  }
+  if (!node || typeof node !== "object") return;
+  const sep = node.overSeparator;
+  if (sep && typeof sep === "object" && "overNumber" in sep) {
+    const entry = overEntry(sep, node.inningsId);
+    if (entry) out.set(`${entry.innings}:${entry.over}`, entry);
+  }
+  for (const k of Object.keys(node)) if (k !== "overSeparator") collectOverSeparators(node[k], out);
+}
+
+function overEntry(sep, inningsId) {
+  const innings = Number(inningsId);
+  const over = Number(sep.overNumber);
+  if (!Number.isInteger(innings) || innings <= 0 || !Number.isInteger(over) || over <= 0) return null;
+  const runs = Number(sep.overRuns);
+  const score = /^(\d+)(?:-(\d+))?/.exec(String(sep.batTeamObj?.teamScore ?? "").trim());
+  return {
+    innings,
+    over,
+    runs: Number.isFinite(runs) ? runs : null,
+    // Cumulative, not derived from summed runs: a missed over must not shift every later point.
+    score: score ? Number(score[1]) : null,
+    wickets: score?.[2] !== undefined ? Number(score[2]) : null,
+    team: typeof sep.batTeamObj?.teamName === "string" ? sep.batTeamObj.teamName : null,
+  };
+}
+
 /** Later by clock; by over number only when neither side carries one. */
 function newerOverSummary(candidate, best) {
   if (candidate.ts !== null && best.ts !== null) return candidate.ts > best.ts;

@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { selectSlowTier, nextSlowState, commentaryCapFor, isFinalised, finalKey } from "../src/main.js";
 
 // READ_BUDGET_PER_RUN = 20, READ_HEADROOM_RESERVE = 5, READ_COST_PER_MATCH = 1,
-// SLOW_MAX_MATCHES_PER_RUN = 3, SLOW_TIER_INTERVAL_MS = 15 min, SLOW_MAX_NEW_PER_MATCH = 2.
+// SLOW_MAX_MATCHES_PER_RUN = 3, SLOW_TIER_INTERVAL_MS = 60 min (15 until 2026-09-30, when followed
+// matches started pinging presence), SLOW_MAX_NEW_PER_MATCH = 2.
 // Mirrored here rather than exported: a test that reads the constant it is checking cannot catch
 // a wrong constant. The interval and the per-pass cap are budget decisions against the LLM chain's
 // daily request budget, not free parameters — see the derivation above the constants in main.js.
@@ -11,7 +12,7 @@ import { selectSlowTier, nextSlowState, commentaryCapFor, isFinalised, finalKey 
 // ~2500. That figure was never measured: two of the three rungs are 20 RPD (2026-09-24), so the real
 // Gemini supply is ~540/day. The constants below still stand; the headroom they assume does not.
 const NOW = 1_785_500_000_000;
-const INTERVAL = 15 * 60 * 1000;
+const INTERVAL = 60 * 60 * 1000;
 const MAX_SLOW_PER_RUN = 3;
 const USABLE_FAST_SLOTS = 15; // 20 budget − 5 reserve
 
@@ -35,7 +36,8 @@ test("the interval holds a match back until it elapses", () => {
   assert.deepEqual(select({ live, state: { "144783": NOW - 10 * 60 * 1000 } }), []);
   assert.deepEqual(select({ live, state: { "144783": NOW - INTERVAL + 1 } }), []);
   assert.deepEqual(select({ live, state: { "144783": NOW - INTERVAL } }), ["144783"]);
-  assert.deepEqual(select({ live, state: { "144783": NOW - 16 * 60 * 1000 } }), ["144783"]);
+  assert.deepEqual(select({ live, state: { "144783": NOW - 16 * 60 * 1000 } }), []);
+  assert.deepEqual(select({ live, state: { "144783": NOW - 61 * 60 * 1000 } }), ["144783"]);
 });
 
 test("a match with a viewer belongs to the fast tier and is never taken by the slow one", () => {

@@ -6,6 +6,7 @@ import com.tanush.bouncer.utils.sentryBreadcrumb
 import com.tanush.bouncer.utils.sentryCaptureThrottled
 import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
+import org.json.JSONArray
 import org.json.JSONObject
 
 /**
@@ -22,18 +23,35 @@ import org.json.JSONObject
 object MatchPresenceReporter {
     private const val FUNCTION_ID = "bouncer-match-presence"
 
+    /**
+     * How often a watcher re-pings. Must stay under the server's `PRESENCE_TTL_MS` (4 min) with room
+     * for one missed ping.
+     */
+    const val HEARTBEAT_MS = 90_000L
+
     /** True when the backend accepted the ping; false means match-sync still sees this match as unwatched. */
     suspend fun ping(matchId: String): Boolean {
         if (matchId.isBlank()) return false
+        return send(JSONObject().put("matchId", matchId).toString(), matchId)
+    }
+
+    /**
+     * Every match in [matchIds] in one execution — the Live Update service follows several at once,
+     * and one call per match per heartbeat would multiply executions by the number followed.
+     */
+    suspend fun pingAll(matchIds: Collection<String>): Boolean {
+        val ids = matchIds.filter { it.isNotBlank() }.distinct()
+        if (ids.isEmpty()) return false
+        return send(JSONObject().put("matchIds", JSONArray(ids)).toString(), ids.joinToString(","))
+    }
+
+    private suspend fun send(body: String, matchId: String): Boolean {
         return try {
             // Detailed, not `executeFunction`: that flattens a latched EXECUTIONS guard, an
             // uninitialised SDK, a FAILED execution and a 4xx/5xx into one null, and the event this
             // path raises then could not say which. The server side is healthy far more often than
             // not, so the outcome class is the whole diagnosis.
-            val outcome = AppwriteClient.executeFunctionDetailed(
-                FUNCTION_ID,
-                JSONObject().put("matchId", matchId).toString()
-            )
+            val outcome = AppwriteClient.executeFunctionDetailed(FUNCTION_ID, body)
             if (outcome !is FunctionOutcome.Success) {
                 // A breadcrumb, not an event. Every way to get here is already reported, once, by
                 // `executeFunctionDetailed` under this function's id: an uninitialised SDK, a

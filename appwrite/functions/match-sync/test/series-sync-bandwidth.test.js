@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { syncSeries } from "../src/main.js";
+import { syncSeries } from "../src/poll.js";
 
 const noop = () => {};
 const HOUR = 3600 * 1000;

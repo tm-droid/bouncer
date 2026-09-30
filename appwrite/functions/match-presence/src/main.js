@@ -15,6 +15,16 @@ const FRESH_SKIP_MS = 60 * 1000;
 
 const sanitizeMatchId = (id) => String(id).replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 64);
 
+// Bounds one ping's reach: a device follows a handful of matches, never dozens.
+const MAX_IDS_PER_PING = 10;
+
+/** The sanitised, de-duplicated ids a ping names — `matchIds` (array) and/or `matchId`. */
+export function presenceIds(body) {
+  const raw = [...(Array.isArray(body?.matchIds) ? body.matchIds : []), body?.matchId];
+  const ids = raw.filter((v) => v !== undefined && v !== null).map(sanitizeMatchId).filter(Boolean);
+  return [...new Set(ids)].slice(0, MAX_IDS_PER_PING);
+}
+
 export default async ({ req, res, log, error }) => {
   if (!process.env.APPWRITE_API_KEY) {
     return res.json({ error: "Missing APPWRITE_API_KEY" }, 500);
@@ -27,10 +37,13 @@ export default async ({ req, res, log, error }) => {
   } catch {
     return res.json({ error: "Body must be a JSON object" }, 400);
   }
-  const matchId = sanitizeMatchId(body.matchId ?? "");
-  if (!matchId) {
+  // One id from an open match screen, or several from the Live Update service, which follows
+  // every match the user has a live card for and pings them all in one execution.
+  const matchIds = presenceIds(body);
+  if (matchIds.length === 0) {
     return res.json({ error: "Missing matchId" }, 400);
   }
+  const matchId = matchIds.join(",");
 
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
@@ -55,12 +68,12 @@ export default async ({ req, res, log, error }) => {
   // people watching one match were N writes every 90s. Capped at ~1 write/min/match now. Staleness
   // is unchanged: any ping that finds the stamp a minute old still writes, and each viewer pings
   // every 90s.
-  const previous = map[matchId];
-  if (typeof previous === "number" && now - previous < FRESH_SKIP_MS) {
+  const stale = matchIds.filter((id) => !(typeof map[id] === "number" && now - map[id] < FRESH_SKIP_MS));
+  if (stale.length === 0) {
     return res.json({ ok: true, matchId, skipped: true });
   }
 
-  map[matchId] = now;
+  for (const id of matchIds) map[id] = now;
   // Prune stale viewers so the file can't grow unbounded.
   for (const [id, ts] of Object.entries(map)) {
     if (typeof ts !== "number" || now - ts > PRESENCE_TTL_MS) delete map[id];

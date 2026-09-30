@@ -97,7 +97,7 @@ test("markup it cannot read is no answer, not an empty list of matches", () => {
 
 // ── Which tab a parsed match belongs on ──────────────────────────────────────
 
-const { belongsOn } = await import("../src/main.js");
+const { belongsOn } = await import("../src/poll.js");
 
 test("a finished match is Recent and is not Live", () => {
   const m = { state: "Complete" };
@@ -144,7 +144,7 @@ test("the toss is not a result, however the word won is used", () => {
 
 // ── File size is a constraint, not an afterthought ───────────────────────────
 
-const { LIST_CAPS } = await import("../src/main.js");
+const { LIST_CAPS } = await import("../src/poll.js");
 
 test("every list file is capped", () => {
   // Storage bandwidth was already over its plan cap before a summary grew from ~95 bytes to ~450.

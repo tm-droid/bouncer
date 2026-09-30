@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { matchStarts, startAlert } from "../src/main.js";
+import { matchStarts, startAlert } from "../src/poll.js";
 
 const NOW = 1_800_000_000_000;
 const m = (id) => ({ id, status: "Toss won", teams: [{ name: "India" }, { name: "Australia" }] });

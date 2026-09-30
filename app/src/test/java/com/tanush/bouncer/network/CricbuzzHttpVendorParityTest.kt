@@ -6,13 +6,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Fails the build when the two copies of `cricbuzz-http.js` stop being byte-identical.
+ * Fails the build when the copies of `cricbuzz-http.js` stop being byte-identical.
  *
- * `match-sync` and `poll-live-matches` both scrape www.cricbuzz.com, and both must do it with the
+ * `match-sync` and `player-search` both scrape www.cricbuzz.com, and both must do it with the
  * same browser headers, the same rotated User-Agent, the same 350 ms request spacing and the same
  * 90 s block-aware backoff. Those measures exist because of ANDROID-35 — four consecutive
- * per-minute 403s on 2026-08-04, four minutes after request volume rose — and `poll-live-matches`
- * previously had none of them, sending one hardcoded User-Agent with no spacing at all.
+ * per-minute 403s on 2026-08-04, four minutes after request volume rose — and the match-list poller
+ * (then its own function, now inside match-sync) previously had none of them, sending one
+ * hardcoded User-Agent with no spacing at all.
  *
  * The file is duplicated rather than shared because it has to be: `tools/deploy-function.mjs`
  * builds each deployment with `tar -C <that function's dir> .`, so nothing outside a function's own
@@ -28,7 +29,6 @@ class CricbuzzHttpVendorParityTest {
 
     /** Every function that scrapes www.cricbuzz.com carries its own copy. Add new ones here. */
     private val vendoredPaths = listOf(
-        "appwrite/functions/poll-live-matches/src/cricbuzz-http.js",
         "appwrite/functions/player-search/src/cricbuzz-http.js",
     )
 

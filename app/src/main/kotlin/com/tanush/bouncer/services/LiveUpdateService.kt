@@ -31,6 +31,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -96,6 +99,7 @@ class LiveUpdateService : Service() {
         anchorTo(first)
         if (subscriptionJob == null) {
             subscriptionJob = scope.launch { followSubscriptions() }
+            scope.launch { presenceHeartbeat { jobs.keys.toList() } }
         }
         return START_STICKY
     }
@@ -259,3 +263,17 @@ private fun Service.enterForeground(matchId: String, notification: Notification)
     notification,
     ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
 )
+
+/**
+ * Tells `bouncer-match-sync` someone is following these matches, so their `match-live-detail` rows
+ * are written every minute. A followed match that nobody had OPEN used to be on the slow tier — one
+ * detail write per 15 minutes, now per hour — and the Live Update card, which subscribes to that
+ * row, updated no faster. One batched execution per heartbeat for every card.
+ */
+private suspend fun presenceHeartbeat(followed: () -> List<String>) {
+    while (currentCoroutineContext().isActive) {
+        val ids = followed()
+        if (ids.isNotEmpty()) MatchPresenceReporter.pingAll(ids)
+        delay(MatchPresenceReporter.HEARTBEAT_MS)
+    }
+}

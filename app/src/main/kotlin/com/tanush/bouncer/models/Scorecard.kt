@@ -6,7 +6,26 @@ import androidx.compose.runtime.Immutable
 @Serializable
 @Immutable
 data class Scorecard(
-    val innings: List<Innings> = emptyList()
+    val innings: List<Innings> = emptyList(),
+    /**
+     * One point per completed over, accumulated server-side by `bouncer-match-sync` from the live
+     * page's over separators. Empty for a row written before it existed, and possibly gappy: overs
+     * bowled while no container held the history are absent, never estimated.
+     */
+    val overs: List<OverPoint> = emptyList(),
+)
+
+/** The batting side's position at the end of one over. Every figure nullable: absent is not zero. */
+@Serializable
+@Immutable
+data class OverPoint(
+    val innings: Int,
+    val over: Int,
+    val runs: Int? = null,
+    val score: Int? = null,
+    val wickets: Int? = null,
+    /** Cricbuzz's short code for the batting side ("DUR"), as the separator names it. */
+    val team: String? = null,
 )
 
 @Serializable
