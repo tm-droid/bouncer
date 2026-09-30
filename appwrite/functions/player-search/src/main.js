@@ -68,8 +68,12 @@ export default async ({ req, res, log, error }) => {
       .setKey(process.env.APPWRITE_API_KEY)
   );
 
-  let index = await readIndex(storage, log);
-  const stale = !index || Date.now() - (index.fetchedAt ?? 0) > INDEX_TTL_MS;
+  // A warm container answers from memory: a search box fires several queries per search, and each
+  // used to download the whole index file. The TTL still governs, so a stale memo falls through to
+  // the file (which another container may have rebuilt) and then to a rebuild.
+  const fresh = (ix) => ix && Date.now() - (ix.fetchedAt ?? 0) <= INDEX_TTL_MS;
+  let index = fresh(indexMemo) ? indexMemo : await readIndex(storage, log);
+  const stale = !fresh(index);
 
   if (stale) {
     try {
@@ -94,10 +98,13 @@ export default async ({ req, res, log, error }) => {
     }
   }
 
+  indexMemo = index;
   const players = rankPlayers(index.players ?? [], query, MAX_RESULTS);
   log(`"${query}" → ${players.length} of ${index.players?.length ?? 0} indexed`);
   return res.json({ players, indexedAt: index.fetchedAt ?? 0 });
 };
+
+let indexMemo = null; // warm-container copy of the last index read or built
 
 function parseBody(req) {
   if (req?.bodyJson && typeof req.bodyJson === "object") return req.bodyJson;

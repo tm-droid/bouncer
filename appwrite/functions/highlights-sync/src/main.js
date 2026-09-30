@@ -287,9 +287,10 @@ export default async ({ req, res, log, error }) => {
         "warning"
       );
     }
-    // Written here rather than with the fetch-state payload below, because a dry run returns before
-    // reaching it — which is precisely the run whose count must survive.
-    await writeDrySweeps(db, HIGHLIGHTS_DB_ID, META_COL_ID, sweeps, error);
+    // Written here, before the early return below, because a dry run is precisely the run whose
+    // count must survive.
+    // Only on change: a streak of wet sweeps is 0 → 0 every four hours, a write that says nothing.
+    if (sweeps !== previous) await writeDrySweeps(db, HIGHLIGHTS_DB_ID, META_COL_ID, sweeps, error);
   }
 
   if (highlights.length === 0) {
@@ -300,6 +301,7 @@ export default async ({ req, res, log, error }) => {
   // ── Upsert each highlight into Appwrite DB ──────────────────────────────
   const now = Date.now();
   let upserted = 0;
+  let alreadyStored = 0;
   const failed = [];
 
   // Newest first, so if the cap truncates the run it sheds the oldest clips rather than the ones
@@ -338,35 +340,17 @@ export default async ({ req, res, log, error }) => {
         reportError(e, { stage: "create", highlightId: String(h.id) });
         continue;
       }
-      try {
-        await db.updateDocument(HIGHLIGHTS_DB_ID, HIGHLIGHTS_COL_ID, docId, payload);
-        upserted++;
-        rememberSeen(h.id);
-      } catch (e2) {
-        failed.push({ id: h.id, message: e2?.message });
-        error(`Failed to upsert highlight ${h.id}: ${e2?.message}`);
-        reportError(e2, { stage: "update", highlightId: String(h.id) });
-      }
-    }
-  }
-
-  // ── Persist fetch state for midnight reset tracking ─────────────────────
-  if (META_COL_ID) {
-    const metaPayload = { fetch_date: today, last_fetch_at: now };
-    try {
-      await db.updateDocument(HIGHLIGHTS_DB_ID, META_COL_ID, "fetch-state", metaPayload);
-    } catch (_) {
-      try {
-        await db.createDocument(HIGHLIGHTS_DB_ID, META_COL_ID, "fetch-state", metaPayload);
-      } catch (e3) {
-        error(`Failed to persist fetch-state meta: ${e3?.message}`);
-      }
+      // Already stored. Not updated: clip metadata is immutable once published (see `pending`
+      // above), and working runs are an hour apart, so `seenIds` is usually a fresh container's
+      // empty set — the update this replaced rewrote every returned clip, up to 50 writes a run.
+      alreadyStored++;
+      rememberSeen(h.id);
     }
   }
 
   log(
     `Upserted ${upserted} highlights across ${fetchedDates} date(s); ` +
-      `${skipped} already known, ${failed.length} failures, ${remaining ?? "?"} requests left`
+      `${skipped + alreadyStored} already known, ${failed.length} failures, ${remaining ?? "?"} requests left`
   );
   return await finish({ upserted, skipped, failed: failed.length, dates: fetchedDates, sweep, date: today });
 };

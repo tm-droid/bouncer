@@ -1,4 +1,4 @@
-import { Client, Databases, Query } from "node-appwrite";
+import { Client, TablesDB, Query } from "node-appwrite";
 
 // Daily retention prune for the match-commentary table. Nothing else deletes these rows, so
 // without this the table grows one row per ball of every match forever (it had ~500k+ rows).
@@ -9,6 +9,8 @@ const RETENTION_DAYS = Number(process.env.COMMENTARY_RETENTION_DAYS ?? "14");
 // Safety caps: keep a single run inside the function timeout and prevent runaway deletion.
 // Steady-state a day adds only a few thousand rows; MAX_PASSES lets a large initial backlog
 // drain over several days (raise COMMENTARY_PRUNE_MAX_PASSES temporarily to drain faster).
+// BATCH is also the bulk-operation row cap on the Free plan (1,000 on Pro); asking for more than
+// the plan allows fails the whole request, so it stays at the lower one.
 const BATCH = 100;
 const MAX_PASSES = Number(process.env.COMMENTARY_PRUNE_MAX_PASSES ?? "100");
 
@@ -22,7 +24,7 @@ export default async ({ req, res, log, error }) => {
     .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
     .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
     .setKey(process.env.APPWRITE_API_KEY);
-  const db = new Databases(client);
+  const db = new TablesDB(client);
 
   const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   let deleted = 0;
@@ -30,31 +32,24 @@ export default async ({ req, res, log, error }) => {
 
   try {
     for (; passes < MAX_PASSES; passes++) {
-      // Order by the built-in $createdAt (always orderable — no user index needed) so the
-      // oldest rows come first. Filter the cutoff in memory: because the page is ascending,
-      // the first row newer than the cutoff means every remaining row is newer too → stop.
-      const result = await db.listDocuments(DB_ID, COMMENTARY_COL, [
-        Query.orderAsc("$createdAt"),
-        Query.limit(BATCH),
-      ]);
-      const rows = result.documents ?? [];
-      if (rows.length === 0) break;
-
-      const stale = rows.filter((r) => r.$createdAt < cutoff);
-      if (stale.length === 0) break; // oldest row is within retention → nothing to prune
-
-      await Promise.all(
-        stale.map((r) =>
-          db.deleteDocument(DB_ID, COMMENTARY_COL, r.$id).catch((e) => {
-            if (e?.code !== 404) error(`Delete failed for ${r.$id}: ${e?.message}`);
-          })
-        )
-      );
-      deleted += stale.length;
-
-      // A page that was only partly stale, or shorter than a full batch, means we've reached
-      // the retention boundary (or the end of the table) — no more full stale pages to fetch.
-      if (stale.length < rows.length || rows.length < BATCH) break;
+      // One bulk delete per pass, filtered server-side on the built-in $createdAt (always
+      // queryable — no user index needed). This used to list 100 rows, filter the cutoff in memory
+      // and delete them one call each: every stale row cost a billed READ before its write, ~6,700
+      // reads a day, the largest read cost in the project. The cutoff now travels in the query, so
+      // nothing is read back.
+      const result = await db.deleteRows({
+        databaseId: DB_ID,
+        tableId: COMMENTARY_COL,
+        queries: [
+          Query.lessThan("$createdAt", cutoff),
+          Query.orderAsc("$createdAt"),
+          Query.limit(BATCH),
+        ],
+      });
+      const n = result?.total ?? result?.rows?.length ?? 0;
+      deleted += n;
+      // A short batch means everything older than the cutoff is gone.
+      if (n < BATCH) break;
     }
   } catch (e) {
     if (isBudget402(e)) {

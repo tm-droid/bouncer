@@ -12,6 +12,7 @@ import {
 } from "./articleBody.js";
 
 const NEWS_CACHE_FILE_ID = "news-cache";
+let cacheMemo = null; // warm-container copy of the headline cache
 
 // Enough of the upstream body to identify the failure, short enough not to flood the log.
 const UPSTREAM_ERROR_LOG_CHARS = 200;
@@ -87,14 +88,22 @@ export default async ({ req, res, log, error }) => {
   // It has two jobs: a fresh hit returns immediately, and a stale one is the fallback for every
   // failure below. It is read before the key check for that second reason — a function that is
   // misconfigured can still serve what it already has.
+  // A warm container that still holds a fresh copy answers without downloading it again. Every
+  // headline call used to download the file, fresh or not. This function is the file's only
+  // writer, so the memo cannot be older than the file while it is fresh.
+  const now = Date.now();
+  if (isFresh(cacheMemo, now)) {
+    log(`Returning cached news from memory (age: ${ageLabel(cacheAgeMs(cacheMemo, now))})`);
+    return res.json(cacheMemo.response);
+  }
   let cached = null;
   try {
     cached = parseJsonFile(await storage.getFileDownload(STATS_BUCKET_ID, NEWS_CACHE_FILE_ID));
+    cacheMemo = cached;
   } catch (_) {
     log("No cache found — fetching fresh");
   }
 
-  const now = Date.now();
   if (isFresh(cached, now)) {
     log(`Returning cached news (age: ${ageLabel(cacheAgeMs(cached, now))})`);
     return res.json(cached.response);
@@ -148,6 +157,7 @@ export default async ({ req, res, log, error }) => {
   // ── Write cache to Storage (non-fatal if it fails) ───────────────────────
   try {
     const payload = { fetchedAt: new Date().toISOString(), response: newsJson };
+    cacheMemo = payload;
     const buffer = Buffer.from(JSON.stringify(payload), "utf8");
     await storage.deleteFile(STATS_BUCKET_ID, NEWS_CACHE_FILE_ID).catch(() => {});
     await storage.createFile(

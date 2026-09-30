@@ -10,6 +10,8 @@ const PRESENCE_FILE = "active-viewers";
 // Prune entries older than this so the file stays tiny. Must stay >= match-sync's
 // VIEWER_TTL_MS so we never drop a viewer match-sync still counts as active.
 const PRESENCE_TTL_MS = 4 * 60 * 1000;
+// A ping finding its match stamped more recently than this skips the write.
+const FRESH_SKIP_MS = 60 * 1000;
 
 const sanitizeMatchId = (id) => String(id).replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 64);
 
@@ -46,6 +48,16 @@ export default async ({ req, res, log, error }) => {
     if (!map || typeof map !== "object" || Array.isArray(map)) map = {};
   } catch {
     map = {}; // first ping ever, or file missing/unparseable
+  }
+
+  // Already fresh: some viewer of this match pinged within the last minute. Writing again changes
+  // nothing match-sync can see (it runs once a minute) and cost a delete+create per ping — so N
+  // people watching one match were N writes every 90s. Capped at ~1 write/min/match now. Staleness
+  // is unchanged: any ping that finds the stamp a minute old still writes, and each viewer pings
+  // every 90s.
+  const previous = map[matchId];
+  if (typeof previous === "number" && now - previous < FRESH_SKIP_MS) {
+    return res.json({ ok: true, matchId, skipped: true });
   }
 
   map[matchId] = now;

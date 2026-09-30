@@ -1124,13 +1124,22 @@ async function writeSlowState({ storage, state, previous, log, error }) {
  * from the org DB-read budget that the 402 breaker protects, and the device pays a single
  * download regardless of how many cards are on screen.
  */
+/**
+ * Fractional numbers rounded to three places — 0.1 of a percentage point, finer than any surface
+ * renders. At full float precision nearly every ball moved the fifteenth decimal of some match, so
+ * the unchanged-table skip below almost never fired and the file was rewritten every run.
+ * Integers (team ids, timestamps) pass through untouched.
+ */
+export const roundFractions = (_key, v) =>
+  typeof v === "number" && !Number.isInteger(v) ? Math.round(v * 1000) / 1000 : v;
+
 async function writeWinProbFile({ storage, winProb, log, error }) {
   // The device's freshness is its own TTL, never `updatedAt`, so an unchanged table need not be
   // re-uploaded; a cold container always writes once.
-  const body = JSON.stringify(winProb);
+  const body = JSON.stringify(winProb, roundFractions);
   if (body === lastWinProbBody) return;
   try {
-    const payload = JSON.stringify({ version: 1, updatedAt: Date.now(), matches: winProb });
+    const payload = JSON.stringify({ version: 1, updatedAt: Date.now(), matches: JSON.parse(body) });
     await storage.deleteFile(BUCKET_ID, WINPROB_FILE).catch(() => {});
     await storage.createFile(
       BUCKET_ID,

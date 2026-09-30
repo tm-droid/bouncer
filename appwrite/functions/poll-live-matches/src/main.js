@@ -53,7 +53,35 @@ const FILE_IDS = { live: "live-matches", recent: "recent-matches", upcoming: "up
 // Tracks the last-written content hash per type so an unchanged list is not rewritten every
 // minute. One small download replaces three large uploads.
 const STATE_FILE_ID = "poll-state";
-let stateMemo = null; // warm-container copy of the last poll-state read or written
+let stateMemo = null; // warm-container copy of the current state — authoritative while warm
+let persistedMemo = null; // what the poll-state FILE holds, as far as this container knows
+let persistedAt = 0;
+
+// The per-list `{hash, writtenAt}` entries change on almost every run (the live list changes with
+// every score), and they only matter to the next cold start, which at worst rewrites one list it
+// did not need to. Persisting them every minute was ~1,300 poll-state delete+create pairs a day.
+const STATE_HASH_PERSIST_MS = 600_000;
+const LIST_TYPES = ["live", "recent", "upcoming"];
+
+/**
+ * Whether poll-state must be written now.
+ *
+ * Everything except the per-list hashes is durable — the live count, `startedIds` (whose loss
+ * re-announces match starts), remembered formats, the series cursor — and is written the run it
+ * changes. The hashes alone are written at most every {@link STATE_HASH_PERSIST_MS}.
+ */
+export function shouldPersistState({ persisted, next, persistedAt: at, now }) {
+  const withoutHashes = (st) => {
+    const copy = { ...(st ?? {}) };
+    for (const t of LIST_TYPES) delete copy[t];
+    return JSON.stringify(copy);
+  };
+  if (withoutHashes(persisted) !== withoutHashes(next)) return true;
+  const hashesChanged = LIST_TYPES.some(
+    (t) => JSON.stringify(persisted?.[t] ?? null) !== JSON.stringify(next?.[t] ?? null)
+  );
+  return hashesChanged && now - at >= STATE_HASH_PERSIST_MS;
+}
 
 // A skipped write freezes the file's `fetchedAt`, and devices reject a file older than their own
 // staleness bound — so every type must still be refreshed periodically even when unchanged.
@@ -103,10 +131,12 @@ export default async ({ req, res, log, error }) => {
     try {
       prevState = parseJsonFile(await storage.getFileDownload(BUCKET_ID, STATE_FILE_ID)) ?? {};
     } catch { /* first run */ }
+    persistedMemo = prevState;
+    persistedAt = 0;
   }
 
   // Fetch all three types in parallel to minimize total write-time spread
-  const types = ["live", "recent", "upcoming"];
+  const types = LIST_TYPES;
   const now = Date.now();
   const formatCache = { ...(prevState.formats ?? {}) };
   const settled = await Promise.allSettled(types.map(async (type) => {
@@ -223,7 +253,7 @@ export default async ({ req, res, log, error }) => {
 
   await syncSeries({ storage, prevState, nextState, now, log, error });
 
-  if (JSON.stringify(nextState) !== JSON.stringify(prevState)) {
+  if (shouldPersistState({ persisted: persistedMemo, next: nextState, persistedAt, now })) {
     try {
       await storage.deleteFile(BUCKET_ID, STATE_FILE_ID).catch(() => {});
       await storage.createFile(
@@ -231,6 +261,8 @@ export default async ({ req, res, log, error }) => {
         InputFile.fromBuffer(Buffer.from(JSON.stringify(nextState), "utf8"), `${STATE_FILE_ID}.json`),
         ["read(\"any\")"]
       );
+      persistedMemo = nextState;
+      persistedAt = now;
     } catch (e) {
       // Losing the state file only costs a redundant rewrite next run — never fail the whole run.
       error(`poll-state write failed: ${e?.message}`);
