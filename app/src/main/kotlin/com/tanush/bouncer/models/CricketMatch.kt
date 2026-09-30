@@ -8,7 +8,11 @@ import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.sentry.SentryLevel
 
 // A drawn/tied/no-result match has no winner; both sides read as an even 50.
-private val RESULT_NO_WINNER = """\b(drawn|tied|no\s+result|abandon(ed)?)\b""".toRegex(RegexOption.IGNORE_CASE)
+private val RESULT_NO_WINNER = """\b(drawn|tied)\b""".toRegex(RegexOption.IGNORE_CASE)
+
+// No contest happened, so there is no probability to report — not an even one. "Match abandoned
+// due to rain (No toss)" used to render a "Final 50% / 50%" bar for a match where no ball was bowled.
+private val RESULT_NO_CONTEST = """\b(no\s+result|abandon(ed)?)\b""".toRegex(RegexOption.IGNORE_CASE)
 private const val EVEN_PROBABILITY = 50.0
 
 sealed class MatchStatus {
@@ -149,6 +153,7 @@ data class CricketMatch(
     fun resolvedWinProbability(): Double? {
         if (!isCompleted) return winProbability
         val combined = "$currentStatus $status"
+        if (RESULT_NO_CONTEST.containsMatchIn(combined)) return null
         if (RESULT_NO_WINNER.containsMatchIn(combined)) return EVEN_PROBABILITY
         return when (teams.indexOfFirst { team -> mentionsTeam(combined, team) }) {
             0 -> 100.0

@@ -343,8 +343,10 @@ internal fun CommentaryLineCard(text: String, highlighted: Boolean, muted: Boole
         else -> colors.onSurface
     }
     BouncerCard {
+        // Cricbuzz marks its non-delivery bulletins ("<b>12:10 Local Time…</b>") with bold tags. The
+        // Commentary tab rendered them; this card printed them literally.
         Text(
-            text = text,
+            text = parseBoldTags(text),
             style = typography.bodySmall,
             color = textColor,
             modifier = Modifier.padding(spacing.md),

@@ -348,7 +348,8 @@ the app read as generated rather than designed. Four rules, each written into th
   live match.
 
 Two related traps. **Don't restate the fixed header**: `ScoreHeaderV2` is a sibling of the pager,
-so it is on screen for every tab — Overview used to open with the status, CRR/RRR, recent balls and
+so it is on screen for every tab (a "need X off Y" chase card was considered and dropped for this
+reason — the header's status line is Cricbuzz's own, which already says it) — Overview used to open with the status, CRR/RRR, recent balls and
 a "momentum stream" that were all already above it. And **never present a figure the app does not
 have**: `PremiumAiStatisticsTab` shipped a hardcoded bar chart as "ANALYTIC CONTRIBUTION",
 hardcoded sparklines as run-rate trends, a constant string as a "predictive engine" insight, and

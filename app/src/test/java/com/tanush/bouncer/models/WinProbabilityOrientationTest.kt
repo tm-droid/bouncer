@@ -114,6 +114,14 @@ class WinProbabilityOrientationTest {
     }
 
     @Test
+    fun `an abandoned or no-result match has no probability, not an even one`() {
+        for (status in listOf("Match abandoned due to rain (No toss)", "No result")) {
+            val m = match(team("Bangladesh"), team("Malaysia"), status = "Complete", currentStatus = status)
+            assertNull(status, m.resolvedWinProbability())
+        }
+    }
+
+    @Test
     fun `an unreadable result yields null rather than a guess`() {
         val m = match(
             team("India"), team("Australia"),

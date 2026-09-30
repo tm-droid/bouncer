@@ -1,9 +1,7 @@
 Playing XIs on every match: the Info tab shows both elevens, captains and keepers, with the bench a tap away — or each squad before the toss.
 
-All matches can now be browsed by date, from yesterday's results to next week's fixtures.
-
-Team pages list recent results with the side's form.
+All matches can now be browsed by date. Team pages list recent results with the side's form.
 
 Reminders you set on a match are listed and can be cancelled: open the bell, then Reminders.
 
-Lighter in the background, too — fewer wake-ups and less data.
+Fixed: rain-abandoned matches no longer show a 50/50 win bar, and match bulletins no longer show stray formatting tags.
