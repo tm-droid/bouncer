@@ -1,6 +1,7 @@
 // bouncer-player-search — resolve a player name to a Cricbuzz profile id.
 //
-// On-demand, called by `PlayerProfileScraper.searchPlayersDetailed` on the device.
+// On-demand, called by `PlayerProfileScraper.searchPlayersDetailed` on the device — and on a
+// schedule (`0 3 */3 * *`), which is the only run that rebuilds the index once one exists.
 //
 // This exists because the device-side lookup it replaces had been returning nothing for every query
 // for an unknown length of time: it scraped two Cricbuzz URLs that both answer 404, and the caller
@@ -14,7 +15,7 @@
 import { Client, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { CRICBUZZ_BASE, CricbuzzBlockedError, fetchHtml, resetThrottleState } from "./cricbuzz-http.js";
-import { INDEX_FILE_ID, INDEX_TTL_MS, buildIndex, rankPlayers } from "./playerIndex.js";
+import { INDEX_FILE_ID, INDEX_TTL_MS, buildIndex, indexPlan, mergePlayers, rankPlayers } from "./playerIndex.js";
 import { parseJsonFile } from "./storageJson.js";
 
 const BUCKET_ID = process.env.MATCH_CACHE_BUCKET_ID || "cricket-stats";
@@ -50,6 +51,26 @@ export default async ({ req, res, log, error }) => {
     return res.json(await probeSources(log));
   }
 
+  const newStorage = () =>
+    new Storage(
+      new Client()
+        .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
+        .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
+        .setKey(process.env.APPWRITE_API_KEY)
+    );
+
+  // The scheduled run is the only thing that refreshes an index a search can already answer from
+  // — see `indexPlan` for why a search must not. It ranks nothing and is not rate-limited.
+  if (req.headers?.["x-appwrite-trigger"] === "schedule") {
+    const scheduledStorage = newStorage();
+    const previous = await readIndex(scheduledStorage, log);
+    const rebuilt = await rebuildIndex(scheduledStorage, previous, log, error);
+    // A failed rebuild keeps the previous file; 500 so the run shows as failed in the console.
+    return rebuilt
+      ? res.json({ rebuilt: true, players: rebuilt.players.length })
+      : res.json({ rebuilt: false }, 500);
+  }
+
   const query = String(parseBody(req)?.q ?? "").trim();
   if (query.length < MIN_QUERY_LENGTH) {
     return res.json({ players: [], reason: "query_too_short" });
@@ -61,50 +82,62 @@ export default async ({ req, res, log, error }) => {
     return res.json({ players: [], reason: "rate_limited" }, 429);
   }
 
-  const storage = new Storage(
-    new Client()
-      .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
-      .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
-      .setKey(process.env.APPWRITE_API_KEY)
-  );
+  const storage = newStorage();
 
   // A warm container answers from memory: a search box fires several queries per search, and each
-  // used to download the whole index file. The TTL still governs, so a stale memo falls through to
-  // the file (which another container may have rebuilt) and then to a rebuild.
+  // used to download the whole index file. A memo past the TTL falls through to the file, which
+  // the scheduled run may have replaced since.
   const fresh = (ix) => ix && Date.now() - (ix.fetchedAt ?? 0) <= INDEX_TTL_MS;
   let index = fresh(indexMemo) ? indexMemo : await readIndex(storage, log);
-  const stale = !fresh(index);
 
-  if (stale) {
-    try {
-      const built = await buildIndex(log);
-      if (built.players.length > 0) {
-        index = { players: built.players, fetchedAt: Date.now() };
-        await writeIndex(storage, index, error);
-      }
-    } catch (e) {
-      // A block or a failed rebuild must not lose a usable cached index. Answering from a stale
-      // index is strictly better than answering "no such player".
-      if (e instanceof CricbuzzBlockedError || e?.blocked) {
-        error(`player-index rebuild throttled: ${e?.message}${e?.bodySnippet ? ` — body: ${e.bodySnippet}` : ""}`);
-      } else {
-        error(`player-index rebuild failed: ${e?.message}`);
-      }
-      if (!index) {
-        // No index at all and no way to build one. This is unavailability, not absence, and the
-        // device must be able to tell the difference — hence a 503, never an empty 200.
-        return res.json({ players: [], reason: "index_unavailable" }, 503);
-      }
+  if (indexPlan({ index, scheduled: false }) === "build-then-serve") {
+    index = await rebuildIndex(storage, index, log, error);
+    if (!index) {
+      // No index at all and no way to build one. This is unavailability, not absence, and the
+      // device must be able to tell the difference — hence a 503, never an empty 200.
+      return res.json({ players: [], reason: "index_unavailable" }, 503);
     }
+  } else if (!fresh(index)) {
+    // Answering from a stale index is strictly better than making this search wait for a build.
+    const days = ((Date.now() - (index.fetchedAt ?? 0)) / 86_400_000).toFixed(1);
+    error(`player-index is ${days}d old — the scheduled rebuild has not replaced it; serving it`);
   }
 
   indexMemo = index;
-  const players = rankPlayers(index.players ?? [], query, MAX_RESULTS);
-  log(`"${query}" → ${players.length} of ${index.players?.length ?? 0} indexed`);
+  const players = rankPlayers(index.players, query, MAX_RESULTS);
+  log(`"${query}" → ${players.length} of ${index.players.length} indexed`);
   return res.json({ players, indexedAt: index.fetchedAt ?? 0 });
 };
 
 let indexMemo = null; // warm-container copy of the last index read or built
+
+/**
+ * Build the index, merge it onto `previous` and store it. Returns it, or null when the build was
+ * blocked, failed or found no players — in which case nothing is written and whatever index
+ * existed before still stands.
+ */
+async function rebuildIndex(storage, previous, log, error) {
+  try {
+    const built = await buildIndex(log);
+    if (built.players.length === 0) {
+      error("player-index rebuild found no players — kept the previous index");
+      return null;
+    }
+    const players = mergePlayers(Array.isArray(previous?.players) ? previous.players : [], built.players);
+    log(`player-index: ${built.players.length} built, ${players.length - built.players.length} kept from before → ${players.length}`);
+    const index = { players, fetchedAt: Date.now() };
+    await writeIndex(storage, index, error);
+    indexMemo = index;
+    return index;
+  } catch (e) {
+    if (e instanceof CricbuzzBlockedError || e?.blocked) {
+      error(`player-index rebuild throttled: ${e?.message}${e?.bodySnippet ? ` — body: ${e.bodySnippet}` : ""}`);
+    } else {
+      error(`player-index rebuild failed: ${e?.message}`);
+    }
+    return null;
+  }
+}
 
 function parseBody(req) {
   if (req?.bodyJson && typeof req.bodyJson === "object") return req.bodyJson;

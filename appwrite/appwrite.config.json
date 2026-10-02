@@ -292,6 +292,7 @@
             "enabled": true,
             "logging": true,
             "runtime": "node-22",
+            "schedule": "0 3 */3 * *",
             "timeout": 90,
             "entrypoint": "src/main.js",
             "commands": "npm install",

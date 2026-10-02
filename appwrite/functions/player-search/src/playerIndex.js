@@ -20,8 +20,47 @@ import { CRICBUZZ_BASE, fetchHtml } from "./cricbuzz-http.js";
 
 export const INDEX_FILE_ID = "player-index";
 
-/** Rebuild when the cached index is older than this. Squads change slowly. */
+/**
+ * How old an index may get before it counts as stale. Squads change slowly. The schedule rebuilds
+ * well inside this; a search that finds an older one still answers from it (see `indexPlan`).
+ */
 export const INDEX_TTL_MS = 7 * 24 * 3600 * 1000;
+
+/**
+ * What one execution does about the index: `"serve"`, `"build-then-serve"` or `"rebuild"`.
+ *
+ * A search never rebuilds an index it can answer from, however old. The rebuild used to run
+ * inline in whichever search found the index past its TTL, and a build is ~15 s (measured 15.19 s
+ * on 2026-09-28) against the 10 s read timeout of the Android SDK's OkHttp client, which sets
+ * none of its own. That search timed out on the device, which drew "Online player search is
+ * unavailable" and reported nothing — a SocketTimeoutException is filtered as connectivity. So
+ * the rebuild belongs to the schedule, and age deliberately plays no part in this decision.
+ *
+ * With no index at all (first run, or the file deleted) there is nothing to serve, so that one
+ * search builds inline and the device may time out on it; the build still completes and the next
+ * search is answered from the file.
+ */
+export function indexPlan({ index, scheduled }) {
+  if (scheduled) return "rebuild";
+  return Array.isArray(index?.players) ? "serve" : "build-then-serve";
+}
+
+/**
+ * `built` laid over `previous` by player id: added and updated, never removed.
+ *
+ * The same rule `tools/update_logos.py` follows for teams. A rebuild used to replace the index
+ * with whatever that one run gathered, so a squad page that failed — which `buildIndex` skips
+ * rather than aborting on — took its whole team out of search until the next run, and a player
+ * dropped from a squad became unfindable although `/profiles/{id}` still serves him. The walk
+ * itself cannot be made incremental: Cricbuzz publishes no change feed, so finding what changed
+ * means reading every squad page either way.
+ */
+export function mergePlayers(previous, built) {
+  const byId = new Map();
+  for (const p of previous ?? []) if (p?.id) byId.set(p.id, p);
+  for (const p of built ?? []) if (p?.id) byId.set(p.id, p);
+  return [...byId.values()];
+}
 
 /**
  * Team pages walked per build. All ~38 fit inside the function timeout at the shared 350 ms

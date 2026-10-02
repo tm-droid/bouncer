@@ -3,6 +3,9 @@ import { test } from "node:test";
 import {
   countryFromSlug,
   editDistance,
+  INDEX_TTL_MS,
+  indexPlan,
+  mergePlayers,
   normalizeForSearch,
   parsePlayerLinks,
   parseTeamLinks,
@@ -149,4 +152,57 @@ test("editDistance counts an adjacent swap as one edit", () => {
   assert.equal(editDistance("kolhi", "kohli"), 1);
   assert.equal(editDistance("kitten", "sitting"), 3);
   assert.equal(editDistance("", "abc"), 3);
+});
+
+// A search must never wait for a rebuild. The Android SDK's OkHttp client has no timeout set, so
+// its read timeout is the 10 s default, and a build was measured at 15.19 s — the search that
+// found the index expired timed out on the device, drew "unavailable", and reported nothing,
+// because a SocketTimeoutException is filtered as connectivity. Rebuilding is the schedule's job.
+const NOW = Date.parse("2026-10-06T00:00:00Z");
+const indexAged = (ms) => ({ players: [{ id: "1413", name: "Virat Kohli" }], fetchedAt: NOW - ms });
+
+test("indexPlan serves a fresh index on demand", () => {
+  assert.equal(indexPlan({ index: indexAged(60_000), scheduled: false }), "serve");
+});
+
+test("indexPlan serves an index past its TTL on demand rather than rebuilding inline", () => {
+  assert.equal(indexPlan({ index: indexAged(INDEX_TTL_MS + 1), scheduled: false }), "serve");
+  assert.equal(indexPlan({ index: indexAged(30 * INDEX_TTL_MS), scheduled: false }), "serve");
+});
+
+test("indexPlan builds inline only when there is no index to answer from", () => {
+  assert.equal(indexPlan({ index: null, scheduled: false }), "build-then-serve");
+  // A file that parsed to something without a player list is not an index.
+  assert.equal(indexPlan({ index: { fetchedAt: NOW }, scheduled: false }), "build-then-serve");
+});
+
+test("indexPlan rebuilds on every scheduled run, whatever is cached", () => {
+  assert.equal(indexPlan({ index: indexAged(60_000), scheduled: true }), "rebuild");
+  assert.equal(indexPlan({ index: null, scheduled: true }), "rebuild");
+});
+
+// Merge, never shrink — the rule `tools/update_logos.py` follows for teams. A rebuild used to
+// replace the index with whatever that one run gathered, so a squad page that failed took its
+// whole team out of search until the next run, and a player dropped from a squad became
+// unfindable although his profile page still exists.
+const KOHLI = { id: "1413", name: "Virat Kohli", country: "India", imageUrl: "" };
+const GILL = { id: "11808", name: "Shubman Gill", country: "India", imageUrl: "" };
+const ROOT = { id: "8019", name: "Joe Root", country: "England", imageUrl: "" };
+
+test("mergePlayers keeps a player the new build did not see", () => {
+  assert.deepEqual(mergePlayers([KOHLI, ROOT], [KOHLI]), [KOHLI, ROOT]);
+});
+
+test("mergePlayers adds a player the previous index did not have", () => {
+  assert.deepEqual(mergePlayers([KOHLI], [KOHLI, GILL]), [KOHLI, GILL]);
+});
+
+test("mergePlayers takes the new build's fields for a player both hold", () => {
+  const moved = { ...ROOT, country: "Yorkshire" };
+  assert.deepEqual(mergePlayers([KOHLI, ROOT], [moved]), [KOHLI, moved]);
+});
+
+test("mergePlayers has nothing to merge onto on a first build", () => {
+  assert.deepEqual(mergePlayers(null, [KOHLI]), [KOHLI]);
+  assert.deepEqual(mergePlayers(undefined, [KOHLI, GILL]), [KOHLI, GILL]);
 });

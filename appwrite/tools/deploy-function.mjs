@@ -213,7 +213,12 @@ async function verifyLive(deploymentId, before) {
 
   // Scheduled functions produce their own traffic; on-demand ones need a nudge, and a real
   // invocation is the point — a synthetic one that skips the handler would prove nothing.
-  const scheduled = Boolean(fn.schedule);
+  // A function clients may execute is on-demand even when it also has a schedule
+  // (`bouncer-player-search` rebuilds its index every third day): its cron cannot fall inside
+  // any wait worth having, and a `{}` body takes its ordinary request path. Schedule-only
+  // functions are never nudged — a POST to the prune or the trainer would run the job.
+  const onDemand = (fn.$permissions ?? []).some((p) => p.startsWith("execute("));
+  const scheduled = Boolean(fn.schedule) && !onDemand;
   if (!scheduled) {
     await fetch(`${endpoint}/functions/${functionId}/executions`, {
       method: "POST",
