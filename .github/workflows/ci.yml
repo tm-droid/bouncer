@@ -190,7 +190,7 @@ jobs:
           path: app/build/outputs/bundle/release/app-release.aab
 
   publish:
-    name: Publish to Play Store (Closed testing)
+    name: Publish to Play Store (Internal + closed testing)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: build
@@ -213,7 +213,10 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.tanush.bouncer
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
-          tracks: alpha  # Play API id of the default closed testing track
+          # One upload, two tracks. `alpha` is the Play API id of the default closed testing
+          # track, which waits on review; `internal` has no review, so the same build is
+          # installable within minutes. No space after the comma.
+          tracks: internal,alpha
           status: completed
           # Without this every release shipped with blank release notes.
           # distribution/whatsnew/README.md says who edits it and when.
