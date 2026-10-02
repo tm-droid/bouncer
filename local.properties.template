@@ -19,7 +19,10 @@ sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
 # Sentry CLI auth for release source-context/ProGuard uploads (build-time only).
 SENTRY_USER_AUTH_TOKEN=
 # Ingest endpoint. Public by design — a DSN can submit events, not read them.
-SENTRY_DSN=
+#
+# This line and the APPWRITE_* lines below are what the CI release job builds the Play bundle
+# from (`grep` in .github/workflows/ci.yml). Blank one and `verifyReleaseConfig` fails the build.
+SENTRY_DSN=https://e9ade5d835c36a97939191077734e5a7@o4510958403518464.ingest.us.sentry.io/4510963429212160
 
 # Appwrite resource ids. Not secrets: these name public read("any") resources.
 APPWRITE_ENDPOINT=https://sgp.cloud.appwrite.io/v1

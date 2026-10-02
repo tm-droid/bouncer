@@ -34,6 +34,34 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
 
+// A `KEY=` line loads as "", not null, so `getProperty(key) ?: fallback` never falls back. The CI
+// release job wrote every Appwrite id that way — from GitHub secrets that did not exist — and the
+// Play build shipped with a blank endpoint: no Appwrite call of any kind, and no Sentry DSN to
+// report it. Blank is absent.
+fun buildConfigValue(key: String): String =
+    localProperties.getProperty(key)?.trim()?.takeIf { it.isNotEmpty() }
+        ?: System.getenv(key)?.trim()?.takeIf { it.isNotEmpty() }
+        ?: ""
+
+// The values a release artifact is useless without. Hung on the artifact tasks rather than on
+// preReleaseBuild: `test` and `lint` compile the release variant in CI with deliberately blank
+// config and must keep working. The mustRunAfter only makes the check fail before the compile
+// instead of after it.
+val verifyReleaseConfig = tasks.register("verifyReleaseConfig") {
+    val missing = listOf("APPWRITE_ENDPOINT", "APPWRITE_PROJECT_ID", "SENTRY_DSN")
+        .filter { buildConfigValue(it).isEmpty() }
+    doLast {
+        check(missing.isEmpty()) {
+            "Release build has no value for $missing. Set them in local.properties (the Appwrite " +
+                "ids are pre-filled in local.properties.template). Built without them the app " +
+                "cannot reach Appwrite and reports nothing to Sentry."
+        }
+    }
+}
+tasks.matching { it.name == "bundleRelease" || it.name == "assembleRelease" }
+    .configureEach { dependsOn(verifyReleaseConfig) }
+tasks.matching { it.name == "preReleaseBuild" }.configureEach { mustRunAfter(verifyReleaseConfig) }
+
 // On macOS, redirect build outputs to ~/Library/Caches to avoid iCloud-synced Documents.
 // iCloud modifies file metadata on every sync, invalidating Gradle's incremental task
 // outputs and forcing mergeResources / dex / etc. to re-run from scratch every build.
@@ -86,18 +114,18 @@ android {
         // R8 does not obfuscate string literals, so minification never hid them. Commentary
         // generation now runs entirely in bouncer-generate-commentary, which holds the keys
         // server-side. The ids below are not secrets: they name public, read("any") resources.
-        buildConfigField("String", "APPWRITE_ENDPOINT", "\"${localProperties.getProperty("APPWRITE_ENDPOINT") ?: System.getenv("APPWRITE_ENDPOINT") ?: ""}\"")
-        buildConfigField("String", "APPWRITE_PROJECT_ID", "\"${localProperties.getProperty("APPWRITE_PROJECT_ID") ?: System.getenv("APPWRITE_PROJECT_ID") ?: ""}\"")
-buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getProperty("APPWRITE_AI_CACHE_DB_ID") ?: System.getenv("APPWRITE_AI_CACHE_DB_ID") ?: ""}\"")
-        buildConfigField("String", "APPWRITE_AI_CACHE_COL_ID", "\"${localProperties.getProperty("APPWRITE_AI_CACHE_COL_ID") ?: System.getenv("APPWRITE_AI_CACHE_COL_ID") ?: ""}\"")
-        buildConfigField("String", "APPWRITE_FAVOURITES_COL_ID", "\"${localProperties.getProperty("APPWRITE_FAVOURITES_COL_ID") ?: System.getenv("APPWRITE_FAVOURITES_COL_ID") ?: ""}\"")
-        buildConfigField("String", "APPWRITE_HIGHLIGHTS_DB_ID", "\"${localProperties.getProperty("APPWRITE_HIGHLIGHTS_DB_ID") ?: System.getenv("APPWRITE_HIGHLIGHTS_DB_ID") ?: ""}\"")
-        buildConfigField("String", "APPWRITE_HIGHLIGHTS_COL_ID", "\"${localProperties.getProperty("APPWRITE_HIGHLIGHTS_COL_ID") ?: System.getenv("APPWRITE_HIGHLIGHTS_COL_ID") ?: ""}\"")
-        buildConfigField("String", "APPWRITE_PLAYER_FORMS_DB_ID", "\"${localProperties.getProperty("APPWRITE_PLAYER_FORMS_DB_ID") ?: System.getenv("APPWRITE_PLAYER_FORMS_DB_ID") ?: ""}\"")
-        buildConfigField("String", "APPWRITE_PLAYER_PROFILES_COL_ID", "\"${localProperties.getProperty("APPWRITE_PLAYER_PROFILES_COL_ID") ?: System.getenv("APPWRITE_PLAYER_PROFILES_COL_ID") ?: ""}\"")
-        manifestPlaceholders["sentryDsn"] = localProperties.getProperty("SENTRY_DSN")
-            ?: System.getenv("SENTRY_DSN")
-            ?: ""
+        listOf(
+            "APPWRITE_ENDPOINT",
+            "APPWRITE_PROJECT_ID",
+            "APPWRITE_AI_CACHE_DB_ID",
+            "APPWRITE_AI_CACHE_COL_ID",
+            "APPWRITE_FAVOURITES_COL_ID",
+            "APPWRITE_HIGHLIGHTS_DB_ID",
+            "APPWRITE_HIGHLIGHTS_COL_ID",
+            "APPWRITE_PLAYER_FORMS_DB_ID",
+            "APPWRITE_PLAYER_PROFILES_COL_ID",
+        ).forEach { key -> buildConfigField("String", key, "\"${buildConfigValue(key)}\"") }
+        manifestPlaceholders["sentryDsn"] = buildConfigValue("SENTRY_DSN")
         // Default environment; overridden per build type below
         manifestPlaceholders["sentryEnvironment"] = "production"
         manifestPlaceholders["sentryDebug"] = "false"

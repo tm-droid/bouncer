@@ -10,22 +10,8 @@
 #   PLAY_SERVICE_ACCOUNT_JSON — full JSON of service account
 #                               bouncer-ci@golden-object-498303-q9.iam.gserviceaccount.com
 #
-# API Keys (injected as BuildConfig fields at compile time):
-#   RAPIDAPI_KEY
-#   GROQ_API_KEY
-#   CEREBRAS_API_KEY
-#   SAMBANOVA_API_KEY
-#   APPWRITE_ENDPOINT
-#   APPWRITE_PROJECT_ID
-#   APPWRITE_AI_CACHE_DB_ID
-#   APPWRITE_AI_CACHE_COL_ID
-#   APPWRITE_FAVOURITES_COL_ID
-#   HIGHLIGHTLY_API_KEY
-#   APPWRITE_HIGHLIGHTS_DB_ID
-#   APPWRITE_HIGHLIGHTS_COL_ID
-#   APPWRITE_PLAYER_FORMS_DB_ID
-#   APPWRITE_PLAYER_FORMS_COL_ID
-#   APPWRITE_PLAYER_PROFILES_COL_ID
+# No API key and no Appwrite id is a secret here. The app holds no credentials, and the Appwrite
+# ids plus the Sentry DSN are read from local.properties.template by the release job.
 #
 # Error tracking:
 #   SENTRY_AUTH_TOKEN         — Sentry auth token (ProGuard mapping upload on release)
@@ -162,27 +148,21 @@ jobs:
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/bouncer-release.keystore
 
+      # The Appwrite ids and the Sentry DSN come from the checked-in template, not from secrets:
+      # they are public configuration, and this step used to read them from secrets that were
+      # never created. Every line came out as `KEY=`, so each build published to Play from
+      # 2026-09-22 had a blank endpoint — no Appwrite call at all — and no DSN to report it, while
+      # this job stayed green. `verifyReleaseConfig` now fails bundleRelease on a blank.
+      #
+      # Not a plain `cp`: the template's sdk.dir is a macOS path, and its SENTRY_USER_AUTH_TOKEN
+      # placeholder would outrank the SENTRY_AUTH_TOKEN the build step supplies.
       - name: Create local.properties
         run: |
-          cat > local.properties << EOF
+          grep -E '^(APPWRITE_[A-Z_]+|SENTRY_DSN)=' local.properties.template > local.properties
+          cat >> local.properties << EOF
           KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS=${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
-          RAPIDAPI_KEY=${{ secrets.RAPIDAPI_KEY }}
-          GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
-          CEREBRAS_API_KEY=${{ secrets.CEREBRAS_API_KEY }}
-          SAMBANOVA_API_KEY=${{ secrets.SAMBANOVA_API_KEY }}
-          APPWRITE_ENDPOINT=${{ secrets.APPWRITE_ENDPOINT }}
-          APPWRITE_PROJECT_ID=${{ secrets.APPWRITE_PROJECT_ID }}
-          APPWRITE_AI_CACHE_DB_ID=${{ secrets.APPWRITE_AI_CACHE_DB_ID }}
-          APPWRITE_AI_CACHE_COL_ID=${{ secrets.APPWRITE_AI_CACHE_COL_ID }}
-          APPWRITE_FAVOURITES_COL_ID=${{ secrets.APPWRITE_FAVOURITES_COL_ID }}
-          HIGHLIGHTLY_API_KEY=${{ secrets.HIGHLIGHTLY_API_KEY }}
-          APPWRITE_HIGHLIGHTS_DB_ID=${{ secrets.APPWRITE_HIGHLIGHTS_DB_ID }}
-          APPWRITE_HIGHLIGHTS_COL_ID=${{ secrets.APPWRITE_HIGHLIGHTS_COL_ID }}
-          APPWRITE_PLAYER_FORMS_DB_ID=${{ secrets.APPWRITE_PLAYER_FORMS_DB_ID }}
-          APPWRITE_PLAYER_FORMS_COL_ID=${{ secrets.APPWRITE_PLAYER_FORMS_COL_ID }}
-          APPWRITE_PLAYER_PROFILES_COL_ID=${{ secrets.APPWRITE_PLAYER_PROFILES_COL_ID }}
           EOF
 
       # GitHub's expression language has no arithmetic operators, so the offset cannot live in

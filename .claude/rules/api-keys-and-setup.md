@@ -40,6 +40,40 @@ cp local.properties.template local.properties   # then set sdk.dir and, for rele
 
 The app builds and runs with no secrets at all. Commentary comes from the server.
 
+## The Play build takes its ids from the template, not from GitHub secrets
+
+The CI release job builds `local.properties` by `grep`-ing the `APPWRITE_*` and `SENTRY_DSN` lines
+out of `local.properties.template` and appending the three signing secrets. There are no
+`APPWRITE_*` GitHub secrets and there never were: the job used to write
+`APPWRITE_ENDPOINT=${{ secrets.APPWRITE_ENDPOINT }}` for ten ids, each of which expanded to `KEY=`,
+and `getProperty(key) ?: fallback` treats `""` as a value. Every bundle published to Play from
+2026-09-22 to 2026-10-02 therefore had a blank endpoint and project id — `AppwriteClient` never
+initialised, so player search, presence, server commentary, the detail and scorecard rows,
+highlights and every Storage download were off — and a blank Sentry DSN, so none of it was
+reported. CI was green throughout, and local debug builds worked because this machine's
+`local.properties` is filled in.
+
+What holds it now:
+
+- `buildConfigValue` (`app/build.gradle.kts`) treats a blank value as absent.
+- `verifyReleaseConfig` fails `bundleRelease`/`assembleRelease` when `APPWRITE_ENDPOINT`,
+  `APPWRITE_PROJECT_ID` or `SENTRY_DSN` is blank. It hangs on the artifact tasks, not on
+  `preReleaseBuild`, because the CI test and lint jobs compile the release variant with blank
+  config on purpose.
+- The template is the single source for those values. A new non-secret id goes in the template
+  and in the `buildConfigField` list; it needs no CI change.
+
+**Silence from production Sentry is not evidence of health** — check that the shipped bundle can
+report at all. The check that found this, on the `release-aab` artifact of a CI run:
+
+```bash
+unzip -oq app-release.aab 'base/dex/*' && strings base/dex/*.dex | grep -c sgp.cloud.appwrite.io   # must be ≥ 1
+```
+
+Appwrite's `usage_list_events` filtered to the Android SDK's `sdkVersion` shows whether installed
+builds are talking to the backend at all; it showed none for days while the function logs looked
+healthy.
+
 ## Adding a new key
 
 1. Put it in the relevant Appwrite function's environment (console, or MCP `functions_create_variable`).

@@ -1,7 +1,7 @@
-Following a match now keeps its live score card current every minute, even when the match isn't open in the app.
+Fixed: the app could not reach our servers. Player search, ball-by-ball commentary, full scorecards, win probability and highlights work again.
+
+Following a match now keeps its live score card current every minute, even when the match isn't open.
 
 The run-rate worm and over-by-over charts now show both innings.
 
 Also new: playing XIs on the Info tab, All matches by date, team form on team pages, and a Reminders list under the bell.
-
-Fixed: rain-abandoned matches no longer show a 50/50 win bar.
