@@ -37,6 +37,10 @@ import {
   parseOverHistory,
   BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
+import { fetchForecast, sideContextFor } from "./context.js";
+import { sideContext } from "./contextmath.js";
+import { createContextStore, newBudget } from "./contextstore.js";
+import { parseSquads, squadsUrl } from "./squads.js";
 import { BATCH_MAX_ITEMS, chainDepth, classifyEvent, deadProviders, drainUnknownQuotaIds, generateBatch, generateLine, nextPacificMidnight, outcomeClause, sanitize, stripPreamble, verifyBatch } from "./llm.js";
 import {
   SITUATION_SYSTEM_INSTRUCTION,
@@ -80,8 +84,14 @@ const WINPROB_FILE = "live-winprob";
 // The trained model written by bouncer-train-win-probability. Without it every match falls back to
 // the heuristic, which is deliberately crude — the calibrated numbers come from the model.
 const TEAM_STATS_FILE = "team-stats";
-let cachedModel = null;        // warm-container cache; one storage read per cold start
-let modelLoadFailed = false;   // retry on the next cold start, not every minute
+// The pointer to the model the trainer last published, and how often it is looked at again. A
+// container lives for hours and the trainer runs weekly, so without the re-check a new model
+// reached a match only when its container happened to be recycled.
+const MANIFEST_FILE = "winprob-manifest";
+const MODEL_RECHECK_MS = 60 * 60 * 1000;
+let cachedModel = null;        // warm-container cache
+let cachedModelFile = null;    // the file id `cachedModel` was read from
+let modelCheckedAt = 0;
 // Viewer presence: bouncer-match-presence writes { [matchId]: epochMs } here whenever a
 // client has a live match open. We only generate for matches with a fresh viewer, so idle
 // matches (and idle nights) cost no LLM calls. TTL covers ~2 missed 90s client heartbeats.
@@ -1352,7 +1362,12 @@ async function handleRun({ req, res, log, error }) {
   // on a run with nothing live — which is most of the night, and exactly when the app is showing
   // only upcoming fixtures.
   const model = await loadModel({ storage, log, error });
-  const prematch = await prematchEntries({ storage, model, log, error });
+  const contexts = contextStoreFor({ storage, log, error });
+  const contextBudget = newBudget();
+  // Once a day, on the 04:00 UTC run.
+  const clock = new Date();
+  if (clock.getUTCHours() === 4 && clock.getUTCMinutes() === 0) await pruneContexts({ storage, log, error });
+  const prematch = await prematchEntries({ storage, model, contexts, budget: contextBudget, log, error });
 
   let matches = [];
   try {
@@ -1487,6 +1502,14 @@ async function handleRun({ req, res, log, error }) {
           log,
           error,
           alerts,
+          contextFor: ({ meta, format }) => {
+            const resolved = formatFromText(format, m.title ?? "");
+            // T10 and an unreadable format have no slice in the archive, so no context to build.
+            if (!["T20", "ODI", "HUNDRED", "TEST"].includes(resolved)) return null;
+            return contexts.ensure({
+              matchId, meta, model, format: resolved, gender: genderFromTitle(m.title ?? ""), budget: contextBudget,
+            });
+          },
         });
         summary[matchId] = result.status;
         if (result.finalised) finalisedNow.add(matchId);
@@ -1778,16 +1801,95 @@ async function writeWinProbFile({ storage, winProb, log, error }) {
  * convention the detail payload already uses, so the device needs no second team mapping.
  */
 async function loadModel({ storage, log, error }) {
-  if (cachedModel || modelLoadFailed) return cachedModel;
+  if (Date.now() - modelCheckedAt < MODEL_RECHECK_MS) return cachedModel;
+  modelCheckedAt = Date.now();
   try {
-    const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, TEAM_STATS_FILE));
+    // The manifest names the model. Before the first v6 model is published there is none, and
+    // the v5 file under its old fixed name is read instead.
+    const manifest = await storage
+      .getFileDownload(BUCKET_ID, MANIFEST_FILE)
+      .then(parseJsonFile)
+      .catch((e) => {
+        if (e?.code !== 404) error(`Could not read ${MANIFEST_FILE} (${e?.message})`);
+        return null;
+      });
+    const fileId = manifest?.fileId ?? TEAM_STATS_FILE;
+    if (fileId === cachedModelFile && cachedModel) return cachedModel;
+    const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, fileId));
     cachedModel = parsed;
-    log(`Loaded win-probability model v${parsed?.version ?? "?"} (${Object.keys(parsed?.teamStats ?? {}).length} teams)`);
+    cachedModelFile = fileId;
+    log(`Loaded win-probability model v${parsed?.version ?? "?"} from ${fileId} (${Object.keys(parsed?.teamStats ?? {}).length} teams)`);
   } catch (e) {
-    modelLoadFailed = true;
-    error(`Could not load ${TEAM_STATS_FILE} (${e?.message}) — falling back to the heuristic`);
+    // The model already in hand keeps serving. With none, the heuristic does, and the next hourly
+    // check tries again — the old latch held a failed load for the life of the container.
+    error(`Could not load the win-probability model (${e?.message}) — ${cachedModel ? "keeping the one loaded" : "falling back to the heuristic"}`);
   }
   return cachedModel;
+}
+
+// One context store per container, so a context built in one run is still there in the next. The
+// store outlives the run that created it, but `storage`, `log` and `error` belong to one
+// execution, so it reaches them through this object and each run points it at its own.
+let contextStore = null;
+const contextIo = { storage: null, log: () => {}, error: () => {} };
+
+function contextStoreFor({ storage, log, error }) {
+  Object.assign(contextIo, { storage, log, error });
+  if (contextStore) return contextStore;
+  contextStore = createContextStore({
+    readJson: async (fileId) => parseJsonFile(await contextIo.storage.getFileDownload(BUCKET_ID, fileId)),
+    writeJson: async (fileId, value) => {
+      await contextIo.storage.deleteFile(BUCKET_ID, fileId).catch(() => {});
+      await contextIo.storage.createFile(
+        BUCKET_ID,
+        fileId,
+        InputFile.fromBuffer(Buffer.from(JSON.stringify(value), "utf8"), `${fileId}.json`),
+        ['read("any")']
+      );
+    },
+    fetchPage: fetchHtml,
+    parseMatchMeta,
+    parseSquads,
+    squadsUrl,
+    matchUrl: liveScoresUrl,
+    fetchForecast,
+    log: (m) => contextIo.log(m),
+    error: (m) => contextIo.error(m),
+  });
+  return contextStore;
+}
+
+const CONTEXT_PREFIX = "mc-";
+const CONTEXT_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
+
+/**
+ * Delete match contexts nobody will read again. One file is written per match and nothing else
+ * removes them.
+ *
+ * Selected with `startsWith("$id", …)`, never `search`: storage search is fuzzy, and this bucket
+ * holds every other function's state. The prefix is checked again on each candidate before it is
+ * deleted, because a surprise in query semantics must not be able to become a deletion.
+ */
+export async function pruneContexts({ storage, log, error, now = Date.now() }) {
+  try {
+    const cutoff = new Date(now - CONTEXT_RETENTION_MS).toISOString();
+    const page = await storage.listFiles(BUCKET_ID, [
+      Query.startsWith("$id", CONTEXT_PREFIX),
+      Query.lessThan("$updatedAt", cutoff),
+      Query.limit(100),
+    ]);
+    let deleted = 0;
+    for (const file of page?.files ?? []) {
+      if (!String(file.$id).startsWith(CONTEXT_PREFIX) || !(file.$updatedAt < cutoff)) continue;
+      await storage.deleteFile(BUCKET_ID, file.$id);
+      deleted++;
+    }
+    if (deleted) log(`Pruned ${deleted} match context file(s) older than 14 days`);
+    return deleted;
+  } catch (e) {
+    error(`Context prune failed: ${e?.message}`);
+    return 0;
+  }
 }
 
 /**
@@ -1801,7 +1903,7 @@ async function loadModel({ storage, log, error }) {
  * Non-fatal throughout: this runs before the live sync and must never be the reason a live match
  * goes unscored.
  */
-async function prematchEntries({ storage, model, log, error }) {
+async function prematchEntries({ storage, model, contexts, budget, log, error }) {
   const entries = {};
   if (!model) return entries;
   let fixtures = [];
@@ -1846,12 +1948,19 @@ async function prematchEntries({ storage, model, log, error }) {
     }) || bothSidesKnown({ sides, teamStats, format: f, gender }));
     if (!slice) continue;
 
+    // The fixture's context — ground, record, forecast — built a couple a run until every
+    // fixture has one. A fixture without one yet is scored on team terms alone.
+    const context = await contexts
+      .ensure({ matchId: fixture.id, model, format: slice, gender, budget, live: false })
+      .catch(() => null);
+    const firstNamed = context?.teams?.find((t) => t.key === stripWomenSuffix(sides[0]));
     const result = evaluatePrematch({
       firstTeam: stripWomenSuffix(sides[0]),
       secondTeam: stripWomenSuffix(sides[1]),
       gender,
       format: slice,
       resolved: true,
+      context: firstNamed ? sideContextFor(context, firstNamed.id) : teamOnlyContext(teamStats, sides, gender, slice),
       model,
     });
     if (result.undetermined) continue;
@@ -1868,6 +1977,17 @@ async function prematchEntries({ storage, model, log, error }) {
   }
   log(`Pre-match: ${resolved} of ${fixtures.length} upcoming fixtures scored`);
   return entries;
+}
+
+/**
+ * The team terms alone, for a fixture whose context has not been built yet. The model file
+ * carries every side's Elo and form, so this needs no fetch.
+ */
+function teamOnlyContext(teamStats, sides, gender, format) {
+  const of = (side) => teamStats[teamKey(stripWomenSuffix(side), gender, format)];
+  const own = of(sides[0]);
+  const opp = of(sides[1]);
+  return own && opp ? sideContext({ own, opp, venue: null }) : null;
 }
 
 /** Both named sides have a record in this (gender, format) slice, regardless of who bats first. */
@@ -1895,9 +2015,12 @@ export function orientToTeam1({ battingTeamWinProbability, drawProbability, batt
   return Math.min(1, Math.max(0, other));
 }
 
-function winProbFor(detail, title, model) {
+function winProbFor(detail, title, model, matchContext = null) {
   const s = detail?.situation;
   if (!s) return null;
+  // The payload's team1 is the first-innings side; the context knows sides by Cricbuzz team id.
+  const battingId = s.battingTeamIsTeam1 ? detail.team1Id : detail.team2Id;
+  const context = matchContext && battingId != null ? sideContextFor(matchContext, battingId) : null;
 
   const format = formatFromText(s.matchFormat, title);
   // The miniscore names teams by short code ("SA", "SUR"), the model keys them by Cricsheet full
@@ -1946,6 +2069,7 @@ function winProbFor(detail, title, model) {
       bowlingTeam,
       gender,
       format,
+      context,
       model,
     });
   if (result.undetermined) return null;
@@ -2036,7 +2160,7 @@ async function activeViewerIds({ storage, log, error }) {
 
 // Exported for `finalise.test.js`: the finalisation wiring (which tier writes, and once) is
 // invisible in production until a match ends, which is the class of defect this file keeps finding.
-export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error, alerts = null }) {
+export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error, alerts = null, contextFor = null }) {
   // Queues one push to this match's topic. [alerts] is null when FCM is unconfigured or in tests
   // that do not exercise alerts, and then nothing is sent.
   const alert = (data) => {
@@ -2076,7 +2200,8 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
 
   // 3. Build + upsert the live-detail snapshot.
   const detail = parseLiveDetail(liveHtml);
-  tallyMeta(metaTally, parseMatchMeta(liveHtml), detail.status);
+  const meta = parseMatchMeta(liveHtml);
+  tallyMeta(metaTally, meta, detail.status);
   overHistoryByMatch.set(matchId, mergeOverHistory(overHistoryByMatch.get(matchId), parseOverHistory(liveHtml)));
 
   // 3a. Finalisation. A match leaves `live-matches.json` the moment it is over and never comes
@@ -2106,7 +2231,10 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   });
   batterRunsByMatch.set(matchId, milestones.next);
   milestones.alerts.forEach(alert);
-  const winProb = winProbFor(detail, title, model);
+  const matchContext = contextFor ? await contextFor({ meta, format: detail.situation?.matchFormat }) : null;
+  const winProb = winProbFor(detail, title, model, matchContext);
+  // The device refetches `mc-{matchId}` only when this number moves.
+  if (matchContext) detail.contextRev = matchContext.rev;
   // Carried in the detail payload as well as the aggregate file, so the detail screen updates on
   // the existing realtime channel instead of waiting for a file download. `payload` is an opaque
   // JSON string column and Gson ignores unknown keys, so this needs no Appwrite schema change and

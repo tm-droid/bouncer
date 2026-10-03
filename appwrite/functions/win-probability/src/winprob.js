@@ -2,30 +2,41 @@
  * The single win-probability implementation.
  *
  * This module is the authority: the device computes nothing. It is duplicated byte-for-byte into
- * every function that needs it (win-probability, poll-live-matches, match-sync) because Appwrite
+ * every function that needs it (win-probability, match-sync) because Appwrite
  * deploys each function as an isolated archive with no shared package. If you edit this file, copy
  * it to the others — winprob.test.js asserts the copies agree.
  *
- * ## Model contract v5
+ * ## Model contract v6
  *
- * The artifact carries three models rather than one:
+ * The artifact carries four heads:
  *
  *  - `chase` — the side batting second, in a limited-overs match.
- *  - `firstInnings` — the side setting the target. v4 had no model here; this half of every match
- *    was scored by the hand-tuned heuristic below, which is 0.069 log-loss worse on the same data.
+ *  - `firstInnings` — the side setting the target.
+ *  - `prematch` — the first-named side of a fixture that has not started.
  *  - `long` — a Test, three outcomes, because a Test can be drawn and no two-class model can say so.
  *
- * Each carries its own feature list, standardizer and calibration temperature, and the feature
- * builders here must produce the same vector as `training.js` did when fitting. That is not a style
- * rule: a reordered or rescaled feature is silently wrong rather than broken, and it is pinned by
- * `feature-parity.test.js` in train-win-probability.
+ * The first three each hold TWO models: `core`, which reads the position plus what is known about
+ * the two sides and the ground, and `full`, which also reads both elevens. `full` is used only
+ * when the caller's context carries an eleven for both sides; a single model taught to tolerate a
+ * missing eleven measured worse in both cases than one fitted for each.
  *
- * A v4 or older artifact is deliberately NOT accepted on the learned path. v4's five-feature chase
- * vector would be read against v5's sixteen weights, which is worse than having no model at all —
- * so an old artifact falls back to the heuristic, which is at least self-consistent.
+ * Every vector is the head's base features with the retired all-time strength term removed,
+ * followed by the context terms from `contextmath.js` — the same function the trainer calls, so
+ * the two cannot disagree about order or scale. `feature-parity.test.js` in train-win-probability
+ * pins the base builders here against the trainer's.
+ *
+ * A v5 artifact is still read, on its own path, so a reader deployed ahead of the first v6 model
+ * keeps serving. Anything older is refused: v4's five-feature chase vector read against sixteen
+ * weights is worse than no model at all, so it falls back to the heuristic, which is at least
+ * self-consistent.
  */
 
-export const MODEL_VERSION = 5;
+import { NEUTRAL_CONTEXT, contextFeatures } from "./contextmath.js";
+
+export const MODEL_VERSION = 6;
+
+/** The previous contract, still read: one model per head, team strength as an all-time win rate. */
+const LEGACY_MODEL_VERSION = 5;
 
 /** Balls in one innings, by format. Test is absent on purpose — it has no fixed budget. */
 export const FORMAT_INNINGS_BALLS = {
@@ -379,7 +390,32 @@ function scoreClasses(sub, features) {
 }
 
 function learnedOf(model) {
+  return model != null && model.version === LEGACY_MODEL_VERSION ? model : null;
+}
+
+function contextModelOf(model) {
   return model != null && model.version === MODEL_VERSION ? model : null;
+}
+
+/** The Test head has the same shape under both contracts. */
+function longModelOf(model) {
+  return learnedOf(model) ?? contextModelOf(model);
+}
+
+/**
+ * Score one head of a v6 model, or null when the artifact has no usable model for it.
+ *
+ * `full` is chosen only when the context carries both elevens AND the artifact's `full` model
+ * matches the vector — otherwise `core`, which never needs an eleven.
+ */
+function scoreContextHead(headModel, head, base, state, context) {
+  const c = context ?? NEUTRAL_CONTEXT;
+  if (c.xi && headModel?.full) {
+    const features = contextFeatures(head, base, state, c, true);
+    if (usable(headModel.full, features.length)) return scoreBinary(headModel.full, features);
+  }
+  const features = contextFeatures(head, base, state, c, false);
+  return usable(headModel?.core, features.length) ? scoreBinary(headModel.core, features) : null;
 }
 
 // ── heuristic ────────────────────────────────────────────────────────────────
@@ -431,6 +467,10 @@ function firstInningsLogit({ currentRunRate, wicketsInHand, parRate }) {
  * old response field was named `team1WinProbability` while being computed from the batting team,
  * so the number was inverted whenever team 2 was at the crease.
  *
+ * `context` is a `sideContext` (see contextmath.js) oriented to the batting side — what is known
+ * about the two sides, the ground and the elevens. Absent, every context term is neutral: the
+ * answer is then a reading of the position alone, which is still a valid answer.
+ *
  * @returns {{undetermined: boolean, battingTeamWinProbability: number|null, drawProbability: number|null, confidence: number}}
  */
 export function evaluate({
@@ -445,6 +485,7 @@ export function evaluate({
   gender = "male",
   format = "UNKNOWN",
   totalBalls = null,
+  context = null,
   model = null,
 } = {}) {
   if (!Number.isFinite(ballsRemaining) || ballsRemaining <= 0) return UNDETERMINED;
@@ -460,7 +501,8 @@ export function evaluate({
   if (wicketsInHand === 0) return finalize(PROB_FLOOR);
 
   const learned = learnedOf(model);
-  const par = parRunRate(format, learned) ?? 8.0;
+  const contextModel = contextModelOf(model);
+  const par = parRunRate(format, learned ?? contextModel) ?? 8.0;
   const teamStats = learned?.teamStats ?? (model?.teamStats ?? model ?? {});
   // Strength contributes nothing unless BOTH sides are in the corpus. winRateOf defaults an
   // unknown team to 0.5, which is the right neutral when strength is one signal among fifteen —
@@ -473,6 +515,26 @@ export function evaluate({
   const teamStrengthDiff =
     battingRate === null || bowlingRate === null ? 0 : battingRate - bowlingRate;
   const isChase = requiredRunRate > 0;
+
+  if (contextModel) {
+    const state = {
+      runsScored,
+      currentRunRate,
+      requiredRunRate,
+      wicketsInHand,
+      ballsRemaining,
+      ballsBudget,
+      runsNeeded,
+      target: runsScored + runsNeeded,
+      teamStrengthDiff: 0,
+      parRunRate: par,
+      format,
+    };
+    const probability = isChase
+      ? scoreContextHead(contextModel.chase, "chase", chaseFeatures(state), state, context)
+      : scoreContextHead(contextModel.firstInnings, "firstInnings", firstInningsFeatures(state), state, context);
+    if (probability !== null) return finalize(probability);
+  }
 
   if (learned) {
     if (isChase && usable(learned.chase, 16)) {
@@ -530,8 +592,22 @@ export function evaluatePrematch({
   gender = "male",
   format = "UNKNOWN",
   resolved = false,
+  context = null,
   model = null,
 } = {}) {
+  const contextModel = contextModelOf(model);
+  if (contextModel) {
+    // Same refusal as below, for the same reason: with neither side in the corpus every team term
+    // is neutral, and the answer would be a format's base rate dressed as a prediction.
+    const stats = contextModel.teamStats ?? {};
+    if (!resolved || knownWinRate(stats, firstTeam, gender, format) === null || knownWinRate(stats, secondTeam, gender, format) === null) {
+      return UNDETERMINED;
+    }
+    const state = { teamStrengthDiff: 0, format };
+    const probability = scoreContextHead(contextModel.prematch, "prematch", prematchFeatures(state), state, context);
+    return probability === null ? UNDETERMINED : { ...finalize(probability), prematch: true };
+  }
+
   const learned = learnedOf(model);
   if (!resolved || !usable(learned?.prematch, 4)) return UNDETERMINED;
 
@@ -582,7 +658,7 @@ export function evaluateLong({
   gender = "male",
   model = null,
 } = {}) {
-  const learned = learnedOf(model);
+  const learned = longModelOf(model);
   if (!usableClasses(learned?.long, 16, 3)) return UNDETERMINED;
 
   const ballsTotal = Math.max(1, scheduledDays) * BALLS_PER_LONG_DAY;

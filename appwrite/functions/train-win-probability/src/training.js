@@ -41,7 +41,7 @@
  * 120 — is unchanged and still load-bearing. See `teamKey` and `inningsBudgetBalls`.
  */
 
-export const MODEL_VERSION = 5;
+export const MODEL_VERSION = 6;
 
 /**
  * Par run rate per format: the rate a side sustains across a full innings with wickets intact.
@@ -130,12 +130,17 @@ export const LONG_FEATURE_NAMES = [
  * Chase features. The state object carries raw cricket quantities; everything derived lives here so
  * that `winprob.js` can reproduce the vector exactly from a live Cricbuzz miniscore.
  *
- * Every feature here is computable from the Cricbuzz miniscore alone. Two candidates that measured
- * well offline were deliberately left out: the current partnership (`partnerShip: {runs, balls}`,
- * worth 0.0025 log-loss) and a venue par score (0.0008). Both need a live field whose absent case
- * the corpus cannot validate — Cricbuzz omits the partnership entirely on a match between innings,
- * and venue strings would need matching against Cricsheet's. Neither gain covers a feature vector
- * that might silently mean something different at inference than it did in training.
+ * Every feature here is computable from the Cricbuzz miniscore alone. Since v6 this is the BASE
+ * of the chase vector: `contextFeatures` (contextmath.js) drops `teamStrengthDiff` and appends
+ * what is known about the two sides, the ground and the elevens, and `build.js` records what each
+ * of those measured.
+ *
+ * An earlier note here said a venue par score (0.0008) and the current partnership (0.0025) were
+ * left out because the absent case could not be validated and venue strings would not join. Both
+ * were re-measured once every term was computed as of the match. The ground is in: on top of
+ * as-of team terms it is worth 0.012, and an unknown ground is not a special case — it is what a
+ * ground's first matches already look like in the corpus. The partnership is still out, now for
+ * a plainer reason: beside the ground and the elevens it is worth 0.0008.
  */
 export function chaseFeatures(s) {
   const budget = Math.max(s.ballsBudget, 1);

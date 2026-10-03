@@ -264,6 +264,17 @@ android {
             .withPropertyName("winProbAndSeriesParitySources")
             .withPathSensitivity(PathSensitivity.RELATIVE)
 
+        // ContextMathVendorParityTest byte-compares the three copies of contextmath.js — the
+        // trainer computes the model's team, ground and player terms with it and the two readers
+        // recompute them for a live match. All three paths, for the same reason as above.
+        inputs.files(
+            rootProject.file("appwrite/functions/match-sync/src/contextmath.js"),
+            rootProject.file("appwrite/functions/win-probability/src/contextmath.js"),
+            rootProject.file("appwrite/functions/train-win-probability/src/contextmath.js"),
+        )
+            .withPropertyName("contextMathVendorParitySources")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+
         // CricbuzzTeamListParityTest asserts the Kotlin team-list reading and tools/update_logos.py
         // pull the same teams and build the same crest URL from one captured page. Same reasoning
         // again: undeclared, editing the script leaves the task UP-TO-DATE and the parity never runs.

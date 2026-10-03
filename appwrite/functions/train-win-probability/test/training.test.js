@@ -458,10 +458,10 @@ test("the settle point is a measured optimum, not a default", () => {
   assert.ok(PRIOR_SETTLE_PROGRESS > 0 && PRIOR_SETTLE_PROGRESS <= 0.5);
 });
 
-test("model version is 5", () => {
+test("model version is 6", () => {
   // Bumped from 4 because the artifact now carries three models with three differently shaped
   // feature vectors. A v4 reader would score a sixteen-feature chase against five weights and
   // return a number rather than an error, so the version is the only thing standing between a
   // stale reader and a confident wrong answer.
-  assert.equal(MODEL_VERSION, 5);
+  assert.equal(MODEL_VERSION, 6);
 });

@@ -134,7 +134,7 @@ test("a v5 model drives the learned path and uses a format-correct balls fractio
   const weights = new Array(16).fill(0);
   weights[2] = 1;
   const model = {
-    version: MODEL_VERSION,
+    version: 5,
     chase: {
       weights,
       bias: 0,
@@ -181,4 +181,51 @@ test("over notation parses balls, not decimal tenths", () => {
   assert.equal(ballsFromOvers("19.7"), null, "a ball digit of 7 is not valid over notation");
   assert.equal(ballsFromOvers(null), null);
   assert.equal(ballsFromOvers("no digits"), null);
+});
+
+// ── v6: two models per head, chosen by whether both elevens are known ───────────────────────────
+
+function tier(names, pick) {
+  const weights = new Array(names).fill(0);
+  weights[pick] = 1;
+  return { weights, bias: 0, temperature: 1, featureMeans: new Array(names).fill(0), featureStds: new Array(names).fill(1) };
+}
+
+const side = { batAvg: 0.2, batStrike: 0.1, batRecent: 0.3, bowl: 0.4, coverage: 1 };
+const contextWith = (xi) => ({
+  eloDiff: 0.5, formDiff: 0.1, h2hAdvantage: 0.05, winRateDiff: 0.02,
+  venueScoring: 1.1, venueChaseAdvantage: 0.03, venueDrawAdvantage: 0, familiarityDiff: 0.2, hasVenue: true, xi,
+});
+
+test("the version this reader writes for is 6", () => {
+  assert.equal(MODEL_VERSION, 6);
+});
+
+test("a v6 chase reads the context: core without elevens, full with both", () => {
+  // Chase core is 15 base features (the strength term removed) + 4 team + 5 ground = 24;
+  // full adds 5 eleven terms. Index 15 is eloDiff; index 24 is the batting side's batAvg.
+  const model = { version: 6, chase: { core: tier(24, 15), full: tier(29, 24) }, teamStats: {} };
+  const args = { currentRunRate: 8, requiredRunRate: 9, runsNeeded: 90, ballsRemaining: 60, wicketsLost: 3, format: "T20", model };
+
+  const core = evaluate({ ...args, context: contextWith(null) });
+  assert.ok(Math.abs(core.battingTeamWinProbability - 1 / (1 + Math.exp(-0.5))) < 1e-9, "core reads eloDiff");
+
+  const full = evaluate({ ...args, context: contextWith({ own: side, opp: side }) });
+  assert.ok(Math.abs(full.battingTeamWinProbability - 1 / (1 + Math.exp(-0.2))) < 1e-9, "full reads the eleven");
+});
+
+test("with no context at all a v6 model still answers, on neutral terms", () => {
+  const model = { version: 6, chase: { core: tier(24, 15), full: tier(29, 24) }, teamStats: {} };
+  const r = evaluate({ currentRunRate: 8, requiredRunRate: 9, runsNeeded: 90, ballsRemaining: 60, wicketsLost: 3, format: "T20", model });
+  assert.equal(r.undetermined, false);
+  assert.ok(Math.abs(r.battingTeamWinProbability - 0.5) < 1e-9, "a neutral eloDiff is zero");
+});
+
+test("a v6 artifact whose model does not match the vector falls back to the heuristic", () => {
+  const model = { version: 6, chase: { core: tier(19, 0), full: null }, teamStats: {} };
+  const args = { currentRunRate: 8, requiredRunRate: 9, runsNeeded: 90, ballsRemaining: 60, wicketsLost: 3, format: "T20" };
+  assert.equal(
+    evaluate({ ...args, model }).battingTeamWinProbability,
+    evaluate({ ...args, model: null }).battingTeamWinProbability,
+  );
 });
