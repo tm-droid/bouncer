@@ -30,6 +30,9 @@ import {
   parseBallOutcome,
   parseCommentary,
   parseLiveDetail,
+  parseMatchMeta,
+  metaPresence,
+  META_FIELDS,
   parseScorecard,
   parseOverHistory,
   BLOCK_BACKOFF_MS,
@@ -920,6 +923,36 @@ const lastScorecardWrite = new Map();
 const overHistoryByMatch = new Map();
 const overHistorySeeded = new Set();
 
+// How often each `parseMatchMeta` field is actually on the live page, per run and per match state.
+// A model feature built on one of these fields is trained with that field masked at the rate
+// measured here, so the figure has to come from the pages this container fetches, not from a
+// captured fixture.
+let metaTally = {};
+
+/** The state a presence count is filed under: a field's absence means different things in each. */
+export function metaStateOf(status) {
+  const text = String(status ?? "").toLowerCase();
+  if (/rain|wet outfield|bad light|delay|stopped|abandon/.test(text)) return "interrupted";
+  if (/innings break|\b(?:lunch|tea|dinner|stumps|drinks)\b|strategic/.test(text)) return "break";
+  return "play";
+}
+
+export function tallyMeta(tally, meta, status) {
+  const state = metaStateOf(status);
+  const row = (tally[state] ??= { matches: 0 });
+  row.matches += 1;
+  const present = metaPresence(meta);
+  for (const field of META_FIELDS) row[field] = (row[field] ?? 0) + (present[field] ? 1 : 0);
+  return tally;
+}
+
+export function metaTallyLines(tally) {
+  return Object.entries(tally).map(
+    ([state, row]) =>
+      `[META] ${state} n=${row.matches}: ` + META_FIELDS.map((f) => `${f} ${row[f] ?? 0}`).join(", ")
+  );
+}
+
 /** [stored] ∪ [fresh] by (innings, over), the fresh reading winning, sorted. Malformed entries drop. */
 export function mergeOverHistory(stored, fresh) {
   const byKey = new Map();
@@ -1437,6 +1470,7 @@ async function handleRun({ req, res, log, error }) {
   const alerts = alertsOn ? [] : null;
   if (!alertsOn) log("FCM not configured (FIREBASE_SERVICE_ACCOUNT_JSON / FIREBASE_PROJECT_ID) — no match alerts sent");
 
+  metaTally = {};
   // Process matches in parallel so per-ball LLM latency doesn't serialize across matches.
   await Promise.allSettled(
     allLive.map(async (m) => {
@@ -1479,6 +1513,8 @@ async function handleRun({ req, res, log, error }) {
       }
     })
   );
+
+  for (const line of metaTallyLines(metaTally)) log(line);
 
   if (alerts?.length) {
     const sent = (await Promise.all(alerts)).filter(Boolean).length;
@@ -2040,6 +2076,7 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
 
   // 3. Build + upsert the live-detail snapshot.
   const detail = parseLiveDetail(liveHtml);
+  tallyMeta(metaTally, parseMatchMeta(liveHtml), detail.status);
   overHistoryByMatch.set(matchId, mergeOverHistory(overHistoryByMatch.get(matchId), parseOverHistory(liveHtml)));
 
   // 3a. Finalisation. A match leaves `live-matches.json` the moment it is over and never comes

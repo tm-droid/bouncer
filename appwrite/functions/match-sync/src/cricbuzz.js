@@ -495,6 +495,139 @@ function findMiniscore(payloads) {
   return found;
 }
 
+/** First object in the flight payloads for which `accept` returns a value. */
+function findInPayloads(payloads, accept) {
+  let found = null;
+  const walk = (node) => {
+    if (found || !node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item);
+      return;
+    }
+    found = accept(node);
+    if (found) return;
+    for (const k of Object.keys(node)) walk(node[k]);
+  };
+  payloads.forEach(walk);
+  return found;
+}
+
+const numOrNull = (v) => {
+  const n = typeof v === "number" ? v : parseFloat(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const idOrNull = (v) => (v === null || v === undefined || v === "" ? null : String(v));
+
+function venueOf(v) {
+  if (!v?.name) return null;
+  return {
+    id: idOrNull(v.id),
+    name: String(v.name),
+    city: v.city ? String(v.city) : null,
+    country: v.country ? String(v.country) : null,
+    timezone: v.timezone ? String(v.timezone) : null,
+    lat: numOrNull(v.latitude),
+    lon: numOrNull(v.longitude),
+  };
+}
+
+function tossOf(t) {
+  if (!t?.tossWinnerId && !t?.tossWinnerName) return null;
+  return {
+    winnerId: idOrNull(t.tossWinnerId),
+    winnerName: t.tossWinnerName ? String(t.tossWinnerName) : null,
+    decision: t.decision ? String(t.decision) : null,
+  };
+}
+
+function headerTeam(t) {
+  if (!t?.name) return null;
+  return { id: idOrNull(t.id), name: String(t.name), shortName: t.shortName ? String(t.shortName) : null };
+}
+
+/** `latestPerformance` is `[{runs, wkts, label: "Last 5 overs"}, …]`; The Hundred sends it empty. */
+function recentOversOf(list, overs) {
+  const hit = (Array.isArray(list) ? list : []).find((e) =>
+    new RegExp(`^last ${overs} overs$`, "i").test(String(e?.label ?? "").trim())
+  );
+  const runs = numOrNull(hit?.runs);
+  const wickets = numOrNull(hit?.wkts);
+  return runs === null || wickets === null ? null : { runs, wickets };
+}
+
+/**
+ * Everything on the live page that describes the match rather than the ball: where it is played,
+ * the toss, and the in-match state the miniscore carries beside the score — the current
+ * partnership, the last five and ten overs, and who is at the crease by Cricbuzz player id.
+ *
+ * Every field is null when the page does not carry it. The partnership is absent between innings
+ * and `latestPerformance` is empty for The Hundred, so a consumer must treat null as unknown,
+ * never as zero.
+ */
+export function parseMatchMeta(liveHtml) {
+  const payloads = collectPayloads(liveHtml);
+  const ms = findMiniscore(payloads);
+  const header = findInPayloads(payloads, (n) =>
+    n.matchHeader && typeof n.matchHeader === "object" && n.matchHeader.matchId !== undefined
+      ? n.matchHeader
+      : null
+  );
+  const venue = findInPayloads(payloads, (n) =>
+    n.venue && typeof n.venue === "object" && n.venue.name && n.venue.latitude !== undefined
+      ? n.venue
+      : null
+  );
+  const partnership = ms?.partnerShip;
+  const pRuns = numOrNull(partnership?.runs);
+  const pBalls = numOrNull(partnership?.balls);
+  const revised = numOrNull(header?.revisedTarget?.reviseTarget ?? header?.revisedTarget?.revisedTarget);
+
+  return {
+    venue: venueOf(venue),
+    toss: tossOf(header?.tossResults),
+    dayNight: typeof header?.dayNight === "boolean" ? header.dayNight : null,
+    matchType: header?.matchType ? String(header.matchType) : null,
+    startMs: numOrNull(header?.matchStartTimestamp),
+    teams: [headerTeam(header?.team1), headerTeam(header?.team2)].filter(Boolean),
+    revisedTarget: revised,
+    partnership: pRuns === null || pBalls === null ? null : { runs: pRuns, balls: pBalls },
+    last5: recentOversOf(ms?.latestPerformance, 5),
+    last10: recentOversOf(ms?.latestPerformance, 10),
+    lastWicket: ms?.lastWicket ? String(ms.lastWicket).replace(/\s+/g, " ").trim() : null,
+    strikerId: idOrNull(ms?.batsmanStriker?.id),
+    nonStrikerId: idOrNull(ms?.batsmanNonStriker?.id),
+    bowlerId: idOrNull(ms?.bowlerStriker?.id),
+    otherBowlerId: idOrNull(ms?.bowlerNonStriker?.id),
+  };
+}
+
+/** The fields of a `parseMatchMeta` result whose presence is counted per run. */
+export const META_FIELDS = [
+  "venue",
+  "toss",
+  "dayNight",
+  "teams",
+  "partnership",
+  "last5",
+  "last10",
+  "strikerId",
+  "nonStrikerId",
+  "bowlerId",
+];
+
+/** Which `META_FIELDS` a meta carries; a venue counts only with coordinates, teams only with both. */
+export function metaPresence(meta) {
+  const present = {};
+  for (const field of META_FIELDS) {
+    const value = meta?.[field];
+    if (field === "venue") present[field] = value?.lat != null && value?.lon != null;
+    else if (field === "teams") present[field] = Array.isArray(value) && value.length === 2;
+    else present[field] = value !== null && value !== undefined;
+  }
+  return present;
+}
+
 const s = (v, fallback = "0") => (v === null || v === undefined ? fallback : String(v));
 
 function mapBatsman(b, isStriker) {
