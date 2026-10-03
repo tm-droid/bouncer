@@ -28,7 +28,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_KEYS = ["GROQ_API_KEY", "GEMINI_API_KEY", "CEREBRAS_API_KEY", "SAMBANOVA_API_KEY"];
+const DEFAULT_KEYS = ["GROQ_API_KEY", "GEMINI_API_KEY", "GEMINI_API_KEY_2", "CEREBRAS_API_KEY", "SAMBANOVA_API_KEY"];
 
 const argv = process.argv.slice(2);
 const dryRun = argv.includes("--dry-run");

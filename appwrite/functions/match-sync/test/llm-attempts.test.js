@@ -8,7 +8,7 @@ import { generateLine } from "../src/llm.js";
 // configured", "bad model id" and "rate limited" were the same event — none of them observable.
 // These tests pin the reason channel, not the network.
 
-const PROVIDER_KEYS = ["GROQ_API_KEY", "GEMINI_API_KEY", "CEREBRAS_API_KEY", "SAMBANOVA_API_KEY"];
+const PROVIDER_KEYS = ["GROQ_API_KEY", "GEMINI_API_KEY", "GEMINI_API_KEY_2", "CEREBRAS_API_KEY", "SAMBANOVA_API_KEY"];
 
 function withoutProviderKeys(run) {
   const saved = PROVIDER_KEYS.map((k) => [k, process.env[k]]);
@@ -29,19 +29,24 @@ test("with no keys configured, every provider records why it was skipped", async
     const line = await generateLine("18.5: Bumrah to Root, no run", { attempts });
 
     assert.equal(line, null, "no provider can answer without a key");
-    assert.equal(attempts.length, 5, "every WRITING rung must account for itself");
+    assert.equal(attempts.length, 9, "every WRITING rung must account for itself");
     assert.deepEqual(
       attempts,
       [
         // Rung order, and it is asserted as order: gemini-3.5-flash-lite leads because it was
         // measured more accurate on real deliveries than gpt-oss-20b.
         "gemini-flash-lite: no GEMINI_API_KEY",
+        // The second project's rung sits directly behind its twin, and names its OWN variable.
+        "gemini-flash-lite-2: no GEMINI_API_KEY_2",
         "gemini-3.1-flash-lite-preview: no GEMINI_API_KEY",
+        "gemini-3.1-flash-lite-preview-2: no GEMINI_API_KEY_2",
         "groq: no GROQ_API_KEY",
         // Three rungs, one key: the missing variable is named once per RUNG, not once per key.
         // Collapsing them would hide which models the chain still believes it has.
         "gemini-3.6-flash: no GEMINI_API_KEY",
+        "gemini-3.6-flash-2: no GEMINI_API_KEY_2",
         "gemini-3-flash-preview: no GEMINI_API_KEY",
+        "gemini-3-flash-preview-2: no GEMINI_API_KEY_2",
         // groq-qwen is absent on purpose: it is verify-only and never writes a line.
       ],
       "the reason must name the missing variable, not just say 'failed'"

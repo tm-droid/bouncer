@@ -34,7 +34,7 @@ import {
   parseOverHistory,
   BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
-import { BATCH_MAX_ITEMS, chainDepth, classifyEvent, deadProviders, drainUnknownQuotaIds, generateBatch, sanitize, stripPreamble, verifyBatch } from "./llm.js";
+import { BATCH_MAX_ITEMS, chainDepth, classifyEvent, deadProviders, drainUnknownQuotaIds, generateBatch, nextPacificMidnight, sanitize, stripPreamble, verifyBatch } from "./llm.js";
 import {
   initObservability,
   report,
@@ -217,13 +217,24 @@ function flushBatch() {
   // debounce — it is already late by a full window.
   if (pendingRewrites.length) batchTimer = setTimeout(flushBatch, 0);
 
-  rewriteWithRetry(taken)
+  // A batch always goes out full. Every Gemini rung is limited by REQUESTS a day, not tokens, and a
+  // typical batch carried 6.95 of its 12 deliveries (measured 2026-09-16) — so the spare slots were
+  // the cheapest capacity in the pipeline: a held delivery riding in one costs no call at all.
+  // The size stays BATCH_MAX_ITEMS, the size the writer and the checker were probed at.
+  const fill = takeHeld(BATCH_MAX_ITEMS - taken.length).map(heldItem);
+  const all = [...taken, ...fill];
+  if (fill.length) taken[0].log?.(`Rewrite batch: ${taken.length} fresh + ${fill.length} held`);
+
+  rewriteWithRetry(all)
     .then((results) => {
+      // Held first: their writes are collected for the run to await, and a fresh item's resolve is
+      // what lets its match sync — and so the run — move on.
+      for (const t of fill) t.resolve(results.get(t.key));
       for (const t of taken) t.resolve(results.get(t.key));
     })
     .catch((e) => {
       taken[0].error?.(`Rewrite batch threw: ${e?.message}`);
-      for (const t of taken) t.resolve({ line: null, provider: null, reason: "providers_exhausted", attempts: [] });
+      for (const t of all) t.resolve({ line: null, provider: null, reason: "providers_exhausted", attempts: [] });
     });
 }
 
@@ -348,15 +359,34 @@ const BACKLOG_REPORT_AGE_MS = 15 * 60 * 1000;
 const BACKLOG_REPORT_SIZE = 200;
 // ~100 holds a day were measured when this was written. Past this something is broken, not slow.
 const BACKLOG_ALARM_SIZE = 2000;
-// Oldest-first, per run: three batches. A backlog built while every writer was spent (a couple of
-// hours of play) would otherwise go out as a dozen calls in one second the moment a rung reopens,
-// straight into flash-lite's 15 RPM. ~7 new deliveries arrive per run, so this still clears a
-// backlog five times faster than it can grow.
-const BACKLOG_DRAIN_PER_RUN = 3 * BATCH_MAX_ITEMS;
+// Dedicated backlog batches per run: two. A backlog built while every writer was spent would
+// otherwise go out as a dozen calls in one second the moment a rung reopens, straight into
+// flash-lite's 15 RPM — and when the checker has fallen onto the same rung, each batch is two of
+// those fifteen. Held deliveries also ride free in the spare slots of every fresh batch
+// (`flushBatch`), which is the cheaper path and is not counted here.
+const BACKLOG_DRAIN_PER_RUN = 2 * BATCH_MAX_ITEMS;
+// A FINISHED match gets dedicated batches only while its backlog is this small — the ordinary
+// trickle of twice-rejected lines, ~100 a day — or inside the sweep window below. Every call
+// carries BATCH_MAX_ITEMS deliveries either way, so the only choice is who is served: a morning
+// call spent on yesterday's match is a call the afternoon's live balls then do not have. A large
+// finished-match backlog fills through the spare slots instead. Nothing is ever dropped.
+const BACKLOG_FINISHED_TRICKLE = 2 * BATCH_MAX_ITEMS;
+// Gemini's per-day buckets reset at midnight Pacific and do not carry over, so in the hours before
+// it whatever is left is spent on finished matches rather than expiring.
+const BACKLOG_SWEEP_MS = 3 * 60 * 60 * 1000;
 
 // rowId -> held delivery. Null until this container has read the file; the file is written only by
 // this function, so a warm container already holds what it says.
 let backlog = null;
+// What a top-up needs and a batch does not carry: somewhere to write, and who is watching what.
+// Set by `handleRun` for the length of one run; null means no top-ups (the unit tests of the
+// batcher, and any caller that has not loaded the backlog).
+let backlogCtx = null;
+// Row ids already in a batch this run, so one held delivery is never rewritten twice in a run.
+const inFlight = new Set();
+// Row writes started by top-ups. The run awaits them before it saves the backlog and returns —
+// the container freezes on return, and a write still in the air would be lost.
+let heldWork = [];
 // Whether `backlog` reflects the file. False after an unreadable (non-404) read: the file must not
 // be overwritten with only this run's holds, or every older one would be lost.
 let backlogLoaded = false;
@@ -382,6 +412,111 @@ export function __resetBacklog(entries = []) {
   backlog = new Map(entries.map((e) => [e.rowId, e]));
   backlogLoaded = true;
   backlogSaved = null;
+  backlogCtx = null;
+  inFlight.clear();
+  heldWork = [];
+}
+
+/** Test seam: what `handleRun` sets for the length of a run. */
+export function __setBacklogContext(ctx) {
+  backlogCtx = ctx;
+}
+
+/** Test seam: wait for the row writes top-ups started. */
+export async function __settleHeldWork() {
+  await settleHeldWork();
+}
+
+async function settleHeldWork() {
+  // A write can only start once its batch resolves, so loop until nothing new was added.
+  while (heldWork.length) {
+    const work = heldWork;
+    heldWork = [];
+    await Promise.allSettled(work);
+  }
+  inFlight.clear();
+}
+
+/**
+ * The order held deliveries are served in: matches someone has open, then the other live matches,
+ * then finished ones — and newest ball first inside each.
+ *
+ * It was oldest-first across everything, which after a dry evening spent the morning's fresh quota
+ * on yesterday's finished match while the match being watched waited behind it. The tab is read
+ * from the newest ball down and the device loads only the newest page first, so the newest held
+ * ball is the one a reader is looking at; a late row still lands where the ball was bowled, because
+ * the device inserts by `sort_key`. The cost is holes further down the feed until they fill, and
+ * no figure is stated over a hole — over totals and maidens need all six balls present.
+ */
+export function backlogOrder(entries, { viewers = new Set(), liveIds = new Set() } = {}) {
+  const tier = (e) => (viewers.has(String(e.matchId)) ? 0 : liveIds.has(String(e.matchId)) ? 1 : 2);
+  return [...entries].sort((a, b) => tier(a) - tier(b) || b.ts - a.ts);
+}
+
+/** Held deliveries no batch has taken yet this run, in serving order. */
+function waitingHeld(order = backlogCtx ?? {}) {
+  // A delivery held during THIS run has just failed every attempt it gets in a run; offering it
+  // again a second later repeats the same answer.
+  const startedMs = backlogCtx?.startedMs ?? Infinity;
+  return backlogOrder(
+    [...heldMap().values()].filter((e) => !inFlight.has(e.rowId) && (e.firstSeenMs ?? 0) < startedMs),
+    order
+  );
+}
+
+/** Up to [n] held deliveries for the spare slots of a fresh batch. None outside a run. */
+function takeHeld(n) {
+  if (!backlogCtx || n <= 0) return [];
+  const taken = waitingHeld().slice(0, n);
+  for (const e of taken) inFlight.add(e.rowId);
+  return taken;
+}
+
+/** A held delivery as a batch item. Its result is written, not handed back to a match sync. */
+function heldItem(e) {
+  const { db, log, error } = backlogCtx;
+  return {
+    key: batchKey(e.matchId, e.ball, e.ts),
+    ball: e.ball,
+    text: e.clean,
+    log,
+    error,
+    resolve: (out) => { heldWork.push(writeHeld(e, out, { db, error })); },
+  };
+}
+
+/**
+ * Write a held delivery's row if [out] carries a verified line. Returns true when the delivery has
+ * left the backlog. Never throws: a failed write leaves the delivery held for the next run.
+ */
+async function writeHeld(e, out, { db, error }) {
+  const line = out?.line ? storedLine(out.line, e.ball) : null;
+  if (!line) return false;
+  try {
+    await db.createDocument(DB_ID, COMMENTARY_COL, e.rowId, commentaryRowData({
+      matchId: e.matchId, innings: e.innings, ball: e.ball, sortKey: e.sortKey, line, clean: e.clean, provider: out.provider,
+    }), READ_ANY);
+    heldMap().delete(e.rowId);
+    return true;
+  } catch (err) {
+    // 409: the row exists — another execution wrote it. Either way the delivery is stored.
+    if (err?.code === 409) {
+      heldMap().delete(e.rowId);
+      return true;
+    }
+    error?.(`Backlog write failed (${e.matchId}/${e.ball}): ${err?.message}`);
+    return false;
+  }
+}
+
+/** The held deliveries this run's dedicated batches may take — see BACKLOG_FINISHED_TRICKLE. */
+export function dedicatedEntries({ viewers = new Set(), liveIds = new Set(), now = Date.now() } = {}) {
+  const waiting = waitingHeld({ viewers, liveIds });
+  const isActive = (e) => viewers.has(String(e.matchId)) || liveIds.has(String(e.matchId));
+  const finished = waiting.filter((e) => !isActive(e)).length;
+  const sweep = nextPacificMidnight(now) - now <= BACKLOG_SWEEP_MS;
+  const finishedToo = sweep || finished <= BACKLOG_FINISHED_TRICKLE;
+  return waiting.filter((e) => finishedToo || isActive(e)).slice(0, BACKLOG_DRAIN_PER_RUN);
 }
 
 export function __backlogEntries() {
@@ -477,36 +612,32 @@ function commentaryRowData({ matchId, innings, ball, sortKey, line, clean, provi
  * still held has no more match syncs to carry them. Its calls go through the same batcher, so a
  * backlog costs a batch of its own only while it is non-empty.
  */
-export async function drainBacklog({ db, log, error }) {
-  const entries = [...heldMap().values()].sort((a, b) => a.ts - b.ts).slice(0, BACKLOG_DRAIN_PER_RUN);
-  if (!entries.length) return { written: 0, held: 0 };
-  const outs = await Promise.all(entries.map((e) =>
-    queueRewrite({ key: batchKey(e.matchId, e.ball, e.ts), ball: e.ball, text: e.clean, log, error })
-  ));
+export async function drainBacklog({ db, log, error, viewers, liveIds, now }) {
+  const entries = dedicatedEntries({ viewers, liveIds, now });
+  for (const e of entries) inFlight.add(e.rowId);
   let written = 0;
   const reasons = new Set();
   let lastAttempts = [];
-  for (let i = 0; i < entries.length; i++) {
-    const e = entries[i];
-    const out = outs[i];
-    const line = out?.line ? storedLine(out.line, e.ball) : null;
-    if (!line) {
-      reasons.add(out?.reason ?? "unknown");
-      lastAttempts = out?.attempts ?? lastAttempts;
-      continue;
+  // Its own batches, not the shared queue: these are already full or are all there is, and a held
+  // delivery queued as if it were fresh would be topped up with other held deliveries.
+  const chunks = [];
+  for (let i = 0; i < entries.length; i += BATCH_MAX_ITEMS) chunks.push(entries.slice(i, i + BATCH_MAX_ITEMS));
+  await Promise.all(chunks.map(async (chunk) => {
+    const items = chunk.map((e) => ({ key: batchKey(e.matchId, e.ball, e.ts), ball: e.ball, text: e.clean, log, error }));
+    const results = await rewriteWithRetry(items).catch((e) => {
+      error(`Backlog batch threw: ${e?.message}`);
+      return new Map();
+    });
+    for (let i = 0; i < chunk.length; i++) {
+      const out = results.get(items[i].key);
+      if (await writeHeld(chunk[i], out, { db, error })) {
+        written++;
+      } else if (!out?.line) {
+        reasons.add(out?.reason ?? "unknown");
+        lastAttempts = out?.attempts ?? lastAttempts;
+      }
     }
-    try {
-      await db.createDocument(DB_ID, COMMENTARY_COL, e.rowId, commentaryRowData({
-        matchId: e.matchId, innings: e.innings, ball: e.ball, sortKey: e.sortKey, line, clean: e.clean, provider: out.provider,
-      }), READ_ANY);
-      heldMap().delete(e.rowId);
-      written++;
-    } catch (err) {
-      // 409: the row exists — another execution wrote it. Either way the delivery is stored.
-      if (err?.code === 409) heldMap().delete(e.rowId);
-      else error(`Backlog write failed (${e.matchId}/${e.ball}): ${err?.message}`);
-    }
-  }
+  }));
   const held = heldMap().size;
   log(`Backlog: wrote ${written} late line(s), ${held} still held`);
   reportBacklog({ reasons, attempts: lastAttempts });
@@ -834,9 +965,21 @@ async function handleRun({ req, res, log, error }) {
   // Held deliveries are offered to the writer first thing, and the backlog is saved on every path
   // out of this run — including the early returns with nothing live, because a match that ended
   // with balls still held has no more syncs of its own to carry them.
-  const backlogRun = loadBacklog({ storage, error }).then(() => drainBacklog({ db, log, error }));
+  //
+  // The dedicated batches start once the run knows who is watching what — that decides the order —
+  // or at `settleBacklog` on a path that returns before then. Until `startDrain` runs the sets are
+  // empty, which reads every held delivery as a finished match's: the right answer with nothing live.
+  const backlogLoad = loadBacklog({ storage, error });
+  backlogCtx = { db, log, error, viewers: new Set(), liveIds: new Set(), startedMs: Date.now() };
+  let backlogRun = null;
+  const startDrain = () => {
+    backlogRun ??= backlogLoad.then(() => drainBacklog({ db, log, error, viewers: backlogCtx.viewers, liveIds: backlogCtx.liveIds }));
+  };
   const settleBacklog = async () => {
+    startDrain();
     await backlogRun.catch((e) => error(`Backlog drain failed: ${e?.message}`));
+    await settleHeldWork();
+    backlogCtx = null;
     await saveBacklog({ storage, log, error });
   };
 
@@ -895,6 +1038,12 @@ async function handleRun({ req, res, log, error }) {
   // watermark of every unviewed match on every run, so the slow tier below would have paid a fresh
   // seed read on each of its passes for a value it already had.
   const liveIds = new Set(allLive.map((m) => String(m.id)));
+  // Loaded before any match sync asks `isHeld`, and before a fresh batch looks for held deliveries
+  // to fill its spare slots.
+  await backlogLoad;
+  backlogCtx.viewers = activeViewers;
+  backlogCtx.liveIds = liveIds;
+  startDrain();
   for (const id of watermarkByMatch.keys()) {
     if (!liveIds.has(id)) watermarkByMatch.delete(id);
   }

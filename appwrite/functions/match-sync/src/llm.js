@@ -42,6 +42,7 @@ const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat
 // are NOT the same size, and the only number that counts is one measured for that model:
 //
 //   gemini-3.5-flash-lite   15 RPM (429 quotaValue, 2026-09-16); 500 RPD (read from AI Studio)
+//   gemini-3.1-flash-lite-preview   15 RPM, 250K TPM, 500 RPD (read from AI Studio, 2026-10-03)
 //   gemini-3.6-flash        20 RPD (429 `GenerateRequestsPerDayPerProjectPerModel-FreeTier`,
 //   gemini-3-flash-preview  20 RPD  quotaValue "20", production, 2026-09-24)
 //
@@ -88,11 +89,20 @@ const PROVIDERS = [
   // early keeps the common failure path well inside that. (It is rung 3 since 2026-09-25, behind
   // gemini-3.1-flash-lite-preview at 4-8s.)
   { name: "gemini-flash-lite",      account: "gemini", url: GEMINI_URL,                                        model: "gemini-3.5-flash-lite",  keyEnv: "GEMINI_API_KEY", tokenFloor: 0 },
+  // The `-2` rungs are a SECOND Google Cloud project (2026-10-03), each directly behind its twin.
+  // The free quota is per project per model, so the same four model ids on another project's key
+  // are four more buckets — an alias on the same project is not (see above), and neither is a
+  // second key on the same project. Same models, same prompts, same floors: the quality verdicts
+  // above carry over unchanged, which a new model id's would not. `account` differs because a 402
+  // is a statement about one project's balance, and `dailyExhausted` is keyed by rung name, so the
+  // two projects latch independently. Unset, every `-2` rung is skipped as "no GEMINI_API_KEY_2".
+  { name: "gemini-flash-lite-2",    account: "gemini-2", url: GEMINI_URL,                                      model: "gemini-3.5-flash-lite",  keyEnv: "GEMINI_API_KEY_2", tokenFloor: 0 },
   // Probed 2026-09-25 with the real batch prompt, 11 deliveries (LBW, run out, wide, dropped catch)
   // x 3 runs: no factual error in any run, 4-8s. A different model id — and bucket — from the
   // `gemini-3.1-flash-lite` rejected on 2026-09-16 for inventing a "sharp bouncer". Its daily
   // limit is not yet measured; the per-day latch handles whatever it turns out to be.
   { name: "gemini-3.1-flash-lite-preview", account: "gemini", url: GEMINI_URL,                               model: "gemini-3.1-flash-lite-preview", keyEnv: "GEMINI_API_KEY", tokenFloor: 0 },
+  { name: "gemini-3.1-flash-lite-preview-2", account: "gemini-2", url: GEMINI_URL,                           model: "gemini-3.1-flash-lite-preview", keyEnv: "GEMINI_API_KEY_2", tokenFloor: 0 },
   // groq's floor is the verify call's, not the batch's. The batch budget is `120*n+200` and always
   // cleared 320, but `verifyLine` asked for 256 and gpt-oss spent all of it reasoning: production
   // logged `groq: empty completion (length)` on every verify (ANDROID-38, 2026-09-25). Each of those
@@ -102,7 +112,9 @@ const PROVIDERS = [
   // rungs already carry larger ones.
   { name: "groq",                   account: "groq",   url: "https://api.groq.com/openai/v1/chat/completions", model: "openai/gpt-oss-20b",     keyEnv: "GROQ_API_KEY",   tokenFloor: 1024, extraBody: { reasoning_effort: "low" } },
   { name: "gemini-3.6-flash",       account: "gemini", url: GEMINI_URL,                                        model: "gemini-3.6-flash",       keyEnv: "GEMINI_API_KEY", tokenFloor: 2048 },
+  { name: "gemini-3.6-flash-2",     account: "gemini-2", url: GEMINI_URL,                                      model: "gemini-3.6-flash",       keyEnv: "GEMINI_API_KEY_2", tokenFloor: 2048 },
   { name: "gemini-3-flash-preview", account: "gemini", url: GEMINI_URL,                                        model: "gemini-3-flash-preview", keyEnv: "GEMINI_API_KEY", tokenFloor: 2048 },
+  { name: "gemini-3-flash-preview-2", account: "gemini-2", url: GEMINI_URL,                                    model: "gemini-3-flash-preview", keyEnv: "GEMINI_API_KEY_2", tokenFloor: 2048 },
   // VERIFY ONLY. Probed 2026-09-25: its commentary invents names ("Babar Zaman", "Rohit Sha") and
   // turned a catch into a run-out, so it never writes a line — but as a fact-checker it was 8/8
   // correct on planted-good and planted-bad lines, in 2 output tokens and ~200ms. Its own groq
@@ -271,7 +283,7 @@ const PER_MINUTE_QUOTA_RE = /PerMinute/i;
  * Derived from the zone's own offset via `Intl` rather than a hardcoded -08:00, because the offset
  * changes twice a year and a fixed one would be an hour wrong for half of every season.
  */
-function nextPacificMidnight(now = Date.now()) {
+export function nextPacificMidnight(now = Date.now()) {
   const zone = "America/Los_Angeles";
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: zone,

@@ -605,6 +605,21 @@ Interactions-API only. groq's per-day 429 is prose ("tokens per day (TPD)"), not
 latches for 30 minutes (`GROQ_DAY_LATCH_MS`) — without it an exhausted groq rung was re-asked 399
 times in one night.
 
+**Limits read from the consoles on 2026-10-03, and what they add up to.** Both flash-lite models:
+15 RPM / 250K TPM / 500 RPD. `gpt-oss-20b` and qwen: 30 RPM / 1K RPD / 8K TPM / **200K TPD** — the
+token cap is what binds on both. One project therefore supplies ~1,330 calls a day (qwen ~160
+checks, flash-lite 500 + 500, gpt-oss ~130, the two reasoning rungs 40), against ~2,400 for the
+measured busy day (6,672 deliveries) and ~2,930 for 16 matches bowling for 8 hours. **The checker is
+the ceiling**: qwen is token-bound at ~117 tokens a delivery, so it covers ~1,500 deliveries a day
+however the writers batch, and every check past that lands on a Gemini writer rung — the weaker
+checker (it passed "a maiden over" 3/3) and double the burn on that rung.
+
+**A second Gemini PROJECT is four more buckets; a second key on the same project is none.** The
+`-2` rungs (`GEMINI_API_KEY_2`, `account: "gemini-2"`) sit directly behind their twins: same model
+ids, prompts and floors, so the probe verdicts carry over. `dailyExhausted` is keyed by rung name
+and `paymentBlocked` by account, so the projects latch independently (pinned in
+`provider-ladder.test.js`). Unset, each is skipped as `no GEMINI_API_KEY_2`.
+
 Three traps, each of which looks like free capacity and is not. **An alias is not a bucket**:
 bursting `gemini-flash-lite-latest` returns `quotaDimensions: {"model":"gemini-3.5-flash-lite"}` —
 it bills what it resolves to. **A reasoning rung needs its own `tokenFloor`**: `gemini-3.6-flash` at
@@ -757,10 +772,22 @@ re-samples the same rung only when no other writer answers; a batch nobody answe
 (the rungs are 429/latched and would fail again this second). (2) Anything still without a verified
 line goes to the **rewrite backlog** instead of being written: `holdDelivery` stores everything the
 row needs (the live page is a ~20-item window, so the ball will not be on it later), the watermark
-still advances, `drainBacklog` offers held deliveries to the writer at the top of every run —
-including runs with nothing live — oldest first, `BACKLOG_DRAIN_PER_RUN` (36) at a time, and the
+still advances, and the held delivery is offered to the writer again on later runs — including runs
+with nothing live — and the
 late row carries its original `sort_key`, which the device's `sortKey`-positioned insert puts where
-the ball was bowled. Persisted as `rewrite-backlog` in `cricket-stats`, written only when it
+the ball was bowled. **Since 2026-10-03 a held delivery mostly rides in the spare slots of a fresh
+batch** (`flushBatch` → `takeHeld`): every Gemini rung is limited by requests a day, not tokens, and
+a typical batch carried 6.95 of its 12 deliveries, so a top-up costs no call. The size stays
+`BATCH_MAX_ITEMS` (12), the size the writer and checker were probed at. The serving order is
+`backlogOrder`: matches someone has open, then other live matches, then finished ones, **newest ball
+first** in each — it was oldest-first across everything, which after a dry evening spent the
+morning's quota on yesterday's match while the one being watched waited. `drainBacklog` still sends
+dedicated batches, two a run (`BACKLOG_DRAIN_PER_RUN`, 24), but a FINISHED match gets them only
+while its backlog is ≤ 24 (the ordinary trickle) or in the 3 hours before the Pacific reset, when
+unused quota would expire (`dedicatedEntries`). **Nothing is ever dropped and there is no age limit**
+— an old match must always end up complete; that was an explicit decision, do not add an expiry.
+A delivery held during a run is not offered again in that run, and `inFlight` keeps one held
+delivery out of two batches. Persisted as `rewrite-backlog` in `cricket-stats`, written only when it
 changes, never over a file this container failed to read. **A held delivery's alert is sent when it
 is first seen**, not when its row lands — a wicket alert minutes late is past `ALERT_MAX_AGE_MS` —
 and the drain sends none. Held balls count as present for `findCommentaryGaps`. The cost is

@@ -4,8 +4,12 @@ import assert from "node:assert/strict";
 import {
   __backlogEntries,
   __resetBacklog,
+  __setBacklogContext,
   __setBatchFn,
+  __settleHeldWork,
   __setVerifyBatchFn,
+  backlogOrder,
+  dedicatedEntries,
   drainBacklog,
   resetRewriteBatcher,
   syncMatch,
@@ -186,14 +190,91 @@ test("a batch nobody answered is not retried in the same second", async () => {
   assert.equal(__backlogEntries().length, 1, "held for the next run instead");
 });
 
-test("a large backlog drains oldest-first, a few batches per run", async () => {
+test("a large live backlog drains newest-first, two batches per run", async () => {
   const calls = [];
   useStubs(writer({ calls }), checker(() => false));
-  const base = { matchId: "bk-7", innings: 1, clean: "Lomror to Abell, no run", firstSeenMs: Date.now() };
-  __resetBacklog(Array.from({ length: 50 }, (_, i) => ({ ...base, rowId: `r${i}`, ts: 50 - i, sortKey: 50 - i, ball: `${i}.1` })));
-  const result = await drainBacklog({ db: fakeDb(), log: silent, error: silent });
-  assert.equal(result.written, 36);
-  assert.equal(result.held, 14);
-  // ts runs 50..1 as i runs 0..49, so the 14 left are the NEWEST: rows r0..r13.
-  assert.deepEqual(__backlogEntries().map((e) => e.rowId).sort(), Array.from({ length: 14 }, (_, i) => `r${i}`).sort());
+  const base = { matchId: "bk-7", innings: 1, clean: "Lomror to Abell, no run", firstSeenMs: 0 };
+  __resetBacklog(Array.from({ length: 50 }, (_, i) => ({ ...base, rowId: `r${i}`, ts: i + 1, sortKey: i + 1, ball: `${i}.1` })));
+  const result = await drainBacklog({ db: fakeDb(), log: silent, error: silent, liveIds: new Set(["bk-7"]) });
+  assert.equal(result.written, 24);
+  assert.equal(result.held, 26);
+  assert.deepEqual(calls.map((c) => c.keys.length), [12, 12], "full batches, never more than twelve");
+  // ts runs 1..50 with i, so the 26 left are the OLDEST: rows r0..r25.
+  assert.deepEqual(__backlogEntries().map((e) => e.rowId).sort(), Array.from({ length: 26 }, (_, i) => `r${i}`).sort());
+});
+
+test("held deliveries are served viewers first, then live, then finished — newest ball first in each", () => {
+  const e = (matchId, ts) => ({ matchId, rowId: `${matchId}-${ts}`, ts });
+  const order = backlogOrder(
+    [e("done", 9), e("live", 2), e("seen", 1), e("live", 5), e("done", 3), e("seen", 4)],
+    { viewers: new Set(["seen"]), liveIds: new Set(["seen", "live"]) }
+  );
+  assert.deepEqual(order.map((x) => x.rowId), ["seen-4", "seen-1", "live-5", "live-2", "done-9", "done-3"]);
+});
+
+test("a large finished-match backlog gets no dedicated batch outside the pre-reset window, and loses nothing", async () => {
+  const calls = [];
+  useStubs(writer({ calls }), checker(() => false));
+  const base = { innings: 1, clean: "Lomror to Abell, no run", firstSeenMs: 0 };
+  __resetBacklog([
+    ...Array.from({ length: 30 }, (_, i) => ({ ...base, matchId: "done", rowId: `d${i}`, ts: i + 1, sortKey: i + 1, ball: `${i}.1` })),
+    { ...base, matchId: "live", rowId: "l0", ts: 100, sortKey: 100, ball: "9.1" },
+  ]);
+  // Noon Pacific: twelve hours from the reset.
+  const noon = Date.parse("2026-10-03T19:00:00Z");
+  const picked = dedicatedEntries({ liveIds: new Set(["live"]), now: noon });
+  assert.deepEqual(picked.map((x) => x.rowId), ["l0"], "the live match is served; yesterday's waits for a spare slot");
+
+  // 22:00 Pacific: inside the three hours before the buckets reset and whatever is left expires.
+  const late = Date.parse("2026-10-04T05:00:00Z");
+  assert.equal(dedicatedEntries({ liveIds: new Set(["live"]), now: late }).length, 24);
+  assert.equal(__backlogEntries().length, 31, "selection never removes a held delivery");
+});
+
+test("a small finished-match backlog — the ordinary retry trickle — is drained at once", () => {
+  const base = { matchId: "done", innings: 1, clean: "Lomror to Abell, no run", firstSeenMs: 0 };
+  __resetBacklog(Array.from({ length: 24 }, (_, i) => ({ ...base, rowId: `d${i}`, ts: i + 1, sortKey: i + 1, ball: `${i}.1` })));
+  assert.equal(dedicatedEntries({ now: Date.parse("2026-10-03T19:00:00Z") }).length, 24);
+});
+
+test("a fresh batch fills its spare slots from the backlog, at no extra call", async () => {
+  const calls = [];
+  useStubs(writer({ calls }), checker(() => false));
+  const base = { matchId: "old", innings: 1, clean: "Lomror to Abell, no run", firstSeenMs: 0 };
+  __resetBacklog(Array.from({ length: 20 }, (_, i) => ({ ...base, rowId: `h${i}`, ts: i + 1, sortKey: i + 1, ball: `${i}.1` })));
+  const db = fakeDb();
+  __setBacklogContext({ db, log: silent, error: silent, viewers: new Set(), liveIds: new Set(), startedMs: Date.now() });
+
+  const now = Date.now();
+  const rows = await sync("bk-8", [{ commText: "Lomror to Abell, 1 run", timestamp: now, ballMetric: "3.1" }], db);
+  await __settleHeldWork();
+
+  assert.equal(calls.length, 1, "one writer call carries the fresh ball and the held ones");
+  assert.equal(calls[0].keys.length, 12, "the batch goes out full, and no larger than the probed size");
+  assert.equal(rows.filter((r) => r.data.match_id === "bk-8").length, 1);
+  const late = db.writes.filter((w) => w.table === "match-commentary" && w.data.match_id === "old");
+  assert.equal(late.length, 11);
+  // Newest held first: ts 20 down to 10.
+  assert.deepEqual(late.map((w) => w.data.sort_key).sort((a, b) => b - a), Array.from({ length: 11 }, (_, i) => 20 - i));
+  assert.equal(__backlogEntries().length, 9);
+});
+
+test("a held delivery rides in at most one batch per run, and a rejected one stays held", async () => {
+  const calls = [];
+  // Every line fails the checker, on the first writer and on the retry.
+  useStubs(writer({ calls }), checker(() => true));
+  const base = { matchId: "old", innings: 1, clean: "Lomror to Abell, no run", firstSeenMs: 0 };
+  __resetBacklog(Array.from({ length: 5 }, (_, i) => ({ ...base, rowId: `h${i}`, ts: i + 1, sortKey: i + 1, ball: `${i}.1` })));
+  const db = fakeDb();
+  __setBacklogContext({ db, log: silent, error: silent, viewers: new Set(), liveIds: new Set(), startedMs: Date.now() });
+
+  await sync("bk-9", [{ commText: "Lomror to Abell, 1 run", timestamp: Date.now(), ballMetric: "3.1" }], db);
+  await sync("bk-9", [{ commText: "Lomror to Abell, 2 runs", timestamp: Date.now() + 1, ballMetric: "3.2" }], db);
+  await __settleHeldWork();
+
+  const firstPass = calls.filter((c) => c.exclude.length === 0);
+  assert.equal(firstPass[0].keys.length, 6, "five held ride with the first fresh ball");
+  assert.equal(firstPass[1].keys.length, 1, "none of them is offered again by the next batch in the run");
+  assert.equal(db.writes.filter((w) => w.table === "match-commentary").length, 0, "nothing unverified is written");
+  assert.equal(__backlogEntries().filter((e) => e.matchId === "old").length, 5, "and nothing is dropped");
 });

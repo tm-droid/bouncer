@@ -14,6 +14,9 @@ import { __setRetry503DelayMs, chainDepth, drainUnknownQuotaIds, generateBatch, 
 // twenty seconds". All three pinned here.
 
 const PROVIDER_KEYS = ["GROQ_API_KEY", "GEMINI_API_KEY", "CEREBRAS_API_KEY", "SAMBANOVA_API_KEY"];
+// The second Gemini project is opt-in per test (`withSecondProject`): its rungs share model ids
+// with the first project's, so the model-keyed stub below cannot tell them apart.
+delete process.env.GEMINI_API_KEY_2;
 
 const MODEL_TO_PROVIDER = {
   "openai/gpt-oss-20b": "groq",
@@ -252,7 +255,10 @@ test("chainDepth counts what could actually answer, and says why the rest cannot
     assert.equal(depth, 2, "one groq key reaches two rungs: the writer and the verify-only checker");
     assert.deepEqual(
       rungs.filter((r) => !r.reachable).map((r) => r.reason),
-      ["no GEMINI_API_KEY", "no GEMINI_API_KEY", "no GEMINI_API_KEY", "no GEMINI_API_KEY"]
+      [
+        "no GEMINI_API_KEY", "no GEMINI_API_KEY_2", "no GEMINI_API_KEY", "no GEMINI_API_KEY_2",
+        "no GEMINI_API_KEY", "no GEMINI_API_KEY_2", "no GEMINI_API_KEY", "no GEMINI_API_KEY_2",
+      ]
     );
 
     // Depth 1 is the state that broke verification for six weeks: generation still works, so every
@@ -410,4 +416,82 @@ test("the checker is sent short tags, so a long key cannot eat its reply budget"
   assert.equal(result.verdicts.size, 12);
   assert.equal(result.verdicts.get("142706|18.0|1758817290000"), true);
   assert.ok(seen[0].maxTokens >= 16 * 12, "the budget covers every verdict line");
+});
+
+// ── Second Gemini project (2026-10-03) ───────────────────────────────────────────────────────────
+//
+// The free quota is per PROJECT per model, so a key from a different project is four more buckets
+// on the same four model ids. What has to hold is that the two projects fail independently: a
+// latch that leaked across would turn 1,040 extra calls a day into none, with every rung's own
+// skip reason looking ordinary.
+
+/** Like `withLadder`, with both projects keyed. The stub tells them apart by the bearer token. */
+async function withSecondProject(handler, body) {
+  const keys = [...PROVIDER_KEYS, "GEMINI_API_KEY_2"];
+  const saved = keys.map((k) => [k, process.env[k]]);
+  const savedFetch = globalThis.fetch;
+  for (const k of keys) process.env[k] = "test-key";
+  process.env.GEMINI_API_KEY_2 = "second-project-key";
+  resetProviderHealth();
+
+  const seen = [];
+  globalThis.fetch = async (_url, init) => {
+    const sent = JSON.parse(init?.body ?? "{}");
+    const base = MODEL_TO_PROVIDER[sent.model];
+    if (!base) throw new Error(`unexpected model ${sent.model}`);
+    const second = init.headers.Authorization === "Bearer second-project-key";
+    const name = second ? `${base}-2` : base;
+    seen.push(name);
+    return handler(name);
+  };
+
+  try {
+    return { result: await body(), seen };
+  } finally {
+    globalThis.fetch = savedFetch;
+    resetProviderHealth();
+    for (const [k, v] of saved) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+}
+
+test("each second-project rung sits directly behind its twin", async () => {
+  const { seen } = await withSecondProject(
+    () => quota429("x-PerMinute-y"),
+    () => generateLine("19.2: Bumrah to Maxwell, no run")
+  );
+  assert.deepEqual(seen, [
+    "gemini-flash-lite", "gemini-flash-lite-2",
+    "gemini-3.1-flash-lite-preview", "gemini-3.1-flash-lite-preview-2",
+    "groq",
+    "gemini-3.6-flash", "gemini-3.6-flash-2",
+    "gemini-3-flash-preview", "gemini-3-flash-preview-2",
+  ]);
+});
+
+test("a spent per-day bucket on one project leaves the same model on the other answering", async () => {
+  const perDay = "GenerateRequestsPerDayPerProjectPerModel-FreeTier";
+  const handler = (name) =>
+    name === "gemini-flash-lite" ? quota429(perDay, "500") : completion("19.2: Maxwell defends.");
+  const { result, seen } = await withSecondProject(handler, async () => {
+    const first = await generateLine("19.2: Bumrah to Maxwell, no run");
+    const second = await generateLine("19.3: Bumrah to Maxwell, no run");
+    return [first, second];
+  });
+  assert.deepEqual(result, ["19.2: Maxwell defends.", "19.2: Maxwell defends."]);
+  // The first project's rung is asked once, latches, and is skipped; its twin answers both lines.
+  assert.deepEqual(seen, ["gemini-flash-lite", "gemini-flash-lite-2", "gemini-flash-lite-2"]);
+});
+
+test("a 402 on one project latches that project alone", async () => {
+  const handler = (name) => {
+    if (name.endsWith("-2")) return completion("19.2: Maxwell defends.");
+    if (name.startsWith("gemini")) return new Response(JSON.stringify({ error: { message: "payment required" } }), { status: 402 });
+    return quota429("x-PerMinute-y");
+  };
+  const { result, seen } = await withSecondProject(handler, () => generateLine("19.2: Bumrah to Maxwell, no run"));
+  assert.equal(result, "19.2: Maxwell defends.");
+  assert.deepEqual(seen, ["gemini-flash-lite", "gemini-flash-lite-2"], "the other project is still asked, and answers");
 });

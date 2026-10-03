@@ -126,6 +126,10 @@
                     "value": ""
                 },
                 {
+                    "key": "GEMINI_API_KEY_2",
+                    "value": ""
+                },
+                {
                     "key": "CEREBRAS_API_KEY",
                     "value": ""
                 },
@@ -216,6 +220,10 @@
                 },
                 {
                     "key": "GEMINI_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "GEMINI_API_KEY_2",
                     "value": ""
                 },
                 {
