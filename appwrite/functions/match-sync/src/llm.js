@@ -162,6 +162,14 @@ function rungsFor(purpose) {
 // this binds only when rungs are actually timing out.
 const CHAIN_BUDGET_MS = 45_000;
 
+// …nor ask more than this many rungs over the network. The time budget does not bound a ladder
+// that fails FAST: forty rungs answering 429 in 100ms each is forty upstream calls for one line,
+// and `generate-commentary` is callable by any device, so one request would fan out to every
+// project's quota. Twelve covers the whole two-project ladder (nine writers, ten with the checker)
+// — a line that has been refused twelve times is not going to be answered by the thirteenth.
+// Rungs skipped without a call (latched, unkeyed) are not counted.
+const MAX_RUNGS_ASKED = 12;
+
 // Not in the chain, still worth probing. Both answer 200 on `GET /v1/models` and 402 on every
 // completion (spent Cerebras trial, unfunded SambaNova), so calling them costs a doomed 15s round
 // trip per cold container and buys nothing — but `probeProviders` is exactly how a funded account
@@ -592,10 +600,15 @@ export async function generateLine(
   }
 
   const startedAt = Date.now();
+  let asked = 0;
   for (const provider of rungsFor(purpose)) {
     if (exclude.includes(provider.name) || unavailable?.has(provider.name)) continue;
     if (Date.now() - startedAt > CHAIN_BUDGET_MS) {
       note("all", `chain budget spent (${CHAIN_BUDGET_MS}ms) — remaining rungs not asked`);
+      break;
+    }
+    if (asked >= MAX_RUNGS_ASKED) {
+      note("all", `${MAX_RUNGS_ASKED} rungs asked — remaining rungs not asked`);
       break;
     }
     // Skipped without a call, but still written to `attempts`. Dropping it silently would shrink
@@ -619,6 +632,7 @@ export async function generateLine(
       unavailable?.add(provider.name);
       continue;
     }
+    asked += 1;
     try {
       let resp;
       for (let attempt = 1; ; attempt++) {

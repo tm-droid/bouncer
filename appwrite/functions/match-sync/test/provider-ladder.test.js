@@ -506,32 +506,27 @@ test("a third and a seventh project add their rungs behind the twins, and no oth
   const extra = { GEMINI_API_KEY_3: "third-project-key", GEMINI_API_KEY_7: "seventh-project-key" };
   const saved = Object.keys(extra).map((k) => [k, process.env[k]]);
   Object.assign(process.env, extra);
-  const suffix = { "Bearer second-project-key": "-2", "Bearer third-project-key": "-3", "Bearer seventh-project-key": "-7" };
-  const savedFetch = globalThis.fetch;
+  const attempts = [];
   try {
     const { seen } = await withSecondProject(
       () => quota429("x-PerMinute-y"),
       async () => {
-        const inner = globalThis.fetch;
-        const names = [];
-        globalThis.fetch = async (url, init) => {
-          const sent = JSON.parse(init?.body ?? "{}");
-          names.push(`${MODEL_TO_PROVIDER[sent.model]}${suffix[init.headers.Authorization] ?? ""}`);
-          return inner(url, init);
-        };
-        await generateLine("19.2: Bumrah to Maxwell, no run");
-        assert.deepEqual(names, [
+        assert.deepEqual(chainDepth().rungs.map((r) => r.provider), [
           "gemini-flash-lite", "gemini-flash-lite-2", "gemini-flash-lite-3", "gemini-flash-lite-7",
           "gemini-3.1-flash-lite-preview", "gemini-3.1-flash-lite-preview-2", "gemini-3.1-flash-lite-preview-3", "gemini-3.1-flash-lite-preview-7",
           "groq",
           "gemini-3.6-flash", "gemini-3.6-flash-2", "gemini-3.6-flash-3", "gemini-3.6-flash-7",
           "gemini-3-flash-preview", "gemini-3-flash-preview-2", "gemini-3-flash-preview-3", "gemini-3-flash-preview-7",
+          "groq-qwen",
         ]);
+        await generateLine("19.2: Bumrah to Maxwell, no run", { attempts });
       }
     );
-    assert.equal(seen.length, 17);
+    // Sixteen writer rungs are keyed and every one refuses at once: the line stops at twelve
+    // upstream calls rather than spending one on each project.
+    assert.equal(seen.length, 12);
+    assert.match(attempts.at(-1), /^all: 12 rungs asked/);
   } finally {
-    globalThis.fetch = savedFetch;
     for (const [k, v] of saved) {
       if (v === undefined) delete process.env[k];
       else process.env[k] = v;
