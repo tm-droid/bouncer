@@ -11,7 +11,9 @@ import {
   backlogOrder,
   dedicatedEntries,
   drainBacklog,
+  isEcho,
   resetRewriteBatcher,
+  sourceConflictNote,
   syncMatch,
 } from "../src/main.js";
 import { resetThrottleState } from "../src/cricbuzz.js";
@@ -277,4 +279,106 @@ test("a held delivery rides in at most one batch per run, and a rejected one sta
   assert.equal(firstPass[1].keys.length, 1, "none of them is offered again by the next batch in the run");
   assert.equal(db.writes.filter((w) => w.table === "match-commentary").length, 0, "nothing unverified is written");
   assert.equal(__backlogEntries().filter((e) => e.matchId === "old").length, 5, "and nothing is dropped");
+});
+
+// ── A source that contradicts itself (match 151554, ball 15.5, 2026-10-03) ───────────────────────
+
+const STUCK = "Gudakesh Motie to Ruturaj Gaikwad, 1 run, tad short outside off, Rohit Sharma carves it through the off-side";
+const PAIR = [{ name: "Ruturaj Gaikwad" }, { name: "Rohit Sharma" }];
+
+test("a description naming the non-striker as the batter earns a note; ordinary lines do not", () => {
+  assert.match(sourceConflictNote(STUCK, PAIR), /faced by Ruturaj Gaikwad, but the description names Rohit Sharma/);
+  // Both named: running between the wickets, not a slip.
+  assert.equal(sourceConflictNote("Gudakesh Motie to Ruturaj Gaikwad, 1 run, Gaikwad pushes to cover, Sharma calls him through", PAIR), "");
+  assert.equal(sourceConflictNote("Gudakesh Motie to Ruturaj Gaikwad, no run, defended", PAIR), "");
+  // The header's batter is not one of the live pair: a ball from another partnership, or the
+  // other innings, where Sharma is a fielder. Nothing can be inferred.
+  assert.equal(sourceConflictNote("Gudakesh Motie to Shai Hope, 1 run, Rohit Sharma fields at cover", PAIR), "");
+  assert.equal(sourceConflictNote("Jansen to Banton, FOUR", []), "");
+  assert.equal(sourceConflictNote("Drinks are on the field", PAIR), "");
+});
+
+test("the note reaches the writer and the checker, and never the stored row's classification", async () => {
+  const seen = { writer: [], checker: [] };
+  useStubs(
+    async (items, opts) => {
+      seen.writer.push(...items.map((i) => i.text));
+      if (opts.used) opts.used.provider = "gemini-flash-lite";
+      return new Map(items.map((i) => [i.key, "Motie drops short and it is carved through the off-side for a single."]));
+    },
+    async (items) => {
+      seen.checker.push(...items.map((i) => i.source));
+      return { verdicts: new Map(items.map((i) => [i.key, true])), available: true };
+    }
+  );
+  const push = (o) => `<script>self.__next_f.push([1,${JSON.stringify(JSON.stringify(o))}])</script>`;
+  const mini = {
+    batsmanStriker: { name: "Ruturaj Gaikwad", runs: "12", balls: "9" },
+    batsmanNonStriker: { name: "Rohit Sharma", runs: "30", balls: "22" },
+    inningsId: 1,
+    overs: "15.5",
+    batTeam: { teamScore: 120, teamWkts: 1 },
+    matchScoreDetails: { matchFormat: "T20", inningsScoreList: [{ inningsId: 1, batTeamId: "1", batTeamName: "IND", score: 120, wickets: 1, overs: 15.5 }] },
+    status: "India opt to bat",
+  };
+  const ts = Date.now();
+  globalThis.fetch = async () => new Response(
+    `<html><body>${push(mini)}${push({ commentaryList: [{ commText: STUCK, timestamp: ts, ballMetric: "15.5" }] })}</body></html>`,
+    { status: 200, headers: { "content-type": "text/html" } }
+  );
+  const db = fakeDb();
+  await syncMatch({
+    db, matchId: "bk-10", title: "India vs West Indies", commentaryCap: 0, storeCommentary: true,
+    alreadyFinalised: false, model: null, log: silent, error: silent, alerts: [],
+  });
+  assert.match(seen.writer[0], /\[Scorer's note: this ball was faced by Ruturaj Gaikwad/);
+  assert.match(seen.checker[0], /\[Scorer's note:/, "a checker without the note failed the unnamed line 3/3");
+  const rows = db.writes.filter((w) => w.table === "match-commentary");
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].data.runs, 1, "runs still come from the raw clause");
+  assert.doesNotMatch(rows[0].data.commentary, /Scorer's note/);
+});
+
+test("a writer that returns the source unchanged has not written a line", async () => {
+  assert.equal(isEcho(`15.5: ${STUCK}.`, STUCK), true);
+  assert.equal(isEcho("15.5: Motie drops short and it is carved away for a single.", STUCK), false);
+  assert.equal(isEcho("", ""), false);
+
+  const calls = [];
+  // Rung one echoes; the retry on another rung writes a real line.
+  useStubs(
+    async (items, opts) => {
+      const echo = !(opts.exclude ?? []).includes("groq");
+      calls.push(echo ? "echo" : "wrote");
+      if (opts.used) opts.used.provider = echo ? "groq" : "gemini-flash-lite";
+      return new Map(items.map((i) => [i.key, echo ? `${i.text}.` : "Abell works it away for one."]));
+    },
+    checker(() => false)
+  );
+  const rows = await sync("bk-11", [{ commText: "Lomror to Abell, 1 run, worked away", timestamp: Date.now(), ballMetric: "3.1" }], fakeDb());
+  assert.deepEqual(calls, ["echo", "wrote"]);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].data.provider, "gemini-flash-lite");
+  assert.match(rows[0].data.commentary, /Abell works it away/);
+});
+
+test("a delivery rejected three times stops getting dedicated batches, and is still held", async () => {
+  const calls = [];
+  useStubs(writer({ calls }), checker(() => true));
+  const noon = Date.parse("2026-10-03T19:00:00Z");
+  __resetBacklog([{ matchId: "live", rowId: "stuck", ts: 5, sortKey: 5, ball: "15.5", innings: 1, clean: STUCK, firstSeenMs: 0 }]);
+  const run = async () => {
+    await drainBacklog({ db: fakeDb(), log: silent, error: silent, liveIds: new Set(["live"]), now: noon });
+    await __settleHeldWork();
+  };
+  await run();
+  await run();
+  await run();
+  assert.equal(__backlogEntries()[0].rejections, 3);
+  const before = calls.length;
+  await run();
+  assert.equal(calls.length, before, "the fourth run spends no call on it");
+  assert.equal(__backlogEntries().length, 1, "it is not dropped");
+  // …but the pre-reset sweep still offers it, and so does a spare slot in a fresh batch.
+  assert.equal(dedicatedEntries({ liveIds: new Set(["live"]), now: Date.parse("2026-10-04T05:00:00Z") }).length, 1);
 });

@@ -787,7 +787,21 @@ while its backlog is ≤ 24 (the ordinary trickle) or in the 3 hours before the 
 unused quota would expire (`dedicatedEntries`). **Nothing is ever dropped and there is no age limit**
 — an old match must always end up complete; that was an explicit decision, do not add an expiry.
 A delivery held during a run is not offered again in that run, and `inFlight` keeps one held
-delivery out of two batches. Persisted as `rewrite-backlog` in `cricket-stats`, written only when it
+delivery out of two batches.
+
+**A source can contradict itself, and then no line passes.** Match 151554's 15.5 read "Gudakesh
+Motie to Ruturaj Gaikwad, 1 run, …, Rohit Sharma carves it" — the scorer's header and the
+commentator's description naming different batters. The checker failed every rewrite for an hour,
+two writers and two checks a run (~240 calls, on a ~1,330-call day), and what finally passed was
+groq **echoing the raw text back**, stored as `ai_generated: true`. Three guards since 2026-10-03:
+`sourceConflictNote` appends a scorer's note to the text both the writer and the checker read
+(fires only when the description names the other live batter and not the header's; probed 3× —
+without the note in the checker's copy the correct unnamed line failed 3/3); `isEcho` drops a line
+that is the source again, so it gets its retry instead of being stored; and a held delivery's
+`rejections` count stops dedicated batches at `HELD_STUCK_REJECTIONS` (3) — it still rides in spare
+slots and the pre-reset sweep, and is never dropped — and raises one **error**-level Sentry event
+naming the ball. Before that the only report was the generic hourly "Commentary is being held"
+warning inside an existing issue (ANDROID-4Z), which named neither the ball nor the cause. Persisted as `rewrite-backlog` in `cricket-stats`, written only when it
 changes, never over a file this container failed to read. **A held delivery's alert is sent when it
 is first seen**, not when its row lands — a wicket alert minutes late is past `ALERT_MAX_AGE_MS` —
 and the drain sends none. Held balls count as present for `findCommentaryGaps`. The cost is

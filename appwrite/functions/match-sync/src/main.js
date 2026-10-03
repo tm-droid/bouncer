@@ -269,6 +269,16 @@ async function rewriteWithRetry(taken) {
   return first.results;
 }
 
+const SCORER_NOTE_RE = / \[Scorer's note:[^\]]*\]$/;
+const comparable = (text) =>
+  String(text ?? "").replace(SCORER_NOTE_RE, "").replace(/^(?:\d{1,3}\.\d|Ball\s+\d{1,3}):?\s*/i, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
+
+/** True when [line] is [source] again: same words once the ball label, note and punctuation go. */
+export function isEcho(line, source) {
+  const a = comparable(line);
+  return a.length > 0 && a === comparable(source);
+}
+
 /** One writer call and one checker call. Returns a result for EVERY item, plus the writer rung. */
 async function rewriteAndCheck(items, exclude) {
   const { log, error } = items[0];
@@ -277,6 +287,18 @@ async function rewriteAndCheck(items, exclude) {
   // rather than a placeholder. Every delivery in a batch shares one rung by construction.
   const used = {};
   const lines = await batchFn(items.map((t) => ({ key: t.key, text: t.text })), { log, error, attempts, used, exclude });
+  // A writer that hands the source back unchanged has not written a line, and the checker cannot
+  // catch it — a copy of the source agrees with the source on every fact. That is how raw Cricbuzz
+  // text was stored as `ai_generated: true, provider: groq` on 2026-10-03 (match 151554, 15.5),
+  // after an hour of rejected rewrites. Dropped here, the delivery gets its retry on another rung
+  // like any other the model skipped.
+  for (const t of items) {
+    if (lines.has(t.key) && isEcho(lines.get(t.key), t.text)) {
+      error?.(`[ECHO] ${t.key}: ${used.provider ?? "unknown"} returned the source text unchanged`);
+      attempts.push(`${used.provider ?? "unknown"}: echoed the source`);
+      lines.delete(t.key);
+    }
+  }
   // EVERY rewritten line is fact-checked, each against its own raw Cricbuzz text, in one call
   // per batch. It used to be wickets and boundaries only, one call each — which left the
   // dot balls and singles, most of the tab, unchecked, and cost a call per ball it did check.
@@ -374,6 +396,9 @@ const BACKLOG_FINISHED_TRICKLE = 2 * BATCH_MAX_ITEMS;
 // Gemini's per-day buckets reset at midnight Pacific and do not carry over, so in the hours before
 // it whatever is left is spent on finished matches rather than expiring.
 const BACKLOG_SWEEP_MS = 3 * 60 * 60 * 1000;
+// Fact-check FAILs after which a held delivery gets no more dedicated batches. Counted per offer,
+// and an offer is a writer plus the retry, so three is six rejected lines from at least two rungs.
+const HELD_STUCK_REJECTIONS = 3;
 
 // rowId -> held delivery. Null until this container has read the file; the file is written only by
 // this function, so a warm container already holds what it says.
@@ -478,7 +503,7 @@ function heldItem(e) {
   return {
     key: batchKey(e.matchId, e.ball, e.ts),
     ball: e.ball,
-    text: e.clean,
+    text: e.clean + (e.note ?? ""),
     log,
     error,
     resolve: (out) => { heldWork.push(writeHeld(e, out, { db, error })); },
@@ -491,7 +516,10 @@ function heldItem(e) {
  */
 async function writeHeld(e, out, { db, error }) {
   const line = out?.line ? storedLine(out.line, e.ball) : null;
-  if (!line) return false;
+  if (!line) {
+    if (out?.reason === "verification_failed") noteRejection(e, out);
+    return false;
+  }
   try {
     await db.createDocument(DB_ID, COMMENTARY_COL, e.rowId, commentaryRowData({
       matchId: e.matchId, innings: e.innings, ball: e.ball, sortKey: e.sortKey, line, clean: e.clean, provider: out.provider,
@@ -509,6 +537,29 @@ async function writeHeld(e, out, { db, error }) {
   }
 }
 
+/**
+ * One more fact-check FAIL for a held delivery, and — once — the report that it is stuck.
+ *
+ * A ball the checker rejects every time is not a quota problem and waiting does not fix it: either
+ * its source contradicts itself (see `sourceConflictNote`) or the checker is wrong about it. Until
+ * 2026-10-03 nothing counted, so such a ball took two writer calls and two checks on every run for
+ * as long as it was held, and the only report was the generic "commentary is being held" warning —
+ * one event an hour in an issue that already existed, saying nothing about which ball or why.
+ */
+function noteRejection(e, out) {
+  e.rejections = (e.rejections ?? 0) + 1;
+  if (e.rejections !== HELD_STUCK_REJECTIONS) return;
+  report("A held delivery keeps failing the fact-check — it now waits for a spare batch slot", {
+    matchId: e.matchId,
+    ball: e.ball,
+    rejections: e.rejections,
+    source: String(e.clean).slice(0, 300),
+    note: e.note ?? "",
+    heldMinutes: Math.round((Date.now() - (e.firstSeenMs ?? Date.now())) / 60000),
+    attempts: (out?.attempts ?? []).join("; "),
+  }, "error");
+}
+
 /** The held deliveries this run's dedicated batches may take — see BACKLOG_FINISHED_TRICKLE. */
 export function dedicatedEntries({ viewers = new Set(), liveIds = new Set(), now = Date.now() } = {}) {
   const waiting = waitingHeld({ viewers, liveIds });
@@ -516,7 +567,12 @@ export function dedicatedEntries({ viewers = new Set(), liveIds = new Set(), now
   const finished = waiting.filter((e) => !isActive(e)).length;
   const sweep = nextPacificMidnight(now) - now <= BACKLOG_SWEEP_MS;
   const finishedToo = sweep || finished <= BACKLOG_FINISHED_TRICKLE;
-  return waiting.filter((e) => finishedToo || isActive(e)).slice(0, BACKLOG_DRAIN_PER_RUN);
+  // A stuck delivery is never dropped, but it stops costing calls of its own: it rides in the spare
+  // slots of fresh batches, which are free, and in the sweep.
+  const stuck = (e) => (e.rejections ?? 0) >= HELD_STUCK_REJECTIONS;
+  return waiting
+    .filter((e) => (finishedToo || isActive(e)) && (sweep || !stuck(e)))
+    .slice(0, BACKLOG_DRAIN_PER_RUN);
 }
 
 export function __backlogEntries() {
@@ -623,7 +679,7 @@ export async function drainBacklog({ db, log, error, viewers, liveIds, now }) {
   const chunks = [];
   for (let i = 0; i < entries.length; i += BATCH_MAX_ITEMS) chunks.push(entries.slice(i, i + BATCH_MAX_ITEMS));
   await Promise.all(chunks.map(async (chunk) => {
-    const items = chunk.map((e) => ({ key: batchKey(e.matchId, e.ball, e.ts), ball: e.ball, text: e.clean, log, error }));
+    const items = chunk.map((e) => ({ key: batchKey(e.matchId, e.ball, e.ts), ball: e.ball, text: e.clean + (e.note ?? ""), log, error }));
     const results = await rewriteWithRetry(items).catch((e) => {
       error(`Backlog batch threw: ${e?.message}`);
       return new Map();
@@ -842,6 +898,53 @@ export function classifyCommentaryItem(item) {
   const ball = item.ballMetric?.label ?? "";
   if (!ball) return null;
   return { clean, ball };
+}
+
+const surnameOf = (name) => String(name ?? "").trim().split(/\s+/).pop() ?? "";
+const mentions = (text, name) => {
+  const escape = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const full = String(name ?? "").trim();
+  const last = surnameOf(full);
+  if (!last) return false;
+  return new RegExp(`\\b(?:${escape(full)}|${escape(last)})\\b`, "i").test(text);
+};
+
+/**
+ * A note for the writer and the checker when a Cricbuzz line contradicts itself about who faced
+ * the ball, or "" when it does not.
+ *
+ * The header ("Motie to Gaikwad, 1 run, …") comes from the scorer; the description after it is
+ * typed by a commentator, and on 2026-10-03 match 151554's 15.5 read "Gudakesh Motie to Ruturaj
+ * Gaikwad, 1 run, tad short outside off, Rohit Sharma carves it through the off-side" — Sharma was
+ * the non-striker. No line can be right about that source: name Sharma and it contradicts the
+ * header, name Gaikwad and it contradicts the description. The checker failed every attempt, two
+ * writers a run, for an hour (~240 calls on one ball), and what finally passed was a writer echoing
+ * the raw text back verbatim.
+ *
+ * Narrow on purpose. It fires only when the description names the OTHER current batter and never
+ * the one in the header, and only while the header's batter is still at the crease — the pair is
+ * the live miniscore's, which says nothing about a ball from an earlier partnership. A fielder is
+ * never in [batsmen], so "Sharma dives at point" in the other innings cannot trip it. A line that
+ * names both ("Sharma sends Gaikwad back") is running between the wickets, not a slip.
+ *
+ * The note tells the writer to leave the batter unnamed — what the two halves agree on is the
+ * bowler, the runs and the shot. Probed 3×: the writer obeyed every time, the checker passed it
+ * given the same note (and failed it 3/3 without), and still failed a planted line naming Sharma
+ * and a planted four.
+ *
+ * @param batsmen the live pair, `[{ name }]`
+ */
+export function sourceConflictNote(clean, batsmen) {
+  const m = String(clean ?? "").match(/^(.+?) to (.+?),\s*(.*)$/s);
+  if (!m) return "";
+  const [, , batter, rest] = m;
+  const pair = (batsmen ?? []).map((b) => String(b?.name ?? "").trim()).filter(Boolean);
+  const facing = pair.find((n) => n.toLowerCase() === batter.trim().toLowerCase());
+  if (!facing) return "";
+  const partner = pair.find((n) => n !== facing && surnameOf(n).toLowerCase() !== surnameOf(facing).toLowerCase());
+  if (!partner) return "";
+  if (!mentions(rest, partner) || mentions(rest, facing)) return "";
+  return ` [Scorer's note: this ball was faced by ${facing}, but the description names ${partner}. The two disagree, so do not name who played the shot.]`;
 }
 
 // Exercised on every invocation. An unbound identifier inside classifyCommentaryItem only throws
@@ -1854,7 +1957,7 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
     for (const item of fresh) {
       const classified = classifyCommentaryItem(item);
       if (!classified) continue;
-      queued.push({ ts: Number(item.timestamp), clean: classified.clean, ball: classified.ball });
+      queued.push({ ts: Number(item.timestamp), clean: classified.clean, ball: classified.ball, note: sourceConflictNote(classified.clean, detail.batsmen) });
     }
     const results = await Promise.all(
       queued.map(async (qi) => {
@@ -1866,7 +1969,8 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
         // "2.2 wide" and then "2.2 no run" are two deliveries — so the shorter key collided. The
         // batch kept one line and the checker, seeing the key twice, rejected both, which is most
         // of what ANDROID-38's `verification_failed` rows were on 2026-09-25.
-        const out = await queueRewrite({ key: batchKey(matchId, qi.ball, qi.ts), ball: qi.ball, text: qi.clean, log, error });
+        // `text` is what BOTH the writer and the checker read, so a note reaches the two together.
+        const out = await queueRewrite({ key: batchKey(matchId, qi.ball, qi.ts), ball: qi.ball, text: qi.clean + qi.note, log, error });
         return { qi, out };
       })
     );
@@ -1874,7 +1978,7 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
       // The fact-check already ran inside the batch (`flushBatch`), so a line arrives here either
       // verified or null with the reason it is not.
       if (!out.line) {
-        rewrites.set(qi.ts, { line: null, provider: null, verified: false, reason: out.reason ?? "providers_exhausted", attempts: out.attempts });
+        rewrites.set(qi.ts, { line: null, provider: null, verified: false, reason: out.reason ?? "providers_exhausted", attempts: out.attempts, note: qi.note });
         continue;
       }
       rewrites.set(qi.ts, { line: out.line, provider: out.provider, verified: true, reason: null, attempts: out.attempts });
@@ -1917,7 +2021,12 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
       // the backlog now owns this ball; blocking the mark on it would stall every ball behind it.
       const attempts = pre?.attempts ?? [];
       error(`[HOLD] ${matchId}/${ball} (${pre?.reason ?? "not_attempted"}): no verified line yet — ${attempts.join("; ")}`);
-      holdDelivery({ matchId, rowId, ts: itemTs, sortKey: item.timestamp, ball, innings, clean, firstSeenMs: Date.now() });
+      // `rejections` counts fact-check FAILs only: a spent ladder is not the ball's fault.
+      holdDelivery({
+        matchId, rowId, ts: itemTs, sortKey: item.timestamp, ball, innings, clean, firstSeenMs: Date.now(),
+        ...(pre?.note ? { note: pre.note } : {}),
+        rejections: pre?.reason === "verification_failed" ? 1 : 0,
+      });
       heldNow++;
       advance(itemTs);
       // The alert does not wait for the line: a wicket alert that arrives with the prose, minutes
