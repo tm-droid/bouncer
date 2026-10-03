@@ -1367,7 +1367,9 @@ async function handleRun({ req, res, log, error }) {
   // Once a day, on the 04:00 UTC run.
   const clock = new Date();
   if (clock.getUTCHours() === 4 && clock.getUTCMinutes() === 0) await pruneContexts({ storage, log, error });
-  const prematch = await prematchEntries({ storage, model, contexts, budget: contextBudget, log, error });
+  // Upcoming fixtures draw on a budget of their own, and a smaller one. They are scored first, so
+  // on a shared budget sixty fixtures would hold every live match's context back for half an hour.
+  const prematch = await prematchEntries({ storage, model, contexts, budget: { builds: 1, forecasts: 1 }, log, error });
 
   let matches = [];
   try {
