@@ -153,41 +153,92 @@ async function locate(place) {
   return geocode[place];
 }
 
-async function fetchDays(base, at, m) {
-  const start = m.dates[0];
-  const end = m.dates[m.dates.length - 1];
-  const body = await getJson(`${base}?latitude=${at.lat}&longitude=${at.lon}&start_date=${start}&end_date=${end}&daily=${DAILY}&timezone=auto`);
-  return body.daily ?? null;
+/** Days a single request may span and still count as one call against Open-Meteo's allowance. */
+const WINDOW_DAYS = 14;
+const DAY_MS = 86_400_000;
+const dayOf = (date) => Date.parse(`${date}T00:00:00Z`);
+
+/**
+ * Pending matches grouped so that one request serves many: every match at one place whose days
+ * all fall inside one `WINDOW_DAYS` span. A league plays the same few grounds night after night,
+ * so this is several times fewer calls than one per match.
+ *
+ * The windows are returned in a shuffled order, not by date. The allowance runs out before the
+ * archive does, and a run that stops part-way should leave a spread of seasons covered rather
+ * than only the most recent ones — a model cannot be fitted on weather its training years lack.
+ */
+function windowsOf(pending) {
+  const byPlace = new Map();
+  for (const m of pending) (byPlace.get(m.place) ?? byPlace.set(m.place, []).get(m.place)).push(m);
+  const windows = [];
+  for (const [place, list] of byPlace) {
+    list.sort((x, y) => x.dates[0].localeCompare(y.dates[0]));
+    let current = null;
+    for (const m of list) {
+      const first = m.dates[0];
+      const last = m.dates[m.dates.length - 1];
+      if (current && dayOf(last) - dayOf(current.start) < WINDOW_DAYS * DAY_MS) {
+        current.matches.push(m);
+        if (last > current.end) current.end = last;
+      } else {
+        current = { place, start: first, end: last, matches: [m] };
+        windows.push(current);
+      }
+    }
+  }
+  let seed = 20261003;
+  const random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  for (let i = windows.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [windows[i], windows[j]] = [windows[j], windows[i]];
+  }
+  return windows;
 }
 
-try {
-  for (const m of matches) {
-    if (calls >= limit) break;
-    const wantArchive = !(m.file in raw.archive);
-    const wantForecast = m.dates[0] >= forecastFrom && !(m.file in raw.forecast);
-    if (!wantArchive && !wantForecast) continue;
-    const at = await locate(m.place);
+/** One match's days cut out of a window's answer, in the shape a per-match answer had. */
+function sliceDays(daily, dates) {
+  if (!daily?.time) return null;
+  const index = dates.map((d) => daily.time.indexOf(d)).filter((i) => i >= 0);
+  if (index.length === 0) return null;
+  const out = { time: index.map((i) => daily.time[i]) };
+  for (const key of Object.keys(daily)) if (key !== "time") out[key] = index.map((i) => daily[key][i]);
+  return out;
+}
+
+async function fill(base, store, pending, label) {
+  const windows = windowsOf(pending);
+  console.error(`${label}: ${pending.length} matches pending in ${windows.length} requests`);
+  for (const w of windows) {
+    if (calls >= limit) return;
+    const at = await locate(w.place);
     if (!at) {
-      if (wantArchive) raw.archive[m.file] = null;
-      if (wantForecast) raw.forecast[m.file] = null;
+      for (const m of w.matches) store[m.file] = null;
       continue;
     }
-    if (wantArchive) raw.archive[m.file] = await fetchDays(ARCHIVE, at, m);
-    if (wantForecast) raw.forecast[m.file] = await fetchDays(HISTORICAL_FORECAST, at, m);
-    if (calls % 500 === 0) {
-      save("geocode.json", geocode);
-      save("weather-raw.json", raw.archive);
-      save("weather-forecast-raw.json", raw.forecast);
+    const body = await getJson(`${base}?latitude=${at.lat}&longitude=${at.lon}&start_date=${w.start}&end_date=${w.end}&daily=${DAILY}&timezone=auto`);
+    for (const m of w.matches) store[m.file] = sliceDays(body.daily, m.dates);
+    if (calls % 250 === 0) {
+      checkpoint();
       console.error(`${calls} calls`);
     }
   }
+}
+
+function checkpoint() {
+  save("geocode.json", geocode);
+  save("weather-raw.json", raw.archive);
+  save("weather-forecast-raw.json", raw.forecast);
+}
+
+try {
+  // The forecast source first: it is the smaller set and the holdout cannot be scored without it.
+  await fill(HISTORICAL_FORECAST, raw.forecast, matches.filter((m) => m.dates[0] >= forecastFrom && !(m.file in raw.forecast)), "forecast");
+  await fill(ARCHIVE, raw.archive, matches.filter((m) => !(m.file in raw.archive)), "archive");
 } catch (e) {
   spent = true;
   console.error(`Stopped: ${e.message}`);
 }
-save("geocode.json", geocode);
-save("weather-raw.json", raw.archive);
-save("weather-forecast-raw.json", raw.forecast);
+checkpoint();
 
 const mean = (list) => {
   const values = (list ?? []).filter((v) => typeof v === "number");
