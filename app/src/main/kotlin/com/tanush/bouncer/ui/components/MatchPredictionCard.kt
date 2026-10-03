@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,9 +37,7 @@ data class MatchPredictionInfo(
     val team1WinProbability: Float,
     val team2WinProbability: Float,
     val tieDrawProbability: Float = 0f,
-    val confidenceLevel: Float = 0.85f,
     val predictionFactors: List<PredictionFactor> = emptyList(),
-    val lastUpdated: String = "Just now",
     val predictedWinner: String = "",
     val predictionTrend: PredictionTrend = PredictionTrend.STABLE
 )
@@ -143,36 +140,6 @@ fun MatchPredictionCard(
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 2.sp
-                            )
-                            Text(
-                                text = "Updated: ${predictionInfo.lastUpdated}",
-                                color = colors.textTertiary,
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
-                    
-                    // Confidence badge
-                    Surface(
-                        color = colors.statusInfo.copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Analytics,
-                                contentDescription = null,
-                                tint = colors.statusInfo,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "${(predictionInfo.confidenceLevel * 100).toInt()}%",
-                                color = colors.statusInfo,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -454,9 +421,8 @@ private fun PredictionFactorRow(
     val colors = BouncerDesignSystem.colors
     val favoringTeam = if (factor.impact > 0) team1Name else team2Name
     val impactColor = if (factor.impact > 0) colors.statusInfo else hierarchy.secondary.primary
-    // Clamped, not trusted: `weight`/`fillMaxWidth` both reject a fraction outside 0..1, and the
-    // only producer (runRatePredictionFactors) already coerces to -1..1 — so this holds if a
-    // second producer appears.
+    // Clamped, not trusted: `weight`/`fillMaxWidth` both reject a fraction outside 0..1, and a
+    // producer is not obliged to coerce.
     val impactStrength = abs(factor.impact).coerceIn(0f, 1f)
     
     Row(
@@ -471,8 +437,7 @@ private fun PredictionFactorRow(
         )
         
         // Impact indicator. A fraction fill, not a weight pair: Compose requires every weight to be
-        // strictly positive, and `impact` legitimately reaches 0f (CRR == RRR) and +/-1f (the clamp
-        // in runRatePredictionFactors). Each of those left one side of the old split at zero and
+        // strictly positive, and `impact` legitimately reaches 0f and +/-1f. Each of those left one side of the old split at zero and
         // threw `IllegalArgumentException: invalid weight` on the Overview tab (ANDROID-4K).
         Box(
             modifier = Modifier
@@ -516,12 +481,10 @@ private fun MatchPredictionCardPreview() {
                 team1WinProbability = 0.62f,
                 team2WinProbability = 0.33f,
                 tieDrawProbability = 0.05f,
-                confidenceLevel = 0.88f,
                 predictionFactors = listOf(
                     PredictionFactor("Home Advantage", 0.3f, "India playing at home"),
                     PredictionFactor("Recent Form", 0.2f, "Won 4 of last 5")
                 ),
-                lastUpdated = "2 min ago",
                 predictedWinner = "India",
                 predictionTrend = PredictionTrend.TEAM1_RISING
             )

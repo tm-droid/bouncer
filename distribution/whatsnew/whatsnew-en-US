@@ -1,7 +1,5 @@
-Commentary is more accurate: a corrected ball no longer shows twice, wides no longer hide the delivery after them, and lines for matches without detailed coverage stick to what happened.
+Head-to-head records now appear on the match Overview. They were never shown before because of a lookup fault.
 
-New: a line in the commentary when the match turns, a win is in sight, or a player goes on a run of sixes or wickets.
+Removed figures the app could not back up: the toss card's venue, toss and dew numbers, the match prediction's confidence badge, and the weather and pitch-score panel on the Info tab. The pitch report now shows as written.
 
-Fixed: the app could not reach our servers. Player search, commentary, scorecards and highlights work again.
-
-Following a match keeps its live score card current every minute.
+Commentary is more accurate: a corrected ball no longer shows twice, and wides no longer hide the delivery after them.

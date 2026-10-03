@@ -23,7 +23,6 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.WinProbabilityPoint
 import com.tanush.bouncer.ui.components.MatchPredictionInfo
-import com.tanush.bouncer.ui.components.PredictionFactor
 import com.tanush.bouncer.ui.components.PredictionTrend
 import com.tanush.bouncer.ui.components.premium.MomentumEvent
 import com.tanush.bouncer.ui.components.v2.AnimatedScoreText
@@ -76,25 +75,9 @@ internal fun predictionTrendFor(delta: Float): PredictionTrend = when {
     else -> PredictionTrend.STABLE
 }
 
-internal fun runRatePredictionFactors(currentRunRate: String?, requiredRunRate: String?): List<PredictionFactor> {
-    val crr = currentRunRate?.toFloatOrNull()
-    val rrr = requiredRunRate?.toFloatOrNull()
-    return if (crr != null && rrr != null && rrr > 0f) {
-        listOf(PredictionFactor(
-            name = "Run Rate",
-            impact = ((crr / rrr) - 1f).coerceIn(-1f, 1f),
-            description = "CRR $crr vs RRR $rrr",
-        ))
-    } else {
-        emptyList()
-    }
-}
-
 internal fun predictionInfoFor(
     match: CricketMatch,
     probabilityHistory: List<WinProbabilityPoint>,
-    currentRunRate: String?,
-    requiredRunRate: String?,
 ): MatchPredictionInfo {
     val latestProb = probabilityHistory.last()
     val prevProb = probabilityHistory[probabilityHistory.size - 2]
@@ -106,7 +89,6 @@ internal fun predictionInfoFor(
         team2WinProbability = latestProb.team2Probability,
         predictionTrend = predictionTrendFor(probDelta),
         predictedWinner = if (latestProb.team1Probability >= 0.5f) match.teams[0].name else match.teams[1].name,
-        predictionFactors = runRatePredictionFactors(currentRunRate, requiredRunRate),
     )
 }
 

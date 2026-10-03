@@ -13,8 +13,8 @@ import org.junit.runner.RunWith
  * Pins the impact bar in `PredictionFactorRow` against the three impacts that used to crash it.
  *
  * The bar was two `Modifier.weight` children splitting `impact` against `1f - impact`, and Compose
- * requires every weight to be strictly positive. `runRatePredictionFactors` produces
- * `((crr / rrr) - 1f).coerceIn(-1f, 1f)`, so `impact` reaches 0f whenever CRR equals RRR, +1f
+ * requires every weight to be strictly positive. The producer at the time (a run-rate factor, since
+ * removed) computed `((crr / rrr) - 1f).coerceIn(-1f, 1f)`, so `impact` reached 0f whenever CRR equals RRR, +1f
  * whenever CRR is at least twice RRR, and -1f when CRR is zero — each leaving one side of the split
  * at zero and throwing `IllegalArgumentException: invalid weight` while laying out the Overview tab
  * (ANDROID-4K).

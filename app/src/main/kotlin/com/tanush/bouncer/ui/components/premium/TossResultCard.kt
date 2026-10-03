@@ -131,65 +131,6 @@ fun TossResultCard(
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Toss advantage info - Weight-balanced to prevent overlap
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                TossStatItem(
-                    label = stringResource(R.string.toss_venue_win),
-                    value = if (tossDetails.decision == "bat") "52%" else "48%",
-                    color = TextPrimary,
-                    modifier = Modifier.weight(1f)
-                )
-
-                TossStatItem(
-                    label = stringResource(R.string.toss_h2h_toss),
-                    value = "3-2",
-                    color = TextPrimary,
-                    modifier = Modifier.weight(1f)
-                )
-
-                TossStatItem(
-                    label = stringResource(R.string.toss_dew_factor),
-                    value = "HIGH",
-                    color = colors.statusSuccess,
-                    modifier = Modifier.weight(1f)
-                )
-            }
         }
-    }
-}
-
-@Composable
-private fun TossStatItem(
-    label: String,
-    value: String,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    val colors = BouncerDesignSystem.colors
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = value,
-            color = color,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Black,
-        )
-        Text(
-            text = label,
-            color = TextTertiary,
-            fontSize = 8.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.5.sp
-        )
     }
 }

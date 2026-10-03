@@ -96,7 +96,7 @@ internal fun LazyListScope.overviewWinProbability(
         }
         item(key = "prediction_card") {
             MatchPredictionCard(
-                predictionInfo = predictionInfoFor(match, probabilityHistory, currentRunRate, requiredRunRate),
+                predictionInfo = predictionInfoFor(match, probabilityHistory),
             )
         }
     }

@@ -14,6 +14,28 @@ data class H2HPair(
     val history: HeadToHeadHistory,
 )
 
+private const val KEY_SEPARATOR = "|||"
+
+/** Order- and case-independent key for a pair of sides. */
+internal fun h2hPairKey(team1: String, team2: String): String =
+    listOf(team1, team2).map { it.trim().lowercase() }.sorted().joinToString(KEY_SEPARATOR)
+
+/**
+ * The file's pairs, re-keyed by [h2hPairKey].
+ *
+ * The trainer writes each key in the sides' original case (`"Australia|||Sri Lanka"`) and the
+ * lookup used to lowercase its own side of the comparison, so no query ever matched and the
+ * head-to-head card never appeared. Indexing here rather than changing what the trainer writes
+ * keeps every installed build's file readable.
+ */
+internal fun indexH2HPairs(h2h: JSONObject): Map<String, JSONObject> = buildMap {
+    for (key in h2h.keys()) {
+        val entry = h2h.optJSONObject(key) ?: continue
+        val sides = key.split(KEY_SEPARATOR)
+        if (sides.size == 2) put(h2hPairKey(sides[0], sides[1]), entry)
+    }
+}
+
 object H2HRepository {
 
     private const val BUCKET_ID = "cricket-stats"
@@ -23,24 +45,20 @@ object H2HRepository {
     private const val CACHE_TTL_MS = 60 * 60 * 1000L // 1 hour
     private const val HTTP_MAX_AGE_SECONDS = 24 * 60 * 60
 
-    @Volatile private var cachedH2H: JSONObject? = null
+    @Volatile private var cachedH2H: Map<String, JSONObject>? = null
     @Volatile private var cacheExpiry = 0L
 
     suspend fun getH2H(team1: String, team2: String): H2HPair? {
-        val h2hRoot = loadCached() ?: return null
-        val t1Lower = team1.lowercase().trim()
-        val t2Lower = team2.lowercase().trim()
-        val key = listOf(t1Lower, t2Lower).sorted().joinToString("|||")
-        val entry = h2hRoot.optJSONObject(key) ?: return null
-
-        // Determine if query order matches storage order (sorted order)
-        val swapped = t1Lower > t2Lower
+        val entry = loadCached()?.get(h2hPairKey(team1, team2)) ?: return null
+        // The entry names its own sides, in the order its figures are stored. Comparing against
+        // that — rather than re-deriving the trainer's sort — is what keeps team1 the caller's team1.
+        val swapped = !entry.optString("team1").trim().equals(team1.trim(), ignoreCase = true)
         return buildH2HPair(entry, team1, team2, swapped)
     }
 
-    private suspend fun loadCached(): JSONObject? {
+    private suspend fun loadCached(): Map<String, JSONObject>? {
         val now = System.currentTimeMillis()
-        if (cachedH2H != null && now < cacheExpiry) return cachedH2H
+        cachedH2H?.takeIf { now < cacheExpiry }?.let { return it }
         // The file is rewritten only by the weekly trainer, and it is ~240 KB gzipped on the wire —
         // re-downloaded hourly it was the app's largest per-device Storage cost. A day of staleness
         // on head-to-head history is invisible.
@@ -48,9 +66,10 @@ object H2HRepository {
         return runCatching {
             val root = JSONObject(String(bytes, Charsets.UTF_8))
             val h2h = root.optJSONObject("h2h") ?: return null
-            cachedH2H = h2h
-            cacheExpiry = now + CACHE_TTL_MS
-            h2h
+            indexH2HPairs(h2h).also {
+                cachedH2H = it
+                cacheExpiry = now + CACHE_TTL_MS
+            }
         }.getOrNull()
     }
 

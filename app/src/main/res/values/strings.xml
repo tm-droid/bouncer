@@ -140,6 +140,7 @@
     <string name="match_info_day">Day</string>
     <string name="match_info_additional">Additional Info</string>
     <string name="match_info_info">Info</string>
+    <string name="match_info_pitch_report">Pitch report</string>
     <string name="match_info_teams">Teams</string>
 
     <string name="overview_innings_summary">Innings Summary</string>
@@ -215,11 +216,6 @@
     <string name="common_share">Share</string>
     <string name="common_wickets">Wickets</string>
     <string name="common_win_probability">WIN PROBABILITY</string>
-    <string name="conditions_bounce">BOUNCE</string>
-    <string name="conditions_game_conditions">GAME CONDITIONS</string>
-    <string name="conditions_humidity">HUMIDITY</string>
-    <string name="conditions_pitch_type">PITCH TYPE</string>
-    <string name="conditions_technical_pitch_analysis">TECHNICAL PITCH ANALYSIS</string>
     <string name="drs_review_in_progress">REVIEW IN PROGRESS</string>
     <string name="share_key_performer">KEY PERFORMER</string>
     <string name="share_match_momentum_stream">MATCH MOMENTUM STREAM</string>
@@ -367,10 +363,7 @@
     <string name="settings_win_probability">Win Probability</string>
     <string name="stats_full_breakdown_and_charts_demo">Full breakdown and charts (demo)</string>
     <string name="teams_no_current_matches">No current matches</string>
-    <string name="toss_dew_factor">DEW FACTOR</string>
-    <string name="toss_h2h_toss">H2H TOSS</string>
     <string name="toss_toss_result">TOSS RESULT</string>
-    <string name="toss_venue_win">VENUE WIN %</string>
     <string name="widget_check_back_soon">Check back soon</string>
     <string name="widget_check_back_when_matches_are_scheduled">Check back when matches are scheduled</string>
     <string name="widget_check_the_app_for_schedule">Check the app for schedule</string>
