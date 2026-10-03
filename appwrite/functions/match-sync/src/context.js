@@ -118,7 +118,7 @@ export function joinEleven({ players, roster, surnamePools, gender, format }) {
 export async function fetchForecast({ lat, lon }, fetchImpl = fetch, now = Date.now()) {
   if (typeof lat !== "number" || typeof lon !== "number") return null;
   const url = `${FORECAST_URL}?latitude=${lat}&longitude=${lon}&hourly=${FORECAST_FIELDS}&forecast_days=3&timeformat=unixtime&timezone=GMT`;
-  const res = await fetchImpl(url, { signal: AbortSignal.timeout(8_000) });
+  const res = await fetchImpl(url, { signal: AbortSignal.timeout(4_000) });
   if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`);
   const hourly = (await res.json())?.hourly;
   if (!Array.isArray(hourly?.time)) return null;

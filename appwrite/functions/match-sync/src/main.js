@@ -1343,16 +1343,22 @@ async function handleRun({ req, res, log, error }) {
   // or at `settleBacklog` on a path that returns before then. Until `startDrain` runs the sets are
   // empty, which reads every held delivery as a finished match's: the right answer with nothing live.
   const backlogLoad = loadBacklog({ storage, error });
-  backlogCtx = { db, log, error, viewers: new Set(), liveIds: new Set(), startedMs: Date.now() };
+  // This run's own reference. `backlogCtx` is module state, and two executions can be alive in one
+  // container at once — a run that overran its minute and the next one. The earlier run finishing
+  // used to null the shared variable under the later one, which then threw on its next line and
+  // failed the whole execution. Each run now writes through `runCtx` and clears the shared
+  // variable only if it still points at its own.
+  const runCtx = { db, log, error, viewers: new Set(), liveIds: new Set(), startedMs: Date.now() };
+  backlogCtx = runCtx;
   let backlogRun = null;
   const startDrain = () => {
-    backlogRun ??= backlogLoad.then(() => drainBacklog({ db, log, error, viewers: backlogCtx.viewers, liveIds: backlogCtx.liveIds }));
+    backlogRun ??= backlogLoad.then(() => drainBacklog({ db, log, error, viewers: runCtx.viewers, liveIds: runCtx.liveIds }));
   };
   const settleBacklog = async () => {
     startDrain();
     await backlogRun.catch((e) => error(`Backlog drain failed: ${e?.message}`));
     await settleHeldWork();
-    backlogCtx = null;
+    if (backlogCtx === runCtx) backlogCtx = null;
     await saveBacklog({ storage, log, error });
   };
 
@@ -1421,8 +1427,8 @@ async function handleRun({ req, res, log, error }) {
   // Loaded before any match sync asks `isHeld`, and before a fresh batch looks for held deliveries
   // to fill its spare slots.
   await backlogLoad;
-  backlogCtx.viewers = activeViewers;
-  backlogCtx.liveIds = liveIds;
+  runCtx.viewers = activeViewers;
+  runCtx.liveIds = liveIds;
   startDrain();
   for (const id of watermarkByMatch.keys()) {
     if (!liveIds.has(id)) watermarkByMatch.delete(id);
