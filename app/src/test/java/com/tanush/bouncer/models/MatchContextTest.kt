@@ -82,4 +82,18 @@ class MatchContextTest {
         assertEquals("India won.", context.summary?.text)
         assertNull(MatchContextStore.parse("{}")?.preview)
     }
+
+    @Test
+    fun `the record is read with the names it belongs to, and withheld when it is too thin`() {
+        val context = checkNotNull(MatchContextStore.parse(file))
+        assertNull("one side listed in this fixture, so the second name is missing", context.recordedMeetings())
+
+        val both = """{"teams":[{"name":"India"},{"name":"West Indies"}],"h2h":{"games":59,"firstWins":40,"secondWins":18}}"""
+        assertEquals(
+            Triple(59, "India" to 40, "West Indies" to 18),
+            MatchContextStore.parse(both)?.recordedMeetings(),
+        )
+        val thin = """{"teams":[{"name":"A"},{"name":"B"}],"h2h":{"games":2,"firstWins":2,"secondWins":0}}"""
+        assertNull(MatchContextStore.parse(thin)?.recordedMeetings())
+    }
 }

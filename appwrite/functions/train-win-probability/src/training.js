@@ -417,6 +417,12 @@ export function shrunkWinRate(wins, matches) {
 /**
  * One delivery packed into a byte: runs in bits 0-4, wickets in 5-6, legality in 7.
  *
+ * A wide or no-ball is marked illegal by the caller (`richSkeletonOf` in corpus.js) and never
+ * counted as a ball later. The first trainer incremented its ball counter on every delivery, so a
+ * scrappy innings reported more balls bowled than it had faced — overstating the balls gone and
+ * understating the balls left, on every row of every match. Correcting it alone moved chase
+ * holdout log-loss from 0.4434 to 0.4194.
+ *
  * The parsed archive is 22,524 matches of nested objects and does not fit in the function's memory
  * alongside the feature rows. Reducing each delivery to the three numbers any model needs takes the
  * whole corpus to roughly 14 MB, which does, and it removes the second decompression pass the
@@ -428,45 +434,6 @@ export function packDelivery(runs, wickets, legal) {
 
 export function unpackDelivery(code) {
   return { runs: code & 31, wickets: (code >> 5) & 3, legal: (code & 128) !== 0 };
-}
-
-/**
- * Compact one Cricsheet match, or null when it is not a format we model.
- *
- * A wide or no-ball is marked illegal here and never counted as a ball later. The predecessor
- * incremented its ball counter on every delivery, so a scrappy innings reported more balls bowled
- * than it had faced — overstating the balls gone and understating the balls left, on every row of
- * every match. Correcting it alone moved chase holdout log-loss from 0.4434 to 0.4194.
- */
-export function skeletonOf(raw) {
-  const info = raw?.info;
-  const formatClass = formatClassOf(info);
-  if (!formatClass || (info.teams?.length ?? 0) !== 2) return null;
-
-  const innings = [];
-  for (const inning of raw?.innings ?? []) {
-    const balls = [];
-    for (const over of inning?.overs ?? []) {
-      for (const delivery of over?.deliveries ?? []) {
-        const extras = delivery.extras ?? {};
-        const legal = extras.wides == null && extras.noballs == null;
-        balls.push(packDelivery(delivery.runs?.total ?? 0, delivery.wickets?.length ?? 0, legal));
-      }
-    }
-    innings.push({ team: inning?.team, balls: Uint8Array.from(balls) });
-  }
-
-  return {
-    teams: info.teams,
-    gender: info.gender ?? "male",
-    formatClass,
-    date: matchDate(info),
-    scheduledDays: info.dates?.length ?? 1,
-    ballsBudget: inningsBudgetBalls(info),
-    winner: info.outcome?.winner ?? null,
-    result: info.outcome?.result ?? null,
-    innings,
-  };
 }
 
 /** Runs, wickets and legal balls in one skeleton innings. */
@@ -485,123 +452,9 @@ export function inningsTotals(inning) {
 
 // ── row construction ─────────────────────────────────────────────────────────
 
-/**
- * One row per delivery of a completed chase, describing the state AFTER that delivery.
- *
- * @param {(team: string) => number} winRateFor win rate lookup, TRAINING WINDOW ONLY
- */
-export function chaseRows(match, winRateFor) {
-  if (!isLimitedOvers(match.formatClass) || !match.winner || match.innings.length < 2) return [];
-
-  const budget = match.ballsBudget;
-  const par = parRunRateFor(match.formatClass);
-  const target = inningsTotals(match.innings[0]).runs + 1;
-  const chasing = match.innings[1].team;
-  const bowling = match.teams.find((t) => t !== chasing) ?? "";
-  const label = match.winner === chasing ? 1 : 0;
-  const teamStrengthDiff = winRateFor(chasing) - winRateFor(bowling);
-
-  const rows = [];
-  let runsScored = 0;
-  let wicketsLost = 0;
-  let ballsFaced = 0;
-
-  for (const code of match.innings[1].balls) {
-    const d = unpackDelivery(code);
-    runsScored += d.runs;
-    wicketsLost += d.wickets;
-    if (d.legal) ballsFaced++;
-
-    const runsNeeded = target - runsScored;
-    const ballsRemaining = budget - ballsFaced;
-    if (ballsRemaining <= 0 || wicketsLost >= 10 || runsNeeded <= 0) continue;
-
-    rows.push({
-      features: chaseFeatures({
-        currentRunRate: (runsScored * 6) / Math.max(ballsFaced, 1),
-        requiredRunRate: Math.max((runsNeeded * 6) / ballsRemaining, 0.1),
-        wicketsInHand: 10 - wicketsLost,
-        ballsRemaining,
-        ballsBudget: budget,
-        runsNeeded,
-        target,
-        teamStrengthDiff,
-        parRunRate: par,
-        format: match.formatClass,
-      }),
-      label,
-    });
-  }
-  return rows;
-}
-
-/**
- * One row per delivery of a completed first innings — the side setting a target.
- *
- * v4 had no model here at all; the first half of every limited-overs match was scored by the
- * heuristic in `winprob.js`, which is 0.069 log-loss worse than this on the same holdout.
- */
-export function firstInningsRows(match, winRateFor) {
-  if (!isLimitedOvers(match.formatClass) || !match.winner || match.innings.length < 2) return [];
-
-  const budget = match.ballsBudget;
-  const par = parRunRateFor(match.formatClass);
-  const batting = match.innings[0].team;
-  const bowling = match.teams.find((t) => t !== batting) ?? "";
-  const label = match.winner === batting ? 1 : 0;
-  const teamStrengthDiff = winRateFor(batting) - winRateFor(bowling);
-
-  const rows = [];
-  let runsScored = 0;
-  let wicketsLost = 0;
-  let ballsFaced = 0;
-
-  for (const code of match.innings[0].balls) {
-    const d = unpackDelivery(code);
-    runsScored += d.runs;
-    wicketsLost += d.wickets;
-    if (d.legal) ballsFaced++;
-
-    const ballsRemaining = budget - ballsFaced;
-    if (ballsRemaining <= 0 || wicketsLost >= 10) continue;
-
-    rows.push({
-      features: firstInningsFeatures({
-        runsScored,
-        currentRunRate: (runsScored * 6) / Math.max(ballsFaced, 1),
-        wicketsInHand: 10 - wicketsLost,
-        ballsRemaining,
-        ballsBudget: budget,
-        teamStrengthDiff,
-        parRunRate: par,
-        format: match.formatClass,
-      }),
-      label,
-    });
-  }
-  return rows;
-}
-
-/**
- * One row per completed match — not per delivery — for the pre-match model.
- *
- * Per match because that is the unit the question is asked at. Emitting a row per ball would give
- * the optimiser 120 identical copies of one observation and a holdout that mostly measures how many
- * balls a match lasted.
- *
- * @param {(team: string) => number} winRateFor win rate lookup, TRAINING WINDOW ONLY
- */
-export function prematchRows(match, winRateFor) {
-  if (!match.winner || match.teams.length !== 2) return [];
-  const [first, second] = match.teams;
-  return [{
-    features: prematchFeatures({
-      teamStrengthDiff: winRateFor(first) - winRateFor(second),
-      format: match.formatClass,
-    }),
-    label: match.winner === first ? 1 : 0,
-  }];
-}
+// The limited-overs and pre-match rows are built in build.js (`limitedOversRows`,
+// `prematchContextRows`), because since v6 a row needs the match's as-of context as well as its
+// score. The Test rows stay here: that head reads no context.
 
 /**
  * Feature rows for a completed Test, one per over rather than per delivery.

@@ -1,7 +1,7 @@
 /**
  * The Cricsheet match, compacted with everything the context features need.
  *
- * `skeletonOf` in training.js keeps one byte per delivery — runs, wickets, legality — and drops
+ * The trainer used to keep one byte per delivery — runs, wickets, legality — and dropped
  * the venue, the toss and every player. This keeps those too: who faced, who bowled, who was at
  * the other end, what the batter scored off the ball and who was dismissed, each as a one-byte
  * index into the match's own list of people. Five bytes a delivery takes the corpus from about

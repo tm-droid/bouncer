@@ -546,7 +546,10 @@ downloads that file and no list shows factors.
 **The head-to-head card never rendered, and four cards showed figures nothing produced.**
 `H2HRepository` lowercased the pair it looked up and compared it with keys the trainer writes in
 original case; none of the 1,732 keys in the live file is lowercase, so the lookup never matched.
-It now indexes the file case-insensitively on load. Removed in the same pass, because each was a
+It now indexes the file case-insensitively on load. The file is the **T20 record only**, and it used
+to pool a country's men's and women's sides under one key: a women's pair now has its own
+(`A|||B|female`), and the card is shown on T20 matches only. Every other format reads its own
+record — right format, right gender — from the match context, on the Info tab. Removed in the same pass, because each was a
 constant: the toss card's "venue win %", "H2H toss 3-2" and "Dew factor HIGH"; the prediction
 card's 85% confidence badge and "Updated: Just now"; and the Info tab's weather panel (wind, dew
 point and visibility hardcoded, temperature and humidity defaulted) with its pace/bounce/spin bars
@@ -561,11 +564,22 @@ clears the shared variable only if it is still its own. Anything else at module 
 run sets and another reads has the same hazard; `contextIo` (the context store's `storage`/`log`)
 is deliberately re-pointed at the start of every run for the same reason.
 
-**There is no win-probability history on the server.** `live-winprob` and the detail payload are both
-snapshots. `MatchDetailViewModel` accumulates the swing series on the device as the probability
-moves, session-scoped. It used to come from `RetrofitClient.localApi` — `http://10.0.2.2:8000/`, an
-emulator-only dev mock — so on any real device it was a guaranteed CLEARTEXT failure per match open
-and the chart never rendered. That client is deleted; do not reintroduce a localhost API.
+**The win-probability history is the over history, stamped.** `live-winprob` and the detail
+payload are snapshots, and for a long time nothing kept a series: `MatchDetailViewModel`
+accumulated one on the device, so the swing chart began when the screen was opened and Key Moments
+(which reads `keyEvent`, never set on that path) was always empty. `stampProbability`
+(`match-sync/src/main.js`) now writes team1's probability as `p` on the over that has just been
+completed, in the same `scorecard.overs` points the worm is drawn from — no extra write or read —
+and `scorecard.probabilityTeamId` says whose probability it is. Only the newest over is stamped,
+once: an over first seen late gets no figure rather than a later moment's. `mergeOverHistory` keeps
+a stamp when a fresh page reading of the same over arrives without one. Tests are not stamped
+(three outcomes). `probabilityHistoryFrom` (`viewmodels/ProbabilityHistory.kt`) reads the stamps in
+the screen's team order, names an over's wicket only when the over before it is present, and
+returns nothing when the team id is absent — an unknown orientation is not a guess between two.
+The session series remains the fallback and supplies the live end point. Before any of this the
+series came from `RetrofitClient.localApi` — `http://10.0.2.2:8000/`, an emulator-only dev mock —
+so on a real device it was a guaranteed CLEARTEXT failure per match open; that client is deleted,
+do not reintroduce a localhost API.
 
 **A Test side's score is two innings, and the two data paths both used to drop one.** "266 & 83/2"
 is one side's score, and both producers collapsed it: the match list's `latestInnings` returned

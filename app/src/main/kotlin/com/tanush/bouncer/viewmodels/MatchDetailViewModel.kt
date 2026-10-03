@@ -375,6 +375,9 @@ class MatchDetailViewModel(
         AppResult.runCatchingSuspend {
             val t1 = match.teams.getOrNull(0)?.name ?: return@runCatchingSuspend
             val t2 = match.teams.getOrNull(1)?.name ?: return@runCatchingSuspend
+            // The file is the T20 record only. On a one-day match or a Test it would be a true
+            // record of the wrong format; those read their own from the match's context instead.
+            if (!match.matchType.contains("T20", ignoreCase = true)) return@runCatchingSuspend
             H2HRepository.getH2H(t1, t2)?.let { h2h -> _uiState.update { it.copy(headToHead = h2h) } }
         }.onError { sentryBreadcrumb("match_detail_v2.h2h", "H2H fetch failed: ${it.message}", SentryLevel.WARNING) }
     }

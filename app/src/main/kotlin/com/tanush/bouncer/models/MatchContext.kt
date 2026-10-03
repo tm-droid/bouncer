@@ -16,7 +16,21 @@ data class MatchContext(
     val forecast: Forecast? = null,
     val preview: Surface? = null,
     val summary: Surface? = null,
+    val teams: List<Side> = emptyList(),
+    val h2h: Record? = null,
 ) {
+    /** One of the two sides, in the order [Record] counts them. */
+    @Serializable
+    data class Side(val name: String = "")
+
+    /**
+     * The two sides' meetings in the archive, in THIS match's format and for these sides' gender —
+     * which is what the T20-only `h2h-stats` file cannot say about a one-day match or a Test.
+     * [firstWins] belongs to `teams[0]`; the remainder of [games] were ties, draws or no result.
+     */
+    @Serializable
+    data class Record(val games: Int = 0, val firstWins: Int = 0, val secondWins: Int = 0)
+
     /**
      * A few sentences about the match as a whole: the [preview] before it, the [summary] after.
      * Written server-side from the match's own records and checked against them; when no written
@@ -96,6 +110,17 @@ fun MatchContext.Forecast.summary(nowMs: Long): ForecastSummary? {
 }
 
 private const val HOUR_MS = 3_600_000L
+
+/** Fewer meetings than this is an anecdote, not a record. */
+const val MIN_RECORDED_MEETINGS = 3
+
+/** The record with the names it belongs to, or null when there is too little of one to show. */
+fun MatchContext.recordedMeetings(): Triple<Int, Pair<String, Int>, Pair<String, Int>>? {
+    val record = h2h?.takeIf { it.games >= MIN_RECORDED_MEETINGS } ?: return null
+    val first = teams.getOrNull(0)?.name?.takeIf { it.isNotBlank() } ?: return null
+    val second = teams.getOrNull(1)?.name?.takeIf { it.isNotBlank() } ?: return null
+    return Triple(record.games, first to record.firstWins, second to record.secondWins)
+}
 
 /** How far this ground's first-innings scoring sits from its format's, in whole per cent. */
 fun MatchContext.Venue.scoringPercent(): Int = Math.round((scoring - 1.0) * PERCENT).toInt()

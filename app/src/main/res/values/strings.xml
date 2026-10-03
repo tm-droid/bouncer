@@ -149,6 +149,9 @@
     <string name="match_info_forecast_cloud">Cloud cover</string>
     <string name="match_info_forecast_source">Open-Meteo forecast, fetched %1$s</string>
     <string name="match_info_ground_record">This ground</string>
+    <string name="match_info_meetings">Recorded %1$s meetings</string>
+    <string name="match_info_meetings_played">Played</string>
+    <string name="match_info_meetings_won">%1$s won</string>
     <string name="match_info_ground_matches">Matches in the archive</string>
     <string name="match_info_ground_scoring">First-innings scores</string>
     <string name="match_info_ground_scoring_above">%1$d%% above the format\'s average</string>

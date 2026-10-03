@@ -12,10 +12,7 @@ import {
   longFeatures,
   packDelivery,
   unpackDelivery,
-  skeletonOf,
   inningsTotals,
-  chaseRows,
-  firstInningsRows,
   longRows,
   formatClassOf,
   teamKey,
@@ -44,6 +41,9 @@ import {
   predictClasses,
   shrinkToPrior,
 } from "../src/training.js";
+import { limitedOversRows } from "../src/build.js";
+import { NEUTRAL_CONTEXT, contextFeatureNames } from "../src/contextmath.js";
+import { richSkeletonOf } from "../src/corpus.js";
 
 // ── corpus classification ────────────────────────────────────────────────────
 
@@ -160,7 +160,7 @@ const ball = (runs = 1, wickets = 0, extras = null) => ({
 test("a wide is not a ball", () => {
   // `ballsFaced++` used to fire on every delivery. Every row then paired a true score with an
   // overstated ball count, and by more in a scrappy innings than a tidy one. Worth 0.024 log-loss.
-  const skeleton = skeletonOf(rawMatch({
+  const skeleton = richSkeletonOf(rawMatch({
     teams: ["A", "B"],
     outcome: { winner: "A" },
     innings: [{ team: "A", deliveries: [ball(1), ball(1, 0, { wides: 1 }), ball(4)] }],
@@ -169,7 +169,7 @@ test("a wide is not a ball", () => {
 });
 
 test("a no-ball is not a ball either, and its runs still count", () => {
-  const skeleton = skeletonOf(rawMatch({
+  const skeleton = richSkeletonOf(rawMatch({
     teams: ["A", "B"],
     outcome: { winner: "A" },
     innings: [{ team: "A", deliveries: [ball(2, 0, { noballs: 1 })] }],
@@ -178,8 +178,8 @@ test("a no-ball is not a ball either, and its runs still count", () => {
 });
 
 test("an unmodelled format produces no skeleton at all", () => {
-  assert.equal(skeletonOf({ info: { match_type: "Hundred Ball", teams: ["A", "B"] }, innings: [] }), null);
-  assert.equal(skeletonOf({ info: { match_type: "T20", teams: ["A"] }, innings: [] }), null);
+  assert.equal(richSkeletonOf({ info: { match_type: "Hundred Ball", teams: ["A", "B"] }, innings: [] }), null);
+  assert.equal(richSkeletonOf({ info: { match_type: "T20", teams: ["A"] }, innings: [] }), null);
 });
 
 // ── rows ─────────────────────────────────────────────────────────────────────
@@ -187,7 +187,7 @@ test("an unmodelled format produces no skeleton at all", () => {
 const winRateFlat = () => 0.5;
 
 function chaseFixture() {
-  return skeletonOf(rawMatch({
+  return richSkeletonOf(rawMatch({
     teams: ["A", "B"],
     outcome: { winner: "B" },
     innings: [
@@ -198,7 +198,7 @@ function chaseFixture() {
 }
 
 function testFixture(outcome = { result: "draw" }) {
-  return skeletonOf(rawMatch({
+  return richSkeletonOf(rawMatch({
     type: "Test",
     dates: ["2024-01-01", "2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05"],
     teams: ["A", "B"],
@@ -207,28 +207,39 @@ function testFixture(outcome = { result: "draw" }) {
   }));
 }
 
+/** A match with a neutral context for both sides, which is all a row builder needs to run. */
+function withContext(match) {
+  match.context = Object.fromEntries(match.teams.map((t) => [t, NEUTRAL_CONTEXT]));
+  return match;
+}
+
 test("chase rows describe the state after each delivery, oriented to the chasing side", () => {
-  const rows = chaseRows(chaseFixture(), winRateFlat);
+  const rows = [...limitedOversRows("chase", withContext(chaseFixture()))];
   // Target is 13. The chasing side scores 1 a ball, so it never gets there: six deliveries, six
   // rows, all labelled a win because B won the match.
   assert.equal(rows.length, 6);
   assert.ok(rows.every((r) => r.label === 1), "B won, and rows are oriented to the chasing side");
-  assert.equal(rows[0].features.length, CHASE_FEATURE_NAMES.length);
+  assert.equal(rows[0].core.length, contextFeatureNames("chase", CHASE_FEATURE_NAMES, false).length);
+  assert.equal(rows[0].full, null, "no elevens in this context, so no with-elevens row");
 });
 
 test("a Test never becomes a chase row, and a limited-overs match never a long one", () => {
-  const match = testFixture();
-  assert.equal(chaseRows(match, winRateFlat).length, 0);
-  assert.equal(firstInningsRows(match, winRateFlat).length, 0);
+  const match = withContext(testFixture());
+  assert.equal([...limitedOversRows("chase", match)].length, 0);
+  assert.equal([...limitedOversRows("firstInnings", match)].length, 0);
   assert.equal(longRows(chaseFixture(), winRateFlat).length, 0);
   assert.ok(longRows(match, winRateFlat).length > 0);
 });
 
 test("first-innings rows exist at all — v4 scored this half of the match by hand", () => {
-  const rows = firstInningsRows(chaseFixture(), winRateFlat);
+  const rows = [...limitedOversRows("firstInnings", withContext(chaseFixture()))];
   assert.equal(rows.length, 6);
-  assert.equal(rows[0].features.length, FIRST_INNINGS_FEATURE_NAMES.length);
+  assert.equal(rows[0].core.length, contextFeatureNames("firstInnings", FIRST_INNINGS_FEATURE_NAMES, false).length);
   assert.ok(rows.every((r) => r.label === 0), "A batted first and lost");
+});
+
+test("a match with no context yields no rows rather than rows on invented terms", () => {
+  assert.equal([...limitedOversRows("chase", chaseFixture())].length, 0);
 });
 
 test("an abandoned long match contributes no rows, not draw-labelled ones", () => {

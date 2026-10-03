@@ -16,9 +16,20 @@ data class H2HPair(
 
 private const val KEY_SEPARATOR = "|||"
 
-/** Order- and case-independent key for a pair of sides. */
-internal fun h2hPairKey(team1: String, team2: String): String =
-    listOf(team1, team2).map { it.trim().lowercase() }.sorted().joinToString(KEY_SEPARATOR)
+private const val WOMEN_MARK = "|female"
+private val WOMEN_SUFFIX = Regex("""\s+Women(?:'s)?$""", RegexOption.IGNORE_CASE)
+
+/** A side's name as the archive writes it: a women's side is the plain name, the gender apart. */
+internal fun archiveSideName(name: String): String = name.trim().replace(WOMEN_SUFFIX, "")
+
+/** True when either side is named as a women's side. */
+internal fun isWomensPair(team1: String, team2: String): Boolean =
+    WOMEN_SUFFIX.containsMatchIn(team1.trim()) || WOMEN_SUFFIX.containsMatchIn(team2.trim())
+
+/** Order- and case-independent key for a pair of sides, men's and women's records kept apart. */
+internal fun h2hPairKey(team1: String, team2: String, women: Boolean = false): String =
+    listOf(team1, team2).map { archiveSideName(it).lowercase() }.sorted().joinToString(KEY_SEPARATOR) +
+        if (women) WOMEN_MARK else ""
 
 /**
  * The file's pairs, re-keyed by [h2hPairKey].
@@ -31,8 +42,10 @@ internal fun h2hPairKey(team1: String, team2: String): String =
 internal fun indexH2HPairs(h2h: JSONObject): Map<String, JSONObject> = buildMap {
     for (key in h2h.keys()) {
         val entry = h2h.optJSONObject(key) ?: continue
-        val sides = key.split(KEY_SEPARATOR)
-        if (sides.size == 2) put(h2hPairKey(sides[0], sides[1]), entry)
+        // "A|||B" is a men's pair, "A|||B|female" a women's.
+        val women = key.endsWith(WOMEN_MARK)
+        val sides = key.removeSuffix(WOMEN_MARK).split(KEY_SEPARATOR)
+        if (sides.size == 2) put(h2hPairKey(sides[0], sides[1], women), entry)
     }
 }
 
@@ -49,10 +62,10 @@ object H2HRepository {
     @Volatile private var cacheExpiry = 0L
 
     suspend fun getH2H(team1: String, team2: String): H2HPair? {
-        val entry = loadCached()?.get(h2hPairKey(team1, team2)) ?: return null
+        val entry = loadCached()?.get(h2hPairKey(team1, team2, isWomensPair(team1, team2))) ?: return null
         // The entry names its own sides, in the order its figures are stored. Comparing against
         // that — rather than re-deriving the trainer's sort — is what keeps team1 the caller's team1.
-        val swapped = !entry.optString("team1").trim().equals(team1.trim(), ignoreCase = true)
+        val swapped = !entry.optString("team1").trim().equals(archiveSideName(team1), ignoreCase = true)
         return buildH2HPair(entry, team1, team2, swapped)
     }
 

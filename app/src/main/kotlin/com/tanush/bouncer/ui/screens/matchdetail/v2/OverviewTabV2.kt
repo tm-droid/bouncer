@@ -30,6 +30,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import com.tanush.bouncer.data.remote.MatchContextStore
 import com.tanush.bouncer.models.MatchContext
+import com.tanush.bouncer.viewmodels.mergedProbabilityHistory
+import com.tanush.bouncer.viewmodels.probabilityHistoryFrom
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.MatchFlowData
 import com.tanush.bouncer.models.MatchStatus
@@ -119,6 +121,11 @@ fun OverviewTabV2(
     val isCompleted = match.matchStatus == MatchStatus.Completed
     val isUpcoming = matchIsUpcoming(match, isMatchActive, isCompleted)
 
+    // The whole match's series where the server recorded one, not only this screen's time open.
+    val history = remember(scorecard, probabilityHistory, match.teams) {
+        mergedProbabilityHistory(probabilityHistoryFrom(scorecard, match.teams), probabilityHistory)
+    }
+
     val overMilestones = matchFlow?.overMilestones
     val maxOver = overMilestones?.maxOfOrNull { it.first } ?: 0
 
@@ -129,7 +136,7 @@ fun OverviewTabV2(
         scorecard = scorecard,
         matchFlow = matchFlow,
         isMatchActive = isMatchActive,
-        probabilityHistory = probabilityHistory,
+        probabilityHistory = history,
         commentary = commentary,
     )
     val hasOverData = derived.cumulativeScores.isNotEmpty() && match.teams.size >= 2
@@ -141,7 +148,7 @@ fun OverviewTabV2(
     val surface = matchSurfaceFor(context, isCompleted)
     val hasAnyContent = surface != null || hasAnyOverviewContent(
         match, batsmen, bowler, recentBalls, scorecard, commentary,
-        probabilityHistory, matchFlow, headToHead, currentRunRate, requiredRunRate, isUpcoming,
+        history, matchFlow, headToHead, currentRunRate, requiredRunRate, isUpcoming,
     )
 
     LazyColumn(
@@ -159,7 +166,7 @@ fun OverviewTabV2(
         overviewLiveSituation(match, isMatchActive)
         overviewBatsmen(batsmen, isMatchActive, isCompleted, derived.fallbackBatsmen, derived.fallbackHasNotOut)
         overviewBowler(bowler, isMatchActive, isCompleted, scorecard)
-        overviewWinProbability(match, winProb, probabilityHistory, currentRunRate, requiredRunRate)
+        overviewWinProbability(match, winProb, history, currentRunRate, requiredRunRate)
         if (isMatchActive) overviewMatchSurface(surface)
         overviewPhaseCards(match, matchFlow, derived.ppPhaseList, derived.matchPhases)
         overviewScoringCharts(

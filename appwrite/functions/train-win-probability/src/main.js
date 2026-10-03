@@ -176,7 +176,10 @@ function processH2H(raw, acc) {
   if (teams.length !== 2) return;
 
   const [t1, t2] = [...teams].sort();
-  const key = `${t1}|||${t2}`;
+  // Cricsheet names a women's side by the plain country name with `gender: "female"`, so one key
+  // per pair pooled India's men and India's women into a single record. A men's pair keeps the
+  // key it always had; a women's pair gets its own.
+  const key = (info.gender ?? "male") === "female" ? `${t1}|||${t2}|female` : `${t1}|||${t2}`;
 
   if (!acc[key]) {
     acc[key] = { team1: t1, team2: t2, total: 0, t1Wins: 0, t2Wins: 0, draws: 0,

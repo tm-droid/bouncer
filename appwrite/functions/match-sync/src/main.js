@@ -980,9 +980,32 @@ export function mergeOverHistory(stored, fresh) {
   const byKey = new Map();
   for (const e of [...(Array.isArray(stored) ? stored : []), ...(fresh ?? [])]) {
     if (!e || typeof e !== "object" || !Number.isInteger(e.innings) || !Number.isInteger(e.over)) continue;
-    byKey.set(`${e.innings}:${e.over}`, e);
+    const key = `${e.innings}:${e.over}`;
+    // The page's reading of an over is newer and wins — except that the page never carries the
+    // probability stamped on it here, so a fresh reading must not wipe that out.
+    const prior = byKey.get(key);
+    byKey.set(key, prior?.p != null && e.p == null ? { ...e, p: prior.p } : e);
   }
   return [...byKey.values()].sort((a, b) => a.innings - b.innings || a.over - b.over);
+}
+
+/**
+ * Stamp the current win probability on the over that has just been completed.
+ *
+ * Nothing kept a history of the probability: `live-winprob` and the detail payload are snapshots,
+ * and the device's swing chart was only ever the time one screen had been open. The over history
+ * is already accumulated and already published with the scorecard, so a number on each of its
+ * points costs no write and no read.
+ *
+ * Only the newest over of the current innings is stamped, and only once: an over first seen
+ * several overs late — on a cold container — is left without a figure rather than given the
+ * probability of a later moment. Mutates [history].
+ */
+export function stampProbability(history, innings, team1WinProbability) {
+  if (!Array.isArray(history) || !Number.isInteger(innings) || !Number.isFinite(team1WinProbability)) return;
+  let newest = null;
+  for (const e of history) if (e.innings === innings && (!newest || e.over > newest.over)) newest = e;
+  if (newest && newest.p == null) newest.p = Math.round(team1WinProbability * 1000) / 1000;
 }
 
 /** Seeds a cold container's history for [matchId] from its scorecard row, once. Never throws. */
@@ -2349,6 +2372,10 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   const winProb = winProbFor(detail, title, model, matchContext);
   // The device refetches `mc-{matchId}` only when this number moves.
   if (matchContext) detail.contextRev = matchContext.rev;
+  // Two outcomes only: a Test's "team1 gained" is not one number, and its chart is the device's.
+  if (winProb && winProb.drawProbability == null) {
+    stampProbability(overHistoryByMatch.get(matchId), detail.situation?.inningsId, winProb.team1WinProbability);
+  }
   // Carried in the detail payload as well as the aggregate file, so the detail screen updates on
   // the existing realtime channel instead of waiting for a file download. `payload` is an opaque
   // JSON string column and Gson ignores unknown keys, so this needs no Appwrite schema change and
@@ -2397,6 +2424,9 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
       await seedOverHistory({ db, matchId, error });
       const overs = overHistoryByMatch.get(matchId) ?? [];
       if (overs.length > 0) detail.scorecard.overs = overs;
+      // Whose probability the `p` on those points is, as a Cricbuzz team id — the first-innings
+      // side, which is not necessarily the side the device lists first.
+      if (winProb?.team1Id && overs.some((o) => o.p != null)) detail.scorecard.probabilityTeamId = winProb.team1Id;
       await upsertScorecard({ db, matchId, scorecard: detail.scorecard, force: finalising, error });
     }
   } else if (writeDetail) {

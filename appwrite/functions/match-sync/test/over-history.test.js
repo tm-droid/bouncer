@@ -41,3 +41,26 @@ test("merging keeps every innings' overs, sorted, the newer reading winning", ()
 test("merging ignores malformed stored entries", () => {
   assert.deepEqual(mergeOverHistory([null, { over: 1 }, "x"], []), []);
 });
+
+test("the newest over of the innings is stamped once, and a later reading of it keeps the stamp", async () => {
+  const { stampProbability } = await import("../src/main.js");
+  const history = [
+    { innings: 1, over: 1, runs: 4, score: 4, wickets: 0, team: "A" },
+    { innings: 1, over: 2, runs: 3, score: 7, wickets: 0, team: "A" },
+  ];
+  stampProbability(history, 1, 0.61234);
+  assert.equal(history[1].p, 0.612);
+  assert.equal(history[0].p, undefined, "an older over is not given a later moment's number");
+  stampProbability(history, 1, 0.7);
+  assert.equal(history[1].p, 0.612, "stamped once");
+
+  const fresh = [{ innings: 1, over: 2, runs: 5, score: 9, wickets: 0, team: "A" }];
+  const merged = mergeOverHistory(history, fresh);
+  assert.deepEqual(merged[1], { innings: 1, over: 2, runs: 5, score: 9, wickets: 0, team: "A", p: 0.612 });
+
+  stampProbability(history, 2, 0.4);
+  stampProbability(history, null, 0.4);
+  stampProbability(history, 1, NaN);
+  stampProbability(undefined, 1, 0.4);
+  assert.equal(history.filter((e) => e.p != null).length, 1, "no over of that innings, no innings, no number: nothing stamped");
+});

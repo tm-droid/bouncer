@@ -22,6 +22,7 @@ import com.tanush.bouncer.data.remote.MatchContextStore
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.ForecastSummary
 import com.tanush.bouncer.models.MatchContext
+import com.tanush.bouncer.models.recordedMeetings
 import com.tanush.bouncer.models.scoringPercent
 import com.tanush.bouncer.models.summary
 import java.time.Instant
@@ -61,6 +62,7 @@ fun InfoTabV2(
     }
     val forecast = context?.forecast?.summary(System.currentTimeMillis())
     val ground = context?.venue?.takeIf { it.known && it.matches >= GROUND_MIN_MATCHES }
+    val meetings = context?.recordedMeetings()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -216,6 +218,35 @@ fun InfoTabV2(
                 SectionHeaderV2(title = stringResource(R.string.match_info_forecast))
             }
             item(key = "forecast_card") { ForecastCard(forecast) }
+        }
+
+        if (meetings != null) {
+            item(key = "meetings_header") {
+                SectionHeaderV2(title = stringResource(R.string.match_info_meetings, match.matchType))
+            }
+            item(key = "meetings_card") {
+                val pad = Modifier.padding(horizontal = spacing.md)
+                BouncerCard {
+                    Spacer(Modifier.height(spacing.sm))
+                    StatRowV2(
+                        label = stringResource(R.string.match_info_meetings_played),
+                        value = meetings.first.toString(),
+                        modifier = pad,
+                    )
+                    StatRowV2(
+                        label = stringResource(R.string.match_info_meetings_won, meetings.second.first),
+                        value = meetings.second.second.toString(),
+                        modifier = pad,
+                    )
+                    StatRowV2(
+                        label = stringResource(R.string.match_info_meetings_won, meetings.third.first),
+                        value = meetings.third.second.toString(),
+                        modifier = pad,
+                        showDivider = false,
+                    )
+                    Spacer(Modifier.height(spacing.sm))
+                }
+            }
         }
 
         if (ground != null) {

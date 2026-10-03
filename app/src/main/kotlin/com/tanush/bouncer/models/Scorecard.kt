@@ -13,6 +13,13 @@ data class Scorecard(
      * bowled while no container held the history are absent, never estimated.
      */
     val overs: List<OverPoint> = emptyList(),
+    /**
+     * The Cricbuzz team id of the side every [OverPoint.p] is the win probability OF — the
+     * first-innings side, which is not necessarily the side this screen lists first. Null when no
+     * point carries a probability, and then none may be drawn: an unknown orientation is not
+     * a guess between two.
+     */
+    val probabilityTeamId: String? = null,
 )
 
 /** The batting side's position at the end of one over. Every figure nullable: absent is not zero. */
@@ -26,6 +33,11 @@ data class OverPoint(
     val wickets: Int? = null,
     /** Cricbuzz's short code for the batting side ("DUR"), as the separator names it. */
     val team: String? = null,
+    /**
+     * The win probability of [Scorecard.probabilityTeamId]'s side when this over ended, 0..1.
+     * Null for a Test, for an over no container saw as it finished, and for any older row.
+     */
+    val p: Double? = null,
 )
 
 @Serializable
