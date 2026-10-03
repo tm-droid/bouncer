@@ -121,6 +121,7 @@ fun MatchDetailViewV2(
     )
     val uiState by vm.uiState.collectAsStateWithLifecycle()
     val streamingCommentary by vm.streamingCommentary.collectAsStateWithLifecycle()
+    val commentaryEventPages by vm.commentaryEvents.pages.collectAsStateWithLifecycle()
 
     // The ViewModel is keyed on the match id, so it keeps the entry it was constructed with while
     // this parameter is recomputed from the matches list on every poll. Handing the newer entry
@@ -393,6 +394,9 @@ fun MatchDetailViewV2(
                         hasOlder = uiState.hasOlderCommentary,
                         isLoadingOlder = uiState.olderCommentaryLoading,
                         onLoadOlder = vm::loadOlderCommentary,
+                        eventPages = commentaryEventPages,
+                        onOpenEvents = vm.commentaryEvents::open,
+                        onLoadOlderEvents = vm.commentaryEvents::loadOlder,
                     )
                     R.string.tab_highlights -> HighlightsTabV2(highlights = highlights)
                     R.string.tab_info -> InfoTabV2(match = match, preMatchData = uiState.preMatchData)

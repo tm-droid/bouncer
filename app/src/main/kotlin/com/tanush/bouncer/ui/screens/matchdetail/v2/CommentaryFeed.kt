@@ -2,6 +2,7 @@ package com.tanush.bouncer.ui.screens.matchdetail.v2
 
 import androidx.compose.runtime.Immutable
 import com.tanush.bouncer.data.remote.CommentaryEntry
+import com.tanush.bouncer.viewmodels.CommentaryEventKind
 
 /** The blocks a filtered feed renders, with the lazy-list key of every item in them. */
 @Immutable
@@ -10,9 +11,43 @@ internal data class CommentaryFeed(
     val keys: List<CommentaryBlockKeys>,
 )
 
-internal fun buildCommentaryFeed(commentary: List<CommentaryEntry>, filter: CommentaryFilter): CommentaryFeed {
-    val blocks = buildCommentaryBlocks(filterCommentary(commentary, filter).map { it.parseBall() })
+/**
+ * @param eventRows the match's wickets or boundaries as fetched for [filter] — rows from anywhere in
+ *   the match, not only the loaded pages. Empty for All and Milestones.
+ */
+internal fun buildCommentaryFeed(
+    commentary: List<CommentaryEntry>,
+    filter: CommentaryFilter,
+    eventRows: List<CommentaryEntry> = emptyList(),
+): CommentaryFeed {
+    val source = mergeEventRows(commentary, eventRows)
+    val blocks = buildCommentaryBlocks(filterCommentary(source, filter).map { it.parseBall() })
     return CommentaryFeed(blocks, commentaryItemKeys(blocks))
+}
+
+/** The server-answerable kind behind a chip, or null for All and Milestones. */
+internal val CommentaryFilter.eventKind: CommentaryEventKind?
+    get() = when (this) {
+        CommentaryFilter.WICKETS -> CommentaryEventKind.WICKETS
+        CommentaryFilter.BOUNDARIES -> CommentaryEventKind.BOUNDARIES
+        CommentaryFilter.ALL, CommentaryFilter.MILESTONES -> null
+    }
+
+/**
+ * The loaded feed plus the event rows fetched for a filter, newest-first, each row once.
+ *
+ * The loaded feed stays in because it is the live half: a wicket that falls while the chip is
+ * selected arrives over Realtime into [loaded], never into [fetched]. A row is identified by its
+ * `sort_key` — the two lists overlap wherever a fetched event is also inside the loaded pages — and
+ * the loaded copy is the one kept. A loaded line with no `sort_key` (the scrape fallback) has no
+ * position among fetched rows and stays at the head, where the feed already puts it.
+ */
+internal fun mergeEventRows(loaded: List<CommentaryEntry>, fetched: List<CommentaryEntry>): List<CommentaryEntry> {
+    if (fetched.isEmpty()) return loaded
+    val known = loaded.mapNotNullTo(HashSet()) { it.sortKey }
+    val extra = fetched.filter { it.sortKey?.let(known::add) == true }
+    if (extra.isEmpty()) return loaded
+    return (loaded + extra).sortedByDescending { it.sortKey ?: Double.MAX_VALUE }
 }
 
 /** Lazy-list keys for one [CommentaryBlock]: its innings divider, its over card, and each line. */

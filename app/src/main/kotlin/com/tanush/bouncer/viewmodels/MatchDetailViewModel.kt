@@ -212,6 +212,9 @@ class MatchDetailViewModel(
      */
     private var pagedFeedFloor = 0
 
+    /** The whole match's wickets and boundaries, fetched when the commentary tab's chip is tapped. */
+    val commentaryEvents = CommentaryEventPager(match.id, liveSource, viewModelScope)
+
     init {
         viewModelScope.launch(bouncerExceptionHandler) { loadInitial() }
         // Per-match subscriptions: collection IS the subscription lifetime, and viewModelScope's

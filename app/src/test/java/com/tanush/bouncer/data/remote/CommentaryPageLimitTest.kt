@@ -30,3 +30,35 @@ class CommentaryPageLimitTest {
         assertEquals(150, commentaryPageLimit(olderThan = null, degraded = true))
     }
 }
+
+/**
+ * The query behind the Wickets and Boundaries chips.
+ *
+ * It must carry the match AND the event: a query that dropped either would return — and bill —
+ * rows from every match, or every delivery of this one.
+ */
+class CommentaryEventQueryTest {
+
+    @Test
+    fun `the first page filters on match and event, newest first, one page`() {
+        val queries = commentaryEventQueries("170667", listOf("FOUR", "SIX"), olderThan = null)
+        assertEquals(
+            listOf("equal:match_id", "equal:event", "orderDesc:sort_key", "limit:", "select:"),
+            queries.map(::shapeOf),
+        )
+        assertEquals(true, queries[1].contains("\"FOUR\"") && queries[1].contains("\"SIX\""))
+        assertEquals(true, queries[3].contains(COMMENTARY_EVENT_PAGE_LIMIT.toString()))
+    }
+
+    @Test
+    fun `a page behind adds the cursor on sort_key`() {
+        val queries = commentaryEventQueries("170667", listOf("WICKET"), olderThan = 1_791_045_697_567.0)
+        assertEquals("lessThan:sort_key", shapeOf(queries[2]))
+    }
+
+    /** `method:attribute` of one serialised Appwrite query. */
+    private fun shapeOf(query: String): String {
+        val field = { name: String -> Regex("\"$name\":\"([^\"]*)\"").find(query)?.groupValues?.get(1).orEmpty() }
+        return "${field("method")}:${field("attribute")}"
+    }
+}

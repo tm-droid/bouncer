@@ -30,6 +30,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -61,6 +62,8 @@ import com.tanush.bouncer.ui.theme.v2.CricketEventColors
 import com.tanush.bouncer.ui.theme.v2.BouncerSpacingV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.TimelineEventExtractor
+import com.tanush.bouncer.viewmodels.CommentaryEventKind
+import com.tanush.bouncer.viewmodels.CommentaryEventPage
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
 import kotlinx.coroutines.Dispatchers
@@ -78,9 +81,10 @@ fun CommentaryTabV2(
     hasOlder: Boolean = false,
     isLoadingOlder: Boolean = false,
     onLoadOlder: (() -> Unit)? = null,
+    eventPages: Map<CommentaryEventKind, CommentaryEventPage> = emptyMap(),
+    onOpenEvents: ((CommentaryEventKind) -> Unit)? = null,
+    onLoadOlderEvents: ((CommentaryEventKind) -> Unit)? = null,
 ) {
-    val spacing = BouncerThemeV2.spacing
-
     if (isLoading) {
         ShimmerCommentaryList(modifier = Modifier.fillMaxSize())
         return
@@ -101,10 +105,36 @@ fun CommentaryTabV2(
         return
     }
 
+    CommentaryFeedBody(
+        commentary = commentary,
+        feedPaging = OlderPaging(onLoad = onLoadOlder.takeIf { hasOlder }, isLoading = isLoadingOlder),
+        eventPages = eventPages,
+        onOpenEvents = onOpenEvents,
+        onLoadOlderEvents = onLoadOlderEvents,
+    )
+}
+
+@Composable
+private fun CommentaryFeedBody(
+    commentary: List<CommentaryEntry>,
+    feedPaging: OlderPaging,
+    eventPages: Map<CommentaryEventKind, CommentaryEventPage>,
+    onOpenEvents: ((CommentaryEventKind) -> Unit)?,
+    onLoadOlderEvents: ((CommentaryEventKind) -> Unit)?,
+) {
+    val spacing = BouncerThemeV2.spacing
     var selectedFilter by remember { mutableStateOf(CommentaryFilter.ALL) }
     // Labels are for display only; the filter itself travels as an enum, so a translated chip
     // cannot silently turn every filter into "All".
     val filterLabels = CommentaryFilter.entries.map { stringResource(it.labelRes) }
+
+    // Wickets and Boundaries are asked of the table for the whole match the first time the chip is
+    // selected: filtering the loaded pages alone showed the last eight overs' events and nothing
+    // before them. Milestones has no server verdict to ask for, so it stays on the loaded feed.
+    val eventKind = selectedFilter.eventKind
+    val eventPage = eventKind?.let { eventPages[it] }
+    LaunchedEffect(eventKind) { eventKind?.let { onOpenEvents?.invoke(it) } }
+    val eventRows = eventPage?.entries.orEmpty()
 
     // Filtering, regex ball parsing and block building over up to 500 rows re-ran on the main thread
     // for every live update. They run on Default now; the first frame is still built synchronously
@@ -114,8 +144,9 @@ fun CommentaryTabV2(
         initialValue = remember { buildCommentaryFeed(commentary, selectedFilter) },
         commentary,
         selectedFilter,
+        eventRows,
     ) {
-        value = withContext(Dispatchers.Default) { buildCommentaryFeed(commentary, selectedFilter) }
+        value = withContext(Dispatchers.Default) { buildCommentaryFeed(commentary, selectedFilter, eventRows) }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -134,9 +165,11 @@ fun CommentaryTabV2(
         // only. It is the common case now that the first page is 8 overs rather than 25: plenty of
         // them hold no wicket and no milestone.
         if (feed.blocks.isEmpty() && selectedFilter != CommentaryFilter.ALL) {
-            FilterEmptyState(hasOlder, isLoadingOlder, onLoadOlder)
+            FilteredEmptyState(eventPage, feedPaging)
             return@Column
         }
+
+        val older = olderPagingFor(selectedFilter, feedPaging, eventPage, onLoadOlderEvents)
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -146,11 +179,8 @@ fun CommentaryTabV2(
                 feed = feed,
                 selectedFilter = selectedFilter,
                 spacing = spacing,
-                // Offered only under All: a filtered view holds a handful of lines drawn from the
-                // whole loaded feed, so "load older" there would fetch a page and very likely add
-                // nothing visible to it.
-                onLoadOlder = onLoadOlder.takeIf { hasOlder && selectedFilter == CommentaryFilter.ALL },
-                isLoadingOlder = isLoadingOlder,
+                onLoadOlder = older.onLoad,
+                isLoadingOlder = older.isLoading,
             )
         }
     }

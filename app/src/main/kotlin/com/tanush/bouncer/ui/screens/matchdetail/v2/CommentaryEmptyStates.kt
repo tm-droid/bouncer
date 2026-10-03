@@ -4,8 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
+import com.tanush.bouncer.viewmodels.CommentaryEventKind
+import com.tanush.bouncer.viewmodels.CommentaryEventPage
 
-// The commentary tab's two empty states. A quiet feed and a filter that matched nothing are
+// The commentary tab's empty states, and what "load earlier" means under each filter. A quiet feed and a filter that matched nothing are
 // different facts about a match and read as different pages.
 
 /** Contextual empty state — a quiet feed reads differently at stumps vs. pre-match. */
@@ -46,5 +48,58 @@ internal fun FilterEmptyState(hasOlder: Boolean, isLoadingOlder: Boolean, onLoad
         subtitle = stringResource(R.string.commentary_filter_empty_subtitle),
         onRetry = onLoadOlder.takeIf { hasOlder && !isLoadingOlder },
         actionLabel = stringResource(actionLabel),
+    )
+}
+
+/** What "load earlier" does under the selected filter — null when there is nothing to offer. */
+internal class OlderPaging(val onLoad: (() -> Unit)?, val isLoading: Boolean)
+
+/**
+ * All pages the feed; Wickets and Boundaries page their own list; Milestones pages nothing — it
+ * holds a handful of lines from the loaded feed, and a page would very likely add none.
+ */
+internal fun olderPagingFor(
+    filter: CommentaryFilter,
+    feedPaging: OlderPaging,
+    eventPage: CommentaryEventPage?,
+    onLoadOlderEvents: ((CommentaryEventKind) -> Unit)?,
+): OlderPaging {
+    val kind = filter.eventKind
+    return when {
+        filter == CommentaryFilter.ALL -> feedPaging
+        kind != null && eventPage != null -> OlderPaging(
+            onLoad = onLoadOlderEvents?.takeIf { eventPage.hasOlder }?.let { load -> { load(kind) } },
+            isLoading = eventPage.loading,
+        )
+        else -> OlderPaging(onLoad = null, isLoading = false)
+    }
+}
+
+/**
+ * A filter with no line to draw.
+ *
+ * Once the table has answered for the whole match there is nothing earlier to load; until it has
+ * (Milestones, or a fetch that failed) the loaded-feed state and its load-earlier action stand.
+ */
+@Composable
+internal fun FilteredEmptyState(eventPage: CommentaryEventPage?, feedPaging: OlderPaging) {
+    if (eventPage != null && (eventPage.loaded || eventPage.loading)) {
+        EventFilterEmptyState(isLoading = eventPage.loading)
+    } else {
+        FilterEmptyState(feedPaging.onLoad != null, feedPaging.isLoading, feedPaging.onLoad)
+    }
+}
+
+/**
+ * A Wickets or Boundaries filter with nothing to show for the WHOLE match — the table was asked,
+ * so unlike [FilterEmptyState] there is no earlier page to offer.
+ */
+@Composable
+internal fun EventFilterEmptyState(isLoading: Boolean) {
+    EmptyStateV2(
+        title = stringResource(R.string.commentary_filter_empty_title),
+        subtitle = stringResource(
+            if (isLoading) R.string.commentary_loading_older else R.string.commentary_filter_none_subtitle
+        ),
     )
 }

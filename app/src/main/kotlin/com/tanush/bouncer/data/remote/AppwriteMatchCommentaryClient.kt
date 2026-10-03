@@ -174,6 +174,31 @@ private fun feedQueries(matchId: String, order: FeedOrder, olderThan: Double?, n
 private fun pageLimitFor(order: FeedOrder, olderThan: Double?): Int =
     commentaryPageLimit(olderThan, degraded = order != FeedOrder.SORT_KEY)
 
+// One page of a match's wickets, or of its boundaries, asked for by the `event` column.
+//
+// The Wickets and Boundaries chips used to filter the LOADED feed, which opens at 48 rows — so a
+// reader saw the last eight overs' events and had no way to the rest, because "load earlier" is
+// offered under All. Reads bill per row returned: a T20's wickets are 10-20 rows and its boundaries
+// 40-70, where paging the whole match in to find them is ~250. 60 holds every wicket of any match
+// and most limited-overs boundary lists in one page; a Test's boundaries page behind it.
+internal const val COMMENTARY_EVENT_PAGE_LIMIT = 60
+
+/**
+ * One event-filtered query: a match, the `event` values wanted, an optional cursor.
+ *
+ * No index of its own. `idx_match_sort` (`match_id`, `sort_key`) narrows to one match's rows in
+ * feed order and `event` is tested over those — measured on the live table on 2026-10-04.
+ */
+internal fun commentaryEventQueries(matchId: String, events: List<String>, olderThan: Double?): List<String> =
+    buildList {
+        add(Query.equal("match_id", matchId))
+        add(Query.equal("event", events))
+        if (olderThan != null) add(Query.lessThan("sort_key", olderThan))
+        add(Query.orderDesc("sort_key"))
+        add(Query.limit(COMMENTARY_EVENT_PAGE_LIMIT))
+        add(Query.select(SELECTED_COLUMNS))
+    }
+
 /**
  * What a page is ordered by, which is also the ladder it degrades down.
  *
@@ -233,6 +258,26 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
         }
     }
 
+    /**
+     * The match's rows whose `event` is one of [events], newest-first, one page strictly older than
+     * [olderThan] (or the newest page). Null when the read failed, which a caller must not take for
+     * "this match has none".
+     *
+     * Only the `sort_key` rung, like [getNewerThan]: a page in any other order cannot be paged
+     * behind, and the caller still has the loaded feed to filter.
+     */
+    suspend fun getEvents(matchId: String, events: List<String>, olderThan: Double? = null): List<CommentaryEntry>? {
+        if (!isReady) return null
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val queries = commentaryEventQueries(matchId, events, olderThan)
+                guardedRead("commentary.events") {
+                    it.listRows(databaseId = dbId, tableId = tableId, queries = queries)
+                }?.rows?.mapNotNull { row -> entryOf(row.data) }
+            }.onFailure { logSilentFailure("Commentary event fetch failed", it) }.getOrNull()
+        }
+    }
+
     private suspend fun fetchPage(matchId: String, olderThan: Double?): List<CommentaryEntry>? {
         if (!isReady) return null
         return withContext(Dispatchers.IO) {
@@ -275,18 +320,21 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
         } else {
             rows.sortedByDescending { (it.data["sort_key"] as? Number)?.toDouble() ?: 0.0 }
         }
-        return sorted.mapNotNull { row ->
-            val text = (row.data["commentary"] as? String)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            CommentaryEntry(
-                text = text,
-                event = parseCommentaryEvent(row.data["event"] as? String),
-                ball = (row.data["ball"] as? String)?.takeIf { it.isNotBlank() },
-                sortKey = (row.data["sort_key"] as? Number)?.toDouble(),
-                runs = (row.data["runs"] as? Number)?.toInt(),
-                extra = (row.data["extra"] as? String)?.takeIf { it.isNotBlank() },
-                innings = (row.data["innings"] as? Number)?.toInt(),
-            )
-        }
+        return sorted.mapNotNull { row -> entryOf(row.data) }
+    }
+
+    /** One row as a feed line, or null for a row with no commentary text. */
+    private fun entryOf(data: Map<String, Any>): CommentaryEntry? {
+        val text = (data["commentary"] as? String)?.takeIf { it.isNotBlank() } ?: return null
+        return CommentaryEntry(
+            text = text,
+            event = parseCommentaryEvent(data["event"] as? String),
+            ball = (data["ball"] as? String)?.takeIf { it.isNotBlank() },
+            sortKey = (data["sort_key"] as? Number)?.toDouble(),
+            runs = (data["runs"] as? Number)?.toInt(),
+            extra = (data["extra"] as? String)?.takeIf { it.isNotBlank() },
+            innings = (data["innings"] as? Number)?.toInt(),
+        )
     }
 
     /**

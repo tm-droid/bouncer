@@ -47,6 +47,17 @@ interface LiveMatchDetailSource {
     suspend fun getNewerCommentary(matchId: String, newerThan: Double): List<CommentaryEntry> = emptyList()
 
     /**
+     * One page of the match's lines whose server `event` is one of [events], newest-first, strictly
+     * older than [olderThan] when given. Null when it could not be read — the default, so a source
+     * without it leaves the filters on the loaded feed.
+     */
+    suspend fun getEventCommentary(
+        matchId: String,
+        events: List<String>,
+        olderThan: Double?,
+    ): List<CommentaryEntry>? = null
+
+    /**
      * The full scorecard, from its own table. Separate from [getForMatch] because it was 85-93% of
      * the detail payload and rode that row's realtime channel to every subscriber once a minute.
      * This is the first-paint read; [observeScorecard] carries every update after it.
@@ -94,6 +105,12 @@ object ProductionLiveDetailSource : LiveMatchDetailSource {
 
     override suspend fun getNewerCommentary(matchId: String, newerThan: Double): List<CommentaryEntry> =
         AppwriteMatchCommentaryClient.getNewerThan(matchId, newerThan)
+
+    override suspend fun getEventCommentary(
+        matchId: String,
+        events: List<String>,
+        olderThan: Double?,
+    ): List<CommentaryEntry>? = AppwriteMatchCommentaryClient.getEvents(matchId, events, olderThan)
 
     override suspend fun getScorecardForMatch(matchId: String): ScorecardSnapshot? =
         AppwriteMatchScorecardClient.getForMatch(matchId)
