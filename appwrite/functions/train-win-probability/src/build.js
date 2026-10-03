@@ -24,7 +24,10 @@
  * (0.0004), the current partnership (0.0008), and the last five overs — read against the innings'
  * own rate and against the rate the chase still requires (0.0006). Boosted trees were fitted on
  * the same columns and did not beat the logistic model on any head (chase 0.3672 against 0.3667,
- * with worse calibration), so the model stays linear. The Test model is unchanged: across four
+ * with worse calibration), so the model stays linear. Weather was backfilled from Open-Meteo and
+ * made every head worse — Tests even on the weather that actually happened, limited overs when
+ * the holdout was scored on forecasts as a live match is (chase 0.3873 against 0.3830, first
+ * innings 0.5902 against 0.5806) — so no head reads it. The Test model is unchanged: across four
  * rolling folds no context group moved it outside its own noise.
  *
  * ## Two models per head

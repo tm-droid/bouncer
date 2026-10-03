@@ -491,9 +491,14 @@ never fetches. Boosted trees on the same columns: 0.3672 against the logistic mo
 worse calibration, and worse outright on first innings and Tests. For Tests, over four rolling
 folds no group cleared its own noise (ground came closest: −0.025, interval [−0.053, +0.005]), and
 **weather did nothing even with hindsight** — the weather that actually happened, with rain crossed
-against time left, scored 0.7330 against 0.7208 without it. Limited-overs weather is untested: the
-backfill (`appwrite/tools/weather-backfill.mjs`, ~10k Open-Meteo calls a day) had covered the
-Tests and about 4,000 other matches of 23,000 when this was written. `appwrite/tools/winprob-lab.mjs`
+against time left, scored 0.7330 against 0.7208 without it. Limited-overs weather was then tested the way
+it would be served — trained on the weather that happened (7,853 matches covered, a shuffled spread
+across every season), holdout scored on what was FORECAST (`--weather-holdout`) — and it made both
+heads worse: chase 0.3873 against 0.3830, first innings 0.5902 against 0.5806 with calibration
+error up from 0.012 to 0.040. **Weather is not a model feature in any format.** The forecast is
+still fetched for the Info tab and the preview, where it is shown as a forecast. Do not finish the
+backfill (`appwrite/tools/weather-backfill.mjs`) expecting a different answer; the remaining
+matches are more of the same seasons. `appwrite/tools/winprob-lab.mjs`
 is the harness; every comparison is a column subset of one wide matrix, so two configurations
 never differ by their sample. **The gate is ≥0.001 log-loss with a match-bootstrap interval that
 excludes zero** — rows within a match are near-duplicates, so a row-level interval is meaningless.
