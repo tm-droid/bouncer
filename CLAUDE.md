@@ -118,8 +118,8 @@ app/src/main/kotlin/com/tanush/bouncer/
 - `player-search` — on-demand; resolves a player name to a **Cricbuzz** profile id for `PlayerProfileScraper.searchPlayersDetailed`. Cricbuzz has no working player search left (`/api/search/results` and `/search` both 404; `/api/html/search` is a 200-empty stub), so this builds a name→id index from Cricbuzz's own squad pages (`/cricket-team` → `/cricket-team/{slug}/{id}/players`, 38 pages, 593 players as measured on the first live build) and caches it in `cricket-stats` as `player-index` with a 7-day TTL. **The cached index is read back with `parseJsonFile`, never `Buffer.from`** — node-appwrite 15 hands back an already-parsed object for `application/json`, and the unconditional `Buffer.from` this shipped with threw into the "no cached index" catch, so every single query rebuilt the whole corpus: 39 Cricbuzz fetches and ~14s per search, TTL never once hit. Cricinfo's search does work but answers with Cricinfo ids, and `buildProfileUrl` builds Cricbuzz `/profiles/{id}/` URLs — switching id namespace would trade a dead search for a dead profile screen. Returns **503, never an empty 200**, when it has no index and cannot build one: absence and unavailability must stay distinguishable on the device. `PROBE_SOURCES=1` turns one execution into a reachability probe. Needs `timeout: 90` for the index build. **A search never rebuilds an index it can answer from** (`indexPlan`): the rebuild runs on the function's own schedule (`0 3 */3 * *`, detected by `x-appwrite-trigger: schedule`, a header Appwrite refuses from callers) and a search serves whatever index exists, however old. It used to rebuild inline in whichever search found the index past its 7-day TTL, and a build is ~15 s against the **10 s read timeout of the Android SDK's OkHttp client, which sets none of its own** — so that search drew "Online player search is unavailable" and reported nothing, because `SocketTimeoutException` is filtered as connectivity. That 10 s bounds every synchronous function call the app makes. Only a search that finds no index at all still builds inline. **A rebuild merges, it does not replace** (`mergePlayers`, the "merge, never shrink" rule `tools/update_logos.py` follows for teams): a squad page that failed used to take its whole team out of search until the next run, and a player dropped from a squad became unfindable although his profile page still exists. The walk itself stays a full one — Cricbuzz has no change feed, so finding what changed means reading every squad page.
 - `match-presence` — on-demand; the server half of the viewer gate. `MatchPresenceReporter.ping` posts `{matchId}` every 90s from an open match screen, and `pingAll` posts `{matchIds: [...]}` (≤10) every 90s from `LiveUpdateService` for every followed match; the function read-modify-writes an `active-viewers` map (`{matchId: epochMs}`) in `cricket-stats` and prunes entries older than `PRESENCE_TTL_MS` (4 min). That TTL must stay **≥ match-sync's `VIEWER_TTL_MS`**, or a viewer match-sync still counts as active gets dropped here first. Concurrent pings race on the read-modify-write (last write wins, losing another match's fresh timestamp) — accepted, because the next 90s heartbeat heals it. A ping that finds its match stamped under 60s ago returns without writing (`FRESH_SKIP_MS`), so N viewers of one match cost ~1 write a minute, not N every 90s; staleness is unchanged because any ping finding a minute-old stamp still writes. Env: `APPWRITE_API_KEY`, `MATCH_CACHE_BUCKET_ID`.
 - `match-commentary-prune` — daily at 03:00; deletes `match-commentary` rows older than `COMMENTARY_RETENTION_DAYS` (14). Nothing else deletes them, and the table grows one row per ball of every match — it had reached ~500k rows before this existed. Each pass is one **bulk** `deleteRows` filtered server-side by `lessThan("$createdAt", cutoff)` (built-in, no user index needed); it used to list 100 rows and delete them one call each, so every stale row cost a billed read first — ~6,700 reads a day, the project's largest read cost. A short batch ends the run. Bounded to `BATCH` 100 (the Free-plan bulk cap; asking for more fails the request) × `COMMENTARY_PRUNE_MAX_PASSES` 100 per run so one run stays inside the 300s timeout; raising `COMMENTARY_PRUNE_MAX_PASSES` temporarily drains a backlog faster. Needs node-appwrite ≥ 26 (bulk ops). A 402 aborts and returns 402 with the partial `deleted` count rather than failing silently.
-- `win-probability` — on-demand; calculates real-time win probability
-- `train-win-probability` — scheduled; retrains win-probability model from match history
+- `win-probability` — on-demand; scores a position with the same `winprob.js` match-sync uses. No device caller.
+- `train-win-probability` — Mondays 02:00; refits the win-probability model (v6) from Cricsheet and publishes the tables match-sync joins a live match against. See "Win probability is v6" below. ~280 s and ~760 MB of its 900 s / 1 GB.
 
 Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` and DB/collection IDs need manual env vars.
 
@@ -473,6 +473,94 @@ once while each caller swallowed it into its own fallback. `Query` and `Operator
 Verify a change here in the minified dex, not the source: `dexdump -d <classes.dex>` must still show
 `name : 'method'` inside `Lio/appwrite/Query;`.
 
+**Win probability is v6: every team, ground and player term is computed as of the match.** v5 knew
+a team by its win rate over the whole training window — which includes the match being trained on,
+so the term read its own result, the model leaned on it, and the calibration temperature had to
+undo it (1.87 pre-match). `asOfState.js` walks the archive once in date order and reads each
+match's context BEFORE folding the match in: Elo, form and head-to-head per side; a ground's
+scoring, chase record and how often each side has played there (the only "home" signal Cricsheet
+has); and each eleven's batting and bowling against the format's mean. Holdout (2024-12-27 on),
+log-loss as served: **chase 0.3949 → 0.3729, first innings 0.6110 → 0.5654, pre-match
+0.6775 → 0.6274**. The Test head is v5's, unchanged.
+
+What was measured and left out, so nobody re-adds it on intuition (all on top of team + ground +
+elevens, chase head, same holdout): the toss 0.0004, the current partnership 0.0008, the last five
+overs 0.0006 — both against the innings' own rate and against the rate the chase still requires —
+and the crease pair plus the remaining order 0.0012, which needs a scorecard a non-viewed match
+never fetches. Boosted trees on the same columns: 0.3672 against the logistic model's 0.3667, with
+worse calibration, and worse outright on first innings and Tests. For Tests, over four rolling
+folds no group cleared its own noise (ground came closest: −0.025, interval [−0.053, +0.005]), and
+**weather did nothing even with hindsight** — the weather that actually happened, with rain crossed
+against time left, scored 0.7330 against 0.7208 without it. Limited-overs weather is untested: the
+backfill (`appwrite/tools/weather-backfill.mjs`, ~10k Open-Meteo calls a day) had covered the
+Tests and about 4,000 other matches of 23,000 when this was written. `appwrite/tools/winprob-lab.mjs`
+is the harness; every comparison is a column subset of one wide matrix, so two configurations
+never differ by their sample. **The gate is ≥0.001 log-loss with a match-bootstrap interval that
+excludes zero** — rows within a match are near-duplicates, so a row-level interval is meaningless.
+
+**Each head ships two models, `core` and `full`, and the reader picks.** `full` also reads both
+elevens and is used only when the context carries one for each side. A single model taught to
+tolerate a missing eleven measured worse in BOTH cases than one fitted for each (0.3911 masked
+against 0.3845 for a model that never had the group). Elevens are thinned in training at the miss
+rates measured on 637 players of live team sheets (`JOIN_FAILURE` in `build.js`), because **a
+Cricbuzz player joins to a Cricsheet person by name only** — the register's `key_cricbuzz` column
+fills 50 of 18,554 rows. `playerjoin.js` joins inside one side's recent roster by surname and
+initials (reading initials off the name as written, so "MS Dhoni" is not a man called "Ms"), then
+among everyone of that gender with that surname's first letter, and returns null when two people
+fit. Seven of eleven joined is the floor for an eleven; below it the side has none.
+
+**`contextmath.js` is the one implementation of those terms, vendored three times.** The trainer
+computes them for history, match-sync and win-probability recompute them live. A shrinkage
+constant or a vector order that differed would not break anything — the model would be handed a
+number that means something else. `ContextMathVendorParityTest` byte-compares the copies, all
+three declared as Gradle inputs. `feature-parity.test.js` still pins the BASE vectors;
+`contextFeatures` removes the retired strength term from each and appends the context.
+
+**The model is published by pointer, and a bad refit is not published.** The trainer writes the
+tables, then `winprob-v6-<stamp>`, reads it back, and only then rewrites `winprob-manifest`; the
+previous model stays in the bucket, so rolling back is rewriting one small file. `publishProblems`
+refuses a refit whose as-served log-loss is 0.02 worse than the manifest's, whose ECE passes 0.04,
+or that scores a side needing two runs off thirty balls below 0.9. match-sync follows the manifest
+and re-checks hourly; it used to hold one load — or one FAILED load — for the life of its
+container, so a trainer mid-rewrite could leave a container on the heuristic for hours.
+
+**A live match's context is `mc-{matchId}`, built at most two a run, and it costs no database
+read.** `context.js` is the arithmetic and is pure; `contextstore.js` does the fetching — the
+team-sheet page (`squads.js`, a port of `MatchSquadsRsc`), up to four table shards
+(`wpx-<hh>`: rosters, grounds, head-to-head, keyed by FNV hash so a match never downloads the
+megabyte the whole table would be; `wps-<letter>` for a player new to his side), and an Open-Meteo
+forecast refreshed hourly. Upcoming fixtures build on a separate budget of one a run: they are
+scored before live matches, and on a shared budget they took both builds. A ground the archive
+does not know is not a special case — it reads exactly as a ground's first matches did in
+training. One known side against one unknown is NOT an edge: the team terms are used only when
+both are known. The file carries the forecast **as a forecast**, with its fetch time; nothing may
+say it is raining because of it, and the interruption that matters is Cricbuzz's own status line.
+
+**The detail payload says what moved the number.** `winProbabilityFactors` is up to three of
+`teams` / `ground` / `elevens`, each the probability as scored minus the probability with that
+group neutral, oriented to team1 like the number itself (two outcomes, so the sign simply flips;
+a Test has none). It is exact for the question "what would the model have said without this",
+which is the only question the prediction card asks. Kept out of `live-winprob`: every list
+downloads that file and no list shows factors.
+
+**The head-to-head card never rendered, and four cards showed figures nothing produced.**
+`H2HRepository` lowercased the pair it looked up and compared it with keys the trainer writes in
+original case; none of the 1,732 keys in the live file is lowercase, so the lookup never matched.
+It now indexes the file case-insensitively on load. Removed in the same pass, because each was a
+constant: the toss card's "venue win %", "H2H toss 3-2" and "Dew factor HIGH"; the prediction
+card's 85% confidence badge and "Updated: Just now"; and the Info tab's weather panel (wind, dew
+point and visibility hardcoded, temperature and humidity defaulted) with its pace/bounce/spin bars
+scored from keywords in the preview text. The pitch report is shown as written; the forecast and
+the ground's record now come from `mc-{matchId}`.
+
+**`backlogCtx` is module state and two executions can be alive in one container.** A run that
+finished nulled the shared variable under the next run, which threw `Cannot set properties of null
+(setting 'viewers')` and failed outright — seen once, at 14:54:38 on 2026-10-03, when two
+executions started a second apart on a fresh deployment. Each run now holds its own `runCtx` and
+clears the shared variable only if it is still its own. Anything else at module scope that one
+run sets and another reads has the same hazard; `contextIo` (the context store's `storage`/`log`)
+is deliberately re-pointed at the start of every run for the same reason.
+
 **There is no win-probability history on the server.** `live-winprob` and the detail payload are both
 snapshots. `MatchDetailViewModel` accumulates the swing series on the device as the probability
 moves, session-scoped. It used to come from `RetrofitClient.localApi` — `http://10.0.2.2:8000/`, an
@@ -594,6 +682,13 @@ probed against the real `SYSTEM_INSTRUCTION` on wicket/dot/six fixture balls bef
 the model list is not the set of models a key can call, and `gemini-2.5-flash-lite` proves it by
 appearing in `/v1/models` and answering 404 on a completion.
 
+**Any number of Gemini projects.** `PROVIDERS` lists each Gemini rung once; `ladder()` adds a `-<n>`
+twin behind it for `GEMINI_API_KEY_2` (always, skipped with its usual note when unset — the names
+are stored in `match-commentary.provider` and key the per-day latch, so they must not move) and for
+`GEMINI_API_KEY_3`…`_20` when set. One line asks at most twelve rungs over the network and walks
+for at most 45 s: with ten projects there are forty Gemini rungs, and `generate-commentary` is
+callable by any device, so an unbounded walk was one request reaching every project's quota.
+
 **The ladder since 2026-09-25**: writers `gemini-flash-lite` → `gemini-3.1-flash-lite-preview` →
 `groq` (gpt-oss-20b) → `gemini-3.6-flash` → `gemini-3-flash-preview`; plus `groq-qwen`
 (`qwen/qwen3.8-27b`), **`verifyOnly`** — asked first for every verdict, never asked to write
@@ -712,7 +807,7 @@ The server's `rankPlayers` mirrors the same normalisation and typo tier; both ar
 function's own test. A score tick re-runs only the local leg (`onSourcesChanged`) — never the billed
 player lookup.
 
-**Cross-language rules are pinned, not commented.** `LlmJsVendorParityTest` (llm.js),
+**Cross-language rules are pinned, not commented.** `LlmJsVendorParityTest` (llm.js), `ContextMathVendorParityTest` (contextmath.js, three copies),
 `NextFlightVendorParityTest` (nextflight.js), `WinProbJsVendorParityTest` (winprob.js),
 `SeriesClassificationParityTest` (`SeriesClassification.kt` ↔ `series.js`),
 `SearchNormalizationParityTest` (`normalizeForSearch` ↔ `player-search`'s, via a shared fixture) and
@@ -845,6 +940,28 @@ stored when its over ends (`sort_key` = the next over's first ball − 1), becau
 mid-over splits that over into two blocks on the device. Win-probability triggers are skipped for
 Tests and for matches outside the detail tier.
 
+**Three more triggers read the match's context, and a milestone word needs the trigger's own
+facts.** `stateTrigger` (`situation.js`): a batter crossing 50/100/150/200, with their record in
+the archive's matches of that format; a partnership passing the same marks; and a first innings
+ending at a ground whose usual first-innings score the archive knows (`typicalFirstInnings` on the
+context). Each remembers what the last run saw, so a cold container that first sees a batter on 73
+says nothing — crossing a mark is the event, being past it is not. `UNBACKED_RE` is no longer an
+outright ban: a line may say "half-century" only when its facts do, and only a milestone trigger's
+facts ever do. **"career" is never in the facts** — Cricsheet is the matches it recorded, so a
+record is "5210 runs in 131 recorded one-day innings". A spelled-out number ("sixty-four balls")
+fails the line, correctly: it cannot be checked against a digit.
+
+**A match has a preview and a summary, and neither is ever unchecked prose** (`surfaces.js`,
+stored on `mc-{matchId}`). The facts are built in code — head-to-head record, the ground's usual
+score, toss, forecast, the model's pre-match chance; or the result, each innings, its top scorer
+and best bowling. One writer call; `validSurface` then requires every sentence to be grounded on
+its own, both sides to be named, and weather to be called a forecast; then the batch fact-checker
+runs with the facts as its source, because the code check proves a number is IN the facts and
+cannot see it given to the wrong side. Any failure stores the same facts as plain sentences
+(`provider: "template"`). Probed on real contexts on 2026-10-03: 8 of 8 written versions passed
+both. A preview needs two things beyond the fixture or it is not written; a summary is written on
+the finalising run, the one run every match gets a scorecard on.
+
 **The checker rules were not the reason contradictions were stored.** Four stored lines that
 contradict their source (163077 89.1 "left alone" → "defends it back down the pitch") all FAIL
 under the existing `VERIFY_BATCH_RULES`, 3/3 on qwen and on `gemini-flash-lite-2`, in isolation. A
@@ -903,10 +1020,13 @@ blocked, this cap — go through `reportThrottled`; they were one event per one-
 
 | File | Owner | What it is |
 |---|---|---|
-| `team-stats`, `h2h-stats` | `train-win-probability` | win-rate model; H2H for 650+ team pairs |
+| `team-stats`, `h2h-stats` | `train-win-probability` | the last **v5** model, no longer rewritten (the fallback a reader uses when there is no manifest); H2H for 1,700+ team pairs, T20 only, read by the device |
 | `active-series` | `poll-live-matches` | active **and archived** series, read by `SeriesSyncWorker` |
 | `live-matches`, `recent-matches`, `upcoming-matches`, `live-count`, `poll-state` | `poll-live-matches` | the match lists `match-sync` runs off, plus its own cursor//hash state |
 | `live-winprob`, `slow-sync-state`, `rewrite-backlog` | `match-sync` | published probabilities; the per-match slow-tier clock; deliveries held until a line passes the checker |
+| `mc-{matchId}` | `match-sync` | one match's context: sides, ground, record, elevens, forecast, preview, summary. Read by the device (Info and Overview tabs). Pruned after 14 days by `pruneContexts`, selected by `startsWith("$id", "mc-")` |
+| `winprob-manifest`, `winprob-v6-<stamp>` | `train-win-probability` | the pointer to the serving model, and the model (the current one and the one before it) |
+| `wpx-00`…`wpx-3f`, `wps-a`…`wps-z` | `train-win-probability` | the tables a context is joined against: rosters with ratings and plain records, grounds, head-to-head; and everyone by surname letter |
 | `active-viewers` | `match-presence` | `{matchId: epochMs}`, the viewer gate |
 | `player-index` | `player-search` | name → Cricbuzz profile id |
 | `news-cache`, `news-body-{storyId}` | `news-sync` | headline index (4h TTL); one article body per opened story |
