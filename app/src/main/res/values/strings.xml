@@ -144,7 +144,10 @@
     <string name="match_info_forecast">Forecast at the ground</string>
     <string name="match_info_forecast_temperature">Temperature</string>
     <string name="match_info_forecast_humidity">Humidity</string>
-    <string name="match_info_forecast_rain">Chance of rain, next %1$d hours</string>
+    <plurals name="match_info_forecast_rain">
+        <item quantity="one">Chance of rain, next %1$d hour</item>
+        <item quantity="other">Chance of rain, next %1$d hours</item>
+    </plurals>
     <string name="match_info_forecast_wind">Wind</string>
     <string name="match_info_forecast_cloud">Cloud cover</string>
     <string name="match_info_forecast_source">Open-Meteo forecast, fetched %1$s</string>

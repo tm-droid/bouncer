@@ -14,6 +14,7 @@
 // USAGE
 //   node --max-old-space-size=6144 appwrite/tools/winprob-lab.mjs [--zip path] [--models chase,first,long,prematch]
 //                                                                  [--gbt] [--out report.json]
+//                                                                  [--weather features.json] [--weather-holdout forecast.json]
 //
 // The archive defaults to ~/Library/Caches/bouncer-winprob-lab/all_json.zip.
 
@@ -43,6 +44,10 @@ const wanted = new Set(flag("--models", "chase,first,long,prematch").split(","))
 const withGbt = argv.includes("--gbt");
 const outPath = flag("--out", null);
 const weatherPath = flag("--weather", null);
+// What was FORECAST for a match, used for holdout rows in place of what happened. A live match is
+// served a forecast, so a holdout scored on the weather that turned out would credit the model
+// with hindsight it will never have.
+const weatherHoldoutPath = flag("--weather-holdout", null);
 
 // Mirrors train-win-probability/src/main.js; the lab has to split where the trainer splits.
 const HOLDOUT_FRACTION = 0.2;
@@ -559,6 +564,7 @@ const trainingRate = (match) => (team) => {
 };
 
 const weatherByFile = weatherPath ? JSON.parse(fs.readFileSync(weatherPath, "utf8")) : null;
+const forecastByFile = weatherHoldoutPath ? JSON.parse(fs.readFileSync(weatherHoldoutPath, "utf8")) : null;
 const NO_WEATHER = [0, 0, 0, 0, 0, 0];
 
 const wide = Object.fromEntries([...wanted].map((name) => [name, new Wide(name)]));
@@ -585,7 +591,8 @@ for (let m = 0; m < matches.length; m++) {
     (maskRandom() < MASK.xi.rate ? MASK.xi.bit : 0) |
     (maskRandom() < MASK.state.rate ? MASK.state.bit : 0) |
     (maskRandom() < MASK.weather.rate ? MASK.weather.bit : 0);
-  const weather = weatherByFile?.[match.file] ?? NO_WEATHER;
+  const weather =
+    (forecastByFile && window === WINDOW.holdout ? forecastByFile[match.file] : weatherByFile?.[match.file]) ?? NO_WEATHER;
   const emitTo = (store, perRow) => (features, label, side) => {
     const rowMask = perRow
       ? (maskRandom() < MASK.recent.rate ? MASK.recent.bit : 0) | (maskRandom() < MASK.partnership.rate ? MASK.partnership.bit : 0)

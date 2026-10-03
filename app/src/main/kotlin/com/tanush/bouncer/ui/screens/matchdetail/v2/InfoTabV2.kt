@@ -37,6 +37,7 @@ import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.StatRowV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
 
@@ -304,7 +305,7 @@ private fun ForecastCard(forecast: ForecastSummary) {
         }
         forecast.maxRainChance?.let {
             StatRowV2(
-                label = stringResource(R.string.match_info_forecast_rain, forecast.hours),
+                label = pluralStringResource(R.plurals.match_info_forecast_rain, forecast.hours, forecast.hours),
                 value = "$it%",
                 modifier = pad,
             )
