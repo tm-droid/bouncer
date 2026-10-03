@@ -34,7 +34,16 @@ import {
   parseOverHistory,
   BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
-import { BATCH_MAX_ITEMS, chainDepth, classifyEvent, deadProviders, drainUnknownQuotaIds, generateBatch, nextPacificMidnight, sanitize, stripPreamble, verifyBatch } from "./llm.js";
+import { BATCH_MAX_ITEMS, chainDepth, classifyEvent, deadProviders, drainUnknownQuotaIds, generateBatch, generateLine, nextPacificMidnight, outcomeClause, sanitize, stripPreamble, verifyBatch } from "./llm.js";
+import {
+  SITUATION_SYSTEM_INSTRUCTION,
+  deliveryOf,
+  detectTrigger,
+  mustMentionOf,
+  newSituationState,
+  situationFacts,
+  validSituationLine,
+} from "./situation.js";
 import {
   initObservability,
   report,
@@ -279,6 +288,27 @@ export function isEcho(line, source) {
   return a.length > 0 && a === comparable(source);
 }
 
+const BALL_LABEL_RE = /^(?:\d{1,3}\.\d|Ball\s+\d{1,3}):?\s*/i;
+const SCORER_HEADER_RE = /^[^,]+ to [^,]+$/;
+const SCORER_OUTCOME_RE = /^(?:no run|\d{1,3} runs?|four|six|out\b|that'?s out\b|wides?|no.?balls?|leg ?byes?|byes?)/i;
+const SCORECARD_TAIL_RE = /\b\d{1,3}\(\d{1,3}\)|\[4s|!!/;
+
+/**
+ * True when [line] is still the scorer's text rather than a written line, whatever the source was.
+ *
+ * `isEcho` is exact equality and two shapes got past it, both stored as `ai_generated: true`
+ * (measured 2026-10-03, 24 of 1,500 rows): the scorer's header kept with prose bolted on ("Sahil
+ * Lotra to Rishabh Pant, no run: Lotra keeps probing…"), and a paraphrase that kept Cricbuzz's
+ * scorecard tail ("…c John Campbell b Jayden Seales, 57(69) [4s-1 6s-4]"). The checker cannot fail
+ * either — every fact in them is the source's.
+ */
+export function keepsScorerText(line) {
+  const body = String(line ?? "").replace(BALL_LABEL_RE, "");
+  if (SCORECARD_TAIL_RE.test(body)) return true;
+  const head = body.split(",")[0];
+  return SCORER_HEADER_RE.test(head) && SCORER_OUTCOME_RE.test(outcomeClause(body));
+}
+
 /** One writer call and one checker call. Returns a result for EVERY item, plus the writer rung. */
 async function rewriteAndCheck(items, exclude) {
   const { log, error } = items[0];
@@ -293,7 +323,7 @@ async function rewriteAndCheck(items, exclude) {
   // after an hour of rejected rewrites. Dropped here, the delivery gets its retry on another rung
   // like any other the model skipped.
   for (const t of items) {
-    if (lines.has(t.key) && isEcho(lines.get(t.key), t.text)) {
+    if (lines.has(t.key) && (isEcho(lines.get(t.key), t.text) || keepsScorerText(lines.get(t.key)))) {
       error?.(`[ECHO] ${t.key}: ${used.provider ?? "unknown"} returned the source text unchanged`);
       attempts.push(`${used.provider ?? "unknown"}: echoed the source`);
       lines.delete(t.key);
@@ -521,10 +551,12 @@ async function writeHeld(e, out, { db, error }) {
     return false;
   }
   try {
-    await db.createDocument(DB_ID, COMMENTARY_COL, e.rowId, commentaryRowData({
+    const data = commentaryRowData({
       matchId: e.matchId, innings: e.innings, ball: e.ball, sortKey: e.sortKey, line, clean: e.clean, provider: out.provider,
-    }), READ_ANY);
+    });
+    await db.createDocument(DB_ID, COMMENTARY_COL, e.rowId, data, READ_ANY);
     heldMap().delete(e.rowId);
+    await supersedeOlder({ db, error, matchId: e.matchId, rowId: e.rowId, ts: e.ts, data });
     return true;
   } catch (err) {
     // 409: the row exists — another execution wrote it. Either way the delivery is stored.
@@ -661,6 +693,133 @@ function commentaryRowData({ matchId, innings, ball, sortKey, line, clean, provi
   };
 }
 
+// ── A corrected delivery replaces the one Cricbuzz withdrew ──────────────────
+//
+// Cricbuzz republishes a corrected delivery under a NEW timestamp, and the row id is the
+// timestamp's hash, so the correction became a second row and the withdrawn one stayed. Measured
+// 2026-10-03: match 171061's 10.3 was stored as a single, then as a catch that never happened, then
+// as the single again — three rows, and a wicket in the Wickets filter for a batter who was not
+// out; match 174881 kept "bowls Norah Salima" beside the catch that actually dismissed Mia Hedge.
+//
+// matchId -> "innings|ball" -> the newest LEGAL row this container wrote. A wide or a no-ball
+// shares its label with the ball that follows and is never tracked. In memory only: a cold
+// container forgets, and the device then shows the newest row per delivery by itself.
+const legalRowByBall = new Map();
+const REBOWLED = new Set(["WIDE", "NOBALL"]);
+
+/** Test seam: forget every tracked delivery. */
+export function __resetSuperseded() {
+  legalRowByBall.clear();
+}
+
+/**
+ * Record a legal delivery's row, deleting the older row it corrects. Returns the superseded row's
+ * event, or null when this is the first version seen. Never throws.
+ */
+async function supersedeOlder({ db, error, matchId, rowId, ts, data }) {
+  if (REBOWLED.has(data.extra)) return null;
+  const key = `${data.innings}|${data.ball}`;
+  const byBall = legalRowByBall.get(matchId) ?? new Map();
+  legalRowByBall.set(matchId, byBall);
+  const prior = byBall.get(key);
+  if (prior && prior.ts >= ts) return null;
+  byBall.set(key, { rowId, ts, event: data.event });
+  // A withdrawn version still waiting for a line is the same delivery, not another one to keep.
+  for (const h of [...heldMap().values()]) {
+    const sameBall = h.matchId === matchId && h.innings === data.innings && h.ball === data.ball && h.ts < ts;
+    if (sameBall && !REBOWLED.has(parseBallOutcome(h.clean).kind)) heldMap().delete(h.rowId);
+  }
+  if (!prior || prior.rowId === rowId) return null;
+  try {
+    await db.deleteDocument(DB_ID, COMMENTARY_COL, prior.rowId);
+  } catch (e) {
+    if (e?.code !== 404) error?.(`Superseded row not deleted (${matchId}/${data.ball}): ${e?.message}`);
+  }
+  return prior.event;
+}
+
+// ── Match-situation lines (see situation.js) ─────────────────────────────────
+//
+// matchId -> trigger state. In memory only: a cold container starts with no history, which can
+// miss a streak that straddles the boot and cannot invent one.
+const situationByMatch = new Map();
+export const SITUATION_PROVIDER_PREFIX = "situation:";
+
+let situationWriter = async (facts, { log, error }) => {
+  const used = {};
+  const raw = await generateLine(`${facts}\n\nWrite the sentence.`, {
+    maxTokens: 80, log, error, used, systemInstruction: SITUATION_SYSTEM_INSTRUCTION,
+  });
+  return raw ? { line: sanitize(stripPreamble(raw)), provider: used.provider ?? "unknown" } : null;
+};
+
+/** Test seam: replace the writer; returns the previous one. Also forgets every match's state. */
+export function __setSituationWriter(fn) {
+  const previous = situationWriter;
+  situationWriter = fn;
+  situationByMatch.clear();
+  return previous;
+}
+
+/**
+ * Write a pending situation line once the over it belongs to is finished, so it sits between two
+ * overs. A line stored mid-over would split that over into two blocks on the device.
+ */
+async function flushSituation({ db, matchId, state, deliveries, terminal, error }) {
+  const p = state.pending;
+  if (!p) return false;
+  const next = deliveries.find((d) => d.ts > p.ts && (d.over !== p.over || d.innings !== p.innings));
+  const lastTs = deliveries.at(-1)?.ts ?? p.ts;
+  if (!next && !terminal) return false;
+  const sortKey = next ? next.ts - 1 : Math.max(lastTs, p.ts) + 1;
+  state.pending = null;
+  try {
+    await db.createDocument(DB_ID, COMMENTARY_COL, docId(`${matchId}:situation:${p.type}:${p.innings}:${p.ts}`), {
+      match_id: matchId,
+      innings: p.innings,
+      ball: "",
+      sort_key: sortKey,
+      commentary: p.line,
+      ai_generated: true,
+      provider: `${SITUATION_PROVIDER_PREFIX}${p.provider}`.slice(0, 48),
+      created_at: new Date().toISOString(),
+      event: "NONE",
+    }, READ_ANY);
+    return true;
+  } catch (e) {
+    if (e?.code !== 409) error(`Situation line write failed (${matchId}): ${e?.message}`);
+    return false;
+  }
+}
+
+/** Detect a trigger in this run's deliveries, write its line, and store any line whose over is done. */
+async function situationStep({ db, matchId, detail, winProb, deliveries, terminal, log, error }) {
+  const state = situationByMatch.get(matchId) ?? newSituationState();
+  situationByMatch.set(matchId, state);
+  await flushSituation({ db, matchId, state, deliveries, terminal, error });
+  const isTest = winProb?.drawProbability != null;
+  const trigger = detectTrigger(state, deliveries, {
+    prob: winProb && !isTest ? winProb.team1WinProbability : null,
+    team1: detail.team1Name,
+    team2: detail.team2Name,
+  });
+  if (!trigger || state.pending) return;
+  const facts = situationFacts(trigger, detail);
+  const written = await situationWriter(facts, { log, error }).catch((e) => {
+    error(`Situation writer threw (${matchId}): ${e?.message}`);
+    return null;
+  });
+  const line = written ? validSituationLine(written.line, facts, mustMentionOf(trigger)) : null;
+  if (!line) {
+    if (written) error(`[SITUATION-REJECT] ${matchId} ${trigger.type}: ${String(written.line).slice(0, 200)} || facts: ${facts.replace(/\n/g, " ")}`);
+    return;
+  }
+  state.ballsSinceLine = 0;
+  state.pending = { line, provider: written.provider, type: trigger.type, innings: trigger.innings, over: trigger.over, ts: trigger.ts };
+  log(`Situation line queued for ${matchId} (${trigger.type})`);
+  await flushSituation({ db, matchId, state, deliveries, terminal, error });
+}
+
 /**
  * Offer every held delivery to the writer again, and write the ones that come back verified.
  *
@@ -669,9 +828,19 @@ function commentaryRowData({ matchId, innings, ball, sortKey, line, clean, provi
  * backlog costs a batch of its own only while it is non-empty.
  */
 export async function drainBacklog({ db, log, error, viewers, liveIds, now }) {
+  let written = 0;
+  // A held delivery whose source is the scorer's header alone needs no writer (see `plainLine`).
+  // These were held before that rule existed; bounded so one run cannot spend its time on them.
+  const plain = [...heldMap().values()]
+    .filter((e) => !inFlight.has(e.rowId))
+    .map((e) => ({ e, line: plainLine(e.clean, e.ts) }))
+    .filter((p) => p.line)
+    .slice(0, PLAIN_BACKLOG_PER_RUN);
+  for (const { e, line } of plain) {
+    if (await writeHeld(e, { line, provider: TEMPLATE_PROVIDER }, { db, error })) written++;
+  }
   const entries = dedicatedEntries({ viewers, liveIds, now });
   for (const e of entries) inFlight.add(e.rowId);
-  let written = 0;
   const reasons = new Set();
   let lastAttempts = [];
   // Its own batches, not the shared queue: these are already full or are all there is, and a held
@@ -898,6 +1067,64 @@ export function classifyCommentaryItem(item) {
   const ball = item.ballMetric?.label ?? "";
   if (!ball) return null;
   return { clean, ball };
+}
+
+// ── Plain lines for deliveries the source does not describe ──────────────────
+//
+// Much of associate and women's cricket reaches Cricbuzz as the scorer's header alone — "Chinelle
+// Henry to Mupachikwa, no run". A writer asked for a broadcast line from that has nothing to write
+// about, and wrote "beating Mupachikwa once more as the ball whisks past the outside edge" and
+// "digs it in short … pull it down to deep square" (measured 2026-10-03 against the live pages:
+// every stored line of matches 173107 and 174881 carried a length, a shot or a field position the
+// source never stated). The checker passes all of it by design, as colour. So these deliveries are
+// not sent to a model at all: the line says who bowled, who faced and what it was worth.
+//
+// A dismissal is not templated even when bare — its source carries the method, the fielder and the
+// score, which is something to write from.
+export const TEMPLATE_PROVIDER = "template";
+const PLAIN_BACKLOG_PER_RUN = 50;
+const BARE_SEGMENT_RE = /^(?:no run|\d{1,3} runs?|four|six|(?:\d{1,3}\s*)?(?:wd|wides?|nb|no.?balls?|lb|leg ?byes?|byes?|b))$/i;
+const SCORER_PARTS_RE = /^(.+?) to ([^,]+),\s*(.+)$/;
+
+const PLAIN = {
+  dot: ["{batter} does not score off {bowler}.", "Dot ball from {bowler} to {batter}.", "No run for {batter} off {bowler}."],
+  single: ["{batter} takes a single off {bowler}.", "A single to {batter} off {bowler}."],
+  runs: ["{batter} takes {n} off {bowler}.", "{n} runs to {batter} off {bowler}."],
+  four: ["Four to {batter} off {bowler}.", "{batter} finds the boundary off {bowler} for four."],
+  six: ["Six to {batter} off {bowler}.", "{batter} clears the boundary off {bowler} for six."],
+  WIDE: ["{bowler} bowls a wide to {batter}.", "Wide from {bowler} to {batter}."],
+  NOBALL: ["No-ball from {bowler} to {batter}."],
+  LEGBYE: ["Leg byes off {bowler}'s delivery to {batter}."],
+  BYE: ["Byes off {bowler}'s delivery to {batter}."],
+  legbye1: ["A leg bye off {bowler}'s delivery to {batter}."],
+  bye1: ["A bye off {bowler}'s delivery to {batter}."],
+};
+const singleBye = (kind, runs) => (runs !== 1 ? null : kind === "LEGBYE" ? "legbye1" : kind === "BYE" ? "bye1" : null);
+
+/**
+ * The plain line for a delivery whose source is the scorer's header and nothing else, or null when
+ * the source describes the ball (or is a dismissal) and a writer has something to work from.
+ * `seed` picks the wording, so a re-run of the same delivery writes the same line.
+ */
+export function plainLine(clean, seed = 0) {
+  const parts = String(clean ?? "").match(SCORER_PARTS_RE);
+  if (!parts) return null;
+  const segments = parts[3].split(",").map((s) => s.trim().replace(/[.!]+$/, "")).filter(Boolean);
+  if (segments.length === 0 || segments.length > 2 || !segments.every((s) => BARE_SEGMENT_RE.test(s))) return null;
+  const { runs, kind } = parseBallOutcome(clean);
+  if (runs === null) return null;
+  const form = singleBye(kind, runs) ?? kind ?? (runs === 0 ? "dot" : runs === 1 ? "single" : runs === 4 ? "four" : runs === 6 ? "six" : "runs");
+  const choices = PLAIN[form];
+  let line = choices[Math.abs(Math.trunc(seed)) % choices.length]
+    .replace("{bowler}", parts[1].trim())
+    .replace("{batter}", parts[2].trim())
+    .replace("{n}", String(runs));
+  // An extra states its total only when it is more than the bare extra is worth.
+  if (kind && runs > 1) {
+    const total = runs === 1 ? "1 run" : `${runs} runs`;
+    line = `${line.slice(0, -1)}, ${total} in all.`;
+  }
+  return line;
 }
 
 const surnameOf = (name) => String(name ?? "").trim().split(/\s+/).pop() ?? "";
@@ -1150,6 +1377,9 @@ async function handleRun({ req, res, log, error }) {
   for (const id of watermarkByMatch.keys()) {
     if (!liveIds.has(id)) watermarkByMatch.delete(id);
   }
+  for (const cache of [legalRowByBall, situationByMatch]) {
+    for (const id of cache.keys()) if (!liveIds.has(id)) cache.delete(id);
+  }
   for (const cache of [lastDetailBody, lastScorecardBody, lastScorecardWrite, overHistoryByMatch]) {
     for (const id of cache.keys()) if (!liveIds.has(id)) cache.delete(id);
   }
@@ -1379,6 +1609,8 @@ async function handleRun({ req, res, log, error }) {
  */
 export function commentaryOrigin(generated) {
   if (!generated) return { aiGenerated: false, provider: "cricbuzz" };
+  // A plain line built in code from the scorer's header: not raw text, and not a model's either.
+  if (generated.provider === TEMPLATE_PROVIDER) return { aiGenerated: false, provider: TEMPLATE_PROVIDER };
   if (generated.line) return { aiGenerated: true, provider: generated.provider ?? "unknown" };
   return { aiGenerated: false, provider: `cricbuzz:${generated.reason ?? "unknown"}` };
 }
@@ -1957,6 +2189,11 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
     for (const item of fresh) {
       const classified = classifyCommentaryItem(item);
       if (!classified) continue;
+      const plain = plainLine(classified.clean, Number(item.timestamp));
+      if (plain) {
+        rewrites.set(Number(item.timestamp), { line: plain, provider: TEMPLATE_PROVIDER, verified: true, reason: null, attempts: [] });
+        continue;
+      }
       queued.push({ ts: Number(item.timestamp), clean: classified.clean, ball: classified.ball, note: sourceConflictNote(classified.clean, detail.batsmen) });
     }
     const results = await Promise.all(
@@ -2046,10 +2283,14 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
       await db.createDocument(DB_ID, COMMENTARY_COL, rowId, data, READ_ANY);
       advance(itemTs);
       written++;
+      const supersededEvent = await supersedeOlder({ db, error, matchId, rowId, ts: itemTs, data });
       // Only on a first write: a 409 means another execution stored this ball and alerted for it.
-      alert(deliveryAlert({
-        matchId, title, event: data.event, ball, text: clean, timestampMs: itemTs, now: Date.now(), score: detail.score,
-      }));
+      // A correction that says the same thing the withdrawn row did has been alerted already.
+      if (supersededEvent !== data.event) {
+        alert(deliveryAlert({
+          matchId, title, event: data.event, ball, text: clean, timestampMs: itemTs, now: Date.now(), score: detail.score,
+        }));
+      }
       writtenBalls.push({ innings, ball });
     } catch (e) {
       // 409 = row already exists (race / watermark behind): it is durably written, so advance.
@@ -2072,6 +2313,15 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   // itself — which also works for a match that has no detail row, i.e. every match outside the
   // detail tier.
   if (newWatermark > watermark) watermarkByMatch.set(matchId, newWatermark);
+  if (storeCommentary) {
+    const deliveries = fresh
+      .map((item) => {
+        const c = classifyCommentaryItem(item);
+        return c && deliveryOf(c.clean, { ball: c.ball, innings: item.innings ?? fallbackInnings, ts: Number(item.timestamp) });
+      })
+      .filter(Boolean);
+    await situationStep({ db, matchId, detail, winProb, deliveries, terminal: finalising, log, error });
+  }
   if (networkWriteFailures > 0) {
     reportThrottled(`commentary-write-network:${matchId}`, STEADY_STATE_REPORT_MS, "match-sync could not reach Appwrite to write commentary", {
       matchId,

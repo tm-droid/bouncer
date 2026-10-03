@@ -165,16 +165,17 @@ test("origin: a failed rewrite carries WHY, because the two reasons are differen
 
 test("origin: the two columns never contradict each other", () => {
   // The invariant the single function exists to hold: ai_generated is true exactly when provider
-  // names a rung, and false exactly when it names cricbuzz.
+  // names a rung, and false when it names cricbuzz or the in-code template.
   for (const g of [
     null,
+    { line: "x", provider: "template" },
     { line: "x", provider: "groq" },
     { line: "x", provider: undefined },
     { line: null, reason: "providers_exhausted" },
     { line: null, reason: undefined },
   ]) {
     const { aiGenerated, provider } = commentaryOrigin(g);
-    assert.equal(aiGenerated, !provider.startsWith("cricbuzz"), `disagreement for ${JSON.stringify(g)}`);
+    assert.equal(aiGenerated, !provider.startsWith("cricbuzz") && provider !== "template", `disagreement for ${JSON.stringify(g)}`);
     assert.ok(provider.length <= 48, "must fit the column");
   }
 });

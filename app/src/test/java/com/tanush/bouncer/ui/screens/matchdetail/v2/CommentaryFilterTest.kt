@@ -203,6 +203,60 @@ class CommentaryFilterTest {
         assertEquals("18.1", wickets.single().ball)
     }
 
+    // ── Rows that share a ball label (measured on match-commentary, 2026-10-03) ──
+
+    @Test
+    fun `a wide and the legal ball after it are both kept`() {
+        // Match 163077, over 88: Cricbuzz labels the wide with the ball that follows it. Keyed on
+        // the label alone the longer line won, which is the wide, and the four vanished.
+        val wide = row("88.4", "88.4: Nasir Lone loses his line with a wild full toss far outside off for a wide.", 2.0, extra = "WIDE")
+        val four = row("88.4", "88.4: Smaran Ravichandran pulls through mid-wicket for four.", 3.0, TimelineEventType.FOUR)
+        assertEquals(listOf(four, wide), filterCommentary(listOf(four, wide), CommentaryFilter.ALL))
+    }
+
+    @Test
+    fun `a corrected delivery replaces the one Cricbuzz withdrew`() {
+        // Match 171061, 10.3: a single, republished as a catch that never happened, then as the
+        // single again. The phantom wicket is the longest of the three.
+        val first = row("10.3", "10.3: Sahan Arachchige works it square for a single.", 1.0)
+        val caught = "10.3: Sahan Arachchige lifts it into the air where Mustafizur Rahman completes the catch."
+        val phantom = row("10.3", caught, 2.0, TimelineEventType.WICKET)
+        val last = row("10.3", "10.3: Sahan Arachchige nudges it leg side for a single.", 3.0)
+        val feed = listOf(last, phantom, first)
+        assertEquals(listOf(last), filterCommentary(feed, CommentaryFilter.ALL))
+        assertTrue(filterCommentary(feed, CommentaryFilter.WICKETS).isEmpty())
+    }
+
+    @Test
+    fun `the same label in another innings is another delivery`() {
+        val chase = row("10.3", "10.3: Short one, pulled for a single.", 9.0, innings = 2)
+        val firstInnings = row("10.3", "10.3: A much longer line about the same label in the first innings.", 1.0, innings = 1)
+        assertEquals(2, filterCommentary(listOf(chase, firstInnings), CommentaryFilter.ALL).size)
+    }
+
+    @Test
+    fun `a match-situation line is a note between two overs, not a delivery`() {
+        // Written by match-sync with a blank ball and a sort key just under the next over's first
+        // delivery. It must not join either over, or their ball counts and totals are wrong.
+        val next = row("11.1", "11.1: Saif Hassan to Sahan Arachchige, no run.", 9.0)
+        val note = row("", "Sahan Arachchige is cutting loose now with sixes off successive balls.", 8.0)
+        val six = row("10.5", "10.5: Six to Sahan Arachchige off Rishad Hossain.", 2.0, TimelineEventType.SIX)
+        val feed = filterCommentary(listOf(next, note, six), CommentaryFilter.ALL)
+        assertEquals(3, feed.size)
+        val blocks = buildCommentaryBlocks(feed.map { it.parseBall() })
+        assertEquals(listOf(11, null, 10), blocks.map { it.overNumber })
+        assertNull(blocks[1].balls.single().ballLabel)
+    }
+
+    private fun row(
+        ball: String,
+        text: String,
+        sortKey: Double,
+        event: TimelineEventType = TimelineEventType.OTHER,
+        extra: String? = null,
+        innings: Int = 1,
+    ) = CommentaryEntry(text = text, event = event, ball = ball, sortKey = sortKey, extra = extra, innings = innings)
+
     private fun rawOver18() = listOf(
         raw("18.1", "Tymal Mills to Ashwin, out Lbw!! Ashwin lbw b Tymal Mills 1(2)", TimelineEventType.WICKET),
         raw("18.2", "Tymal Mills to Matthew Hollard, no run", TimelineEventType.OTHER),

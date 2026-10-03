@@ -109,18 +109,25 @@ object TimelineEventExtractor {
      * commentary tab needs the server's event verdict to survive alongside the line, and the only
      * alternatives were to re-implement [normalize] at the call site or to key a lookup on text
      * this function is in the middle of changing. Both are a drift waiting to happen.
+     *
+     * [recencyOf] decides between two items for one ball where both have it: the newer wins. A
+     * stored row is not a progressive update — Cricbuzz republishes a corrected delivery under a
+     * new timestamp, and the longest of the two is as likely to be the one it withdrew (a phantom
+     * wicket at 10.3 of match 171061 outlasted both versions of the single it really was).
+     * Without it the longest still wins, which is right for the scrape path this was written for.
      */
     internal fun <T> deduplicateByBall(
         items: List<T>,
         textOf: (T) -> String,
         withText: (T, String) -> T,
         ballOf: (T) -> String? = { ballNumberOf(textOf(it)) },
+        recencyOf: (T) -> Double? = { null },
     ): List<T> {
         val normalized = items.mapNotNull { item ->
             val text = normalize(textOf(item)).replace(' ', ' ').replace(whitespaceRun, " ").trim()
             if (text.isBlank()) null else withText(item, text)
         }
-        return dropNearDuplicates(keepLongestPerBall(normalized, textOf, ballOf), textOf, ballOf)
+        return dropNearDuplicates(keepBestPerBall(normalized, textOf, ballOf, recencyOf), textOf, ballOf)
     }
 
     /** True when [line] announces a dismissal and neither its outcome clause nor a veto denies it. */
@@ -215,13 +222,14 @@ private val leadingNumber = Regex("^\\d+\\s+")
 private fun comparisonForm(line: String): String =
     line.lowercase().replace(leadingBallTokens, "").replace(leadingNumber, "")
 
-/** Pass 1: group by ball number, keep longest (most complete progressive update). */
-private fun <T> keepLongestPerBall(
+/** Pass 1: group by ball number, keep the newest where recency is known and the longest otherwise. */
+private fun <T> keepBestPerBall(
     normalized: List<T>,
     textOf: (T) -> String,
     ballOf: (T) -> String?,
+    recencyOf: (T) -> Double?,
 ): List<T> {
-    val bestByBall = longestPerBall(normalized, textOf, ballOf)
+    val bestByBall = bestPerBall(normalized, textOf, ballOf, recencyOf)
     val seen = mutableSetOf<String>()
     return normalized.mapNotNull { item ->
         val ball = ballOf(item)
@@ -235,19 +243,31 @@ private fun <T> keepLongestPerBall(
     }
 }
 
-/** The most complete update seen for each ball number. */
-private fun <T> longestPerBall(
+/** The update to show for each ball number: the newest, or the most complete when recency is unknown. */
+private fun <T> bestPerBall(
     items: List<T>,
     textOf: (T) -> String,
     ballOf: (T) -> String?,
+    recencyOf: (T) -> Double?,
 ): Map<String, T> {
     val best = mutableMapOf<String, T>()
     for (item in items) {
         val ball = ballOf(item) ?: continue
         val existing = best[ball]
-        if (existing == null || textOf(item).length > textOf(existing).length) best[ball] = item
+        if (existing == null || supersedes(item, existing, textOf, recencyOf)) best[ball] = item
     }
     return best
+}
+
+private fun <T> supersedes(
+    candidate: T,
+    current: T,
+    textOf: (T) -> String,
+    recencyOf: (T) -> Double?,
+): Boolean {
+    val a = recencyOf(candidate)
+    val b = recencyOf(current)
+    return if (a != null && b != null && a != b) a > b else textOf(candidate).length > textOf(current).length
 }
 
 /**

@@ -171,6 +171,25 @@ internal enum class CommentaryFilter(val labelRes: Int) {
     MILESTONES(R.string.commentary_filter_milestones),
 }
 
+private val REBOWLED_EXTRAS = setOf("WIDE", "NOBALL")
+
+/**
+ * What makes two rows the same delivery: the innings and the ball label, and for a wide or a
+ * no-ball the row itself.
+ *
+ * The label alone is not enough twice over. Cricbuzz gives a wide the label of the legal ball that
+ * follows it, so `88.4` wide and `88.4` FOUR are two deliveries and keying on the label showed one
+ * of them (match 163077). And every label repeats in the next innings, so a chase paged back far
+ * enough lost its balls to the first innings' longer lines.
+ */
+private val deliveryKey: (CommentaryEntry) -> String? = { entry ->
+    (entry.ball?.takeIf { it.isNotBlank() } ?: ballNumberOf(entry.text))?.let { ball ->
+        val innings = entry.innings?.let { "$it|" }.orEmpty()
+        val rebowled = entry.extra?.uppercase() in REBOWLED_EXTRAS && entry.sortKey != null
+        if (rebowled) "$innings$ball#${entry.sortKey}" else "$innings$ball"
+    }
+}
+
 internal fun filterCommentary(
     commentary: List<CommentaryEntry>,
     selectedFilter: CommentaryFilter,
@@ -191,7 +210,8 @@ internal fun filterCommentary(
         commentary,
         textOf = { it.text },
         withText = { entry, text -> entry.copy(text = text) },
-        ballOf = { entry -> entry.ball?.takeIf { it.isNotBlank() } ?: ballNumberOf(entry.text) },
+        ballOf = deliveryKey,
+        recencyOf = { it.sortKey },
     )
     if (selectedFilter == CommentaryFilter.ALL) return cleaned
     return cleaned.filter { entry ->

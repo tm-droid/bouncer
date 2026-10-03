@@ -812,6 +812,45 @@ roles tagged on each input line, was probed the same day on groq over 36 real re
 and cut role swaps without reaching zero ("Sofia Mardones takes a single off Maria Miranda"), so it
 was not shipped; the checker catches those swaps and the retry replaces them.
 
+**A delivery is not one row, and the ball label is not its identity.** Audited 2026-10-03 over
+1,500 rows against the scorecards and the live pages. (1) Cricbuzz republishes a corrected delivery
+under a new timestamp and the row id is the timestamp's hash, so the withdrawn version stayed beside
+the correction: match 171061's 10.3 was a single, then a catch that never happened, then the single
+again. `supersedeOlder` (`main.js`) now deletes the older **legal** row for the same innings and
+label when a newer one is written — in memory per container, so a cold start forgets and the device
+rule covers it. (2) A wide or no-ball carries the label of the legal ball that follows, and every
+label repeats in the next innings. The device's dedup keyed on the label alone and kept the
+*longest* text, so `88.4` wide hid `88.4` FOUR and a withdrawn row could outlast its correction.
+`deliveryKey` (`CommentaryParsing.kt`) is innings + label, plus the row's `sortKey` for a
+WIDE/NOBALL, and the **newest** row wins. Pinned by `CommentaryFilterTest` and
+`commentary-supersede.test.js`.
+
+**A source with no description is written in code, not by a model.** "Chinelle Henry to Mupachikwa,
+no run" has nothing to rewrite, and the writer filled it with a length, a shot and a field position
+on every ball of matches 173107 and 174881 — which the checker passes by design, as colour.
+`plainLine` (`main.js`) writes those from bowler, batter and outcome with `provider: "template"`,
+`ai_generated: false`; a dismissal still goes to the writer because its source carries facts. This
+is about a quarter of deliveries on an associate-heavy day, and none of them cost a call.
+`keepsScorerText` rejects a model line that kept the scorer's header or scorecard tail, which exact-
+match `isEcho` let through 24 times in those 1,500 rows.
+
+**The voice went to match-situation lines, and they are event-driven** (`situation.js`). A row with
+a blank `ball`, `provider: "situation:<rung>"`, written only on a trigger: the same batter's last 2
+balls faced both sixes or last 3 all boundaries, a bowler's 2 wickets in an over (run-outs
+excluded), 3 wickets in 18 balls, a 0.15 win-probability move inside 15 minutes, or a side first
+crossing 0.90. There is **no fixed interval** — a user decision; do not add one. The writer sees
+structured facts only and `validSituationLine` checks the result in code: every number, counted
+quantity and capitalised word must be in the facts. A failed line is dropped, never retried. It is
+stored when its over ends (`sort_key` = the next over's first ball − 1), because a non-delivery row
+mid-over splits that over into two blocks on the device. Win-probability triggers are skipped for
+Tests and for matches outside the detail tier.
+
+**The checker rules were not the reason contradictions were stored.** Four stored lines that
+contradict their source (163077 89.1 "left alone" → "defends it back down the pitch") all FAIL
+under the existing `VERIFY_BATCH_RULES`, 3/3 on qwen and on `gemini-flash-lite-2`, in isolation. A
+reworded rule scored the same, so nothing was changed. Why they passed in production is not
+established.
+
 **`match-commentary` table:** written by `bouncer-match-sync` (every minute). Columns: `match_id`, `innings`, `ball`, `sort_key` (timestamp, used for ordering), `commentary` (AI-rewritten line), `ai_generated` (boolean, default true), `provider`, `created_at`. Read by `AppwriteMatchCommentaryClient` — newest-first, ordered by `sort_key` desc, **48 rows on the first page and 150 on every page behind it** (`FIRST_PAGE_LIMIT`/`FEED_LIMIT`): reads bill per row RETURNED, and the common case is a glance at the last over or two, so `getOlderThan(sortKey)` pages further back on a reader's tap and only that reader pays for it. Ordering on `sort_key` needs a user index; the fallback ladder is `orderDesc("$createdAt")` — a built-in, always orderable, still newest-first — and only then an unordered fetch, which returns Appwrite's own order (the OLDEST rows of the match) and is the last rung before a blank feed. The degraded rungs cannot page (the cursor filters on the attribute that just failed), so they serve one `FEED_LIMIT` page and a caller asking for older lines gets nothing. A filtered tab (Wickets/Boundaries/Milestones) draws from the loaded feed only — with 8 overs loaded it is often empty, which is why the empty state there carries its own load-earlier action;  Realtime subscription emits `CommentaryEvent` on create. **`ai_generated = false` means the row holds raw Cricbuzz text**, and **no new row has been written that way since 2026-09-27** — a delivery without a verified line is held in the rewrite backlog instead (see above); the false rows in the table are older ones, pruned after 14 days. Before that it meant either the provider chain returned nothing, or the delivery was past the run's LLM budget. The device does not read the column — it exists so "is the stored commentary actually AI?" is answerable from the storage layer, which it was not when a dead chain and a working one produced identical-looking rows. **`provider` is the same question one level finer**, because `ai_generated: false` conflates a chain that FAILED with a delivery that had no rewrite budget — a defect and a design decision, indistinguishable in storage and needing opposite responses. A rung name (`groq`, `gemini-flash-lite`, …) means rewritten; `cricbuzz` means nobody tried; `cricbuzz:providers_exhausted` / `cricbuzz:verification_failed` / `cricbuzz:verifier_unavailable` mean somebody tried and failed, and which. So the ladder's real mix is a GROUP BY rather than a guess. Both columns come from `commentaryOrigin` in `main.js` — one function, because two fields describing one fact drift apart, and the invariant that `ai_generated` is true exactly when `provider` is not a `cricbuzz*` value is pinned in `commentary-storage.test.js`.
 
 **`match-live-detail` table:** written by `bouncer-match-sync` (every minute). One row per match, upserted. Columns: `match_id`, `payload` (JSON `MatchLiveDetailPayload`), `updated_at`. Row ID = sanitized `matchId`. Read by `AppwriteMatchDetailClient`; Realtime emits `DetailEvent` on create/update. Both clients use `appwriteAiCacheDbId` as their DB ID.

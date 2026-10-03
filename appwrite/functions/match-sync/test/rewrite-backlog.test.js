@@ -12,6 +12,7 @@ import {
   dedicatedEntries,
   drainBacklog,
   isEcho,
+  keepsScorerText,
   resetRewriteBatcher,
   sourceConflictNote,
   syncMatch,
@@ -106,7 +107,7 @@ test("a rejected line gets a second writer in the same run, and the retry is wha
   // First writer's line fails; the retry excludes it and a different rung answers.
   useStubs(writer({ calls }), checker((i) => i.line.startsWith("gemini-flash-lite")));
   const now = Date.now();
-  const rows = await sync("bk-1", [{ commText: "Mahipal Lomror to Migael Pretorius, FOUR", timestamp: now, ballMetric: "162.1" }], fakeDb());
+  const rows = await sync("bk-1", [{ commText: "Mahipal Lomror to Migael Pretorius, FOUR, driven through cover", timestamp: now, ballMetric: "162.1" }], fakeDb());
 
   assert.equal(calls.length, 2, "one retry, no more");
   assert.deepEqual(calls[1].exclude, ["gemini-flash-lite"], "the rung that got it wrong is not asked again");
@@ -122,12 +123,12 @@ test("a line rejected twice is held — no row, raw or otherwise — but its ale
   const now = Date.now();
   const db = fakeDb();
   const alerts = [];
-  const rows = await sync("bk-2", [{ commText: "Mahipal Lomror to Migael Pretorius, FOUR", timestamp: now, ballMetric: "162.1" }], db, alerts);
+  const rows = await sync("bk-2", [{ commText: "Mahipal Lomror to Migael Pretorius, FOUR, driven through cover", timestamp: now, ballMetric: "162.1" }], db, alerts);
 
   assert.equal(rows.length, 0, "nothing is written until a line passes the checker");
   const held = __backlogEntries();
   assert.equal(held.length, 1);
-  assert.equal(held[0].clean, "Mahipal Lomror to Migael Pretorius, FOUR");
+  assert.equal(held[0].clean, "Mahipal Lomror to Migael Pretorius, FOUR, driven through cover");
   assert.equal(held[0].sortKey, now);
   assert.equal(alerts.length, 1, "a FOUR alert does not wait for the prose");
 });
@@ -137,7 +138,7 @@ test("a held delivery is written by a later run with its original sort_key, and 
   const ts = Date.now();
   const db = fakeDb();
   const alerts = [];
-  await sync("bk-3", [{ commText: "Mahipal Lomror to Migael Pretorius, SIX", timestamp: ts, ballMetric: "162.5" }], db, alerts);
+  await sync("bk-3", [{ commText: "Mahipal Lomror to Migael Pretorius, SIX, launched over long-on", timestamp: ts, ballMetric: "162.5" }], db, alerts);
   assert.equal(__backlogEntries().length, 1);
 
   // Next run: the writers recover.
@@ -161,7 +162,7 @@ test("a held delivery is not queued again by the match sync while the backlog ow
   useStubs(writer({ calls }), checker(() => true));
   const ts = Date.now();
   const rowId = createHash("sha256").update(`bk-4:${ts}`).digest("hex").slice(0, 36);
-  __resetBacklog([{ matchId: "bk-4", rowId, ts, sortKey: ts, ball: "162.3", innings: 1, clean: "Mahipal Lomror to Tom Abell, 1 run", firstSeenMs: ts }]);
+  __resetBacklog([{ matchId: "bk-4", rowId, ts, sortKey: ts, ball: "162.3", innings: 1, clean: "Mahipal Lomror to Tom Abell, 1 run, pushed to mid-on", firstSeenMs: ts }]);
   const rows = await sync("bk-4", [{ commText: "Mahipal Lomror to Tom Abell, 1 run", timestamp: ts, ballMetric: "162.3" }], fakeDb());
   assert.equal(calls.length, 0, "the backlog, not the page, retries it");
   assert.equal(rows.length, 0);
@@ -170,7 +171,7 @@ test("a held delivery is not queued again by the match sync while the backlog ow
 
 test("a backlog write that fails keeps the delivery held; a 409 releases it", async () => {
   useStubs(writer(), checker(() => false));
-  const base = { innings: 1, clean: "Lomror to Abell, no run", firstSeenMs: Date.now() };
+  const base = { innings: 1, clean: "Lomror to Abell, no run, defended", firstSeenMs: Date.now() };
   __resetBacklog([
     { ...base, matchId: "bk-5", rowId: "r-fail", ts: 1, sortKey: 1, ball: "1.1" },
     { ...base, matchId: "bk-5", rowId: "r-409", ts: 2, sortKey: 2, ball: "1.2" },
@@ -187,7 +188,7 @@ test("a batch nobody answered is not retried in the same second", async () => {
   const calls = [];
   // No provider at all: every rung failed at the transport level.
   useStubs(async (items, opts) => { calls.push(items.length); return new Map(); }, checker(() => false));
-  await sync("bk-6", [{ commText: "Lomror to Abell, no run", timestamp: Date.now(), ballMetric: "162.4" }], fakeDb());
+  await sync("bk-6", [{ commText: "Lomror to Abell, no run, defended", timestamp: Date.now(), ballMetric: "162.4" }], fakeDb());
   assert.equal(calls.length, 1);
   assert.equal(__backlogEntries().length, 1, "held for the next run instead");
 });
@@ -195,7 +196,7 @@ test("a batch nobody answered is not retried in the same second", async () => {
 test("a large live backlog drains newest-first, two batches per run", async () => {
   const calls = [];
   useStubs(writer({ calls }), checker(() => false));
-  const base = { matchId: "bk-7", innings: 1, clean: "Lomror to Abell, no run", firstSeenMs: 0 };
+  const base = { matchId: "bk-7", innings: 1, clean: "Lomror to Abell, no run, defended", firstSeenMs: 0 };
   __resetBacklog(Array.from({ length: 50 }, (_, i) => ({ ...base, rowId: `r${i}`, ts: i + 1, sortKey: i + 1, ball: `${i}.1` })));
   const result = await drainBacklog({ db: fakeDb(), log: silent, error: silent, liveIds: new Set(["bk-7"]) });
   assert.equal(result.written, 24);
@@ -217,7 +218,7 @@ test("held deliveries are served viewers first, then live, then finished — new
 test("a large finished-match backlog gets no dedicated batch outside the pre-reset window, and loses nothing", async () => {
   const calls = [];
   useStubs(writer({ calls }), checker(() => false));
-  const base = { innings: 1, clean: "Lomror to Abell, no run", firstSeenMs: 0 };
+  const base = { innings: 1, clean: "Lomror to Abell, no run, defended", firstSeenMs: 0 };
   __resetBacklog([
     ...Array.from({ length: 30 }, (_, i) => ({ ...base, matchId: "done", rowId: `d${i}`, ts: i + 1, sortKey: i + 1, ball: `${i}.1` })),
     { ...base, matchId: "live", rowId: "l0", ts: 100, sortKey: 100, ball: "9.1" },
@@ -234,7 +235,7 @@ test("a large finished-match backlog gets no dedicated batch outside the pre-res
 });
 
 test("a small finished-match backlog — the ordinary retry trickle — is drained at once", () => {
-  const base = { matchId: "done", innings: 1, clean: "Lomror to Abell, no run", firstSeenMs: 0 };
+  const base = { matchId: "done", innings: 1, clean: "Lomror to Abell, no run, defended", firstSeenMs: 0 };
   __resetBacklog(Array.from({ length: 24 }, (_, i) => ({ ...base, rowId: `d${i}`, ts: i + 1, sortKey: i + 1, ball: `${i}.1` })));
   assert.equal(dedicatedEntries({ now: Date.parse("2026-10-03T19:00:00Z") }).length, 24);
 });
@@ -242,13 +243,13 @@ test("a small finished-match backlog — the ordinary retry trickle — is drain
 test("a fresh batch fills its spare slots from the backlog, at no extra call", async () => {
   const calls = [];
   useStubs(writer({ calls }), checker(() => false));
-  const base = { matchId: "old", innings: 1, clean: "Lomror to Abell, no run", firstSeenMs: 0 };
+  const base = { matchId: "old", innings: 1, clean: "Lomror to Abell, no run, defended", firstSeenMs: 0 };
   __resetBacklog(Array.from({ length: 20 }, (_, i) => ({ ...base, rowId: `h${i}`, ts: i + 1, sortKey: i + 1, ball: `${i}.1` })));
   const db = fakeDb();
   __setBacklogContext({ db, log: silent, error: silent, viewers: new Set(), liveIds: new Set(), startedMs: Date.now() });
 
   const now = Date.now();
-  const rows = await sync("bk-8", [{ commText: "Lomror to Abell, 1 run", timestamp: now, ballMetric: "3.1" }], db);
+  const rows = await sync("bk-8", [{ commText: "Lomror to Abell, 1 run, pushed to mid-on", timestamp: now, ballMetric: "3.1" }], db);
   await __settleHeldWork();
 
   assert.equal(calls.length, 1, "one writer call carries the fresh ball and the held ones");
@@ -265,13 +266,13 @@ test("a held delivery rides in at most one batch per run, and a rejected one sta
   const calls = [];
   // Every line fails the checker, on the first writer and on the retry.
   useStubs(writer({ calls }), checker(() => true));
-  const base = { matchId: "old", innings: 1, clean: "Lomror to Abell, no run", firstSeenMs: 0 };
+  const base = { matchId: "old", innings: 1, clean: "Lomror to Abell, no run, defended", firstSeenMs: 0 };
   __resetBacklog(Array.from({ length: 5 }, (_, i) => ({ ...base, rowId: `h${i}`, ts: i + 1, sortKey: i + 1, ball: `${i}.1` })));
   const db = fakeDb();
   __setBacklogContext({ db, log: silent, error: silent, viewers: new Set(), liveIds: new Set(), startedMs: Date.now() });
 
-  await sync("bk-9", [{ commText: "Lomror to Abell, 1 run", timestamp: Date.now(), ballMetric: "3.1" }], db);
-  await sync("bk-9", [{ commText: "Lomror to Abell, 2 runs", timestamp: Date.now() + 1, ballMetric: "3.2" }], db);
+  await sync("bk-9", [{ commText: "Lomror to Abell, 1 run, pushed to mid-on", timestamp: Date.now(), ballMetric: "3.1" }], db);
+  await sync("bk-9", [{ commText: "Lomror to Abell, 2 runs, clipped to deep square", timestamp: Date.now() + 1, ballMetric: "3.2" }], db);
   await __settleHeldWork();
 
   const firstPass = calls.filter((c) => c.exclude.length === 0);
@@ -343,6 +344,21 @@ test("a writer that returns the source unchanged has not written a line", async 
   assert.equal(isEcho(`15.5: ${STUCK}.`, STUCK), true);
   assert.equal(isEcho("15.5: Motie drops short and it is carved away for a single.", STUCK), false);
   assert.equal(isEcho("", ""), false);
+
+  // Stored as AI on 2026-10-03 and equal to no source: the header kept, or the scorecard tail kept.
+  for (const kept of [
+    "70.4: Sahil Lotra to Rishabh Pant, no run: Lotra keeps probing, delivering a dot ball as Pant defends solidly.",
+    "0.5: Jasprit Bumrah to Maaz Sadaqat, FOUR, to deep extra cover.",
+    "12.1: Saad Masood to Shreyas Iyer, leg byes, tossed up and spinning into the right-hander",
+    "28.5: Jayden Seales bowls to Ruturaj Gaikwad, who is out caught by John Campbell; Ruturaj Gaikwad c John Campbell b Jayden Seales, 57(69) [4s‑1 6s‑4].",
+    "1.4: Norah Salima to Nur Aliya Hairun, out Caught by Verra Farane!! Nur Aliya Hairun c Verra Farane b Norah Salima 4(9)",
+  ]) assert.equal(keepsScorerText(kept), true, kept);
+  for (const written of [
+    "30.5: Jayden Seales delivers full and Naman Dhir dispatches it all the way to the long-on boundary for four.",
+    "18.2: Vitel Lawes delivers to Rohit Sharma, who carves it firmly square of the wicket for four.",
+    "88.3: Nasir Lone delivers to Smaran Ravichandran and finds no run.",
+    "Ball 72: Rashid tosses it up, and Brook drives to long-off for a single.",
+  ]) assert.equal(keepsScorerText(written), false, written);
 
   const calls = [];
   // Rung one echoes; the retry on another rung writes a real line.
