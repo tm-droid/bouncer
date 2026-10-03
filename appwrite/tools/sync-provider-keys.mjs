@@ -42,7 +42,6 @@ if (!functionId) {
   console.error("usage: node sync-provider-keys.mjs --function <functionId> [--keys A,B] [--dry-run]");
   process.exit(1);
 }
-const KEYS = (flag("--keys") ?? DEFAULT_KEYS.join(",")).split(",").map((k) => k.trim()).filter(Boolean);
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const props = Object.fromEntries(
@@ -52,6 +51,17 @@ const props = Object.fromEntries(
     .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
     .map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim()])
 );
+
+// Every further Gemini project's key (`GEMINI_API_KEY_3` and up) is copied when `local.properties`
+// carries it. llm.js adds a project's rungs only when its key is set, so a key left out here is a
+// project that silently contributes nothing.
+const extraGeminiKeys = Object.keys(props)
+  .filter((k) => /^GEMINI_API_KEY_\d+$/.test(k) && !DEFAULT_KEYS.includes(k))
+  .sort((a, b) => Number(a.split("_").pop()) - Number(b.split("_").pop()));
+const KEYS = (flag("--keys") ?? [...DEFAULT_KEYS, ...extraGeminiKeys].join(","))
+  .split(",")
+  .map((k) => k.trim())
+  .filter(Boolean);
 
 const endpoint = (process.env.APPWRITE_ENDPOINT || props.APPWRITE_ENDPOINT || "").replace(/\/$/, "");
 const projectId = process.env.APPWRITE_PROJECT_ID || props.APPWRITE_PROJECT_ID;

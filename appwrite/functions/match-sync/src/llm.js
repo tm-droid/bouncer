@@ -35,7 +35,7 @@
 // that is the whole point — see GEMINI_QUOTA_IS_PER_MODEL below.
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
-// WHY THREE GEMINI RUNGS ON ONE KEY
+// WHY FOUR GEMINI RUNGS ON ONE KEY
 //
 // Gemini's free allowance is per project PER MODEL — the 429 body names the quota, with
 // `quotaDimensions: {model}` — so each distinct model id is its own bucket on one key. The buckets
@@ -89,20 +89,11 @@ const PROVIDERS = [
   // early keeps the common failure path well inside that. (It is rung 3 since 2026-09-25, behind
   // gemini-3.1-flash-lite-preview at 4-8s.)
   { name: "gemini-flash-lite",      account: "gemini", url: GEMINI_URL,                                        model: "gemini-3.5-flash-lite",  keyEnv: "GEMINI_API_KEY", tokenFloor: 0 },
-  // The `-2` rungs are a SECOND Google Cloud project (2026-10-03), each directly behind its twin.
-  // The free quota is per project per model, so the same four model ids on another project's key
-  // are four more buckets — an alias on the same project is not (see above), and neither is a
-  // second key on the same project. Same models, same prompts, same floors: the quality verdicts
-  // above carry over unchanged, which a new model id's would not. `account` differs because a 402
-  // is a statement about one project's balance, and `dailyExhausted` is keyed by rung name, so the
-  // two projects latch independently. Unset, every `-2` rung is skipped as "no GEMINI_API_KEY_2".
-  { name: "gemini-flash-lite-2",    account: "gemini-2", url: GEMINI_URL,                                      model: "gemini-3.5-flash-lite",  keyEnv: "GEMINI_API_KEY_2", tokenFloor: 0 },
   // Probed 2026-09-25 with the real batch prompt, 11 deliveries (LBW, run out, wide, dropped catch)
   // x 3 runs: no factual error in any run, 4-8s. A different model id — and bucket — from the
   // `gemini-3.1-flash-lite` rejected on 2026-09-16 for inventing a "sharp bouncer". Its daily
   // limit is not yet measured; the per-day latch handles whatever it turns out to be.
   { name: "gemini-3.1-flash-lite-preview", account: "gemini", url: GEMINI_URL,                               model: "gemini-3.1-flash-lite-preview", keyEnv: "GEMINI_API_KEY", tokenFloor: 0 },
-  { name: "gemini-3.1-flash-lite-preview-2", account: "gemini-2", url: GEMINI_URL,                           model: "gemini-3.1-flash-lite-preview", keyEnv: "GEMINI_API_KEY_2", tokenFloor: 0 },
   // groq's floor is the verify call's, not the batch's. The batch budget is `120*n+200` and always
   // cleared 320, but `verifyLine` asked for 256 and gpt-oss spent all of it reasoning: production
   // logged `groq: empty completion (length)` on every verify (ANDROID-38, 2026-09-25). Each of those
@@ -112,9 +103,7 @@ const PROVIDERS = [
   // rungs already carry larger ones.
   { name: "groq",                   account: "groq",   url: "https://api.groq.com/openai/v1/chat/completions", model: "openai/gpt-oss-20b",     keyEnv: "GROQ_API_KEY",   tokenFloor: 1024, extraBody: { reasoning_effort: "low" } },
   { name: "gemini-3.6-flash",       account: "gemini", url: GEMINI_URL,                                        model: "gemini-3.6-flash",       keyEnv: "GEMINI_API_KEY", tokenFloor: 2048 },
-  { name: "gemini-3.6-flash-2",     account: "gemini-2", url: GEMINI_URL,                                      model: "gemini-3.6-flash",       keyEnv: "GEMINI_API_KEY_2", tokenFloor: 2048 },
   { name: "gemini-3-flash-preview", account: "gemini", url: GEMINI_URL,                                        model: "gemini-3-flash-preview", keyEnv: "GEMINI_API_KEY", tokenFloor: 2048 },
-  { name: "gemini-3-flash-preview-2", account: "gemini-2", url: GEMINI_URL,                                    model: "gemini-3-flash-preview", keyEnv: "GEMINI_API_KEY_2", tokenFloor: 2048 },
   // VERIFY ONLY. Probed 2026-09-25: its commentary invents names ("Babar Zaman", "Rohit Sha") and
   // turned a catch into a run-out, so it never writes a line — but as a fact-checker it was 8/8
   // correct on planted-good and planted-bad lines, in 2 output tokens and ~200ms. Its own groq
@@ -124,11 +113,54 @@ const PROVIDERS = [
   { name: "groq-qwen",              account: "groq",   url: "https://api.groq.com/openai/v1/chat/completions", model: "qwen/qwen3.8-27b",       keyEnv: "GROQ_API_KEY",   tokenFloor: 0,    verifyOnly: true },
 ];
 
+// MORE GOOGLE CLOUD PROJECTS
+//
+// The free quota is per project per model, so the same four model ids on another project's key are
+// four more buckets — an alias on the same project is not (see above), and neither is a second key
+// on the same project. `PROVIDERS` lists each Gemini rung once, for the first project; every
+// further project gets a twin of each, directly behind it: `gemini-flash-lite-2` on
+// `GEMINI_API_KEY_2`, `-3` on `GEMINI_API_KEY_3`, and so on. Same models, same prompts, same
+// floors, so the quality verdicts above carry over unchanged, which a new model id's would not.
+// `account` differs per project because a 402 is a statement about one project's balance, and
+// `dailyExhausted` is keyed by rung name, so the projects latch independently.
+//
+// Project 2 is always in the ladder, skipped as "no GEMINI_API_KEY_2" when unset, because it is
+// the project the chain is sized on and a missing key there is worth seeing. Projects 3 and up
+// appear only when their key is set — nine absent projects would otherwise put 36 "no key" notes
+// on every line. Read from the environment on each call: a key added to a function reaches a
+// container only when it boots, so there is nothing to cache.
+const MAX_GEMINI_PROJECTS = 20;
+
+function geminiProjects() {
+  const projects = [2];
+  for (let n = 3; n <= MAX_GEMINI_PROJECTS; n++) {
+    if (process.env[`GEMINI_API_KEY_${n}`]) projects.push(n);
+  }
+  return projects;
+}
+
+/** Every rung, in order: `PROVIDERS` with each Gemini rung followed by its other-project twins. */
+function ladder() {
+  const projects = geminiProjects();
+  return PROVIDERS.flatMap((p) =>
+    p.account !== "gemini"
+      ? [p]
+      : [p, ...projects.map((n) => ({ ...p, name: `${p.name}-${n}`, account: `gemini-${n}`, keyEnv: `GEMINI_API_KEY_${n}` }))]
+  );
+}
+
 /** The rungs to walk for [purpose], in order. Verify-only rungs never write; they check first. */
 function rungsFor(purpose) {
-  if (purpose === "verify") return [...PROVIDERS.filter((p) => p.verifyOnly), ...PROVIDERS.filter((p) => !p.verifyOnly)];
-  return PROVIDERS.filter((p) => !p.verifyOnly);
+  const rungs = ladder();
+  if (purpose === "verify") return [...rungs.filter((p) => p.verifyOnly), ...rungs.filter((p) => !p.verifyOnly)];
+  return rungs.filter((p) => !p.verifyOnly);
 }
+
+// One line may not spend longer than this walking the ladder. With ten projects there are forty
+// Gemini rungs, each with a 15s timeout, and an outage on Google's side would otherwise hold a
+// single call for ten minutes inside a 120s function. Latched and unkeyed rungs cost no time, so
+// this binds only when rungs are actually timing out.
+const CHAIN_BUDGET_MS = 45_000;
 
 // Not in the chain, still worth probing. Both answer 200 on `GET /v1/models` and 402 on every
 // completion (spent Cerebras trial, unfunded SambaNova), so calling them costs a doomed 15s round
@@ -156,7 +188,7 @@ const accountOf = (provider) => provider.account ?? provider.name;
  */
 export async function probeProviders() {
   const out = [];
-  for (const provider of [...PROVIDERS, ...PROBE_ONLY_PROVIDERS]) {
+  for (const provider of [...ladder(), ...PROBE_ONLY_PROVIDERS]) {
     const apiKey = process.env[provider.keyEnv];
     if (!apiKey) {
       out.push({ provider: provider.name, configured: provider.model, error: `no ${provider.keyEnv}` });
@@ -353,7 +385,7 @@ function dailyQuotaSpent(providerName, now = Date.now()) {
  * `unavailable` is the per-line Set, passed in when there is one.
  */
 export function chainDepth(unavailable, now = Date.now()) {
-  const rungs = PROVIDERS.map((provider) => {
+  const rungs = ladder().map((provider) => {
     if (!process.env[provider.keyEnv]) return { provider: provider.name, reachable: false, reason: `no ${provider.keyEnv}` };
     if (paymentBlocked.has(accountOf(provider))) return { provider: provider.name, reachable: false, reason: "HTTP 402 (account)" };
     if (dailyQuotaSpent(provider.name, now)) return { provider: provider.name, reachable: false, reason: "daily quota spent" };
@@ -559,8 +591,13 @@ export async function generateLine(
     return null;
   }
 
+  const startedAt = Date.now();
   for (const provider of rungsFor(purpose)) {
     if (exclude.includes(provider.name) || unavailable?.has(provider.name)) continue;
+    if (Date.now() - startedAt > CHAIN_BUDGET_MS) {
+      note("all", `chain budget spent (${CHAIN_BUDGET_MS}ms) — remaining rungs not asked`);
+      break;
+    }
     // Skipped without a call, but still written to `attempts`. Dropping it silently would shrink
     // the record to the providers that were tried, and a three-rung chain that has quietly become
     // one rung is the failure this file has been bitten by three times.
