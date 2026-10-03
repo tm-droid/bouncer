@@ -297,3 +297,11 @@ test("pruning deletes only old context files, and re-checks every candidate itse
   assert.deepEqual(deleted, ["mc-151543"]);
   assert.ok(queries.some((q) => String(q).includes("startsWith")), "selected by id prefix, not by search");
 });
+
+test("factors follow the probability to team1's side", async () => {
+  const { factorsForTeam1 } = await import("../src/main.js");
+  const factors = [{ key: "teams", delta: 0.0612 }, { key: "elevens", delta: -0.03 }, { key: "ground", delta: 0.012 }, { key: "x", delta: 0.011 }];
+  assert.deepEqual(factorsForTeam1(factors, true), [{ k: "teams", d: 0.061 }, { k: "elevens", d: -0.03 }, { k: "ground", d: 0.012 }]);
+  assert.deepEqual(factorsForTeam1(factors, false)[0], { k: "teams", d: -0.061 });
+  assert.deepEqual(factorsForTeam1(undefined, true), [], "a Test or the heuristic has none");
+});

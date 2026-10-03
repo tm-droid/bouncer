@@ -54,6 +54,9 @@ internal fun MatchLiveDetailPayload.alignedTo(teams: List<CricketMatch.Team>): M
         winProbabilityTeam1 = winProbabilityTeam1?.let {
             (1.0 - (winProbabilityDraw ?: 0.0) - it).coerceIn(0.0, 1.0)
         },
+        // Factors exist only where there are two outcomes, so what favoured one side by `d`
+        // counted against the other by exactly `d`.
+        winProbabilityFactors = winProbabilityFactors.map { it.copy(d = -it.d) },
     )
 }
 

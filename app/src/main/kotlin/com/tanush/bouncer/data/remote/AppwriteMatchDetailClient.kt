@@ -2,6 +2,7 @@ package com.tanush.bouncer.data.remote
 
 import com.tanush.bouncer.data.AppJson
 import com.tanush.bouncer.ApiKeys
+import com.tanush.bouncer.models.WinProbFactor
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
@@ -67,6 +68,11 @@ data class MatchLiveDetailPayload(
     // the cached list entry, the batting side from exact string equality between `score` and a side
     // aggregate — and both of those inferences fail in ways this object simply does not have.
     val situation: LiveSituation? = null,
+    // What moved the probability — teams, ground, elevens — oriented to team1 like the number
+    // itself. Empty for a Test and for any match the model scored without a context.
+    val winProbabilityFactors: List<WinProbFactor> = emptyList(),
+    // Bumped by match-sync whenever the match's context file (`mc-{matchId}`) is rewritten.
+    val contextRev: Int? = null,
 )
 
 /**

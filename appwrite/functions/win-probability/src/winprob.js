@@ -418,6 +418,36 @@ function scoreContextHead(headModel, head, base, state, context) {
   return usable(headModel?.core, features.length) ? scoreBinary(headModel.core, features) : null;
 }
 
+/** A context with one named group of terms put back to neutral. */
+const WITHOUT = {
+  teams: (c) => ({ ...c, eloDiff: 0, formDiff: 0, h2hAdvantage: 0, winRateDiff: 0 }),
+  ground: (c) => ({ ...c, venueScoring: 1, venueChaseAdvantage: 0, familiarityDiff: 0, hasVenue: false }),
+  elevens: (c) => ({ ...c, xi: null }),
+};
+
+/** Below this a group's effect is not worth naming. */
+const FACTOR_FLOOR = 0.01;
+
+/**
+ * How far each group of context terms moves the answer: the probability as scored, minus the
+ * probability with that group neutral. Positive favours the side the probability is for.
+ *
+ * This is a statement about the model, not about cricket — "the elevens are worth six points
+ * here" means the number would be six points lower had the team sheets been unknown. It is exact
+ * for that question, which is the only one the device asks.
+ */
+function contextFactors(headModel, head, base, state, context, probability) {
+  if (!context || probability === null) return [];
+  const factors = [];
+  for (const [key, neutralise] of Object.entries(WITHOUT)) {
+    const without = scoreContextHead(headModel, head, base, state, neutralise(context));
+    if (without === null) continue;
+    const delta = probability - without;
+    if (Math.abs(delta) >= FACTOR_FLOOR) factors.push({ key, delta });
+  }
+  return factors.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
+
 // ── heuristic ────────────────────────────────────────────────────────────────
 
 /**
@@ -530,10 +560,13 @@ export function evaluate({
       parRunRate: par,
       format,
     };
-    const probability = isChase
-      ? scoreContextHead(contextModel.chase, "chase", chaseFeatures(state), state, context)
-      : scoreContextHead(contextModel.firstInnings, "firstInnings", firstInningsFeatures(state), state, context);
-    if (probability !== null) return finalize(probability);
+    const head = isChase ? "chase" : "firstInnings";
+    const headModel = isChase ? contextModel.chase : contextModel.firstInnings;
+    const base = isChase ? chaseFeatures(state) : firstInningsFeatures(state);
+    const probability = scoreContextHead(headModel, head, base, state, context);
+    if (probability !== null) {
+      return { ...finalize(probability), factors: contextFactors(headModel, head, base, state, context, probability) };
+    }
   }
 
   if (learned) {
@@ -604,8 +637,14 @@ export function evaluatePrematch({
       return UNDETERMINED;
     }
     const state = { teamStrengthDiff: 0, format };
-    const probability = scoreContextHead(contextModel.prematch, "prematch", prematchFeatures(state), state, context);
-    return probability === null ? UNDETERMINED : { ...finalize(probability), prematch: true };
+    const base = prematchFeatures(state);
+    const probability = scoreContextHead(contextModel.prematch, "prematch", base, state, context);
+    if (probability === null) return UNDETERMINED;
+    return {
+      ...finalize(probability),
+      prematch: true,
+      factors: contextFactors(contextModel.prematch, "prematch", base, state, context, probability),
+    };
   }
 
   const learned = learnedOf(model);

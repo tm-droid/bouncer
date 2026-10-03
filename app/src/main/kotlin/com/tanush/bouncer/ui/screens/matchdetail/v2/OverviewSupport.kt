@@ -22,6 +22,9 @@ import com.tanush.bouncer.models.BatsmanStats
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.WinProbabilityPoint
+import com.tanush.bouncer.models.WinProbFactor
+import com.tanush.bouncer.ui.components.PredictionFactor
+import kotlin.math.roundToInt
 import com.tanush.bouncer.ui.components.MatchPredictionInfo
 import com.tanush.bouncer.ui.components.PredictionTrend
 import com.tanush.bouncer.ui.components.premium.MomentumEvent
@@ -75,9 +78,33 @@ internal fun predictionTrendFor(delta: Float): PredictionTrend = when {
     else -> PredictionTrend.STABLE
 }
 
+/** A factor of this size fills the card's bar. The model's largest groups move it about this far. */
+private const val FULL_FACTOR = 0.25
+
+/**
+ * The model's own account of what moved the latest reading, as rows for the prediction card.
+ *
+ * [labels] maps the server's keys to words; a key with no label is one this build predates, and it
+ * is dropped rather than shown under a name the app made up.
+ */
+internal fun predictionFactorsFor(
+    factors: List<WinProbFactor>,
+    labels: Map<String, String>,
+): List<PredictionFactor> = factors.mapNotNull { factor ->
+    val name = labels[factor.k] ?: return@mapNotNull null
+    PredictionFactor(
+        name = name,
+        impact = (factor.d / FULL_FACTOR).toFloat().coerceIn(-1f, 1f),
+        description = String.format(Locale.US, "%+d pts", (factor.d * PERCENT).roundToInt()),
+    )
+}
+
+private const val PERCENT = 100
+
 internal fun predictionInfoFor(
     match: CricketMatch,
     probabilityHistory: List<WinProbabilityPoint>,
+    factorLabels: Map<String, String> = emptyMap(),
 ): MatchPredictionInfo {
     val latestProb = probabilityHistory.last()
     val prevProb = probabilityHistory[probabilityHistory.size - 2]
@@ -89,6 +116,7 @@ internal fun predictionInfoFor(
         team2WinProbability = latestProb.team2Probability,
         predictionTrend = predictionTrendFor(probDelta),
         predictedWinner = if (latestProb.team1Probability >= 0.5f) match.teams[0].name else match.teams[1].name,
+        predictionFactors = predictionFactorsFor(latestProb.factors, factorLabels),
     )
 }
 

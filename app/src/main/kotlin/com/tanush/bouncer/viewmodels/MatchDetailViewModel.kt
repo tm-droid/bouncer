@@ -11,6 +11,7 @@ import com.tanush.bouncer.models.StatusSignal
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
+import com.tanush.bouncer.models.WinProbFactor
 import com.tanush.bouncer.models.WinProbabilityPoint
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricBuzzMatchRepository
@@ -737,12 +738,14 @@ private fun appendProbabilityPoint(
         payload.team2Overs ?: state.liveTeam2Overs,
     ),
     team1Percent = payload.winProbabilityTeam1?.times(PERCENT_SCALE) ?: state.liveWinProbability,
+    factors = payload.winProbabilityFactors,
 )
 
 internal fun appendProbabilityPoint(
     history: List<WinProbabilityPoint>,
     over: Float,
     team1Percent: Double?,
+    factors: List<WinProbFactor> = emptyList(),
 ): List<WinProbabilityPoint> {
     if (team1Percent == null) return history
     val team1 = (team1Percent / PERCENT_SCALE).toFloat()
@@ -752,7 +755,12 @@ internal fun appendProbabilityPoint(
     ) {
         return history
     }
-    val point = WinProbabilityPoint(over = over, team1Probability = team1, team2Probability = 1f - team1)
+    val point = WinProbabilityPoint(
+        over = over,
+        team1Probability = team1,
+        team2Probability = 1f - team1,
+        factors = factors,
+    )
     return (history + point).takeLast(PROBABILITY_HISTORY_MAX)
 }
 

@@ -229,3 +229,27 @@ test("a v6 artifact whose model does not match the vector falls back to the heur
     evaluate({ ...args, model: null }).battingTeamWinProbability,
   );
 });
+
+test("factors say how far each context group moves the answer, and vanish without a context", () => {
+  // Core weights eloDiff (index 15) and venueChaseAdvantage (index 20); full adds batAvg (24).
+  const core = tier(24, 15);
+  core.weights[20] = 10;
+  const full = tier(29, 24);
+  full.weights[15] = 1;
+  full.weights[20] = 10;
+  full.weights[24] = 2;
+  const model = { version: 6, chase: { core, full }, teamStats: {} };
+  const args = { currentRunRate: 8, requiredRunRate: 9, runsNeeded: 90, ballsRemaining: 60, wicketsLost: 3, format: "T20", model };
+
+  const r = evaluate({ ...args, context: contextWith({ own: side, opp: side }) });
+  const byKey = Object.fromEntries(r.factors.map((f) => [f.key, f.delta]));
+  const sig = (z) => 1 / (1 + Math.exp(-z));
+  const z = 0.5 + 10 * 0.03 + 2 * 0.2;
+  assert.ok(Math.abs(byKey.teams - (sig(z) - sig(z - 0.5))) < 1e-9, "teams: the Elo term put back to zero");
+  assert.ok(Math.abs(byKey.ground - (sig(z) - sig(z - 0.3))) < 1e-9, "ground: the chase advantage put back to zero");
+  assert.ok(Math.abs(byKey.elevens - (sig(z) - sig(0.5 + 0.3))) < 1e-9, "elevens: scored by the core model instead");
+  assert.ok(Math.abs(r.factors[0].delta) >= Math.abs(r.factors.at(-1).delta), "largest first");
+
+  assert.deepEqual(evaluate(args).factors, [], "no context, nothing to attribute");
+  assert.equal(evaluate({ ...args, model: null }).factors, undefined, "the heuristic claims no factors");
+});

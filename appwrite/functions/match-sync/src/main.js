@@ -1515,7 +1515,12 @@ async function handleRun({ req, res, log, error }) {
         });
         summary[matchId] = result.status;
         if (result.finalised) finalisedNow.add(matchId);
-        if (result.winProb) winProb[matchId] = result.winProb;
+        if (result.winProb) {
+          // The factors stay in the detail payload. This file is downloaded for every match list,
+          // and no list shows them.
+          const { factors: _factors, ...forList } = result.winProb;
+          winProb[matchId] = forList;
+        }
       } catch (e) {
         error(`Match ${matchId} failed: ${e?.message}`);
         // A block is the host telling us to stand down, not a defect on our side — it is reported
@@ -2091,7 +2096,24 @@ function winProbFor(detail, title, model, matchContext = null) {
     // cannot tell this "team1" from its own teams[0], which is Cricbuzz's listing order.
     team1Id: s.firstInningsTeamId ?? null,
     format,
+    factors: factorsForTeam1(result.factors, s.battingTeamIsTeam1),
   };
+}
+
+/** How many context factors the detail payload carries. It is pushed to every viewer each minute. */
+const MAX_FACTORS = 3;
+
+/**
+ * The model's context factors, re-oriented to team1 like the probability they explain.
+ *
+ * Two outcomes, so what helps the batting side by `d` hurts the other by exactly `d` — the sign
+ * simply flips. A Test has no factors: its model reads no context, and with three outcomes a
+ * single signed number would not say which of the other two it came out of.
+ */
+export function factorsForTeam1(factors, battingTeamIsTeam1) {
+  if (!Array.isArray(factors)) return [];
+  const sign = battingTeamIsTeam1 ? 1 : -1;
+  return factors.slice(0, MAX_FACTORS).map((f) => ({ k: f.key, d: Number((sign * f.delta).toFixed(3)) }));
 }
 
 // One retry on a 5xx before the gate gives up. A storage 500 is transient, and failing closed on
@@ -2247,6 +2269,8 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
     // Only a Test carries one. Null for every other format, and the device renders a two-segment
     // bar unless it is present rather than inferring a draw from the arithmetic.
     detail.winProbabilityDraw = winProb.drawProbability;
+    // What moved the number: teams, ground, elevens. Absent when the model read no context.
+    if (winProb.factors.length) detail.winProbabilityFactors = winProb.factors;
   }
 
   if (!writeDetail && !storeCommentary) {

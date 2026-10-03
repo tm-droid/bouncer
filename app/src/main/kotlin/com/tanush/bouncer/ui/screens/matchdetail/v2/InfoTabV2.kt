@@ -17,7 +17,16 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.runtime.remember
+import com.tanush.bouncer.data.remote.MatchContextStore
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.models.ForecastSummary
+import com.tanush.bouncer.models.MatchContext
+import com.tanush.bouncer.models.scoringPercent
+import com.tanush.bouncer.models.summary
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import com.tanush.bouncer.models.PreMatchData
 import com.tanush.bouncer.network.MatchSquads
 import com.tanush.bouncer.network.MatchSquadsSource
@@ -45,6 +54,13 @@ fun InfoTabV2(
     val squads by produceState<MatchSquads?>(initialValue = null, match.id) {
         value = MatchSquadsSource.get(match.id)
     }
+    // The ground and the forecast, from the context file match-sync keeps for this match. Also
+    // fetched only when this tab is opened.
+    val context by produceState<MatchContext?>(initialValue = null, match.id) {
+        value = MatchContextStore.get(match.id)
+    }
+    val forecast = context?.forecast?.summary(System.currentTimeMillis())
+    val ground = context?.venue?.takeIf { it.known && it.matches >= GROUND_MIN_MATCHES }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -195,6 +211,20 @@ fun InfoTabV2(
             }
         }
 
+        if (forecast != null) {
+            item(key = "forecast_header") {
+                SectionHeaderV2(title = stringResource(R.string.match_info_forecast))
+            }
+            item(key = "forecast_card") { ForecastCard(forecast) }
+        }
+
+        if (ground != null) {
+            item(key = "ground_header") {
+                SectionHeaderV2(title = stringResource(R.string.match_info_ground_record))
+            }
+            item(key = "ground_card") { GroundCard(ground) }
+        }
+
         // The preview's own words, as written. This used to be scored into pace/bounce/spin bars and
         // a weather panel by keyword, with a default for every figure the text did not give.
         if (preMatchData != null && preMatchData.pitchDescription.isNotBlank()) {
@@ -214,6 +244,75 @@ fun InfoTabV2(
         }
 
         item(key = "bottom") { Spacer(Modifier.height(spacing.xxl)) }
+    }
+}
+
+/** Below this the archive has too little of a ground to say anything about it. */
+private const val GROUND_MIN_MATCHES = 3
+
+/**
+ * The forecast for the hours ahead. Labelled as a forecast, with its source and the time it was
+ * fetched — it is never the weather at the ground, and a field the source left out is left off.
+ */
+@Composable
+private fun ForecastCard(forecast: ForecastSummary) {
+    val spacing = BouncerThemeV2.spacing
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val pad = Modifier.padding(horizontal = spacing.md)
+    val fetched = remember(forecast.fetchedAt) {
+        DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(forecast.fetchedAt))
+    }
+    BouncerCard {
+        Spacer(Modifier.height(spacing.sm))
+        forecast.tempC?.let {
+            StatRowV2(label = stringResource(R.string.match_info_forecast_temperature), value = "$it°C", modifier = pad)
+        }
+        forecast.humidity?.let {
+            StatRowV2(label = stringResource(R.string.match_info_forecast_humidity), value = "$it%", modifier = pad)
+        }
+        forecast.maxRainChance?.let {
+            StatRowV2(
+                label = stringResource(R.string.match_info_forecast_rain, forecast.hours),
+                value = "$it%",
+                modifier = pad,
+            )
+        }
+        forecast.windKph?.let {
+            StatRowV2(label = stringResource(R.string.match_info_forecast_wind), value = "$it km/h", modifier = pad)
+        }
+        forecast.cloud?.let {
+            StatRowV2(label = stringResource(R.string.match_info_forecast_cloud), value = "$it%", modifier = pad, showDivider = false)
+        }
+        Text(
+            text = stringResource(R.string.match_info_forecast_source, fetched),
+            style = typography.labelMedium,
+            color = colors.textSecondary,
+            modifier = Modifier.padding(spacing.md),
+        )
+    }
+}
+
+/** What the archive holds on this ground, in the format being played. */
+@Composable
+private fun GroundCard(ground: MatchContext.Venue) {
+    val spacing = BouncerThemeV2.spacing
+    val pad = Modifier.padding(horizontal = spacing.md)
+    val percent = ground.scoringPercent()
+    BouncerCard {
+        Spacer(Modifier.height(spacing.sm))
+        StatRowV2(label = stringResource(R.string.match_info_ground_matches), value = ground.matches.toString(), modifier = pad)
+        StatRowV2(
+            label = stringResource(R.string.match_info_ground_scoring),
+            value = when {
+                percent > 0 -> stringResource(R.string.match_info_ground_scoring_above, percent)
+                percent < 0 -> stringResource(R.string.match_info_ground_scoring_below, -percent)
+                else -> stringResource(R.string.match_info_ground_scoring_level)
+            },
+            modifier = pad,
+            showDivider = false,
+        )
+        Spacer(Modifier.height(spacing.sm))
     }
 }
 

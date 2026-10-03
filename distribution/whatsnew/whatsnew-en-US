@@ -1,5 +1,5 @@
-Head-to-head records now appear on the match Overview. They were never shown before because of a lookup fault.
+Win probability is sharper: it now reads each side's current strength and form, the ground, and the two playing elevens, and the prediction card shows how much each of those moved the number.
 
-Removed figures the app could not back up: the toss card's venue, toss and dew numbers, the match prediction's confidence badge, and the weather and pitch-score panel on the Info tab. The pitch report now shows as written.
+New on a match's Info tab: a weather forecast for the ground, and how the ground scores against its format.
 
-Commentary is more accurate: a corrected ball no longer shows twice, and wides no longer hide the delivery after them.
+Head-to-head records now appear on the Overview. Figures the app could not back up are gone from the toss, prediction and conditions cards.

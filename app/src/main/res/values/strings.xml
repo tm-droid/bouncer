@@ -141,6 +141,19 @@
     <string name="match_info_additional">Additional Info</string>
     <string name="match_info_info">Info</string>
     <string name="match_info_pitch_report">Pitch report</string>
+    <string name="match_info_forecast">Forecast at the ground</string>
+    <string name="match_info_forecast_temperature">Temperature</string>
+    <string name="match_info_forecast_humidity">Humidity</string>
+    <string name="match_info_forecast_rain">Chance of rain, next %1$d hours</string>
+    <string name="match_info_forecast_wind">Wind</string>
+    <string name="match_info_forecast_cloud">Cloud cover</string>
+    <string name="match_info_forecast_source">Open-Meteo forecast, fetched %1$s</string>
+    <string name="match_info_ground_record">This ground</string>
+    <string name="match_info_ground_matches">Matches in the archive</string>
+    <string name="match_info_ground_scoring">First-innings scores</string>
+    <string name="match_info_ground_scoring_above">%1$d%% above the format\'s average</string>
+    <string name="match_info_ground_scoring_below">%1$d%% below the format\'s average</string>
+    <string name="match_info_ground_scoring_level">In line with the format\'s average</string>
     <string name="match_info_teams">Teams</string>
 
     <string name="overview_innings_summary">Innings Summary</string>
@@ -254,6 +267,9 @@
     <string name="match_following">Following</string>
     <string name="match_key_factors">KEY FACTORS</string>
     <string name="match_momentum_summary">MOMENTUM SUMMARY</string>
+    <string name="prediction_factor_teams">Team strength and form</string>
+    <string name="prediction_factor_ground">Ground</string>
+    <string name="prediction_factor_elevens">Playing elevens</string>
     <string name="match_predicted_winner">PREDICTED WINNER</string>
     <string name="match_share_score">Share Score</string>
     <string name="match_tie_draw">TIE/DRAW</string>

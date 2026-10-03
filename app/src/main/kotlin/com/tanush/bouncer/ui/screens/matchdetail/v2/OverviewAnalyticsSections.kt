@@ -96,7 +96,15 @@ internal fun LazyListScope.overviewWinProbability(
         }
         item(key = "prediction_card") {
             MatchPredictionCard(
-                predictionInfo = predictionInfoFor(match, probabilityHistory),
+                predictionInfo = predictionInfoFor(
+                    match,
+                    probabilityHistory,
+                    factorLabels = mapOf(
+                        "teams" to stringResource(R.string.prediction_factor_teams),
+                        "ground" to stringResource(R.string.prediction_factor_ground),
+                        "elevens" to stringResource(R.string.prediction_factor_elevens),
+                    ),
+                ),
             )
         }
     }
