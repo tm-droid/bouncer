@@ -30,9 +30,10 @@ const model = {
     "West Indies|male|ODI": { winRate: 0.44, matchesPlayed: 380, elo: 1480, form: 0.35 },
     "India|female|ODI": { winRate: 0.55, matchesPlayed: 120, elo: 1600, form: 0.5 },
   },
+  parRunRate: { T20: 8.3, ODI: 5.6, HUNDRED: 8.6 },
   means: { "male|ODI": { runsPerBall: 0.85, runsPerOut: 30, bowlRunsPerBall: 0.85, wicketsPerBall: 0.03, chaseWin: 0.5, firstRatio: 0.9, draw: 0.01 } },
 };
-const rated = (name, i) => [`pid-${name}`, [name], { ODI: [1.2, 1.1, 1.3, 1.05, 900, i > 6 ? 1500 : 0] }, "male"];
+const rated = (name, i) => [`pid-${name}`, [name], { ODI: [1.2, 1.1, 1.3, 1.05, 900, i > 6 ? 1500 : 0, 820, 20, 25, i > 6 ? 30 : 0] }, "male"];
 const tables = {
   rosters: {
     "India|male": squads.team1.playingXi.map((p, i) => rated(p.name, i)),
@@ -72,6 +73,9 @@ test("the context carries both sides, the ground, the record and the elevens", (
   assert.equal(c.teams[1].joined, 8);
   assert.equal(hasElevens(c), true, "eight of eleven joined is enough");
   assert.equal(c.teams[0].members[0].pid, "pid-Rohit Sharma");
+  assert.deepEqual(c.teams[0].members[0].record, { innings: 25, runs: 820, average: 41, strikeRate: 91.1, wickets: 0 });
+  // 5.6 an over for 50 overs is 280; the format's sides make 0.9 of that, and this ground a little more.
+  assert.equal(c.venue.typicalFirstInnings, Math.round(280 * 0.9 * c.venue.scoring));
   assert.equal(c.modelAsOf, "2026-09-28");
 });
 

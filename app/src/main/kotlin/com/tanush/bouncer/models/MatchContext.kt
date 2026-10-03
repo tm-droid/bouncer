@@ -14,7 +14,20 @@ data class MatchContext(
     val rev: Int = 0,
     val venue: Venue? = null,
     val forecast: Forecast? = null,
+    val preview: Surface? = null,
+    val summary: Surface? = null,
 ) {
+    /**
+     * A few sentences about the match as a whole: the [preview] before it, the [summary] after.
+     * Written server-side from the match's own records and checked against them; when no written
+     * version passes that check the server stores the same facts as plain sentences instead, so
+     * [text] is never unchecked prose.
+     */
+    @Serializable
+    data class Surface(
+        val text: String = "",
+    )
+
     /**
      * The ground against its format. [scoring] is first-innings scoring here over first-innings
      * scoring everywhere in the format, shrunk toward 1.0 while the ground has few matches — so it

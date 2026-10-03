@@ -8,6 +8,7 @@
  */
 
 import {
+  CONTEXT_VERSION,
   FORECAST_TTL_MS,
   SQUAD_RETRY_MS,
   archiveTeamName,
@@ -26,9 +27,11 @@ const SHARD_TTL_MS = 6 * 60 * 60_000;
 /** New contexts built, and forecasts refreshed, per run. Each build is up to two Cricbuzz pages. */
 export const BUILDS_PER_RUN = 2;
 export const FORECASTS_PER_RUN = 4;
+/** Previews and summaries written per run. Each is one writer call and one checker call. */
+export const SURFACES_PER_RUN = 1;
 
 export function newBudget() {
-  return { builds: BUILDS_PER_RUN, forecasts: FORECASTS_PER_RUN };
+  return { builds: BUILDS_PER_RUN, forecasts: FORECASTS_PER_RUN, surfaces: SURFACES_PER_RUN };
 }
 
 /**
@@ -93,7 +96,7 @@ export function createContextStore(deps) {
         if (context) contexts.set(id, context);
       }
 
-      const stale = context && context.modelAsOf !== (model?.asOf ?? null);
+      const stale = context && (context.modelAsOf !== (model?.asOf ?? null) || context.v !== CONTEXT_VERSION);
       const wait = SQUAD_RETRY_MS * Math.min(6, 1 + (squadMisses.get(id) ?? 0));
       const wantsEleven = context && !hasElevens(context) && live && now() - (lastSquadTry.get(id) ?? 0) >= wait;
       if ((!context || stale || wantsEleven) && budget.builds > 0 && model) {
@@ -132,7 +135,21 @@ export function createContextStore(deps) {
     return context;
   }
 
-  return { ensure, get: (matchId) => contexts.get(String(matchId)) ?? null, forget: (matchId) => contexts.delete(String(matchId)) };
+  /**
+   * Add fields to a match's context — its preview, its summary — and store it. Returns the new
+   * context, or null when the match has none to add to.
+   */
+  async function patch(matchId, fields) {
+    const id = String(matchId);
+    const current = contexts.get(id);
+    if (!current) return null;
+    const next = { ...current, ...fields, rev: current.rev + 1 };
+    contexts.set(id, next);
+    await deps.writeJson(contextFileId(id), next);
+    return next;
+  }
+
+  return { ensure, patch, get: (matchId) => contexts.get(String(matchId)) ?? null, forget: (matchId) => contexts.delete(String(matchId)) };
 }
 
 /** A context with the fields that change on every build removed, for "did anything change". */

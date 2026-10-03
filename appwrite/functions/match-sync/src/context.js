@@ -15,6 +15,7 @@
 
 import {
   UNKNOWN_RATING,
+  VENUE_MIN_MATCHES,
   XI_MIN_KNOWN,
   h2hAdvantage,
   pairKey,
@@ -27,7 +28,9 @@ import {
 } from "./contextmath.js";
 import { resolvePlayer } from "./playerjoin.js";
 
-export const CONTEXT_VERSION = 1;
+// 2: members carry their plain record, and a ground its usual first-innings score. A stored
+// context of an older version is rebuilt rather than read as if it had them.
+export const CONTEXT_VERSION = 2;
 export const contextFileId = (matchId) => `mc-${String(matchId).replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 32)}`;
 
 /** A team sheet is asked for again this often until it carries a playing eleven. */
@@ -72,6 +75,25 @@ export function pickGround(grounds, city) {
   return grounds.length === 1 ? grounds[0] : null;
 }
 
+/**
+ * A player's plain record in the archive's matches of this format, or null when the table predates
+ * the figures or the player has batted too little for an average to mean anything.
+ */
+export const RECORD_MIN_INNINGS = 10;
+
+function recordOf(row) {
+  if (!Array.isArray(row) || row.length < 10) return null;
+  const [, , , , balls, , runs, outs, innings, wickets] = row;
+  if (!(innings >= RECORD_MIN_INNINGS) || !(outs > 0)) return null;
+  return {
+    innings,
+    runs,
+    average: round(runs / outs, 1),
+    strikeRate: balls > 0 ? round((runs * 100) / balls, 1) : null,
+    wickets,
+  };
+}
+
 /** `[avg, strike, recent, bowl, batBalls, bowlBalls]` as the rating object `xiStrength` reads. */
 function ratingOf(row) {
   if (!Array.isArray(row)) return UNKNOWN_RATING;
@@ -99,7 +121,7 @@ export function joinEleven({ players, roster, surnamePools, gender, format }) {
       const pool = (surnamePools?.[letter] ?? []).filter((e) => e.gender === gender);
       hit = resolvePlayer(pool, p.name);
     }
-    members.push({ cbId: p.id, name: p.name, pid: hit?.id ?? null });
+    members.push({ cbId: p.id, name: p.name, pid: hit?.id ?? null, record: recordOf(hit?.ratings?.[format]) });
     if (!hit) return UNKNOWN_RATING;
     joined++;
     return ratingOf(hit.ratings?.[format]);
@@ -201,6 +223,7 @@ export function buildContext({ matchId, meta, squads, model, format, gender, tab
       scoring: round(view?.scoring ?? 1, 3),
       chaseAdvantage: round(view?.chaseAdvantage ?? 0, 3),
       drawAdvantage: round(view?.drawAdvantage ?? 0, 3),
+      typicalFirstInnings: typicalFirstInnings({ view, means, model, format, known: Boolean(ground) }),
     };
   }
 
@@ -232,6 +255,22 @@ export function buildContext({ matchId, meta, squads, model, format, gender, tab
     forecast: previous?.forecast ?? null,
   };
   return { ...body, rev: (previous?.rev ?? 0) + 1, builtAt: now };
+}
+
+/** Balls in a full innings, for the formats that have one. */
+const INNINGS_BALLS = { T20: 120, ODI: 300, HUNDRED: 100 };
+
+/**
+ * What a side batting first usually makes at this ground in this format, or null.
+ *
+ * The ground's shrunk scoring ratio times the format's own mean, put back into runs. Null for a
+ * Test (no fixed innings), for an unknown ground and for one with too few matches to say.
+ */
+function typicalFirstInnings({ view, means, model, format, known }) {
+  const balls = INNINGS_BALLS[format];
+  const par = model?.parRunRate?.[format];
+  if (!known || !view || !means || !balls || !par || view.matches < VENUE_MIN_MATCHES) return null;
+  return Math.round(((par * balls) / 6) * means.firstRatio * view.scoring);
 }
 
 function countsOf(row) {

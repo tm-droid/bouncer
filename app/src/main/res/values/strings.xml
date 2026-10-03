@@ -270,6 +270,8 @@
     <string name="prediction_factor_teams">Team strength and form</string>
     <string name="prediction_factor_ground">Ground</string>
     <string name="prediction_factor_elevens">Playing elevens</string>
+    <string name="match_preview_title">Preview</string>
+    <string name="match_summary_title">Summary</string>
     <string name="match_predicted_winner">PREDICTED WINNER</string>
     <string name="match_share_score">Share Score</string>
     <string name="match_tie_draw">TIE/DRAW</string>

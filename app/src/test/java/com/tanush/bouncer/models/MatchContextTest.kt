@@ -73,4 +73,13 @@ class MatchContextTest {
         assertEquals("mc-151554", MatchContextStore.fileId("151554"))
         assertEquals("mc-a_b", MatchContextStore.fileId("a/b"))
     }
+
+    @Test
+    fun `a context carries its preview and summary as text`() {
+        val json = """{"preview":{"text":"India play West Indies.","provider":"template","at":5},"summary":{"text":"India won."}}"""
+        val context = checkNotNull(MatchContextStore.parse(json))
+        assertEquals("India play West Indies.", context.preview?.text)
+        assertEquals("India won.", context.summary?.text)
+        assertNull(MatchContextStore.parse("{}")?.preview)
+    }
 }

@@ -26,6 +26,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import com.tanush.bouncer.data.remote.MatchContextStore
+import com.tanush.bouncer.models.MatchContext
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.MatchFlowData
 import com.tanush.bouncer.models.MatchStatus
@@ -130,7 +134,12 @@ fun OverviewTabV2(
     )
     val hasOverData = derived.cumulativeScores.isNotEmpty() && match.teams.size >= 2
     val winProb = match.winProbability
-    val hasAnyContent = hasAnyOverviewContent(
+    // The preview or summary, from the match's context file. One small download per match open.
+    val context by produceState<MatchContext?>(initialValue = null, match.id) {
+        value = MatchContextStore.get(match.id)
+    }
+    val surface = matchSurfaceFor(context, isCompleted)
+    val hasAnyContent = surface != null || hasAnyOverviewContent(
         match, batsmen, bowler, recentBalls, scorecard, commentary,
         probabilityHistory, matchFlow, headToHead, currentRunRate, requiredRunRate, isUpcoming,
     )
@@ -144,10 +153,14 @@ fun OverviewTabV2(
         verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
         overviewHeaderSections(isUpcoming, hasAnyContent)
+        // First on a fixture or a finished match, where it is the most there is to read; below
+        // the live cards on a match in play, where the score comes first.
+        if (!isMatchActive) overviewMatchSurface(surface)
         overviewLiveSituation(match, isMatchActive)
         overviewBatsmen(batsmen, isMatchActive, isCompleted, derived.fallbackBatsmen, derived.fallbackHasNotOut)
         overviewBowler(bowler, isMatchActive, isCompleted, scorecard)
         overviewWinProbability(match, winProb, probabilityHistory, currentRunRate, requiredRunRate)
+        if (isMatchActive) overviewMatchSurface(surface)
         overviewPhaseCards(match, matchFlow, derived.ppPhaseList, derived.matchPhases)
         overviewScoringCharts(
             match, derived.worm, hasOverData, derived.cumulativeScores, maxOver,

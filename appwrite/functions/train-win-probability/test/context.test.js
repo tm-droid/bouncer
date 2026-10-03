@@ -173,7 +173,8 @@ test("the published tables put a roster, a ground and a head-to-head where the r
   const [id, names, ratings, gender] = roster[0];
   assert.equal(id, "id-A P1");
   assert.deepEqual(names, ["A P1"]);
-  assert.equal(ratings.T20.length, 6);
+  assert.equal(ratings.T20.length, 10, "six model terms, then runs, dismissals, innings and wickets");
+  assert.equal(ratings.T20[8], 3, "three innings batted");
   assert.equal(gender, "male");
 
   const ground = files.get(`wpx-${shardOf("v:eden gardens")}`).venues["eden gardens"];

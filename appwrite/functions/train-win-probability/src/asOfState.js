@@ -298,7 +298,11 @@ export class AsOfState {
 
   /**
    * Everyone who has played since [since], with their names, sides and ratings per format:
-   * `[{ id, names, teams: ["team|gender"], ratings: { format: [avg, strike, recent, bowl, batBalls, bowlBalls] } }]`.
+   * `[{ id, names, teams: ["team|gender"], ratings: { format: [avg, strike, recent, bowl, batBalls, bowlBalls, runs, outs, innings, wickets] } }]`.
+   *
+   * The first six are what the model reads. The last four are the plain record behind them —
+   * runs, dismissals, innings batted and wickets in the archive's matches — so that a line of
+   * commentary can state a figure rather than a ratio.
    *
    * Ratings are taken against the means of the player's own gender, read off the sides they have
    * played for — a registry id is one person, so one gender.
@@ -316,8 +320,12 @@ export class AsOfState {
       const gender = teams[0].slice(teams[0].lastIndexOf("|") + 1);
       const ratings = {};
       for (const format of formats.get(id) ?? []) {
-        const r = playerRating(this.players.get(`${id}|${format}`), globalMeans(this.globals.get(`${gender}|${format}`)));
-        ratings[format] = [round(r.avg, 3), round(r.strike, 3), round(r.recent, 3), round(r.bowl, 3), r.batBalls, r.bowlBalls];
+        const p = this.players.get(`${id}|${format}`);
+        const r = playerRating(p, globalMeans(this.globals.get(`${gender}|${format}`)));
+        ratings[format] = [
+          round(r.avg, 3), round(r.strike, 3), round(r.recent, 3), round(r.bowl, 3), r.batBalls, r.bowlBalls,
+          p.runs, p.outs, p.innings, p.wickets,
+        ];
       }
       out.push({ id, names: [...person.names], teams, ratings });
     }

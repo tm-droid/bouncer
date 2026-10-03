@@ -41,6 +41,9 @@ import { fetchForecast, sideContextFor } from "./context.js";
 import { sideContext } from "./contextmath.js";
 import { createContextStore, newBudget } from "./contextstore.js";
 import { parseSquads, squadsUrl } from "./squads.js";
+import {
+  SURFACE_SYSTEM_INSTRUCTION, previewFacts, previewTemplate, summaryFacts, summaryTemplate, writeSurface,
+} from "./surfaces.js";
 import { BATCH_MAX_ITEMS, chainDepth, classifyEvent, deadProviders, drainUnknownQuotaIds, generateBatch, generateLine, nextPacificMidnight, outcomeClause, sanitize, stripPreamble, verifyBatch } from "./llm.js";
 import {
   SITUATION_SYSTEM_INSTRUCTION,
@@ -49,6 +52,7 @@ import {
   mustMentionOf,
   newSituationState,
   situationFacts,
+  stateTrigger,
   validSituationLine,
 } from "./situation.js";
 import {
@@ -806,7 +810,7 @@ async function flushSituation({ db, matchId, state, deliveries, terminal, error 
 }
 
 /** Detect a trigger in this run's deliveries, write its line, and store any line whose over is done. */
-async function situationStep({ db, matchId, detail, winProb, deliveries, terminal, log, error }) {
+async function situationStep({ db, matchId, detail, winProb, deliveries, terminal, log, error, meta = null, context = null }) {
   const state = situationByMatch.get(matchId) ?? newSituationState();
   situationByMatch.set(matchId, state);
   await flushSituation({ db, matchId, state, deliveries, terminal, error });
@@ -816,8 +820,16 @@ async function situationStep({ db, matchId, detail, winProb, deliveries, termina
     team1: detail.team1Name,
     team2: detail.team2Name,
   });
-  if (!trigger || state.pending) return;
-  const facts = situationFacts(trigger, detail);
+  // Read on every run, whatever the delivery triggers found: it is also what remembers the last
+  // run's figures, and skipping it would make the next crossing look like the first sighting.
+  const fromState = stateTrigger(state, { detail, meta, context });
+  const chosen = trigger ?? fromState;
+  if (!chosen || state.pending) return;
+  return writeSituationLine({ db, matchId, state, trigger: chosen, detail, context, deliveries, terminal, log, error });
+}
+
+async function writeSituationLine({ db, matchId, state, trigger, detail, context, deliveries, terminal, log, error }) {
+  const facts = situationFacts(trigger, detail, context);
   const written = await situationWriter(facts, { log, error }).catch((e) => {
     error(`Situation writer threw (${matchId}): ${e?.message}`);
     return null;
@@ -1375,7 +1387,7 @@ async function handleRun({ req, res, log, error }) {
   if (clock.getUTCHours() === 4 && clock.getUTCMinutes() === 0) await pruneContexts({ storage, log, error });
   // Upcoming fixtures draw on a budget of their own, and a smaller one. They are scored first, so
   // on a shared budget sixty fixtures would hold every live match's context back for half an hour.
-  const prematch = await prematchEntries({ storage, model, contexts, budget: { builds: 1, forecasts: 1 }, log, error });
+  const prematch = await prematchEntries({ storage, model, contexts, budget: { builds: 1, forecasts: 1, surfaces: 1 }, log, error });
 
   let matches = [];
   try {
@@ -1510,13 +1522,19 @@ async function handleRun({ req, res, log, error }) {
           log,
           error,
           alerts,
-          contextFor: ({ meta, format }) => {
+          onFinalised: ({ detail, context }) => ensureSummary({ contexts, matchId, context, detail, log, error }),
+          contextFor: async ({ meta, format }) => {
             const resolved = formatFromText(format, m.title ?? "");
             // T10 and an unreadable format have no slice in the archive, so no context to build.
-            if (!["T20", "ODI", "HUNDRED", "TEST"].includes(resolved)) return null;
-            return contexts.ensure({
+            // A finished match's page often has no miniscore and so no format; the context built
+            // while it was live is still the right one.
+            if (!["T20", "ODI", "HUNDRED", "TEST"].includes(resolved)) return contexts.get(matchId);
+            const context = await contexts.ensure({
               matchId, meta, model, format: resolved, gender: genderFromTitle(m.title ?? ""), budget: contextBudget,
             });
+            // A match that was already under way when its context was first built has no preview
+            // from the fixture pass; it gets one here, without a pre-match chance to quote.
+            return ensurePreview({ contexts, matchId, context, chance: null, budget: contextBudget, log, error });
           },
         });
         summary[matchId] = result.status;
@@ -1872,6 +1890,69 @@ function contextStoreFor({ storage, log, error }) {
   return contextStore;
 }
 
+/** A preview or a summary runs to three sentences; the reasoning rungs have their own floors. */
+const SURFACE_MAX_TOKENS = 260;
+
+let surfaceWriter = async (facts, { log, error }) => {
+  const used = {};
+  const raw = await generateLine(`Facts:\n${facts}\n\nWrite the sentences.`, {
+    maxTokens: SURFACE_MAX_TOKENS, log, error, used, systemInstruction: SURFACE_SYSTEM_INSTRUCTION,
+  });
+  return raw ? { text: sanitize(stripPreamble(raw)), provider: used.provider ?? "unknown" } : null;
+};
+
+/**
+ * The fact-checker over a surface: the same batched checker the ball lines go through, with the
+ * facts as the source. The code check before it proves every name and number is IN the facts; it
+ * cannot see a right number given to the wrong side, and this can. Only an explicit PASS counts.
+ */
+let surfaceChecker = async (facts, text, { log, error }) => {
+  const { verdicts } = await verifyBatch([{ key: "surface", source: facts, line: text }], { log, error });
+  return verdicts.get("surface") === true;
+};
+
+/** Test seam: replace the writer and the checker; returns the previous pair. */
+export function __setSurfaceIo({ writer, checker }) {
+  const previous = { writer: surfaceWriter, checker: surfaceChecker };
+  if (writer) surfaceWriter = writer;
+  if (checker) surfaceChecker = checker;
+  return previous;
+}
+
+/**
+ * Write a match's preview once, when its context can support one. Costs nothing on a run where
+ * the budget is spent, the context is missing, or the preview already exists.
+ */
+export async function ensurePreview({ contexts, matchId, context, chance, budget, log, error }) {
+  if (!context || context.preview || budget.surfaces <= 0) return context;
+  const built = previewFacts(context, { chance });
+  if (!built) return context;
+  budget.surfaces -= 1;
+  const preview = await writeSurface({
+    built,
+    template: previewTemplate,
+    write: (facts) => surfaceWriter(facts, { log, error }),
+    check: (facts, text) => surfaceChecker(facts, text, { log, error }),
+  });
+  log(`Preview for ${matchId} written (${preview.provider})`);
+  return (await contexts.patch(matchId, { preview: { ...preview, at: Date.now() } }).catch(() => null)) ?? context;
+}
+
+/** Write a finished match's summary once, from its scorecard. */
+export async function ensureSummary({ contexts, matchId, context, detail, log, error }) {
+  if (!context || context.summary) return context;
+  const built = summaryFacts(detail, context);
+  if (!built) return context;
+  const summary = await writeSurface({
+    built,
+    template: summaryTemplate,
+    write: (facts) => surfaceWriter(facts, { log, error }),
+    check: (facts, text) => surfaceChecker(facts, text, { log, error }),
+  });
+  log(`Summary for ${matchId} written (${summary.provider})`);
+  return (await contexts.patch(matchId, { summary: { ...summary, at: Date.now() } }).catch(() => null)) ?? context;
+}
+
 const CONTEXT_PREFIX = "mc-";
 const CONTEXT_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -1977,6 +2058,9 @@ async function prematchEntries({ storage, model, contexts, budget, log, error })
       model,
     });
     if (result.undetermined) continue;
+    await ensurePreview({
+      contexts, matchId: fixture.id, context, chance: slice === "TEST" ? null : result.battingTeamWinProbability, budget, log, error,
+    });
     resolved++;
     entries[String(fixture.id)] = {
       team1WinProbability: result.battingTeamWinProbability,
@@ -2190,7 +2274,7 @@ async function activeViewerIds({ storage, log, error }) {
 
 // Exported for `finalise.test.js`: the finalisation wiring (which tier writes, and once) is
 // invisible in production until a match ends, which is the class of defect this file keeps finding.
-export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error, alerts = null, contextFor = null }) {
+export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error, alerts = null, contextFor = null, onFinalised = null }) {
   // Queues one push to this match's topic. [alerts] is null when FCM is unconfigured or in tests
   // that do not exercise alerts, and then nothing is sent.
   const alert = (data) => {
@@ -2322,6 +2406,9 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   // live list. Claimed only when a row was actually written: a hollow parse must be retried, not
   // recorded as the match's final word.
   const finalised = finalising && detailHasContent;
+  // The match's summary, written once on the run that ends it — the one run every match gets a
+  // scorecard on, watched or not.
+  if (finalised && onFinalised) await onFinalised({ detail, context: matchContext });
   if (finalised) {
     log(`Match ${matchId}: finalised on "${detail.status}"`);
     // Once per match: `alreadyFinalised` is persisted, so this is the one run that sends it.
@@ -2517,7 +2604,7 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
         return c && deliveryOf(c.clean, { ball: c.ball, innings: item.innings ?? fallbackInnings, ts: Number(item.timestamp) });
       })
       .filter(Boolean);
-    await situationStep({ db, matchId, detail, winProb, deliveries, terminal: finalising, log, error });
+    await situationStep({ db, matchId, detail, winProb, deliveries, terminal: finalising, log, error, meta, context: matchContext });
   }
   if (networkWriteFailures > 0) {
     reportThrottled(`commentary-write-network:${matchId}`, STEADY_STATE_REPORT_MS, "match-sync could not reach Appwrite to write commentary", {
