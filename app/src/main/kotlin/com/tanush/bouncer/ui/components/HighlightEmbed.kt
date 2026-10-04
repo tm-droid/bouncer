@@ -14,7 +14,7 @@ const val EMBED_BRIDGE_NAME = "BouncerPlayer"
 private val VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
 private val YOUTUBE_HOSTS = setOf("youtube.com", "youtube-nocookie.com")
 private const val SHORT_HOST = "youtu.be"
-private val URL_PARTS = Regex("^https?://([^/?#]+)(/[^?#]*)?(?:\\?([^#]*))?")
+private val URL_PARTS = Regex("^https?://([^/?#]+)(/[^?#]*)?(?:\\?([^#]*))?", RegexOption.IGNORE_CASE)
 
 /** The video id of a YouTube embed, watch or short link; null for anything else. */
 fun youtubeVideoId(url: String?): String? {
@@ -31,6 +31,16 @@ fun youtubeVideoId(url: String?): String? {
         else -> null
     }
     return candidate?.takeIf { VIDEO_ID.matches(it) }
+}
+
+/**
+ * Whether a URL may be handed to another app. Highlight rows are writable by anyone and a page
+ * inside the embed can navigate anywhere, so only a plain web address leaves the dialog — never
+ * `intent:`, `file:`, `content:`, `tel:` or an app's own scheme.
+ */
+fun isOpenableWebUrl(url: String?): Boolean {
+    val match = URL_PARTS.find(url?.trim().orEmpty()) ?: return false
+    return match.groupValues[1].none { it.isWhitespace() || it == '@' }
 }
 
 fun youtubeWatchUrl(videoId: String): String = "https://www.youtube.com/watch?v=$videoId"

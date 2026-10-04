@@ -36,6 +36,24 @@ class HighlightEmbedTest {
     }
 
     @Test
+    fun `only a web address may be handed to another app`() {
+        assertTrue(isOpenableWebUrl("https://www.youtube.com/watch?v=4dnu8cT6pvw"))
+        assertTrue(isOpenableWebUrl("HTTPS://streamable.com/e/abc123"))
+        listOf(
+            null,
+            "",
+            "intent://scan/#Intent;scheme=zxing;package=com.example;end",
+            "file:///data/data/com.tanush.bouncer/databases/bouncer_db",
+            "content://com.android.contacts/contacts/1",
+            "tel:+15550100",
+            "javascript:alert(1)",
+            "app://bouncer/match/1",
+            "https://",
+            "https://youtube.com@evil.example/watch",
+        ).forEach { assertTrue("must refuse $it", !isOpenableWebUrl(it)) }
+    }
+
+    @Test
     fun `the embed page identifies the app to youtube`() {
         val html = youtubeEmbedHtml("4dnu8cT6pvw")
         assertTrue(html.contains("https://www.youtube.com/embed/4dnu8cT6pvw?"))

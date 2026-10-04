@@ -255,9 +255,20 @@ private class EmbedPlayer(
 }
 
 private fun openExternally(context: Context, url: String) {
+    if (!isOpenableWebUrl(url)) {
+        sentryBreadcrumb(
+            category = "highlights",
+            message = "Refused to open a highlight link that is not a web address",
+            level = SentryLevel.WARNING,
+            data = mapOf("url" to url)
+        )
+        return
+    }
     try {
         context.startActivity(
-            Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            Intent(Intent.ACTION_VIEW, Uri.parse(url.trim()))
+                .addCategory(Intent.CATEGORY_BROWSABLE)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
     } catch (e: ActivityNotFoundException) {
         sentryBreadcrumb(
