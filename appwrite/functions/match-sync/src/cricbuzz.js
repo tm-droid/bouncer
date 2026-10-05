@@ -578,6 +578,12 @@ export function parseMatchMeta(liveHtml) {
       ? n.venue
       : null
   );
+  // Cricbuzz's own win probability. `$undefined` on every match seen so far, so the walk skips an
+  // empty one and the value is handed on raw — see `rivalSample` in evallog.js.
+  const rival = findInPayloads(payloads, (n) => {
+    const v = n.winProbability;
+    return v === undefined || v === null || v === "" || v === "$undefined" ? null : { raw: v };
+  });
   const partnership = ms?.partnerShip;
   const pRuns = numOrNull(partnership?.runs);
   const pBalls = numOrNull(partnership?.balls);
@@ -599,7 +605,15 @@ export function parseMatchMeta(liveHtml) {
     nonStrikerId: idOrNull(ms?.batsmanNonStriker?.id),
     bowlerId: idOrNull(ms?.bowlerStriker?.id),
     otherBowlerId: idOrNull(ms?.bowlerNonStriker?.id),
+    result: resultOf(header?.result),
+    rivalWinProbability: rival?.raw ?? null,
   };
+}
+
+/** `matchHeader.result`: `{resultType: "win", winningteamId: 10, …}`, and `{}` until a match ends. */
+function resultOf(r) {
+  if (!r?.resultType) return null;
+  return { type: String(r.resultType), winnerId: idOrNull(r.winningteamId ?? r.winningTeamId) };
 }
 
 /** The fields of a `parseMatchMeta` result whose presence is counted per run. */

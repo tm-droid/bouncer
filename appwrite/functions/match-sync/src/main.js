@@ -37,7 +37,8 @@ import {
   parseOverHistory,
   BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
-import { fetchForecast, sideContextFor } from "./context.js";
+import { fetchForecast, hasElevens, sideContextFor } from "./context.js";
+import { EVAL_PREFIX, EVAL_RETENTION_MS, RIVAL_MAX_SAMPLES, buildEvalLog, prematchMoved, rivalSample } from "./evallog.js";
 import { sideContext } from "./contextmath.js";
 import { createContextStore, newBudget } from "./contextstore.js";
 import { parseSquads, squadsUrl } from "./squads.js";
@@ -943,6 +944,28 @@ const lastScorecardWrite = new Map();
 // bowled while no container held the history are simply absent; the device plots the points it
 // has and never interpolates a figure it was not given.
 const overHistoryByMatch = new Map();
+// Cricbuzz's own win probability, one raw sample per over, for the match's `wpe-` file. In memory
+// only: a cold container loses the samples taken so far, which costs comparison points and nothing
+// else. Keyed by match, so two executions alive in one container do not collide.
+const rivalByMatch = new Map();
+
+/** Record Cricbuzz's figure once per over, against the over the model's own figure is stamped on. */
+function noteRival({ matchId, innings, raw, history, log }) {
+  const sample = rivalSample(raw);
+  if (!sample) return;
+  let over = null;
+  for (const e of history ?? []) if (e.innings === innings && (over === null || e.over > over)) over = e.over;
+  const samples = rivalByMatch.get(matchId) ?? [];
+  const last = samples[samples.length - 1];
+  if (last && last.innings === innings && last.over === over) return;
+  if (samples.length === 0) log(`Match ${matchId}: Cricbuzz win probability present — ${sample}`);
+  samples.push({ innings: innings ?? null, over, at: Date.now(), raw: sample });
+  if (samples.length > RIVAL_MAX_SAMPLES) samples.shift();
+  rivalByMatch.set(matchId, samples);
+  // The shape is unknown until this fires once; the event carries it so the report tool can be
+  // taught to read it without waiting for a match to finish.
+  reportThrottled("cricbuzz-winprob-seen", 6 * 60 * 60 * 1000, "Cricbuzz published a win probability", { matchId, sample }, "info");
+}
 const overHistorySeeded = new Set();
 
 // How often each `parseMatchMeta` field is actually on the live page, per run and per match state.
@@ -1407,7 +1430,10 @@ async function handleRun({ req, res, log, error }) {
   const contextBudget = newBudget();
   // Once a day, on the 04:00 UTC run.
   const clock = new Date();
-  if (clock.getUTCHours() === 4 && clock.getUTCMinutes() === 0) await pruneContexts({ storage, log, error });
+  if (clock.getUTCHours() === 4 && clock.getUTCMinutes() === 0) {
+    await pruneContexts({ storage, log, error });
+    await pruneEvalLogs({ storage, log, error });
+  }
   // Upcoming fixtures draw on a budget of their own, and a smaller one. They are scored first, so
   // on a shared budget sixty fixtures would hold every live match's context back for half an hour.
   const prematch = await prematchEntries({ storage, model, contexts, budget: { builds: 1, forecasts: 1, surfaces: 1 }, log, error });
@@ -1545,7 +1571,12 @@ async function handleRun({ req, res, log, error }) {
           log,
           error,
           alerts,
-          onFinalised: ({ detail, context }) => ensureSummary({ contexts, matchId, context, detail, log, error }),
+          onFinalised: async ({ detail, context, meta, winProb: last, overs, rival }) => {
+            await writeEvalLog({
+              storage, matchId, title: m.title ?? "", detail, context, meta, winProb: last, overs, rival, model, log, error,
+            });
+            await ensureSummary({ contexts, matchId, context, detail, log, error });
+          },
           contextFor: async ({ meta, format }) => {
             const resolved = formatFromText(format, m.title ?? "");
             // T10 and an unreadable format have no slice in the archive, so no context to build.
@@ -1988,24 +2019,82 @@ const CONTEXT_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
  * deleted, because a surprise in query semantics must not be able to become a deletion.
  */
 export async function pruneContexts({ storage, log, error, now = Date.now() }) {
+  return pruneByPrefix({
+    storage, log, error, now, prefix: CONTEXT_PREFIX, retentionMs: CONTEXT_RETENTION_MS,
+    done: (n) => `Pruned ${n} match context file(s) older than 14 days`, what: "Context",
+  });
+}
+
+/** The `wpe-` evaluation logs, kept long enough to score a few weeks of matches together. */
+export async function pruneEvalLogs({ storage, log, error, now = Date.now() }) {
+  return pruneByPrefix({
+    storage, log, error, now, prefix: EVAL_PREFIX, retentionMs: EVAL_RETENTION_MS,
+    done: (n) => `Pruned ${n} win-probability evaluation log(s) older than 60 days`, what: "Evaluation log",
+  });
+}
+
+async function pruneByPrefix({ storage, log, error, now, prefix, retentionMs, done, what }) {
   try {
-    const cutoff = new Date(now - CONTEXT_RETENTION_MS).toISOString();
+    const cutoff = new Date(now - retentionMs).toISOString();
     const page = await storage.listFiles(BUCKET_ID, [
-      Query.startsWith("$id", CONTEXT_PREFIX),
+      Query.startsWith("$id", prefix),
       Query.lessThan("$updatedAt", cutoff),
       Query.limit(100),
     ]);
     let deleted = 0;
     for (const file of page?.files ?? []) {
-      if (!String(file.$id).startsWith(CONTEXT_PREFIX) || !(file.$updatedAt < cutoff)) continue;
+      if (!String(file.$id).startsWith(prefix) || !(file.$updatedAt < cutoff)) continue;
       await storage.deleteFile(BUCKET_ID, file.$id);
       deleted++;
     }
-    if (deleted) log(`Pruned ${deleted} match context file(s) older than 14 days`);
+    if (deleted) log(done(deleted));
     return deleted;
   } catch (e) {
-    error(`Context prune failed: ${e?.message}`);
+    error(`${what} prune failed: ${e?.message}`);
     return 0;
+  }
+}
+
+/**
+ * Write a finished match's evaluation log: what the model said over by over, and who won.
+ *
+ * One Storage write per match, on the run that ends it; no database read or write. Never throws —
+ * it runs ahead of the summary and must not cost the match that.
+ */
+export async function writeEvalLog({ storage, matchId, title, detail, context, meta, winProb, overs, rival, model, log, error, now = Date.now() }) {
+  try {
+    const body = buildEvalLog({
+      matchId,
+      title,
+      format: winProb?.format ?? context?.format ?? formatFromText(detail?.situation?.matchFormat, title),
+      gender: genderFromTitle(title),
+      // Every stamped `p` belongs to the first-innings side, which is the payload's team1.
+      team1Id: winProb?.team1Id ?? detail?.team1Id ?? null,
+      otherTeamIds: [detail?.team2Id, ...(meta?.teams ?? []).map((t) => t.id)].filter((id) => id != null),
+      result: meta?.result ?? null,
+      status: detail?.status ?? null,
+      overs,
+      prematch: context?.prematch ?? null,
+      modelVersion: model?.version ?? null,
+      hadContext: !!context,
+      hadElevens: hasElevens(context),
+      rival,
+      now,
+    });
+    if (!body) return false;
+    const fileId = `${EVAL_PREFIX}${matchId}`;
+    await storage.deleteFile(BUCKET_ID, fileId).catch(() => {});
+    await storage.createFile(
+      BUCKET_ID,
+      fileId,
+      InputFile.fromBuffer(Buffer.from(JSON.stringify(body), "utf8"), `${fileId}.json`),
+      READ_ANY
+    );
+    log(`Wrote ${fileId} (${body.points.length} points, outcome ${body.outcome}${body.cricbuzz.length ? `, ${body.cricbuzz.length} Cricbuzz samples` : ""})`);
+    return true;
+  } catch (e) {
+    error(`Failed to write the evaluation log for ${matchId}: ${e?.message}`);
+    return false;
   }
 }
 
@@ -2067,7 +2156,7 @@ async function prematchEntries({ storage, model, contexts, budget, log, error })
 
     // The fixture's context — ground, record, forecast — built a couple a run until every
     // fixture has one. A fixture without one yet is scored on team terms alone.
-    const context = await contexts
+    let context = await contexts
       .ensure({ matchId: fixture.id, model, format: slice, gender, budget, live: false })
       .catch(() => null);
     const firstNamed = context?.teams?.find((t) => t.key === stripWomenSuffix(sides[0]));
@@ -2081,6 +2170,13 @@ async function prematchEntries({ storage, model, contexts, budget, log, error })
       model,
     });
     if (result.undetermined) continue;
+    // Kept on the context so the match's evaluation log can carry it: by the time a match ends,
+    // the fixture pass that produced this number is long gone. Stored by team id, and rewritten
+    // only when it has really moved (the elevens arriving, a refit).
+    if (slice !== "TEST" && firstNamed?.id != null && prematchMoved(context.prematch, firstNamed.id, result.battingTeamWinProbability)) {
+      const prematch = { teamId: String(firstNamed.id), p: Math.round(result.battingTeamWinProbability * 1000) / 1000, at: Date.now() };
+      context = (await contexts.patch(fixture.id, { prematch }).catch(() => null)) ?? context;
+    }
     await ensurePreview({
       contexts, matchId: fixture.id, context, chance: slice === "TEST" ? null : result.battingTeamWinProbability, budget, log, error,
     });
@@ -2376,6 +2472,7 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   if (winProb && winProb.drawProbability == null) {
     stampProbability(overHistoryByMatch.get(matchId), detail.situation?.inningsId, winProb.team1WinProbability);
   }
+  noteRival({ matchId, innings: detail.situation?.inningsId, raw: meta.rivalWinProbability, history: overHistoryByMatch.get(matchId), log });
   // Carried in the detail payload as well as the aggregate file, so the detail screen updates on
   // the existing realtime channel instead of waiting for a file download. `payload` is an opaque
   // JSON string column and Gson ignores unknown keys, so this needs no Appwrite schema change and
@@ -2438,7 +2535,13 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   const finalised = finalising && detailHasContent;
   // The match's summary, written once on the run that ends it — the one run every match gets a
   // scorecard on, watched or not.
-  if (finalised && onFinalised) await onFinalised({ detail, context: matchContext });
+  if (finalised && onFinalised) {
+    await onFinalised({
+      detail, context: matchContext, meta, winProb,
+      overs: overHistoryByMatch.get(matchId) ?? [], rival: rivalByMatch.get(matchId) ?? [],
+    });
+  }
+  if (finalised) rivalByMatch.delete(matchId);
   if (finalised) {
     log(`Match ${matchId}: finalised on "${detail.status}"`);
     // Once per match: `alreadyFinalised` is persisted, so this is the one run that sends it.
