@@ -201,3 +201,25 @@ test("the run that ends a match hands its result and over history to the finalis
     globalThis.fetch = realFetch;
   }
 });
+
+test("an ended match is taken from the recent list once, and only if it was followed live", async () => {
+  const { endedMatches, nextSlowState, finalKey } = await import("../src/main.js");
+  const recent = [{ id: 1, title: "A vs B" }, { id: 2, title: "C vs D" }, { id: 3, title: "E vs F" }, { id: 4, title: "G vs H" }];
+  const started = { 1: 10, 2: 10, 4: 10 };
+  const state = { [finalKey("2")]: 50 };
+  // 2 is already finalised; 3 was never seen live.
+  assert.deepEqual(endedMatches({ recent, started, state, liveIds: new Set() }).map((m) => m.id), [1, 4]);
+  assert.deepEqual(endedMatches({ recent, started, state, liveIds: new Set(), limit: 1 }).map((m) => m.id), [1]);
+  // Still on the live list this run: it will be synced as live, not twice.
+  assert.deepEqual(endedMatches({ recent, started, state, liveIds: new Set(["1"]) }).map((m) => m.id), [4]);
+  // No recent list or no record of what was live: nothing is guessed.
+  assert.deepEqual(endedMatches({ recent: null, started, state, liveIds: new Set() }), []);
+  assert.deepEqual(endedMatches({ recent, started: null, state, liveIds: new Set() }), []);
+
+  // The marker outlives the live list for as long as the match is on the recent one, or the next
+  // run would finalise it again.
+  const kept = nextSlowState({ state, processed: [], liveIds: new Set(), now: 99, finalised: ["1"], recentIds: new Set(["1", "2"]) });
+  assert.deepEqual(kept, { [finalKey("2")]: 50, [finalKey("1")]: 99 });
+  const gone = nextSlowState({ state, processed: [], liveIds: new Set(), now: 99, recentIds: new Set(["9"]) });
+  assert.deepEqual(gone, {});
+});

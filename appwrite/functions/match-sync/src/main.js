@@ -1136,9 +1136,9 @@ export function selectSlowTier({ live, viewed, state, now, cooldownUntil = 0 }) 
  *
  * It rides in the same flat `{ key: epochMs }` map as the slow-tier clock rather than a nested
  * object, so `selectSlowTier` — which only ever reads `state[<bare id>]` — cannot see it and needs
- * no change. The prune below compares the id BEFORE the suffix, so the marker lives exactly as long
- * as the match stays in `live-matches.json`: long enough to stop the finalisation repeating on
- * every run and on every cold container, and gone once the match leaves and can never sync again.
+ * no change. The prune below compares the id BEFORE the suffix, and keeps a marker for as long as
+ * the match is on the recent list — which is where `endedMatches` finds a match to finalise, so a
+ * marker that outlived the list would be dead weight and one that did not would finalise it again.
  */
 const FINAL_SUFFIX = ":final";
 
@@ -1150,16 +1150,45 @@ export function isFinalised(state, matchId) {
 }
 
 /** The slow-tier clock, stamped for the matches that just ran and pruned to those still live. */
-export function nextSlowState({ state, processed, liveIds, now, finalised = [] }) {
+export function nextSlowState({ state, processed, liveIds, now, finalised = [], recentIds = null }) {
   const next = {};
   for (const [key, ts] of Object.entries(state ?? {})) {
-    const id = key.endsWith(FINAL_SUFFIX) ? key.slice(0, -FINAL_SUFFIX.length) : key;
-    if (liveIds.has(id) && typeof ts === "number") next[key] = ts;
+    const final = key.endsWith(FINAL_SUFFIX);
+    const id = final ? key.slice(0, -FINAL_SUFFIX.length) : key;
+    const kept = liveIds.has(id) || (final && recentIds !== null && recentIds.has(id));
+    if (kept && typeof ts === "number") next[key] = ts;
   }
   for (const id of processed) next[id] = now;
   for (const id of finalised) next[finalKey(id)] = now;
   return next;
 }
+
+/** Finished matches given their final run per execution: each costs a live page and a scorecard. */
+const FINALISE_PER_RUN = 2;
+
+/**
+ * Matches that have ended and have not had their final run.
+ *
+ * The live list is classified on Cricbuzz's `state`, so a match leaves it the moment it completes
+ * and `syncMatch` never saw a terminal status: no final detail or scorecard row, no result alert, no
+ * summary. Every finished match's rows froze wherever the last live run left them — 174057 read
+ * "need 87 runs in 56 balls" a day after it was won. A finished match is on the RECENT list, so it
+ * is taken from there for one more run. Only a match this function saw live ([started], the poll's
+ * six-day record) qualifies: one that was already over when the poll first looked has no rows to
+ * finish.
+ */
+export function endedMatches({ recent, started, state, liveIds, limit = FINALISE_PER_RUN }) {
+  if (!Array.isArray(recent) || !started) return [];
+  return recent
+    .filter((m) => m?.id && started[String(m.id)] != null && !liveIds.has(String(m.id)) && !isFinalised(state, String(m.id)))
+    .slice(0, limit);
+}
+
+// When each match was last on the live list, per container. A result alert is sent only for a
+// match that was live minutes ago: a match finalised late — a backlog of them after a deploy, or
+// the first run of a cold container — ended long before, and its alert would be stale news.
+const lastSeenLiveAt = new Map();
+const RESULT_ALERT_MAX_AGE_MS = 10 * 60 * 1000;
 
 export function classifyCommentaryItem(item) {
   const clean = sanitize(item.commText);
@@ -1459,6 +1488,22 @@ async function handleRun({ req, res, log, error }) {
     return res.json({ skipped: true, reason: "no_live_matches", prematch: Object.keys(prematch).length }, 200);
   }
 
+  // 1a. Matches that ended since the last run get one more sync — their final one. They are added
+  // to this run's set and to nothing that is published.
+  const slowState = await readSlowState({ storage, error });
+  const recent = polled?.lists?.recent?.matches ?? null;
+  const startMs = Date.now();
+  for (const m of matches) if (m?.id) lastSeenLiveAt.set(String(m.id), startMs);
+  for (const [id, at] of lastSeenLiveAt) if (startMs - at > 60 * 60 * 1000) lastSeenLiveAt.delete(id);
+  const ending = endedMatches({
+    recent, started: polled?.started, state: slowState, liveIds: new Set(matches.map((m) => String(m?.id))),
+  });
+  const endingIds = new Set(ending.map((m) => String(m.id)));
+  if (ending.length > 0) {
+    log(`${ending.length} ended match(es) due their final run: ${[...endingIds].join(",")}`);
+    matches = [...matches, ...ending];
+  }
+
   // 1b. Viewer presence gates the EXPENSIVE work only.
   //
   // Commentary generation costs an LLM call per ball, so it stays restricted to matches someone
@@ -1510,7 +1555,6 @@ async function handleRun({ req, res, log, error }) {
 
   // 1c. Slow tier: live, unviewed, and due. Chosen before any match runs, so the fast tier's
   // worst-case read cost is reserved rather than raced for.
-  const slowState = await readSlowState({ storage, error });
   const slowTier = new Set(
     selectSlowTier({
       live: allLive,
@@ -1570,7 +1614,8 @@ async function handleRun({ req, res, log, error }) {
           model,
           log,
           error,
-          alerts,
+          // A match finalised long after it ended keeps its rows and loses its alerts.
+          alerts: endingIds.has(matchId) && startMs - (lastSeenLiveAt.get(matchId) ?? 0) > RESULT_ALERT_MAX_AGE_MS ? null : alerts,
           onFinalised: async ({ detail, context, meta, winProb: last, overs, rival }) => {
             await writeEvalLog({
               storage, matchId, title: m.title ?? "", detail, context, meta, winProb: last, overs, rival, model, log, error,
@@ -1593,7 +1638,8 @@ async function handleRun({ req, res, log, error }) {
         });
         summary[matchId] = result.status;
         if (result.finalised) finalisedNow.add(matchId);
-        if (result.winProb) {
+        // A finished match has no probability to publish; the lists show its result.
+        if (result.winProb && !endingIds.has(matchId)) {
           // The factors stay in the detail payload. This file is downloaded for every match list,
           // and no list shows them.
           const { factors: _factors, ...forList } = result.winProb;
@@ -1689,6 +1735,11 @@ async function handleRun({ req, res, log, error }) {
       liveIds,
       now: Date.now(),
       finalised: finalisedNow,
+      // With no recent list this run, every marker is kept: dropping one would finalise its match
+      // a second time when the list came back.
+      recentIds: recent
+        ? new Set(recent.map((m) => String(m?.id)))
+        : new Set(Object.keys(slowState).filter((k) => k.endsWith(FINAL_SUFFIX)).map((k) => k.slice(0, -FINAL_SUFFIX.length))),
     }),
     previous: slowState,
     log,
@@ -2469,7 +2520,8 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   // The device refetches `mc-{matchId}` only when this number moves.
   if (matchContext) detail.contextRev = matchContext.rev;
   // Two outcomes only: a Test's "team1 gained" is not one number, and its chart is the device's.
-  if (winProb && winProb.drawProbability == null) {
+  // Not on the run that ends the match: a figure computed with the result in hand is not a forecast.
+  if (!finalising && winProb && winProb.drawProbability == null) {
     stampProbability(overHistoryByMatch.get(matchId), detail.situation?.inningsId, winProb.team1WinProbability);
   }
   noteRival({ matchId, innings: detail.situation?.inningsId, raw: meta.rivalWinProbability, history: overHistoryByMatch.get(matchId), log });

@@ -186,7 +186,9 @@ async function fromStorage(since) {
     for (const file of page.files) {
       if (!String(file.$id).startsWith("wpe-")) continue;
       const raw = await storage.getFileDownload(bucket, file.$id);
-      logs.push(JSON.parse(Buffer.from(raw).toString("utf8")));
+      // node-appwrite hands back an already-parsed object for a JSON file, and bytes otherwise.
+      const bytes = raw instanceof ArrayBuffer || ArrayBuffer.isView(raw);
+      logs.push(bytes ? JSON.parse(Buffer.from(raw).toString("utf8")) : raw);
     }
     if (page.files.length < 100) break;
     cursor = page.files[page.files.length - 1].$id;

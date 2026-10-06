@@ -121,8 +121,9 @@ const MAX_REMEMBERED_FORMATS = 400;
  * are still written — the widgets, Android Auto, `ScorePollingWorker` and the Upcoming fallback
  * read them.
  *
- * @returns `{ results, lists }` — per-type outcome, and each type's parsed data (`null` for a type
- *   whose fetch failed this run, in which case the caller reads the file instead).
+ * @returns `{ results, lists, started }` — per-type outcome, each type's parsed data (`null` for a
+ *   type whose fetch failed this run, in which case the caller reads the file instead), and the ids
+ *   seen live.
  */
 export async function runPoll({ storage, log, error }) {
 
@@ -284,7 +285,9 @@ export async function runPoll({ storage, log, error }) {
     const v = settled[i].status === "fulfilled" ? settled[i].value : null;
     lists[t] = v && !v.keptPrevious ? v.data : null;
   });
-  return { results, lists };
+  // `started` is every match this function has seen live in the last six days. match-sync uses it
+  // to tell a match it followed from one that was already over when it first looked.
+  return { results, lists, started: nextState.startedIds ?? null };
 }
 
 const SERIES_REFRESH_MS = 24 * 3600 * 1000;

@@ -567,6 +567,21 @@ nothing parses them**: match-sync stores Cricbuzz's raw value once per over in t
 every match; `hs-consumer-api` is 403). The report compares only on points where both sides
 published, and its `cb`/`ci` columns stay empty until a real sample has been read.
 
+**A finished match is finalised from the recent list, because it is never on the live one.**
+The final run — last detail and scorecard rows, the result alert, the summary, the `wpe-` log —
+fires when `syncMatch` sees a terminal status, and that was written when an ended match lingered in
+`live-matches`. `belongsOn` (`poll.js`) classifies on Cricbuzz's `state`, so a match moves to
+`recent-matches` the moment it completes and `syncMatch` never saw it again: over 1,100 runs on
+2026-10-05/06 not one match was finalised, and every finished match's rows were frozen wherever the
+last live run left them (174057 read "need 87 runs in 56 balls" a day after it was won; 173113 read
+"Innings Break"). `endedMatches` (`main.js`) now takes up to two a run from the recent list — only
+ids in the poll's `startedIds`, so a match that was already over when first seen is left alone —
+and adds them to that run's set and to nothing published. The `:final` marker lives as long as the
+match is on the recent list, and every marker is kept on a run with no recent list; either way a
+dropped marker is a second finalisation. A match finalised more than ten minutes after it was last
+seen live sends no alert, and the finalising run does not stamp a probability. **Check a finished
+match's `match-live-detail` status after any change to which list a match is on.**
+
 **The head-to-head card never rendered, and four cards showed figures nothing produced.**
 `H2HRepository` lowercased the pair it looked up and compared it with keys the trainer writes in
 original case; none of the 1,732 keys in the live file is lowercase, so the lookup never matched.
