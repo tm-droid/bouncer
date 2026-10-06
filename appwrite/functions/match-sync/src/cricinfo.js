@@ -285,8 +285,12 @@ export function promptSafe(value, max = MAX_BALL_TEXT) {
   return PROSE_RE.test(out) ? out : "";
 }
 const MAX_SAFE_ROUNDS = 6;
-// Letters and their marks, digits, the space, and the punctuation of a plain sentence.
-const PROSE_CLASS = "\\p{L}\\p{M}\\p{Nd} .,'’\"!?()/%&+;\\-–—";
+// Latin letters, plain and accented; the ten digits; the space; the punctuation of a plain
+// sentence. Named ranges, not Unicode categories: `\p{L}` is every script there is, which lets in
+// a letter that only looks like another, and `\p{M}` is marks that stack without limit. Cricinfo
+// writes in English, and a name outside these ranges costs that delivery its second report.
+const LATIN = "A-Za-z\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u024F";
+const PROSE_CLASS = `${LATIN}0-9 .,'’"!?()/%&+;\\-–—`;
 const PROSE_RE = new RegExp(`^[${PROSE_CLASS}]*$`, "u");
 const NOT_PROSE_RE = new RegExp(`[^${PROSE_CLASS}]`, "gu");
 
@@ -295,10 +299,10 @@ const plainText = (items) =>
 
 // A header is two people's names and the word between them; a dismissal is a scorecard entry.
 // Neither is prose, so each must BE its shape, exactly as it arrived: nothing is cleaned into one.
-const HEADER_RE = /^[\p{L}][\p{L}\p{M} .'’-]{0,48} to [\p{L}][\p{L}\p{M} .'’-]{0,48}$/u;
-const DISMISSAL_RE = /^[\p{L}†(][\p{L}\p{M}\p{Nd} †()&.,'’/-]{0,78}$/u;
+const HEADER_RE = new RegExp(`^[${LATIN}][${LATIN} .'’-]{0,48} to [${LATIN}][${LATIN} .'’-]{0,48}$`, "u");
+const DISMISSAL_RE = new RegExp(`^[${LATIN}†(][${LATIN}0-9 †()&.,'’/-]{0,78}$`, "u");
 const HOW_RE = /^[a-z][a-z ]{1,30}$/;
-const TEAM_CODE_RE = /^[\p{L}\p{Nd}-]{1,10}$/u;
+const TEAM_CODE_RE = /^[A-Za-z0-9-]{1,10}$/;
 const shaped = (value, shape) => {
   if (typeof value !== "string" || value.length > 200) return null;
   const v = value.normalize("NFKC").trim();

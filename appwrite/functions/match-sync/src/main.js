@@ -338,6 +338,15 @@ export function keepsScorerText(line) {
   return SCORER_HEADER_RE.test(head) && SCORER_OUTCOME_RE.test(outcomeClause(body));
 }
 
+// A commentary line has no address in it. The sources are third parties' text, and this is the
+// one thing a line could carry that a reader could act on.
+const LINK_RE = /\b(?:https?:\/\/|www\.)|\b[a-z0-9-]{2,}\.(?:com|net|org|io|co|in|uk|app|xyz|bet|info|link|ly|me|tv)\b/i;
+
+/** True when [line] carries a web address. */
+export function carriesLink(line) {
+  return LINK_RE.test(String(line ?? ""));
+}
+
 /** One writer call and one checker call. Returns a result for EVERY item, plus the writer rung. */
 async function rewriteAndCheck(items, exclude) {
   const { log, error } = items[0];
@@ -355,6 +364,10 @@ async function rewriteAndCheck(items, exclude) {
     if (lines.has(t.key) && (isEcho(lines.get(t.key), t.text) || keepsScorerText(lines.get(t.key)))) {
       error?.(`[ECHO] ${t.key}: ${used.provider ?? "unknown"} returned the source text unchanged`);
       attempts.push(`${used.provider ?? "unknown"}: echoed the source`);
+      lines.delete(t.key);
+    } else if (lines.has(t.key) && carriesLink(lines.get(t.key))) {
+      error?.(`[LINK] ${t.key}: ${used.provider ?? "unknown"} wrote a web address into a line`);
+      attempts.push(`${used.provider ?? "unknown"}: wrote a web address`);
       lines.delete(t.key);
     }
   }
