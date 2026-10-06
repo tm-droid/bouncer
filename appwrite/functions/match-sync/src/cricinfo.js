@@ -20,19 +20,62 @@ const HEADERS = {
   "Accept-Language": "en",
 };
 
-/** Every distinct match object in the page data: any node that owns `liveInningPredictions`. */
+/** A page far larger than the real ones (600-950 KB) is not read to the end, let alone parsed. */
+const MAX_PAGE_BYTES = 4_000_000;
+// The real page is about 300,000 nodes, nested under twenty deep.
+const MAX_WALK_NODES = 3_000_000;
+const MAX_WALK_DEPTH = 64;
+const MAX_LISTED = 80;
+
+/**
+ * A response body as text, or null once it passes [maxBytes]. The cap is applied while reading:
+ * checked after `resp.text()` it would bound the parse and not the memory, and the length is a
+ * third party's to choose.
+ */
+export async function readBounded(resp, maxBytes = MAX_PAGE_BYTES) {
+  if (Number(resp.headers?.get?.("content-length")) > maxBytes) {
+    await resp.body?.cancel?.().catch(() => {});
+    return null;
+  }
+  if (!resp.body?.getReader) {
+    const body = await resp.text();
+    return body.length > maxBytes ? null : body;
+  }
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let body = "";
+  let bytes = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    if (bytes > maxBytes) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    body += decoder.decode(value, { stream: true });
+  }
+  return body + decoder.decode();
+}
+
+/**
+ * Every distinct match object in the page data: any node that owns `liveInningPredictions`.
+ * The walk stops at a node count, a depth and a match count, each checked as it goes — the
+ * document's shape is a third party's, and a bound applied to the result would come after the work.
+ */
 export function matchesIn(nextData) {
   const byId = new Map();
-  const walk = (node) => {
-    if (!node || typeof node !== "object") return;
+  let nodes = 0;
+  const walk = (node, depth) => {
+    if (!node || typeof node !== "object" || depth > MAX_WALK_DEPTH || ++nodes > MAX_WALK_NODES || byId.size >= MAX_LISTED) return;
     if (Array.isArray(node)) {
-      node.forEach(walk);
+      for (const child of node) walk(child, depth + 1);
       return;
     }
     if (Object.hasOwn(node, "liveInningPredictions") && node.objectId != null) byId.set(node.objectId, node);
-    for (const k of Object.keys(node)) walk(node[k]);
+    for (const k of Object.keys(node)) walk(node[k], depth + 1);
   };
-  walk(nextData);
+  walk(nextData, 0);
   return [...byId.values()];
 }
 
@@ -83,10 +126,10 @@ export function parseCricinfoPage(html, at) {
 export async function fetchCricinfoPredictions({ fetchImpl = fetch, now = Date.now(), timeoutMs = 8_000 } = {}) {
   try {
     const resp = await fetchImpl(CRICINFO_LIVE_URL, { headers: HEADERS, signal: AbortSignal.timeout(timeoutMs) });
-    const body = await resp.text();
+    const body = await readBounded(resp);
+    if (body === null) return { ok: false, reason: "page too large", status: resp.status, bytes: MAX_PAGE_BYTES, rows: [] };
     const base = { status: resp.status, bytes: body.length };
     if (resp.status !== 200) return { ok: false, reason: `http ${resp.status}`, ...base, rows: [] };
-    if (body.length > MAX_PAGE_BYTES) return { ok: false, reason: "page too large", ...base, rows: [] };
     const parsed = parseCricinfoPage(body, now);
     if (!parsed) return { ok: false, reason: "no data block", ...base, rows: [] };
     return { ok: true, ...base, ...parsed };
@@ -95,7 +138,6 @@ export async function fetchCricinfoPredictions({ fetchImpl = fetch, now = Date.n
   }
 }
 
-const MAX_LISTED = 80;
 const SLUG = /^[a-z0-9-]{1,120}$/;
 const DIGITS = /^\d{1,12}$/;
 
@@ -193,17 +235,45 @@ const MAX_BALL_TEXT = 500;
 const MAX_BALLS_PER_PAGE = 40;
 const MAX_OVERS_PER_INNINGS = 200;
 
-const plainText = (items) =>
-  (Array.isArray(items) ? items : [])
-    .map((i) => (typeof i?.html === "string" ? i.html : ""))
-    .join(" ")
+/**
+ * Third-party text made safe to stand inside a prompt, as DATA.
+ *
+ * This text is sent to the writer and the checker beside other deliveries, in a prompt whose
+ * structure is line breaks, `[key]:` tags and `[#n]` / `Source:` / `Commentary:` labels, and whose
+ * notes are delimited by square brackets. So nothing here may carry any of that: it comes out as
+ * one line, with no bracket, brace, angle bracket or backtick, no control or invisible character,
+ * and no label a prompt uses. What a model then makes of the words is the checker's to judge; what
+ * this guarantees is that the words cannot pose as another delivery, another verdict or a note.
+ */
+export function promptSafe(value, max = MAX_BALL_TEXT) {
+  return String(value ?? "")
+    // Bounded before the passes below, not after: each is linear, but in a third party's length.
+    .slice(0, 8 * max)
     .replace(/<[^>]*>/g, " ")
     .replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").replace(/&#39;|&rsquo;/g, "'").replace(/&quot;/g, '"')
-    // Square brackets delimit the notes appended to a source line; the text must not close one.
-    .replace(/\[/g, "(").replace(/\]/g, ")")
+    .normalize("NFKC")
+    // Controls, line and paragraph separators, zero-width and bidirectional marks.
+    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g, " ")
+    .replace(/[\[{<]/g, "(").replace(/[\]}>]/g, ")")
+    .replace(/[`|#]/g, " ")
+    .replace(/\b(source|commentary|second report|scorer's note|system|assistant|user)\s*:/gi, "$1 -")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, MAX_BALL_TEXT);
+    .slice(0, max);
+}
+
+const plainText = (items) =>
+  promptSafe((Array.isArray(items) ? items : []).slice(0, 6).map((i) => (typeof i?.html === "string" ? i.html.slice(0, 4 * MAX_BALL_TEXT) : "")).join(" "));
+
+// A header is two people's names and the word between them; a dismissal is a scorecard entry.
+// Neither is prose, so each is held to its shape rather than merely cleaned.
+const HEADER_RE = /^[\p{L}][\p{L} .'’-]{0,48} to [\p{L}][\p{L} .'’-]{0,48}$/u;
+const DISMISSAL_RE = /^[\p{L}†(][\p{L}\d †()&.,'’/-]{0,78}$/u;
+const HOW_RE = /^[a-z][a-z ]{1,30}$/;
+const shaped = (value, shape, max) => {
+  const v = promptSafe(value, max);
+  return shape.test(v) ? v : null;
+};
 
 const int = (v) => (Number.isInteger(v) ? v : null);
 
@@ -215,19 +285,22 @@ export function ballOf(comment) {
   if (!innings || innings < 1 || !over || over < 1 || !ballNumber || ballNumber < 1 || ballNumber > 9) return null;
   const runs = int(comment.totalRuns);
   if (runs === null || runs < 0 || runs > 12) return null;
+  // A delivery whose header is not two names is not one this can join or write from.
+  const title = shaped(comment.title, HEADER_RE, 100);
+  if (!title) return null;
   const extra = comment.wides > 0 ? "WIDE" : comment.noballs > 0 ? "NOBALL" : comment.legbyes > 0 ? "LEGBYE" : comment.byes > 0 ? "BYE" : null;
   return {
     innings,
     // Built from the two integers, not from `oversActual`: a float is not a label.
     label: `${over - 1}.${ballNumber}`,
-    title: text(comment.title),
+    title,
     text: plainText(comment.commentTextItems),
     runs,
     four: comment.isFour === true,
     six: comment.isSix === true,
     wicket: comment.isWicket === true,
-    dismissal: comment.isWicket === true ? text(comment.dismissalText?.long) : null,
-    how: comment.isWicket === true ? text(comment.dismissalText?.short) : null,
+    dismissal: comment.isWicket === true ? shaped(comment.dismissalText?.long, DISMISSAL_RE, 80) : null,
+    how: comment.isWicket === true ? shaped(comment.dismissalText?.short, HOW_RE, 32) : null,
     extra,
     at: Number.isFinite(Date.parse(comment.timestamp ?? "")) ? Date.parse(comment.timestamp) : null,
   };
@@ -266,7 +339,7 @@ export function parseCricinfoMatchPage(html) {
   for (const inn of (Array.isArray(content.innings) ? content.innings : []).slice(0, 4)) {
     const innings = int(inn?.inningNumber);
     if (!innings || innings < 1) continue;
-    const team = text(inn.team?.abbreviation);
+    const team = shaped(inn.team?.abbreviation, /^[\p{L}\d-]{1,10}$/u, 10);
     for (const o of (Array.isArray(inn.inningOvers) ? inn.inningOvers : []).slice(0, MAX_OVERS_PER_INNINGS)) {
       const point = overPoint(o, innings, team);
       if (point) overs.push(point);
@@ -321,6 +394,8 @@ export function asCricbuzzLine(ball) {
   return `${ball.title}, ${outcome}${ball.text ? `, ${ball.text}` : ""}`;
 }
 
+const MAX_GAP_OVERS = 4;
+
 /** The legal ball labels a hole spans: `after` and `before` are the labels either side of it. */
 export function labelsInGap(after, before, ballsPerOver = 6) {
   const a = String(after ?? "").match(/^(\d{1,3})\.(\d)$/);
@@ -334,7 +409,10 @@ export function labelsInGap(after, before, ballsPerOver = 6) {
     for (let n = fromBall + 1; n < toBall; n++) out.push(`${toOver}.${n}`);
     return out;
   }
-  for (let o = fromOver + 1; o < toOver && out.length < 60; o++) for (let n = 1; n <= ballsPerOver; n++) out.push(`${o}.${n}`);
+  // A hole wider than the window Cricinfo's page holds cannot be filled from it, and the two
+  // labels are a third party's: the span is checked before anything is built from it.
+  if (toOver < fromOver || toOver - fromOver > MAX_GAP_OVERS) return [];
+  for (let o = fromOver + 1; o < toOver; o++) for (let n = 1; n <= ballsPerOver; n++) out.push(`${o}.${n}`);
   for (let n = 1; n < toBall; n++) out.push(`${toOver}.${n}`);
   return out;
 }
@@ -345,10 +423,10 @@ export async function fetchCricinfoMatch(match, { fetchImpl = fetch, timeoutMs =
   if (!url) return { ok: false, reason: "no usable slug", status: null, bytes: 0 };
   try {
     const resp = await fetchImpl(url, { headers: HEADERS, signal: AbortSignal.timeout(timeoutMs) });
-    const body = await resp.text();
+    const body = await readBounded(resp);
+    if (body === null) return { ok: false, reason: "page too large", status: resp.status, bytes: MAX_PAGE_BYTES };
     const base = { status: resp.status, bytes: body.length };
     if (resp.status !== 200) return { ok: false, reason: `http ${resp.status}`, ...base };
-    if (body.length > MAX_PAGE_BYTES) return { ok: false, reason: "page too large", ...base };
     const parsed = parseCricinfoMatchPage(body);
     if (!parsed) return { ok: false, reason: "no data block", ...base };
     return { ok: true, ...base, ...parsed };
@@ -365,7 +443,7 @@ export async function probeCricinfoMatchPages({ fetchImpl = fetch, log = () => {
   const results = [];
   const get = async (url) => {
     const resp = await fetchImpl(url, { headers: HEADERS, signal: AbortSignal.timeout(timeoutMs) });
-    return { status: resp.status, body: await resp.text() };
+    return { status: resp.status, body: (await readBounded(resp)) ?? "" };
   };
   try {
     const live = await get(CRICINFO_LIVE_URL);
@@ -400,8 +478,6 @@ export async function probeCricinfoMatchPages({ fetchImpl = fetch, log = () => {
 
 /** Matches stored per poll. Cricinfo forecasts a handful at once; a page claiming more is not trusted. */
 export const CRICINFO_MAX_ROWS_PER_POLL = 12;
-/** A page far larger than the real one (~600 KB) is not parsed. */
-const MAX_PAGE_BYTES = 4_000_000;
 const MAX_TEXT = 120;
 
 const text = (v) => (typeof v === "string" ? v.slice(0, MAX_TEXT) : null);
