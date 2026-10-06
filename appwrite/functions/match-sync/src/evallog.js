@@ -51,6 +51,18 @@ export function rivalSample(raw) {
   return text ? text.slice(0, RIVAL_RAW_MAX_CHARS) : null;
 }
 
+/** A live match's rival samples, kept in Storage so a container restart mid-match loses none. */
+export const RIVAL_PREFIX = "wpr-";
+
+/** Stored and in-memory samples as one list: one per innings and over, oldest first, bounded. */
+export function mergeRival(stored, memory) {
+  const byOver = new Map();
+  for (const s of [...(Array.isArray(stored) ? stored : []), ...(Array.isArray(memory) ? memory : [])]) {
+    if (s && typeof s.raw === "string") byOver.set(`${s.innings}|${s.over}`, s);
+  }
+  return [...byOver.values()].sort((a, b) => (a.at ?? 0) - (b.at ?? 0)).slice(-RIVAL_MAX_SAMPLES);
+}
+
 /**
  * The file for one finished match, or null when there is nothing in it to score.
  *

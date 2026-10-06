@@ -38,7 +38,7 @@ import {
   BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
 import { fetchForecast, hasElevens, sideContextFor } from "./context.js";
-import { EVAL_PREFIX, EVAL_RETENTION_MS, RIVAL_MAX_SAMPLES, buildEvalLog, prematchMoved, rivalSample } from "./evallog.js";
+import { EVAL_PREFIX, EVAL_RETENTION_MS, RIVAL_PREFIX, buildEvalLog, mergeRival, prematchMoved, rivalSample } from "./evallog.js";
 import { sideContext } from "./contextmath.js";
 import { createContextStore, newBudget } from "./contextstore.js";
 import { parseSquads, squadsUrl } from "./squads.js";
@@ -944,24 +944,34 @@ const lastScorecardWrite = new Map();
 // bowled while no container held the history are simply absent; the device plots the points it
 // has and never interpolates a figure it was not given.
 const overHistoryByMatch = new Map();
-// Cricbuzz's own win probability, one raw sample per over, for the match's `wpe-` file. In memory
-// only: a cold container loses the samples taken so far, which costs comparison points and nothing
-// else. Keyed by match, so two executions alive in one container do not collide.
+// Cricbuzz's own win probability, one raw sample per over, for the match's `wpe-` file. Mirrored
+// to `wpr-{matchId}` as each sample arrives: a match runs for hours and a container does not, and
+// held in memory alone a restart lost every sample taken so far. Keyed by match, so two executions
+// alive in one container do not collide.
 const rivalByMatch = new Map();
 
-/** Record Cricbuzz's figure once per over, against the over the model's own figure is stamped on. */
-function noteRival({ matchId, innings, raw, history, log }) {
+/**
+ * Record Cricbuzz's figure once per over, against the over the model's own figure is stamped on.
+ * [store] is `{ load, save }` over the match's Storage file; `load` answers null when the file
+ * could not be read, and then nothing is recorded this run rather than saved over what is there.
+ */
+async function noteRival({ matchId, innings, raw, history, log, store }) {
   const sample = rivalSample(raw);
   if (!sample) return;
+  if (!rivalByMatch.has(matchId) && store) {
+    const stored = await store.load(matchId);
+    if (stored === null) return;
+    rivalByMatch.set(matchId, mergeRival(stored, []));
+  }
   let over = null;
   for (const e of history ?? []) if (e.innings === innings && (over === null || e.over > over)) over = e.over;
   const samples = rivalByMatch.get(matchId) ?? [];
   const last = samples[samples.length - 1];
   if (last && last.innings === innings && last.over === over) return;
   if (samples.length === 0) log(`Match ${matchId}: Cricbuzz win probability present — ${sample}`);
-  samples.push({ innings: innings ?? null, over, at: Date.now(), raw: sample });
-  if (samples.length > RIVAL_MAX_SAMPLES) samples.shift();
-  rivalByMatch.set(matchId, samples);
+  const next = mergeRival(samples, [{ innings: innings ?? null, over, at: Date.now(), raw: sample }]);
+  rivalByMatch.set(matchId, next);
+  if (store) await store.save(matchId, next);
   // The shape is unknown until this fires once; the event carries it so the report tool can be
   // taught to read it without waiting for a match to finish.
   reportThrottled("cricbuzz-winprob-seen", 6 * 60 * 60 * 1000, "Cricbuzz published a win probability", { matchId, sample }, "info");
@@ -1462,6 +1472,11 @@ async function handleRun({ req, res, log, error }) {
   if (clock.getUTCHours() === 4 && clock.getUTCMinutes() === 0) {
     await pruneContexts({ storage, log, error });
     await pruneEvalLogs({ storage, log, error });
+    // Rival samples whose match never produced a log; the rest are deleted when it is written.
+    await pruneByPrefix({
+      storage, log, error, now: Date.now(), prefix: RIVAL_PREFIX, retentionMs: EVAL_RETENTION_MS,
+      done: (n) => `Pruned ${n} orphaned rival sample file(s)`, what: "Rival sample",
+    });
   }
   // Upcoming fixtures draw on a budget of their own, and a smaller one. They are scored first, so
   // on a shared budget sixty fixtures would hold every live match's context back for half an hour.
@@ -1598,6 +1613,7 @@ async function handleRun({ req, res, log, error }) {
   const alerts = alertsOn ? [] : null;
   if (!alertsOn) log("FCM not configured (FIREBASE_SERVICE_ACCOUNT_JSON / FIREBASE_PROJECT_ID) — no match alerts sent");
 
+  const rivalStore = rivalStoreFor({ storage, error });
   metaTally = {};
   // Process matches in parallel so per-ball LLM latency doesn't serialize across matches.
   await Promise.allSettled(
@@ -1616,10 +1632,13 @@ async function handleRun({ req, res, log, error }) {
           error,
           // A match finalised long after it ended keeps its rows and loses its alerts.
           alerts: endingIds.has(matchId) && startMs - (lastSeenLiveAt.get(matchId) ?? 0) > RESULT_ALERT_MAX_AGE_MS ? null : alerts,
+          rivalStore,
           onFinalised: async ({ detail, context, meta, winProb: last, overs, rival }) => {
-            await writeEvalLog({
+            const logged = await writeEvalLog({
               storage, matchId, title: m.title ?? "", detail, context, meta, winProb: last, overs, rival, model, log, error,
             });
+            // The samples are in the log now; kept if the log was not written, and pruned with it.
+            if (logged && rival.length > 0) await storage.deleteFile(BUCKET_ID, `${RIVAL_PREFIX}${matchId}`).catch(() => {});
             await ensureSummary({ contexts, matchId, context, detail, log, error });
           },
           contextFor: async ({ meta, format }) => {
@@ -2076,6 +2095,33 @@ export async function pruneContexts({ storage, log, error, now = Date.now() }) {
   });
 }
 
+/** A match's rival samples in Storage. `load` is `[]` for no file and null for a failed read. */
+export function rivalStoreFor({ storage, error }) {
+  return {
+    load: async (matchId) => {
+      try {
+        const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, `${RIVAL_PREFIX}${matchId}`));
+        return Array.isArray(parsed?.samples) ? parsed.samples : [];
+      } catch (e) {
+        if (e?.code === 404) return [];
+        error(`Could not read the rival samples for ${matchId}: ${e?.message}`);
+        return null;
+      }
+    },
+    save: async (matchId, samples) => {
+      const fileId = `${RIVAL_PREFIX}${matchId}`;
+      try {
+        await storage.deleteFile(BUCKET_ID, fileId).catch(() => {});
+        await storage.createFile(
+          BUCKET_ID, fileId, InputFile.fromBuffer(Buffer.from(JSON.stringify({ samples }), "utf8"), `${fileId}.json`), READ_ANY
+        );
+      } catch (e) {
+        error(`Could not store the rival samples for ${matchId}: ${e?.message}`);
+      }
+    },
+  };
+}
+
 /** The `wpe-` evaluation logs, kept long enough to score a few weeks of matches together. */
 export async function pruneEvalLogs({ storage, log, error, now = Date.now() }) {
   return pruneByPrefix({
@@ -2444,7 +2490,7 @@ async function activeViewerIds({ storage, log, error }) {
 
 // Exported for `finalise.test.js`: the finalisation wiring (which tier writes, and once) is
 // invisible in production until a match ends, which is the class of defect this file keeps finding.
-export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error, alerts = null, contextFor = null, onFinalised = null }) {
+export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error, alerts = null, contextFor = null, onFinalised = null, rivalStore = null }) {
   // Queues one push to this match's topic. [alerts] is null when FCM is unconfigured or in tests
   // that do not exercise alerts, and then nothing is sent.
   const alert = (data) => {
@@ -2524,7 +2570,9 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   if (!finalising && winProb && winProb.drawProbability == null) {
     stampProbability(overHistoryByMatch.get(matchId), detail.situation?.inningsId, winProb.team1WinProbability);
   }
-  noteRival({ matchId, innings: detail.situation?.inningsId, raw: meta.rivalWinProbability, history: overHistoryByMatch.get(matchId), log });
+  await noteRival({
+    matchId, innings: detail.situation?.inningsId, raw: meta.rivalWinProbability, history: overHistoryByMatch.get(matchId), log, store: rivalStore,
+  });
   // Carried in the detail payload as well as the aggregate file, so the detail screen updates on
   // the existing realtime channel instead of waiting for a file download. `payload` is an opaque
   // JSON string column and Gson ignores unknown keys, so this needs no Appwrite schema change and
@@ -2590,7 +2638,9 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   if (finalised && onFinalised) {
     await onFinalised({
       detail, context: matchContext, meta, winProb,
-      overs: overHistoryByMatch.get(matchId) ?? [], rival: rivalByMatch.get(matchId) ?? [],
+      overs: overHistoryByMatch.get(matchId) ?? [],
+      // With what an earlier container stored: this one may have seen only the last few overs.
+      rival: mergeRival(rivalStore ? await rivalStore.load(matchId) : [], rivalByMatch.get(matchId) ?? []),
     });
   }
   if (finalised) rivalByMatch.delete(matchId);

@@ -223,3 +223,54 @@ test("an ended match is taken from the recent list once, and only if it was foll
   const gone = nextSlowState({ state, processed: [], liveIds: new Set(), now: 99, recentIds: new Set(["9"]) });
   assert.deepEqual(gone, {});
 });
+
+test("rival samples survive a container restart: stored as they arrive, merged at the end", async () => {
+  const { mergeRival, RIVAL_PREFIX } = await import("../src/evallog.js");
+  const { rivalStoreFor } = await import("../src/main.js");
+  const a = { innings: 1, over: 1, at: 10, raw: "a" };
+  const b = { innings: 1, over: 2, at: 20, raw: "b" };
+  const b2 = { innings: 1, over: 2, at: 25, raw: "b2" };
+  assert.deepEqual(mergeRival([a, b], [b2]), [a, b2]);
+  assert.deepEqual(mergeRival(null, undefined), []);
+
+  // A store over a fake bucket: a missing file is an empty list, a failed read is null.
+  const bucket = new Map();
+  const storage = {
+    getFileDownload: async (_b, id) => {
+      if (id.endsWith("-broken")) throw new Error("503");
+      if (!bucket.has(id)) { const e = new Error("nf"); e.code = 404; throw e; }
+      return bucket.get(id);
+    },
+    deleteFile: async (_b, id) => { bucket.delete(id); },
+    createFile: async (_b, id, input) => { bucket.set(id, JSON.parse(Buffer.from(await input.arrayBuffer?.() ?? []).toString("utf8") || "{}")); },
+  };
+  const store = rivalStoreFor({ storage, error: () => {} });
+  assert.deepEqual(await store.load("77"), []);
+  assert.equal(await store.load("77-broken"), null);
+
+  const realFetch = globalThis.fetch;
+  resetThrottleState();
+  const raw = { team1: 37, team2: 63 };
+  globalThis.fetch = async () =>
+    new Response(page({ status: "Birmingham Phoenix need 40 runs", extra: { winProbability: raw } }), { status: 200, headers: { "content-type": "text/html" } });
+  try {
+    // What an earlier container stored for this match before it was replaced.
+    const earlier = [{ innings: 1, over: 4, at: 5, raw: "earlier" }];
+    const saved = [];
+    const record = async (_db, _table, rowId) => ({ $id: rowId });
+    await syncMatch({
+      db: { updateDocument: record, createDocument: record, getDocument: async () => { const e = new Error("nf"); e.code = 404; throw e; } },
+      matchId: "77", title: "Southern Brave vs Birmingham Phoenix", commentaryCap: 0, storeCommentary: false,
+      alreadyFinalised: false, model: null, log: () => {}, error: () => {},
+      rivalStore: { load: async () => earlier, save: async (id, samples) => { saved.push({ id, samples }); } },
+    });
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].id, "77");
+    assert.equal(saved[0].samples.length, 2, "the stored sample is kept beside the new one");
+    assert.equal(saved[0].samples[0].raw, "earlier");
+    assert.equal(saved[0].samples[1].raw, JSON.stringify(raw));
+    assert.equal(RIVAL_PREFIX, "wpr-");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

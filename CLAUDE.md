@@ -561,8 +561,9 @@ intervals that resample matches. Tests are not covered (only two-outcome formats
 Both rivals publish a figure on some matches only: Cricbuzz's live page has a `winProbability` prop
 and Cricinfo's live-scores page a `liveInningPredictions` per match, and on 2026-10-05 both were
 empty on every match listed (24 and 23). Their populated shapes are therefore **unknown, and
-nothing parses them**: match-sync stores Cricbuzz's raw value once per over in the log's
-`cricbuzz` array and raises one info event the first time it sees one;
+nothing parses them**: match-sync stores Cricbuzz's raw value once per over — in `wpr-{matchId}`
+as each arrives, because a container does not outlive a match, then in the log's `cricbuzz` array
+when the match ends — and raises one info event the first time it sees one;
 `appwrite/tools/rival-winprob-watch.mjs` does the same for Cricinfo from a laptop (one page covers
 every match; `hs-consumer-api` is 403). The report compares only on points where both sides
 published, and its `cb`/`ci` columns stay empty until a real sample has been read.
@@ -1079,6 +1080,7 @@ blocked, this cap — go through `reportThrottled`; they were one event per one-
 | `live-winprob`, `slow-sync-state`, `rewrite-backlog` | `match-sync` | published probabilities; the per-match slow-tier clock; deliveries held until a line passes the checker |
 | `mc-{matchId}` | `match-sync` | one match's context: sides, ground, record, elevens, forecast, preview, summary. Read by the device (Info and Overview tabs). Pruned after 14 days by `pruneContexts`, selected by `startsWith("$id", "mc-")` |
 | `wpe-{matchId}` | `match-sync` | one finished match's evaluation log: the per-over probabilities the model published, the pre-match figure, Cricbuzz's structured result. Not read by the device. Pruned after 60 days by `pruneEvalLogs` |
+| `wpr-{matchId}` | `match-sync` | a live match's raw Cricbuzz win-probability samples, one per over; folded into `wpe-{matchId}` and deleted when the match ends |
 | `winprob-manifest`, `winprob-v6-<stamp>` | `train-win-probability` | the pointer to the serving model, and the model (the current one and the one before it) |
 | `wpx-00`…`wpx-3f`, `wps-a`…`wps-z` | `train-win-probability` | the tables a context is joined against: rosters with ratings and plain records, grounds, head-to-head; and everyone by surname letter |
 | `active-viewers` | `match-presence` | `{matchId: epochMs}`, the viewer gate |
