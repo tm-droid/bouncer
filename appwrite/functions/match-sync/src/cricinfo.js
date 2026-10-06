@@ -246,21 +246,39 @@ const MAX_OVERS_PER_INNINGS = 200;
  * this guarantees is that the words cannot pose as another delivery, another verdict or a note.
  */
 export function promptSafe(value, max = MAX_BALL_TEXT) {
-  return String(value ?? "")
-    // Bounded before the passes below, not after: each is linear, but in a third party's length.
-    .slice(0, 8 * max)
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").replace(/&#39;|&rsquo;/g, "'").replace(/&quot;/g, '"')
-    .normalize("NFKC")
-    // Controls, line and paragraph separators, zero-width and bidirectional marks.
-    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g, " ")
-    .replace(/[\[{<]/g, "(").replace(/[\]}>]/g, ")")
-    .replace(/[`|#]/g, " ")
-    .replace(/\b(source|commentary|second report|scorer's note|system|assistant|user)\s*:/gi, "$1 -")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, max);
+  // Bounded before the passes below, not after: each is linear, but in a third party's length.
+  let out = String(value ?? "").slice(0, 8 * max);
+  // To a fixed point. One pass is not enough when a pass can produce what an earlier one removes:
+  // "&amp;#91;" decodes to "&#91;", which decodes to a bracket, and a compatibility character
+  // normalises into a colon or an angle bracket. Each round shortens or keeps the text, so it ends.
+  for (let round = 0; round < MAX_SAFE_ROUNDS; round++) {
+    const before = out;
+    out = out
+      // First, so that every later pass sees the characters a model would.
+      .normalize("NFKC")
+      .replace(/&#x([0-9a-f]{1,6});|&#(\d{1,7});/gi, (_m, hex, dec) => {
+        const code = hex ? parseInt(hex, 16) : Number(dec);
+        return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : " ";
+      })
+      .replace(/&amp;/gi, "&").replace(/&nbsp;/gi, " ").replace(/&rsquo;|&lsquo;|&apos;/gi, "'").replace(/&quot;|&ldquo;|&rdquo;/gi, '"')
+      .replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
+      .replace(/<[^>]*>/g, " ")
+      // Controls, line and paragraph separators, zero-width and bidirectional marks.
+      .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g, " ")
+      .replace(/[\[{<]/g, "(").replace(/[\]}>]/g, ")")
+      .replace(/[`|#]/g, " ")
+      .replace(/\s+/g, " ")
+      // After the collapse, so a label cannot be hidden by what sat between its words.
+      .replace(/\b(source|commentary|second report|scorer's note|system|assistant|user)\s*:/gi, "$1 -")
+      .trim();
+    if (out === before) break;
+  }
+  // Cut on a code point, and with no half of a pair left anywhere: a lone surrogate is not valid
+  // UTF-8, the provider refuses the request, and the request is a batch of twelve deliveries.
+  return Array.from(out).slice(0, max).join("").replace(LONE_SURROGATE_RE, "").trim();
 }
+const MAX_SAFE_ROUNDS = 6;
+const LONE_SURROGATE_RE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g;
 
 const plainText = (items) =>
   promptSafe((Array.isArray(items) ? items : []).slice(0, 6).map((i) => (typeof i?.html === "string" ? i.html.slice(0, 4 * MAX_BALL_TEXT) : "")).join(" "));
