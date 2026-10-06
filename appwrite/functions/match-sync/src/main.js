@@ -38,7 +38,10 @@ import {
   BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
 import { fetchForecast, hasElevens, sideContextFor } from "./context.js";
-import { CRICINFO_MAX_ROWS_PER_POLL, fetchCricinfoPredictions, mergeCricinfo, storableRow } from "./cricinfo.js";
+import {
+  CRICINFO_MAX_ROWS_PER_POLL, asCricbuzzLine, ballKey, disagreement, fetchCricinfoMatch, fetchCricinfoPredictions, joinCricinfoMatch,
+  labelsInGap, mergeCricinfo, probeCricinfoMatchPages, storableRow,
+} from "./cricinfo.js";
 import { EVAL_PREFIX, EVAL_RETENTION_MS, RIVAL_PREFIX, buildEvalLog, mergeRival, prematchMoved, rivalSample } from "./evallog.js";
 import { sideContext } from "./contextmath.js";
 import { createContextStore, newBudget } from "./contextstore.js";
@@ -298,14 +301,21 @@ async function rewriteWithRetry(taken) {
 }
 
 const SCORER_NOTE_RE = / \[Scorer's note:[^\]]*\]$/;
+// Cricinfo's text for the same ball (see `secondReportNote`). Always last on the line.
+const SECOND_REPORT_RE = / \[Second report: ([^\]]*)\]$/;
 const comparable = (text) =>
-  String(text ?? "").replace(SCORER_NOTE_RE, "").replace(/^(?:\d{1,3}\.\d|Ball\s+\d{1,3}):?\s*/i, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
+  String(text ?? "").replace(SECOND_REPORT_RE, "").replace(SCORER_NOTE_RE, "").replace(/^(?:\d{1,3}\.\d|Ball\s+\d{1,3}):?\s*/i, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
 
 /** True when [line] is [source] again: same words once the ball label, note and punctuation go. */
 export function isEcho(line, source) {
   const a = comparable(line);
-  return a.length > 0 && a === comparable(source);
+  if (a.length > 0 && a === comparable(source)) return true;
+  // The second report is a source too, and a line that carries it whole has copied it.
+  const second = comparable(String(source ?? "").match(SECOND_REPORT_RE)?.[1]);
+  return second.length >= SECOND_REPORT_ECHO_MIN && a.includes(second);
 }
+// Short enough to be a coincidence ("no run") is not a copy.
+const SECOND_REPORT_ECHO_MIN = 24;
 
 const BALL_LABEL_RE = /^(?:\d{1,3}\.\d|Ball\s+\d{1,3}):?\s*/i;
 const SCORER_HEADER_RE = /^[^,]+ to [^,]+$/;
@@ -571,7 +581,7 @@ async function writeHeld(e, out, { db, error }) {
   }
   try {
     const data = commentaryRowData({
-      matchId: e.matchId, innings: e.innings, ball: e.ball, sortKey: e.sortKey, line, clean: e.clean, provider: out.provider,
+      matchId: e.matchId, innings: e.innings, ball: e.ball, sortKey: e.sortKey, line, clean: e.clean, provider: out.provider, fill: e.fill === true,
     });
     await db.createDocument(DB_ID, COMMENTARY_COL, e.rowId, data, READ_ANY);
     heldMap().delete(e.rowId);
@@ -682,7 +692,7 @@ function storedLine(raw, ball) {
 }
 
 /** The `match-commentary` row for one delivery. One builder, so a late row and an on-time row match. */
-function commentaryRowData({ matchId, innings, ball, sortKey, line, clean, provider }) {
+function commentaryRowData({ matchId, innings, ball, sortKey, line, clean, provider, fill = false }) {
   // Classified from `clean` — the RAW Cricbuzz text — NOT from `line`. By this point `line` is
   // broadcast prose in which a four reads "races away to the rope", so the event is no longer
   // recoverable from it; that is precisely why the commentary tab's Boundaries filter could only
@@ -704,7 +714,8 @@ function commentaryRowData({ matchId, innings, ball, sortKey, line, clean, provi
     sort_key: sortKey,
     commentary: line,
     ai_generated: origin.aiGenerated,
-    provider: origin.provider,
+    // A delivery Cricbuzz never showed, written from Cricinfo's: the rung that wrote it, marked.
+    provider: fill ? `${origin.provider}${CRICINFO_FILL_SUFFIX}` : origin.provider,
     created_at: new Date().toISOString(),
     event,
     ...(runs === null ? {} : { runs }),
@@ -1021,6 +1032,19 @@ export function mergeOverHistory(stored, fresh) {
     byKey.set(key, prior?.p != null && e.p == null ? { ...e, p: prior.p } : e);
   }
   return [...byKey.values()].sort((a, b) => a.innings - b.innings || a.over - b.over);
+}
+
+/**
+ * [history] with the overs it lacks taken from [extra] — Cricinfo's page, which carries every
+ * completed over of every innings where Cricbuzz's carries the last few. An over the history has
+ * is left exactly as it is: Cricbuzz's reading, and any probability stamped on it, stay.
+ */
+export function fillOverHistory(history, extra) {
+  if (!Array.isArray(extra) || extra.length === 0) return history;
+  const have = new Set((history ?? []).map((e) => `${e.innings}:${e.over}`));
+  const added = extra.filter((e) => Number.isInteger(e?.innings) && Number.isInteger(e?.over) && !have.has(`${e.innings}:${e.over}`));
+  if (added.length === 0) return history;
+  return [...(history ?? []), ...added].sort((a, b) => a.innings - b.innings || a.over - b.over);
 }
 
 /**
@@ -1389,8 +1413,14 @@ async function handleRun({ req, res, log, error }) {
   // pays for it. Answers "can this container reach Cricinfo, and is its markup still what
   // CricInfoScraper expects" — the question that decides whether Cricinfo can be restored as a
   // server-side second commentary source, which no amount of testing from a laptop can settle.
-  if (process.env.PROBE_SOURCES) {
-    const probe = await probeSources({ log, error });
+  //
+  // A manual execution with the body `probe-sources` does the same without the variable: an env
+  // change needs a rebuild each way, and every scheduled run in between is a probe instead of a
+  // sync. The function has no public execute permission, and `x-appwrite-trigger` cannot be set
+  // by a caller.
+  const probeRequested = req?.headers?.["x-appwrite-trigger"] !== "schedule" && String(req?.bodyText ?? "").trim() === "probe-sources";
+  if (process.env.PROBE_SOURCES || probeRequested) {
+    const probe = [...(await probeSources({ log, error })), ...(await probeCricinfoMatchPages({ log }))];
     await flushObservability();
     return res.json({ probe }, 200);
   }
@@ -1619,6 +1649,9 @@ async function handleRun({ req, res, log, error }) {
   if (!alertsOn) log("FCM not configured (FIREBASE_SERVICE_ACCOUNT_JSON / FIREBASE_PROJECT_ID) — no match alerts sent");
 
   const rivalStore = rivalStoreFor({ storage, error });
+  // Started here, not awaited: the per-match Cricinfo steps wait for it, because the live page is
+  // what says which Cricinfo match is which. It polls at most every five minutes.
+  const cricinfoReady = cricinfoStep({ storage, log, error });
   metaTally = {};
   // Process matches in parallel so per-ball LLM latency doesn't serialize across matches.
   await Promise.allSettled(
@@ -1638,6 +1671,10 @@ async function handleRun({ req, res, log, error }) {
           // A match finalised long after it ended keeps its rows and loses its alerts.
           alerts: endingIds.has(matchId) && startMs - (lastSeenLiveAt.get(matchId) ?? 0) > RESULT_ALERT_MAX_AGE_MS ? null : alerts,
           rivalStore,
+          cricinfoFor: async () => {
+            await cricinfoReady;
+            return cricinfoMatchStep({ matchId, summary: m, log, error });
+          },
           onFinalised: async ({ detail, context, meta, winProb: last, overs, rival }) => {
             const logged = await writeEvalLog({
               storage, matchId, title: m.title ?? "", detail, context, meta, winProb: last, overs, rival, model, log, error,
@@ -1771,9 +1808,7 @@ async function handleRun({ req, res, log, error }) {
   });
 
   await settleBacklog();
-  // Last, once this run's own state is saved: it is an optional request to a third party, and
-  // must not be what a slow run spends its remaining time on.
-  await cricinfoStep({ storage, log, error });
+  await cricinfoReady;
   reportDeadProviders(error);
   reportChainHealth(error);
 
@@ -2176,6 +2211,7 @@ export async function cricinfoStep({ storage, log, error, now = Date.now(), fetc
       return result;
     }
     log(`[CRICINFO] status=${result.status} bytes=${result.bytes} matches=${result.matches} live=${result.live} predictions=${result.rows.length}`);
+    if (Array.isArray(result.list)) cricinfoList = result.list;
     const store = rivalStoreFor({ storage, error, prefix: CRICINFO_PREFIX });
     // Bounded before anything is read or written: each row costs a Storage read and a write, and
     // the count comes from a third party's page.
@@ -2191,6 +2227,149 @@ export async function cricinfoStep({ storage, log, error, now = Date.now(), fetc
     error(`[CRICINFO] step failed: ${e?.message}`);
     return null;
   }
+}
+
+// ── Cricinfo as a second commentary source ──────────────────────────────────
+//
+// Where Cricinfo has a commentator on a match, its ball-by-ball page carries about three overs of
+// deliveries as data. They are used twice: beside Cricbuzz's own text for the same ball, so the
+// writer and the checker read two reports of it; and alone, for a ball Cricbuzz's twenty-item
+// window never showed (`findCommentaryGaps`). Cricinfo's text is a source like Cricbuzz's and is
+// never stored — only a line written from it and checked against it is.
+//
+// The page has no way back: `?fromInningOver=`, `/_next/data/` and `hs-consumer-api` are ignored,
+// 403 and 403 (2026-10-06). So the window is polled on every run and kept in memory, which is
+// what lets a ball one site published first still be there when the other catches up.
+const CRICINFO_BALLS_KEPT = 60;
+/** The live page's matches, from the last poll that answered. */
+let cricinfoList = [];
+/** Cricbuzz match id -> ballKey -> Cricinfo's delivery. */
+const cricinfoBalls = new Map();
+/** Cricbuzz match id -> when its page may be asked again, after it failed for a reason of its own. */
+const cricinfoMatchRetryAt = new Map();
+/** Cricbuzz match id -> "innings|ball" of every legal delivery this container has stored or held. */
+const storedBalls = new Map();
+
+/** Test seam: the live-page list the join reads, and a clean slate behind it. */
+export function __setCricinfoList(list) {
+  cricinfoList = list;
+  cricinfoBalls.clear();
+  cricinfoMatchRetryAt.clear();
+  storedBalls.clear();
+}
+
+/**
+ * This run's reading of a match's Cricinfo page, merged into what earlier runs read. Returns
+ * `{ balls, overs }` — `balls` is everything held, so a page that failed this run still leaves
+ * the earlier window usable — or null when Cricinfo has no such match or no commentary on it.
+ * Never throws.
+ */
+export async function cricinfoMatchStep({ matchId, summary, log, error, now = Date.now(), fetchMatch = fetchCricinfoMatch }) {
+  try {
+    const match = joinCricinfoMatch(summary, cricinfoList);
+    if (!match?.hasCommentary) return null;
+    const held = cricinfoBalls.get(matchId) ?? new Map();
+    cricinfoBalls.set(matchId, held);
+    if (now < cricinfoBlockedUntil || now < (cricinfoMatchRetryAt.get(matchId) ?? 0)) return { balls: held, overs: [] };
+
+    const page = await fetchMatch(match);
+    if (!page.ok) {
+      // A refusal is the site's answer to this container and stops every Cricinfo request; any
+      // other failure is this page's own and stops only this match.
+      const refused = page.status === 403 || page.status === 429;
+      if (refused) cricinfoBlockedUntil = now + CRICINFO_BLOCK_RETRY_MS;
+      else cricinfoMatchRetryAt.set(matchId, now + CRICINFO_BLOCK_RETRY_MS);
+      log(`[CRICINFO] match ${matchId} (${match.objectId}) unavailable (${page.reason}) status=${page.status} bytes=${page.bytes} — next attempt in 60 min`);
+      reportThrottled(
+        refused ? "cricinfo-match-refused" : `cricinfo-match-unavailable:${matchId}`, STEADY_STATE_REPORT_MS,
+        refused ? "Cricinfo refused a match page — the second commentary source is off for an hour" : "A Cricinfo match page could not be read",
+        { matchId, cricinfoId: match.objectId, reason: page.reason, status: page.status ?? "none", bytes: page.bytes },
+        "error",
+      );
+      return { balls: held, overs: [] };
+    }
+    for (const ball of page.balls) {
+      const key = ballKey(ball.innings, ball.label, ball.extra);
+      // The page's reading is the newer one: a corrected ball replaces the one it corrects.
+      if (key) held.set(key, ball);
+    }
+    for (const key of [...held.keys()].slice(0, Math.max(0, held.size - CRICINFO_BALLS_KEPT))) held.delete(key);
+    return { balls: held, overs: page.overs };
+  } catch (e) {
+    error(`[CRICINFO] match ${matchId} step failed: ${e?.message}`);
+    return null;
+  }
+}
+
+/** Opens the note that carries Cricinfo's text for a ball to the writer and the checker. */
+export const SECOND_REPORT_PREFIX = " [Second report: ";
+
+/**
+ * The note for a ball both sites describe, or "" — when Cricinfo has not published it, has no
+ * description of it, or is describing something else under the same label (`disagreement`).
+ */
+export function secondReportNote({ clean, ball, innings, cricinfo, matchId, log }) {
+  const other = cricinfo?.balls?.get(ballKey(innings, ball, parseBallOutcome(clean).kind));
+  if (!other?.text) return "";
+  const why = disagreement({ clean, runs: parseBallOutcome(clean).runs, wicket: classifyEvent(clean) === "WICKET" }, other);
+  if (why) {
+    log?.(`[CRICINFO-DISAGREE] ${matchId}/${ball}: ${why} — cricbuzz "${clean.slice(0, 80)}" vs cricinfo "${other.title}, ${other.runs}${other.wicket ? " W" : ""}"`);
+    reportThrottled(`cricinfo-disagree:${matchId}`, STEADY_STATE_REPORT_MS, "Cricinfo and Cricbuzz disagree about a delivery — the second report was left out", {
+      matchId, ball, why,
+    });
+    return "";
+  }
+  return `${SECOND_REPORT_PREFIX}${other.text}]`;
+}
+
+/** Marks a synthetic commentary item as one built from Cricinfo's delivery. */
+export const CRICINFO_FILL_SUFFIX = "+cricinfo";
+
+/**
+ * Deliveries Cricbuzz never showed, as commentary items built from Cricinfo's.
+ *
+ * [fresh] is this run's new Cricbuzz items, oldest first. A hole between two of them is filled
+ * with whatever Cricinfo holds for the labels inside it. Each filled item sits one millisecond
+ * after the last, starting from the ball before the hole: the two sites' clocks differ by half a
+ * minute either way, and Cricbuzz's is the one the feed is ordered by. That also makes the row id
+ * the same on every run and in every container.
+ *
+ * A label this container has already stored is not filled: Cricbuzz republishes old deliveries
+ * under new timestamps, and `12.5` arriving again beside `13.4` is not a hole when 12.6 to 13.3
+ * were written a quarter of an hour ago.
+ */
+export function cricinfoFills({ matchId, fresh, cricinfo, fallbackInnings }) {
+  if (!cricinfo?.balls?.size) return [];
+  const known = storedBalls.get(matchId) ?? new Set();
+  const fills = [];
+  let previous = null;
+  for (const item of fresh) {
+    const label = item.ballMetric?.label;
+    const innings = item.innings ?? fallbackInnings;
+    if (!label || item.ballMetric.over === null) { previous = null; continue; }
+    if (previous && previous.innings === innings) {
+      let n = 0;
+      for (const missing of labelsInGap(previous.label, label)) {
+        const key = ballKey(innings, missing);
+        const commText = known.has(key) ? null : asCricbuzzLine(cricinfo.balls.get(key));
+        if (!commText) continue;
+        const [over, ball] = missing.split(".").map(Number);
+        fills.push({ timestamp: previous.ts + ++n, commText, ballMetric: { label: missing, over, ball }, innings, cricinfo: true });
+      }
+    }
+    previous = { innings, label, ts: Number(item.timestamp) };
+  }
+  return fills;
+}
+
+/** Remember that [matchId] has this legal delivery, stored or held. */
+function noteStored(matchId, innings, ball, clean) {
+  const key = ballKey(innings, ball, parseBallOutcome(clean).kind);
+  if (!key) return;
+  const set = storedBalls.get(matchId) ?? new Set();
+  storedBalls.set(matchId, set);
+  set.add(key);
+  if (set.size > 400) set.delete(set.values().next().value);
 }
 
 /** The `wpe-` evaluation logs, kept long enough to score a few weeks of matches together. */
@@ -2561,7 +2740,7 @@ async function activeViewerIds({ storage, log, error }) {
 
 // Exported for `finalise.test.js`: the finalisation wiring (which tier writes, and once) is
 // invisible in production until a match ends, which is the class of defect this file keeps finding.
-export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error, alerts = null, contextFor = null, onFinalised = null, rivalStore = null }) {
+export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error, alerts = null, contextFor = null, onFinalised = null, rivalStore = null, cricinfoFor = null }) {
   // Queues one push to this match's topic. [alerts] is null when FCM is unconfigured or in tests
   // that do not exercise alerts, and then nothing is sent.
   const alert = (data) => {
@@ -2592,18 +2771,21 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   //  - `storeCommentary` says whether every new delivery is written to `match-commentary`. It is
   //    true for essentially every live match, because a feed that skips balls is not a feed.
   const detailTier = commentaryCap > 0;
-  const [liveHtml, tierScoreHtml] = await Promise.all([
+  const [liveHtml, tierScoreHtml, cricinfo] = await Promise.all([
     fetchHtml(liveScoresUrl(matchId)),
     detailTier
       ? fetchHtml(scorecardUrl(matchId)).catch((e) => { error(`Scorecard fetch failed for ${matchId}: ${e?.message}`); return null; })
       : Promise.resolve(null),
+    // Cricinfo's page for the same match, where it has one. Null everywhere else, and then
+    // nothing below differs from a run without it.
+    storeCommentary && cricinfoFor ? cricinfoFor().catch(() => null) : Promise.resolve(null),
   ]);
 
   // 3. Build + upsert the live-detail snapshot.
   const detail = parseLiveDetail(liveHtml);
   const meta = parseMatchMeta(liveHtml);
   tallyMeta(metaTally, meta, detail.status);
-  overHistoryByMatch.set(matchId, mergeOverHistory(overHistoryByMatch.get(matchId), parseOverHistory(liveHtml)));
+  overHistoryByMatch.set(matchId, fillOverHistory(mergeOverHistory(overHistoryByMatch.get(matchId), parseOverHistory(liveHtml)), cricinfo?.overs));
 
   // 3a. Finalisation. A match leaves `live-matches.json` the moment it is over and never comes
   // back, and nothing else writes these two rows — so whatever the detail tier last left behind is
@@ -2753,9 +2935,16 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   // unrewritten deliveries are the ones that get broadcast prose rather than an arbitrary slice.
   // A held delivery belongs to the backlog. It is still on the page after a cold start re-seeds the
   // watermark below it, and queueing it here as well would rewrite it twice in one run.
-  const fresh = commentary
+  const fromCricbuzz = commentary
     .filter((i) => Number(i.timestamp) > watermark && !isHeld(docId(`${matchId}:${i.timestamp}`)))
     .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+  // Deliveries Cricbuzz skipped, where Cricinfo has them. From here on they are deliveries like
+  // any other: rewritten, checked, held if no line passes, and counted by the gap check below.
+  const fills = storeCommentary
+    ? cricinfoFills({ matchId, fresh: fromCricbuzz, cricinfo, fallbackInnings }).filter((i) => !isHeld(docId(`${matchId}:${i.timestamp}`)))
+    : [];
+  if (fills.length) log(`Match ${matchId}: ${fills.length} delivery(ies) Cricbuzz skipped, filled from Cricinfo: ${fills.map((f) => f.ballMetric.label).join(",")}`);
+  const fresh = fills.length ? [...fromCricbuzz, ...fills].sort((a, b) => Number(a.timestamp) - Number(b.timestamp)) : fromCricbuzz;
 
   // Rewrite every fresh delivery in one batched call, BEFORE the write loop.
   //
@@ -2779,12 +2968,17 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
     for (const item of fresh) {
       const classified = classifyCommentaryItem(item);
       if (!classified) continue;
-      const plain = plainLine(classified.clean, Number(item.timestamp));
+      // A filled delivery IS Cricinfo's report, so it has no second one.
+      const second = item.cricinfo ? "" : secondReportNote({
+        clean: classified.clean, ball: classified.ball, innings: item.innings ?? fallbackInnings, cricinfo, matchId, log,
+      });
+      // A bare scorer's line is templated only when nobody described the ball.
+      const plain = second ? null : plainLine(classified.clean, Number(item.timestamp));
       if (plain) {
         rewrites.set(Number(item.timestamp), { line: plain, provider: TEMPLATE_PROVIDER, verified: true, reason: null, attempts: [] });
         continue;
       }
-      queued.push({ ts: Number(item.timestamp), clean: classified.clean, ball: classified.ball, note: sourceConflictNote(classified.clean, detail.batsmen) });
+      queued.push({ ts: Number(item.timestamp), clean: classified.clean, ball: classified.ball, note: sourceConflictNote(classified.clean, detail.batsmen) + second });
     }
     const results = await Promise.all(
       queued.map(async (qi) => {
@@ -2852,14 +3046,17 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
       holdDelivery({
         matchId, rowId, ts: itemTs, sortKey: item.timestamp, ball, innings, clean, firstSeenMs: Date.now(),
         ...(pre?.note ? { note: pre.note } : {}),
+        ...(item.cricinfo ? { fill: true } : {}),
         rejections: pre?.reason === "verification_failed" ? 1 : 0,
       });
       heldNow++;
       advance(itemTs);
+      noteStored(matchId, innings, ball, clean);
       // The alert does not wait for the line: a wicket alert that arrives with the prose, minutes
       // later, is past ALERT_MAX_AGE_MS and would never be sent. Classified from the raw text, the
       // same as a written row's.
-      alert(deliveryAlert({
+      // A filled delivery is minutes old by the time the hole it sat in is visible; no alert.
+      if (!item.cricinfo) alert(deliveryAlert({
         matchId, title, event: classifyEvent(clean), ball, text: clean, timestampMs: itemTs, now: Date.now(), score: detail.score,
       }));
       // Present for the gap check: a held ball was captured, it just has no row yet.
@@ -2868,7 +3065,7 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
     }
     rewritten++;
 
-    const data = commentaryRowData({ matchId, innings, ball, sortKey: item.timestamp, line, clean, provider: pre.provider });
+    const data = commentaryRowData({ matchId, innings, ball, sortKey: item.timestamp, line, clean, provider: pre.provider, fill: item.cricinfo === true });
     try {
       await db.createDocument(DB_ID, COMMENTARY_COL, rowId, data, READ_ANY);
       advance(itemTs);
@@ -2876,15 +3073,16 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
       const supersededEvent = await supersedeOlder({ db, error, matchId, rowId, ts: itemTs, data });
       // Only on a first write: a 409 means another execution stored this ball and alerted for it.
       // A correction that says the same thing the withdrawn row did has been alerted already.
-      if (supersededEvent !== data.event) {
+      if (supersededEvent !== data.event && !item.cricinfo) {
         alert(deliveryAlert({
           matchId, title, event: data.event, ball, text: clean, timestampMs: itemTs, now: Date.now(), score: detail.score,
         }));
       }
       writtenBalls.push({ innings, ball });
+      noteStored(matchId, innings, ball, clean);
     } catch (e) {
       // 409 = row already exists (race / watermark behind): it is durably written, so advance.
-      if (e?.code === 409) advance(itemTs);
+      if (e?.code === 409) { advance(itemTs); noteStored(matchId, innings, ball, clean); }
       else {
         // A real write failure closes the watermark for the rest of this pass, so the next run
         // starts from this ball instead of skipping it forever.

@@ -729,7 +729,10 @@ export const BATCH_SYSTEM_INSTRUCTION = SYSTEM_INSTRUCTION
     "STRICT FORMAT: Begin with the ball number exactly as given in the input, followed by a colon. Never invent, guess or alter it; if the input has no ball number, begin with the action instead.",
     "STRICT FORMAT: Output exactly one line per input delivery, in the same order, each beginning with that delivery's [key] tag exactly as given, followed by a colon. Never invent, guess or alter a tag. No blank lines, no numbering, no headers."
   )
-  .replace("One sentence only.", "One sentence per delivery.");
+  .replace("One sentence only.", "One sentence per delivery.") +
+  // Where a second site described the same ball (match-sync's `secondReportNote`). Its facts are
+  // the input's facts; its wording is somebody else's and is not to be reused.
+  "\nSECOND REPORT: A delivery may end with [Second report: ...] — another commentator's account of the SAME ball. Its players and facts are part of the input and may be used. Where the two accounts differ, follow the first. Write your own sentence: never reuse a phrase from either account.";
 
 // Deliveries per batched call. 12 keeps the prompt near 600 tokens and the reply near 450, well
 // inside every rung's budget, and bounds the damage when Cricbuzz republishes a backlog after a
@@ -1017,6 +1020,7 @@ export const VERIFY_BATCH_SYSTEM_INSTRUCTION =
 const VERIFY_BATCH_RULES =
   "Judge each item ONLY against its own Source; the items come from unrelated matches. The ball number is part of the Source: the first ball of an over is x.1 and the last legal one is x.6.\n" +
   "FAIL only if the commentary changes or invents a FACT: a player not named in its Source; the wrong runs or outcome (a four called a six or the reverse, a dot ball given runs, runs given to a dot ball); a dismissal where there was none, or the wrong method (caught, bowled, lbw, run out, stumped); the bowler playing the shot or the batter bowling; a catch, throw or stop credited to the wrong fielder; or a score, total, milestone, maiden, partnership, spell or other claim about the over, innings or match that the Source does not state.\n" +
+  "A Source may end with [Second report: ...], another account of the same ball: a player or fact stated there is stated in the Source.\n" +
   "PASS if every fact matches its Source. Describing how the ball was bowled or played — line, length, pace, a defensive push, a leave, where a single was nudged, the tension — is colour, not a fact, and must PASS unless it contradicts the Source.";
 
 /**
