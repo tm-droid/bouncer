@@ -21,6 +21,9 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// One parser for the laptop and for match-sync.
+import { matchesIn, rowFor } from "../functions/match-sync/src/cricinfo.js";
+
 const argv = process.argv.slice(2);
 const flag = (name, fallback) => {
   const i = argv.indexOf(name);
@@ -36,38 +39,6 @@ const HEADERS = {
   "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
   "accept-language": "en",
 };
-
-/** Every distinct match object on the page: any node that owns `liveInningPredictions`. */
-export function matchesIn(nextData) {
-  const byId = new Map();
-  const walk = (node) => {
-    if (!node || typeof node !== "object") return;
-    if (Array.isArray(node)) return node.forEach(walk);
-    if (Object.hasOwn(node, "liveInningPredictions") && node.objectId != null) byId.set(node.objectId, node);
-    for (const k of Object.keys(node)) walk(node[k]);
-  };
-  walk(nextData);
-  return [...byId.values()];
-}
-
-export function rowFor(match, at) {
-  return {
-    at,
-    cricinfoId: match.objectId,
-    slug: match.slug ?? null,
-    format: match.format ?? null,
-    state: match.state ?? null,
-    startTime: match.startTime ?? null,
-    teams: (match.teams ?? []).map((t) => ({
-      id: t.team?.objectId ?? null, name: t.team?.longName ?? null, score: t.score ?? null, scoreInfo: t.scoreInfo ?? null,
-    })),
-    liveInning: match.liveInning ?? null,
-    liveOvers: match.liveOvers ?? null,
-    statusText: match.statusText ?? null,
-    winnerTeamId: match.winnerTeamId ?? null,
-    predictions: match.liveInningPredictions,
-  };
-}
 
 async function poll() {
   const res = await fetch(PAGE, { headers: HEADERS });

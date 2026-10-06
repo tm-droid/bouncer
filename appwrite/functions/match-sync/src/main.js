@@ -38,6 +38,7 @@ import {
   BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
 import { fetchForecast, hasElevens, sideContextFor } from "./context.js";
+import { fetchCricinfoPredictions, mergeCricinfo } from "./cricinfo.js";
 import { EVAL_PREFIX, EVAL_RETENTION_MS, RIVAL_PREFIX, buildEvalLog, mergeRival, prematchMoved, rivalSample } from "./evallog.js";
 import { sideContext } from "./contextmath.js";
 import { createContextStore, newBudget } from "./contextstore.js";
@@ -1477,6 +1478,10 @@ async function handleRun({ req, res, log, error }) {
       storage, log, error, now: Date.now(), prefix: RIVAL_PREFIX, retentionMs: EVAL_RETENTION_MS,
       done: (n) => `Pruned ${n} orphaned rival sample file(s)`, what: "Rival sample",
     });
+    await pruneByPrefix({
+      storage, log, error, now: Date.now(), prefix: CRICINFO_PREFIX, retentionMs: EVAL_RETENTION_MS,
+      done: (n) => `Pruned ${n} Cricinfo prediction file(s) older than 60 days`, what: "Cricinfo prediction",
+    });
   }
   // Upcoming fixtures draw on a budget of their own, and a smaller one. They are scored first, so
   // on a shared budget sixty fixtures would hold every live match's context back for half an hour.
@@ -1746,6 +1751,7 @@ async function handleRun({ req, res, log, error }) {
   }
 
   await writeWinProbFile({ storage, winProb, log, error });
+  await cricinfoStep({ storage, log, error });
   await writeSlowState({
     storage,
     state: nextSlowState({
@@ -2096,11 +2102,11 @@ export async function pruneContexts({ storage, log, error, now = Date.now() }) {
 }
 
 /** A match's rival samples in Storage. `load` is `[]` for no file and null for a failed read. */
-export function rivalStoreFor({ storage, error }) {
+export function rivalStoreFor({ storage, error, prefix = RIVAL_PREFIX }) {
   return {
     load: async (matchId) => {
       try {
-        const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, `${RIVAL_PREFIX}${matchId}`));
+        const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, `${prefix}${matchId}`));
         return Array.isArray(parsed?.samples) ? parsed.samples : [];
       } catch (e) {
         if (e?.code === 404) return [];
@@ -2109,7 +2115,7 @@ export function rivalStoreFor({ storage, error }) {
       }
     },
     save: async (matchId, samples) => {
-      const fileId = `${RIVAL_PREFIX}${matchId}`;
+      const fileId = `${prefix}${matchId}`;
       try {
         await storage.deleteFile(BUCKET_ID, fileId).catch(() => {});
         await storage.createFile(
@@ -2120,6 +2126,56 @@ export function rivalStoreFor({ storage, error }) {
       }
     },
   };
+}
+
+// ── Cricinfo's prediction ──────────────────────────────────────────────────
+//
+// Captured beside the model's own figure and Cricbuzz's. Keyed by CRICINFO's match id, with the
+// team names and start time in every row: nothing here joins it to a Cricbuzz match, the report
+// tool does. Whether the page answers this container at all is the open question, so every
+// attempt logs what came back.
+const CRICINFO_PREFIX = "wci-";
+/** Just under five minutes, so the fifth one-minute run is the one that polls. */
+const CRICINFO_EVERY_MS = 4.5 * 60 * 1000;
+const CRICINFO_BLOCK_RETRY_MS = 60 * 60 * 1000;
+let lastCricinfoAt = 0;
+let cricinfoBlockedUntil = 0;
+
+/** Test seam: forget when Cricinfo was last asked and whether it refused. */
+export function __resetCricinfoGate() {
+  lastCricinfoAt = 0;
+  cricinfoBlockedUntil = 0;
+}
+
+/**
+ * Poll Cricinfo at most every five minutes and store any prediction it carries. Never throws and
+ * never fails the run: this is a measurement, and the sync it rides on is not.
+ */
+export async function cricinfoStep({ storage, log, error, now = Date.now(), fetchPredictions = fetchCricinfoPredictions }) {
+  if (now < cricinfoBlockedUntil || now - lastCricinfoAt < CRICINFO_EVERY_MS) return null;
+  lastCricinfoAt = now;
+  try {
+    const result = await fetchPredictions({ now });
+    if (!result.ok) {
+      cricinfoBlockedUntil = now + CRICINFO_BLOCK_RETRY_MS;
+      log(`[CRICINFO] unavailable (${result.reason}) status=${result.status} bytes=${result.bytes} — next attempt in 60 min`);
+      reportThrottled("cricinfo-unavailable", STEADY_STATE_REPORT_MS, "Cricinfo's live page did not answer the container", {
+        reason: result.reason, status: result.status ?? "none", bytes: result.bytes,
+      });
+      return result;
+    }
+    log(`[CRICINFO] status=${result.status} bytes=${result.bytes} matches=${result.matches} live=${result.live} predictions=${result.rows.length}`);
+    const store = rivalStoreFor({ storage, error, prefix: CRICINFO_PREFIX });
+    for (const row of result.rows) {
+      const stored = await store.load(row.cricinfoId);
+      // A failed read stores nothing this time rather than saving over what is there.
+      if (stored !== null) await store.save(row.cricinfoId, mergeCricinfo(stored, row));
+    }
+    return result;
+  } catch (e) {
+    error(`[CRICINFO] step failed: ${e?.message}`);
+    return null;
+  }
 }
 
 /** The `wpe-` evaluation logs, kept long enough to score a few weeks of matches together. */
