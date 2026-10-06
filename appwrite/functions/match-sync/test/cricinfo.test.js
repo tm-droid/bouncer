@@ -108,3 +108,38 @@ test("a refusal backs off for an hour and does not fail the run", async () => {
   __resetCricinfoGate();
   assert.equal(await cricinfoStep({ ...args, now: t0, fetchPredictions: async () => { throw new Error("boom"); } }), null);
 });
+
+test("page content is validated and bounded before it reaches Storage", async () => {
+  const { storableRow, CRICINFO_MAX_ROWS_PER_POLL } = await import("../src/cricinfo.js");
+  const { isFileSafeId, rivalStoreFor } = await import("../src/main.js");
+  const row = (cricinfoId, extra = {}) => ({ at: 1, cricinfoId, slug: "s", teams: [], predictions: { ...PREDICTION }, ...extra });
+
+  // The match id becomes part of a file id: digits only.
+  for (const bad of ["../live-matches", "1529230/../x", "", "abc", "1 2", null, "1".repeat(13)]) {
+    assert.equal(storableRow(row(bad)), null, `rejected: ${bad}`);
+    assert.equal(isFileSafeId(bad), false);
+  }
+  assert.equal(storableRow(row(1529230)).cricinfoId, "1529230");
+  // A prediction that is not a percentage is not stored, and nothing unknown is carried through.
+  assert.equal(storableRow(row(1, { predictions: { winProbability: "34" } })), null);
+  assert.equal(storableRow(row(1, { predictions: { winProbability: 340 } })), null);
+  const kept = storableRow(row(1, { slug: "x".repeat(5000), predictions: { ...PREDICTION, extra: "y".repeat(5000) }, junk: "z" }));
+  assert.equal(kept.slug.length, 120);
+  assert.deepEqual(Object.keys(kept.predictions), ["inningNumber", "oversUnique", "score", "winProbability"]);
+  assert.equal("junk" in kept, false);
+
+  // The store refuses an unsafe id outright: no read, no write.
+  let touched = 0;
+  const storage = { getFileDownload: async () => { touched++; return {}; }, deleteFile: async () => { touched++; }, createFile: async () => { touched++; } };
+  const store = rivalStoreFor({ storage, error: () => {} });
+  assert.equal(await store.load("../poll-state"), null);
+  await store.save("../poll-state", []);
+  assert.equal(touched, 0);
+
+  // A page claiming hundreds of forecast matches costs a bounded number of reads and writes.
+  __resetCricinfoGate();
+  const many = bucket();
+  const rows = Array.from({ length: 300 }, (_, i) => row(1000 + i));
+  await cricinfoStep({ storage: many, log: () => {}, error: () => {}, now: 3_000_000_000, fetchPredictions: async () => ({ ok: true, status: 200, bytes: 1, matches: 300, live: 300, rows }) });
+  assert.equal(many.files.size, CRICINFO_MAX_ROWS_PER_POLL);
+});

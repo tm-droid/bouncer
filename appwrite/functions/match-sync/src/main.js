@@ -38,7 +38,7 @@ import {
   BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
 import { fetchForecast, hasElevens, sideContextFor } from "./context.js";
-import { fetchCricinfoPredictions, mergeCricinfo } from "./cricinfo.js";
+import { CRICINFO_MAX_ROWS_PER_POLL, fetchCricinfoPredictions, mergeCricinfo, storableRow } from "./cricinfo.js";
 import { EVAL_PREFIX, EVAL_RETENTION_MS, RIVAL_PREFIX, buildEvalLog, mergeRival, prematchMoved, rivalSample } from "./evallog.js";
 import { sideContext } from "./contextmath.js";
 import { createContextStore, newBudget } from "./contextstore.js";
@@ -1643,7 +1643,7 @@ async function handleRun({ req, res, log, error }) {
               storage, matchId, title: m.title ?? "", detail, context, meta, winProb: last, overs, rival, model, log, error,
             });
             // The samples are in the log now; kept if the log was not written, and pruned with it.
-            if (logged && rival.length > 0) await storage.deleteFile(BUCKET_ID, `${RIVAL_PREFIX}${matchId}`).catch(() => {});
+            if (logged && rival.length > 0 && isFileSafeId(matchId)) await storage.deleteFile(BUCKET_ID, `${RIVAL_PREFIX}${matchId}`).catch(() => {});
             await ensureSummary({ contexts, matchId, context, detail, log, error });
           },
           contextFor: async ({ meta, format }) => {
@@ -1751,7 +1751,6 @@ async function handleRun({ req, res, log, error }) {
   }
 
   await writeWinProbFile({ storage, winProb, log, error });
-  await cricinfoStep({ storage, log, error });
   await writeSlowState({
     storage,
     state: nextSlowState({
@@ -1772,6 +1771,9 @@ async function handleRun({ req, res, log, error }) {
   });
 
   await settleBacklog();
+  // Last, once this run's own state is saved: it is an optional request to a third party, and
+  // must not be what a slow run spends its remaining time on.
+  await cricinfoStep({ storage, log, error });
   reportDeadProviders(error);
   reportChainHealth(error);
 
@@ -2101,10 +2103,18 @@ export async function pruneContexts({ storage, log, error, now = Date.now() }) {
   });
 }
 
+/**
+ * Whether [id] may be part of a Storage file id. Match ids are read off Cricbuzz's and Cricinfo's
+ * pages, so they are third-party text on its way into an API path: digits only, and short.
+ */
+export const isFileSafeId = (id) => /^\d{1,12}$/.test(String(id ?? ""));
+
 /** A match's rival samples in Storage. `load` is `[]` for no file and null for a failed read. */
 export function rivalStoreFor({ storage, error, prefix = RIVAL_PREFIX }) {
   return {
     load: async (matchId) => {
+      // Null, as for a failed read: the caller then records nothing and saves nothing.
+      if (!isFileSafeId(matchId)) return null;
       try {
         const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, `${prefix}${matchId}`));
         return Array.isArray(parsed?.samples) ? parsed.samples : [];
@@ -2115,6 +2125,7 @@ export function rivalStoreFor({ storage, error, prefix = RIVAL_PREFIX }) {
       }
     },
     save: async (matchId, samples) => {
+      if (!isFileSafeId(matchId)) return;
       const fileId = `${prefix}${matchId}`;
       try {
         await storage.deleteFile(BUCKET_ID, fileId).catch(() => {});
@@ -2166,7 +2177,11 @@ export async function cricinfoStep({ storage, log, error, now = Date.now(), fetc
     }
     log(`[CRICINFO] status=${result.status} bytes=${result.bytes} matches=${result.matches} live=${result.live} predictions=${result.rows.length}`);
     const store = rivalStoreFor({ storage, error, prefix: CRICINFO_PREFIX });
-    for (const row of result.rows) {
+    // Bounded before anything is read or written: each row costs a Storage read and a write, and
+    // the count comes from a third party's page.
+    const rows = result.rows.map(storableRow).filter(Boolean).slice(0, CRICINFO_MAX_ROWS_PER_POLL);
+    if (rows.length < result.rows.length) log(`[CRICINFO] storing ${rows.length} of ${result.rows.length} rows`);
+    for (const row of rows) {
       const stored = await store.load(row.cricinfoId);
       // A failed read stores nothing this time rather than saving over what is there.
       if (stored !== null) await store.save(row.cricinfoId, mergeCricinfo(stored, row));
@@ -2234,7 +2249,7 @@ export async function writeEvalLog({ storage, matchId, title, detail, context, m
       rival,
       now,
     });
-    if (!body) return false;
+    if (!body || !isFileSafeId(matchId)) return false;
     const fileId = `${EVAL_PREFIX}${matchId}`;
     await storage.deleteFile(BUCKET_ID, fileId).catch(() => {});
     await storage.createFile(

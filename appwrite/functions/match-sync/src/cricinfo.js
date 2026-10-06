@@ -84,12 +84,56 @@ export async function fetchCricinfoPredictions({ fetchImpl = fetch, now = Date.n
     const body = await resp.text();
     const base = { status: resp.status, bytes: body.length };
     if (resp.status !== 200) return { ok: false, reason: `http ${resp.status}`, ...base, rows: [] };
+    if (body.length > MAX_PAGE_BYTES) return { ok: false, reason: "page too large", ...base, rows: [] };
     const parsed = parseCricinfoPage(body, now);
     if (!parsed) return { ok: false, reason: "no data block", ...base, rows: [] };
     return { ok: true, ...base, ...parsed };
   } catch (e) {
     return { ok: false, reason: e?.message ?? "fetch failed", status: null, bytes: 0, rows: [] };
   }
+}
+
+/** Matches stored per poll. Cricinfo forecasts a handful at once; a page claiming more is not trusted. */
+export const CRICINFO_MAX_ROWS_PER_POLL = 12;
+/** A page far larger than the real one (~600 KB) is not parsed. */
+const MAX_PAGE_BYTES = 4_000_000;
+const MAX_TEXT = 120;
+
+const text = (v) => (typeof v === "string" ? v.slice(0, MAX_TEXT) : null);
+const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+
+/**
+ * A row reduced to what is stored, or null when it cannot be: the page is third-party content, and
+ * its match id becomes part of a Storage file id. Only an all-digit id is accepted, every string is
+ * bounded, and the prediction is kept as its four known numbers — nothing else from the page is
+ * written through.
+ */
+export function storableRow(row) {
+  const id = String(row?.cricinfoId ?? "");
+  if (!/^\d{1,12}$/.test(id)) return null;
+  const winProbability = num(row.predictions?.winProbability);
+  if (winProbability === null || winProbability < 0 || winProbability > 100) return null;
+  return {
+    at: num(row.at),
+    cricinfoId: id,
+    slug: text(row.slug),
+    format: text(row.format),
+    state: text(row.state),
+    startTime: text(row.startTime),
+    teams: (Array.isArray(row.teams) ? row.teams : []).slice(0, 2).map((t) => ({
+      id: num(t?.id), name: text(t?.name), score: text(t?.score), scoreInfo: text(t?.scoreInfo),
+    })),
+    liveInning: num(row.liveInning),
+    liveOvers: num(row.liveOvers),
+    statusText: text(row.statusText),
+    winnerTeamId: num(row.winnerTeamId),
+    predictions: {
+      inningNumber: num(row.predictions.inningNumber),
+      oversUnique: num(row.predictions.oversUnique),
+      score: num(row.predictions.score),
+      winProbability,
+    },
+  };
 }
 
 /** Stored samples plus a new row: one per innings and ball, oldest first, bounded. */
