@@ -195,6 +195,21 @@ test("cleaning runs to a fixed point, so no pass can produce what an earlier one
   }
 });
 
+test("cleaning fails closed: text that will not settle, or is still unsafe, is not sent", () => {
+  // Half a pair between the two halves of a label: removed after the label pass, it would join them.
+  for (const hostile of ["Sour\ud800ce: x", "Second rep\udc00ort: x", "sys\ud83ctem: x"]) {
+    const safe = promptSafe(hostile);
+    assert.ok(!/\b(source|second report|system)\s*:/i.test(safe), `${JSON.stringify(hostile)} -> ${JSON.stringify(safe)}`);
+  }
+  // Entities nested deeper than the rounds allowed: nothing, rather than something half cleaned.
+  const nested = (n) => `&${"amp;".repeat(n)}#91;`;
+  // A few levels settle. The bracket never forms: its `#` goes in the first round.
+  assert.equal(promptSafe(`ball ${nested(3)}key`), "ball & 91;key");
+  assert.equal(promptSafe(`ball ${nested(12)}key`), "");
+  // And a delivery whose description came out empty has no second report to give.
+  assert.equal(ballOf(comment({ commentTextItems: [{ type: "HTML", html: `x ${nested(12)}` }] })).text, "");
+});
+
 test("a cut never leaves half a character behind", () => {
   const cut = promptSafe("a".repeat(499) + "\u{1F3CF}tail");
   assert.equal(cut.isWellFormed(), true);

@@ -251,10 +251,14 @@ export function promptSafe(value, max = MAX_BALL_TEXT) {
   // To a fixed point. One pass is not enough when a pass can produce what an earlier one removes:
   // "&amp;#91;" decodes to "&#91;", which decodes to a bracket, and a compatibility character
   // normalises into a colon or an angle bracket. Each round shortens or keeps the text, so it ends.
-  for (let round = 0; round < MAX_SAFE_ROUNDS; round++) {
+  let stable = false;
+  for (let round = 0; round < MAX_SAFE_ROUNDS && !stable; round++) {
     const before = out;
     out = out
-      // First, so that every later pass sees the characters a model would.
+      // Before anything reads the text: removing half a pair later would join what stood either
+      // side of it, and "Sour" + "ce:" is a label no pass had seen.
+      .replace(LONE_SURROGATE_RE, " ")
+      // So that every later pass sees the characters a model would.
       .normalize("NFKC")
       .replace(/&#x([0-9a-f]{1,6});|&#(\d{1,7});/gi, (_m, hex, dec) => {
         const code = hex ? parseInt(hex, 16) : Number(dec);
@@ -271,12 +275,17 @@ export function promptSafe(value, max = MAX_BALL_TEXT) {
       // After the collapse, so a label cannot be hidden by what sat between its words.
       .replace(/\b(source|commentary|second report|scorer's note|system|assistant|user)\s*:/gi, "$1 -")
       .trim();
-    if (out === before) break;
+    stable = out === before;
   }
-  // Cut on a code point, and with no half of a pair left anywhere: a lone surrogate is not valid
-  // UTF-8, the provider refuses the request, and the request is a batch of twelve deliveries.
-  return Array.from(out).slice(0, max).join("").replace(LONE_SURROGATE_RE, "").trim();
+  // Cut on a code point: half a pair is not valid UTF-8, a provider refuses the request, and the
+  // request is a batch of twelve deliveries. A cut only removes, so it cannot build anything.
+  out = Array.from(out).slice(0, max).join("").trim();
+  // Closed, not open. Text that would not settle, or that still carries anything the passes
+  // exist to remove, is not sent at all: the delivery goes without a second report.
+  return stable && !UNSAFE_RE.test(out) ? out : "";
 }
+// What must never be in the result, tested on the result — whatever the passes above did.
+const UNSAFE_RE = /[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff\[\]{}<>`|#]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]|\b(?:source|commentary|second report|scorer's note|system|assistant|user)\s*:/i;
 const MAX_SAFE_ROUNDS = 6;
 const LONE_SURROGATE_RE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g;
 
