@@ -240,65 +240,68 @@ const MAX_OVERS_PER_INNINGS = 200;
  *
  * This text is sent to the writer and the checker beside other deliveries, in a prompt whose
  * structure is line breaks, `[key]:` tags and `[#n]` / `Source:` / `Commentary:` labels, and whose
- * notes are delimited by square brackets. So nothing here may carry any of that: it comes out as
- * one line, with no bracket, brace, angle bracket or backtick, no control or invisible character,
- * and no label a prompt uses. What a model then makes of the words is the checker's to judge; what
- * this guarantees is that the words cannot pose as another delivery, another verdict or a note.
+ * notes are delimited by square brackets.
+ *
+ * It is an allowlist, and that is the point. The versions before it removed what was known to be
+ * dangerous — brackets, control characters, a list of label words — and each was shown a case its
+ * list had missed. A sentence about a delivery needs letters, digits, spaces and a little
+ * punctuation; everything else becomes a space. No colon survives, so nothing can be a label; no
+ * bracket, so nothing can be a tag or close a note; no line break, so nothing can be a second
+ * item. `PROSE_RE` is the one definition: the cleaner replaces what is outside it and the final
+ * test is that the result is inside it, so the two cannot disagree.
+ *
+ * Returns "" for text whose entities would not settle. What a model makes of the words that
+ * remain is the checker's to judge.
  */
 export function promptSafe(value, max = MAX_BALL_TEXT) {
   // Bounded before the passes below, not after: each is linear, but in a third party's length.
   let out = String(value ?? "").slice(0, 8 * max);
-  // To a fixed point. One pass is not enough when a pass can produce what an earlier one removes:
-  // "&amp;#91;" decodes to "&#91;", which decodes to a bracket, and a compatibility character
-  // normalises into a colon or an angle bracket. Each round shortens or keeps the text, so it ends.
+  // Entities to a fixed point — "&amp;lt;" is a tag two rounds from now — so that the markup is
+  // gone before the text is read. Closed, not open: text that will not settle is not sent.
   let stable = false;
   for (let round = 0; round < MAX_SAFE_ROUNDS && !stable; round++) {
     const before = out;
     out = out
-      // Before anything reads the text: removing half a pair later would join what stood either
-      // side of it, and "Sour" + "ce:" is a label no pass had seen.
-      .replace(LONE_SURROGATE_RE, " ")
-      // So that every later pass sees the characters a model would.
-      .normalize("NFKC")
       .replace(/&#x([0-9a-f]{1,6});|&#(\d{1,7});/gi, (_m, hex, dec) => {
         const code = hex ? parseInt(hex, 16) : Number(dec);
-        return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : " ";
+        return code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff) ? String.fromCodePoint(code) : " ";
       })
       .replace(/&amp;/gi, "&").replace(/&nbsp;/gi, " ").replace(/&rsquo;|&lsquo;|&apos;/gi, "'").replace(/&quot;|&ldquo;|&rdquo;/gi, '"')
-      .replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
-      .replace(/<[^>]*>/g, " ")
-      // Controls, line and paragraph separators, zero-width and bidirectional marks.
-      .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g, " ")
-      .replace(/[\[{<]/g, "(").replace(/[\]}>]/g, ")")
-      .replace(/[`|#]/g, " ")
-      .replace(/\s+/g, " ")
-      // After the collapse, so a label cannot be hidden by what sat between its words.
-      .replace(/\b(source|commentary|second report|scorer's note|system|assistant|user)\s*:/gi, "$1 -")
-      .trim();
+      .replace(/&lt;/gi, "<").replace(/&gt;/gi, ">");
     stable = out === before;
   }
+  if (!stable) return "";
+  out = out
+    .replace(/<[^>]*>/g, " ")
+    // Compatibility forms become the characters a model would read them as, BEFORE the allowlist.
+    .normalize("NFKC")
+    // By code point (the `u` flag), so half a surrogate pair is one disallowed character.
+    .replace(NOT_PROSE_RE, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   // Cut on a code point: half a pair is not valid UTF-8, a provider refuses the request, and the
-  // request is a batch of twelve deliveries. A cut only removes, so it cannot build anything.
+  // request is a batch of twelve deliveries.
   out = Array.from(out).slice(0, max).join("").trim();
-  // Closed, not open. Text that would not settle, or that still carries anything the passes
-  // exist to remove, is not sent at all: the delivery goes without a second report.
-  return stable && !UNSAFE_RE.test(out) ? out : "";
+  return PROSE_RE.test(out) ? out : "";
 }
-// What must never be in the result, tested on the result — whatever the passes above did.
-const UNSAFE_RE = /[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff\[\]{}<>`|#]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]|\b(?:source|commentary|second report|scorer's note|system|assistant|user)\s*:/i;
 const MAX_SAFE_ROUNDS = 6;
-const LONE_SURROGATE_RE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g;
+// Letters and their marks, digits, the space, and the punctuation of a plain sentence.
+const PROSE_CLASS = "\\p{L}\\p{M}\\p{Nd} .,'’\"!?()/%&+;\\-–—";
+const PROSE_RE = new RegExp(`^[${PROSE_CLASS}]*$`, "u");
+const NOT_PROSE_RE = new RegExp(`[^${PROSE_CLASS}]`, "gu");
 
 const plainText = (items) =>
   promptSafe((Array.isArray(items) ? items : []).slice(0, 6).map((i) => (typeof i?.html === "string" ? i.html.slice(0, 4 * MAX_BALL_TEXT) : "")).join(" "));
 
 // A header is two people's names and the word between them; a dismissal is a scorecard entry.
-// Neither is prose, so each is held to its shape rather than merely cleaned.
-const HEADER_RE = /^[\p{L}][\p{L} .'’-]{0,48} to [\p{L}][\p{L} .'’-]{0,48}$/u;
-const DISMISSAL_RE = /^[\p{L}†(][\p{L}\d †()&.,'’/-]{0,78}$/u;
+// Neither is prose, so each must BE its shape, exactly as it arrived: nothing is cleaned into one.
+const HEADER_RE = /^[\p{L}][\p{L}\p{M} .'’-]{0,48} to [\p{L}][\p{L}\p{M} .'’-]{0,48}$/u;
+const DISMISSAL_RE = /^[\p{L}†(][\p{L}\p{M}\p{Nd} †()&.,'’/-]{0,78}$/u;
 const HOW_RE = /^[a-z][a-z ]{1,30}$/;
-const shaped = (value, shape, max) => {
-  const v = promptSafe(value, max);
+const TEAM_CODE_RE = /^[\p{L}\p{Nd}-]{1,10}$/u;
+const shaped = (value, shape) => {
+  if (typeof value !== "string" || value.length > 200) return null;
+  const v = value.normalize("NFKC").trim();
   return shape.test(v) ? v : null;
 };
 
@@ -313,7 +316,7 @@ export function ballOf(comment) {
   const runs = int(comment.totalRuns);
   if (runs === null || runs < 0 || runs > 12) return null;
   // A delivery whose header is not two names is not one this can join or write from.
-  const title = shaped(comment.title, HEADER_RE, 100);
+  const title = shaped(comment.title, HEADER_RE);
   if (!title) return null;
   const extra = comment.wides > 0 ? "WIDE" : comment.noballs > 0 ? "NOBALL" : comment.legbyes > 0 ? "LEGBYE" : comment.byes > 0 ? "BYE" : null;
   return {
@@ -326,8 +329,8 @@ export function ballOf(comment) {
     four: comment.isFour === true,
     six: comment.isSix === true,
     wicket: comment.isWicket === true,
-    dismissal: comment.isWicket === true ? shaped(comment.dismissalText?.long, DISMISSAL_RE, 80) : null,
-    how: comment.isWicket === true ? shaped(comment.dismissalText?.short, HOW_RE, 32) : null,
+    dismissal: comment.isWicket === true ? shaped(comment.dismissalText?.long, DISMISSAL_RE) : null,
+    how: comment.isWicket === true ? shaped(comment.dismissalText?.short, HOW_RE) : null,
     extra,
     at: Number.isFinite(Date.parse(comment.timestamp ?? "")) ? Date.parse(comment.timestamp) : null,
   };
@@ -366,7 +369,7 @@ export function parseCricinfoMatchPage(html) {
   for (const inn of (Array.isArray(content.innings) ? content.innings : []).slice(0, 4)) {
     const innings = int(inn?.inningNumber);
     if (!innings || innings < 1) continue;
-    const team = shaped(inn.team?.abbreviation, /^[\p{L}\d-]{1,10}$/u, 10);
+    const team = shaped(inn.team?.abbreviation, TEAM_CODE_RE);
     for (const o of (Array.isArray(inn.inningOvers) ? inn.inningOvers : []).slice(0, MAX_OVERS_PER_INNINGS)) {
       const point = overPoint(o, innings, team);
       if (point) overs.push(point);
