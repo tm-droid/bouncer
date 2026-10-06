@@ -2294,6 +2294,7 @@ export async function cricinfoMatchStep({ matchId, summary, log, error, now = Da
       if (key) held.set(key, ball);
     }
     for (const key of [...held.keys()].slice(0, Math.max(0, held.size - CRICINFO_BALLS_KEPT))) held.delete(key);
+    log(`[CRICINFO] match ${matchId} (${match.objectId}) status=${page.status} bytes=${page.bytes} balls=${page.balls.length} held=${held.size} overs=${page.overs.length}`);
     return { balls: held, overs: page.overs };
   } catch (e) {
     error(`[CRICINFO] match ${matchId} step failed: ${e?.message}`);
@@ -2978,7 +2979,7 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
         rewrites.set(Number(item.timestamp), { line: plain, provider: TEMPLATE_PROVIDER, verified: true, reason: null, attempts: [] });
         continue;
       }
-      queued.push({ ts: Number(item.timestamp), clean: classified.clean, ball: classified.ball, note: sourceConflictNote(classified.clean, detail.batsmen) + second });
+      queued.push({ ts: Number(item.timestamp), clean: classified.clean, ball: classified.ball, note: sourceConflictNote(classified.clean, detail.batsmen) + second, second: Boolean(second) });
     }
     const results = await Promise.all(
       queued.map(async (qi) => {
@@ -3002,7 +3003,7 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
         rewrites.set(qi.ts, { line: null, provider: null, verified: false, reason: out.reason ?? "providers_exhausted", attempts: out.attempts, note: qi.note });
         continue;
       }
-      rewrites.set(qi.ts, { line: out.line, provider: out.provider, verified: true, reason: null, attempts: out.attempts });
+      rewrites.set(qi.ts, { line: out.line, provider: out.provider, verified: true, reason: null, attempts: out.attempts, second: qi.second });
     }
   }
 
@@ -3117,7 +3118,8 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
     });
   }
   reportCommentaryGaps({ matchId, writtenBalls, error });
-  log(`Match ${matchId}: ${written} new commentary rows (${rewritten} rewritten, ${heldNow} held)`);
+  const seconded = [...rewrites.values()].filter((r) => r.second).length;
+  log(`Match ${matchId}: ${written} new commentary rows (${rewritten} rewritten, ${heldNow} held${cricinfo ? `, ${seconded} with a second report, ${fills.length} filled` : ""})`);
   return { status: { commentaryWritten: written }, winProb, finalised };
 }
 
