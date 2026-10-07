@@ -83,7 +83,10 @@ function textOf(content, substitutions) {
   const value = content.contentValue;
   const raw = typeof value === "string" ? value : value?.content;
   if (typeof raw !== "string") return "";
-  return resolveTokens(raw, substitutions).replace(/\s+/g, " ").trim();
+  // Stripped once more after substitution. A substituted value that itself looked like a
+  // placeholder would otherwise be stored, read back as unresolved, and fetched again on every
+  // request — an upstream call per request for as long as the story was listed.
+  return stripTokens(resolveTokens(raw, substitutions)).replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -119,6 +122,22 @@ export function formatSubstitutions(format) {
 /** [text] with each placeholder replaced by its words. One with no entry is removed, never shown. */
 export function resolveTokens(text, substitutions) {
   return text.replace(FORMAT_TOKEN, (token) => substitutions.get(token) ?? "");
+}
+
+/** [text] with every placeholder removed. What is left when there are no words to put in its place. */
+export function stripTokens(text) {
+  return text.replace(FORMAT_TOKEN, "");
+}
+
+/**
+ * Stored paragraphs made presentable without their `format`: placeholders out, spacing tidied.
+ * Served when a body cached before placeholders were resolved cannot be fetched again.
+ */
+export function withoutTokens(paragraphs) {
+  return (Array.isArray(paragraphs) ? paragraphs : [])
+    .filter((p) => typeof p === "string")
+    .map((p) => stripTokens(p).replace(/\s+([.,;:])/g, "$1").replace(/\s+/g, " ").trim())
+    .filter((p) => p.length > 0);
 }
 
 /**

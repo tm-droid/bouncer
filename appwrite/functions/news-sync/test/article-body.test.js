@@ -9,7 +9,9 @@ import {
   listedStoryIds,
   resolveTokens,
   shapeHint,
+  withoutTokens,
 } from "../src/articleBody.js";
+import { fetchIsHeld, noteFailedFetch } from "../src/main.js";
 
 // Captured from RapidAPI on 2026-10-08, unedited.
 const captured = JSON.parse(readFileSync(new URL("./fixtures/detail-140424.json", import.meta.url), "utf8"));
@@ -111,4 +113,46 @@ test("shapeHint says when content is not an array", () => {
 
 test("bodyFileId is derived from the story id", () => {
   assert.equal(bodyFileId("140155"), "news-body-140155");
+});
+
+// A stored body that reads as unresolved is fetched again. If what is fetched could read as
+// unresolved too, every request for that story would call upstream.
+test("what extractParagraphs returns can never read as unresolved", () => {
+  const detail = {
+    format: [{ type: "bold", value: [{ id: "@B0$", value: "see @L9$ and @B0$" }] }],
+    content: [{ content: { contentType: "text", contentValue: "start @B0$ end @X1$" } }],
+  };
+  const paragraphs = extractParagraphs(detail);
+  assert.deepEqual(paragraphs, ["start see and end"]);
+  assert.equal(hasUnresolvedTokens(paragraphs), false);
+});
+
+test("a body cached with placeholders is still servable without them", () => {
+  assert.deepEqual(
+    withoutTokens(["won in the @L0$. Then more.", "@B0$ Zimbabwe 142/6", "@B1$", 7]),
+    ["won in the. Then more.", "Zimbabwe 142/6"],
+  );
+  assert.equal(hasUnresolvedTokens(withoutTokens(["a @L0$ b"])), false);
+});
+
+test("a story whose fetch just failed is not asked again inside the hold", () => {
+  const failures = new Map();
+  const t0 = 1_800_000_000_000;
+  assert.equal(fetchIsHeld("1", t0, failures), false);
+  noteFailedFetch("1", t0, failures);
+  assert.equal(fetchIsHeld("1", t0 + 9 * 60_000, failures), true);
+  assert.equal(fetchIsHeld("1", t0 + 10 * 60_000, failures), false);
+  assert.equal(fetchIsHeld("2", t0, failures), false);
+});
+
+test("the record of failed fetches is bounded", () => {
+  const failures = new Map();
+  const t0 = 1_800_000_000_000;
+  for (let i = 0; i < 500; i += 1) noteFailedFetch(String(i), t0 + i, failures);
+  assert.equal(failures.size, 200);
+  assert.equal(failures.has("0"), false, "oldest dropped first");
+  assert.equal(failures.has("499"), true);
+  // Entries past the hold go when the next failure is recorded.
+  noteFailedFetch("x", t0 + 11 * 60_000, failures);
+  assert.equal(failures.size, 1);
 });
