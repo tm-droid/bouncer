@@ -35,7 +35,10 @@ data class MatchContext(
         val reviews: String? = null,
     )
 
-    /** A player in their first match of this kind, with their side's short code. */
+    /**
+     * A player in their first match of this kind. [team] is the player's COUNTRY code as Cricinfo
+     * gives it — "AUS" for a Victoria debutant — so it does not say which side they play for here.
+     */
     @Serializable
     data class Debutant(val team: String = "", val name: String = "")
 
