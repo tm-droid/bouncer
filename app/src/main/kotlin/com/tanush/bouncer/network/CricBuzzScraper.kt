@@ -189,6 +189,14 @@ internal inline fun crumb(
     })
 }
 
+/**
+ * The match list could not be fetched: no connection, or every retry failed. Distinct from an
+ * empty list, which is a real answer (no cricket on, or Cricbuzz's own empty Upcoming page).
+ * An [java.io.IOException] with the transport failure as its cause, so
+ * `HttpClientProvider.isConnectivityException` still recognises an offline device.
+ */
+class MatchListUnavailableException(message: String, cause: Throwable?) : java.io.IOException(message, cause)
+
 class CricBuzzScraper {
 
     companion object {
@@ -222,10 +230,12 @@ class CricBuzzScraper {
                 crumb("Successfully fetched live matches",
                     data = mapOf("totalMatches" to matches.size, "filteredMatches" to filteredMatches.size))
                 return@withContext filteredMatches
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: UnknownHostException) {
                 Log.e(TAG, "No internet connection fetching $url", e)
                 crumb("No internet connection", SentryLevel.WARNING, mapOf("url" to url))
-                return@withContext emptyList()
+                throw MatchListUnavailableException("No internet connection", e)
             } catch (e: HttpStatusException) {
                 val classified = classifyHttpException(e)
                 crumb("HTTP ${e.statusCode} — no retry", SentryLevel.WARNING,
@@ -249,7 +259,9 @@ class CricBuzzScraper {
 
         Log.e(TAG, "All $MAX_RETRIES attempts failed for $url", lastException)
         lastException?.let { Sentry.captureException(it) }
-        emptyList()
+        // Not an empty list. "Could not fetch" used to be returned as "no matches", which the
+        // caller stored: offline showed the empty state and overwrote the saved list with [].
+        throw MatchListUnavailableException("Could not load matches", lastException)
     }
 
     private fun checkForParseDrift(matches: List<CricketMatch>, url: String, matchState: String) {

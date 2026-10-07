@@ -1,7 +1,5 @@
 package com.tanush.bouncer.ui
 
-import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -14,11 +12,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.ui.components.v2.BottomNavBarV2
@@ -58,14 +56,19 @@ import com.tanush.bouncer.viewmodels.NewsViewModel
  * foreground costs one catch-up fetch, not a restart.
  */
 @Composable
-private fun PollWhileStarted(viewModel: LiveActivityViewModel, paused: Boolean) {
-    // [paused] while a match is open over the app: the list under it cannot be seen, and before the
-    // app stayed composed under the match, this effect was disposed there and the loop stopped.
-    LifecycleStartEffect(viewModel, paused) {
-        if (!paused) viewModel.startPolling()
+private fun PollWhileStarted(viewModel: LiveActivityViewModel, liveListVisible: Boolean) {
+    LifecycleStartEffect(viewModel) {
+        viewModel.startPolling()
         onStopOrDispose { viewModel.stopPolling() }
     }
+    // Under an open match the poll used to stop outright. It now slows instead: the match screen
+    // falls back to the list when its own row stops being written, and a list that never moves
+    // gave it nothing to fall back to.
+    LaunchedEffect(viewModel, liveListVisible) { viewModel.setLiveListVisible(liveListVisible) }
 }
+
+// The routes that show a list of live scores.
+private val LIVE_LIST_ROUTES = setOf(BouncerScreen.Home.route, BouncerScreen.Matches.route)
 
 /**
  * The persisted [ThemeModeV2], defaulting to [ThemeModeV2.System] for anyone who has never picked.
@@ -179,7 +182,7 @@ private fun MatchOverlay(
         enter = BouncerMotion.Transitions.verticalEnter(offsetDivisor = 10),
         exit = BouncerMotion.Transitions.verticalExit(offsetDivisor = 10),
     ) {
-        val visibleMatch = shown ?: return@AnimatedVisibility
+        val visibleMatch = currentListEntry(shown ?: return@AnimatedVisibility)
         // Registered after the NavHost's own back callback, so back closes the match first.
         BackHandler(enabled = match != null, onBack = onClose)
         Box(
@@ -194,6 +197,17 @@ private fun MatchOverlay(
             }
         }
     }
+}
+
+/**
+ * The list's current entry for an open match. The overlay used to hold the entry as it was when
+ * tapped, so `MatchDetailViewModel.onMatchUpdated` ran once and the list could never correct a
+ * detail row that had stopped being written, nor mark the match finished.
+ */
+@Composable
+private fun currentListEntry(opened: CricketMatch, viewModel: LiveActivityViewModel = viewModel()): CricketMatch {
+    val all by viewModel.allMatches.collectAsStateWithLifecycle()
+    return remember(all, opened) { all.firstOrNull { it.id == opened.id } ?: opened }
 }
 
 /**
@@ -214,7 +228,7 @@ fun MainAppContainer(
     newsViewModel: NewsViewModel = viewModel(),
     navController: NavHostController = rememberNavController(),
     onMatchClick: (CricketMatch) -> Unit,
-    /** A match is open over the app; the list poll pauses, as it did when this was disposed. */
+    /** A match is open over the app; the list poll slows while the list cannot be seen. */
     isCovered: Boolean = false,
     externalDeepLinkUri: String? = null,
     onDeepLinkConsumed: () -> Unit = {},
@@ -227,32 +241,13 @@ fun MainAppContainer(
             || FavouriteTeamsManager.favourites.value.isNotEmpty()
     }
 
-    PollWhileStarted(viewModel, paused = isCovered)
-
     // Observe current route for bottom nav state
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // A link is handled once and then cleared by the activity. It used to be remembered here by
-    // its URI string, and every alert for one match carries the same URI — so the second alert a
-    // reader tapped for that match brought the app forward and opened nothing.
-    LaunchedEffect(externalDeepLinkUri) {
-        val incomingLink = externalDeepLinkUri?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
-        val matchId = deepLinkMatchId(incomingLink)
-        if (matchId != null) {
-            // Opened through onMatchClick, the overlay a tapped match uses. The NavHost route this
-            // used to push drew the same match under the bottom bar with the list poll running.
-            val match = viewModel.resolveMatch(matchId)
-            if (match != null) {
-                onMatchClick(match)
-            } else {
-                Toast.makeText(context, R.string.deep_link_match_unavailable, Toast.LENGTH_SHORT).show()
-            }
-        } else {
-            handleExternalDeepLink(incomingLink, navController)
-        }
-        onDeepLinkConsumed()
-    }
+    PollWhileStarted(viewModel, liveListVisible = !isCovered && currentRoute in LIVE_LIST_ROUTES)
+
+    HandleDeepLink(externalDeepLinkUri, viewModel, navController, onMatchClick, onDeepLinkConsumed)
 
     // Map current route to bottom nav route (for child routes like settings -> more)
     val bottomNavRoute = remember(currentRoute) {
@@ -300,58 +295,4 @@ fun MainAppContainer(
  */
 private fun getBottomNavRouteForCurrentRoute(route: String?): String {
     return BouncerScreen.getParentTab(route)
-}
-
-/** `app://bouncer/…`, or null for anything else. */
-private fun parseBouncerLink(deepLinkUri: String): Uri? =
-    runCatching { Uri.parse(deepLinkUri) }.getOrNull()
-        ?.takeIf { it.scheme == "app" && it.host == "bouncer" }
-
-/** The match a link names, or null when it is not a match link or carries no usable id. */
-private fun deepLinkMatchId(deepLinkUri: String): String? {
-    val uri = parseBouncerLink(deepLinkUri) ?: return null
-    val segments = uri.pathSegments.filter { it.isNotBlank() }
-    if (segments.firstOrNull()?.lowercase() != "match") return null
-    return (segments.getOrNull(1) ?: uri.getQueryParameter("matchId"))
-        ?.takeIf { it.isNotBlank() && it.length <= MAX_DEEP_LINK_ID_LENGTH }
-}
-
-private const val MAX_DEEP_LINK_ID_LENGTH = 64
-
-// Top-level segment of an `app://bouncer/…` link to the tab it selects. A match link with a
-// usable id never reaches this table (see deepLinkMatchId); one without lands on Home.
-private val DEEP_LINK_TABS = mapOf(
-    "home" to BouncerScreen.Home.route,
-    "match" to BouncerScreen.Home.route,
-    "series" to BouncerScreen.SeriesList.route,
-    "favorites" to BouncerScreen.Favorites.route,
-    "favourites" to BouncerScreen.Favorites.route,
-    "more" to BouncerScreen.More.route,
-    "news" to BouncerScreen.News.route,
-)
-
-// …and to the page it pushes.
-private val DEEP_LINK_PAGES = mapOf(
-    "matches" to BouncerScreen.Matches.route,
-    "all_matches" to BouncerScreen.Matches.route,
-    "settings" to BouncerScreen.Settings.route,
-    "appearance" to BouncerScreen.Appearance.route,
-    "about" to BouncerScreen.About.route,
-)
-
-private fun handleExternalDeepLink(
-    deepLinkUri: String,
-    navController: NavHostController,
-): Boolean {
-    val parsedUri = parseBouncerLink(deepLinkUri) ?: return false
-    val topLevel = parsedUri.pathSegments.firstOrNull { it.isNotBlank() }?.lowercase() ?: "home"
-
-    val tab = DEEP_LINK_TABS[topLevel]
-    val page = DEEP_LINK_PAGES[topLevel]
-    when {
-        tab != null -> navController.navigateToTab(tab)
-        page != null -> navController.navigateForward(page)
-        else -> return false
-    }
-    return true
 }

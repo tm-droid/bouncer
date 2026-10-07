@@ -12,12 +12,14 @@ import com.tanush.bouncer.data.PlayedMatchIndex
 import com.tanush.bouncer.data.remote.WinProbabilityStore
 import com.tanush.bouncer.services.MatchCacheService
 import com.tanush.bouncer.network.CricBuzzUrls
+import com.tanush.bouncer.network.MatchListUnavailableException
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,6 +76,7 @@ class LiveActivityViewModel(
         private const val DEFAULT_POLL_INTERVAL_MS = 30_000L
         private const val MAX_BACKOFF_MULTIPLIER = 4
         private const val FAILURE_REPORT_THRESHOLD = 3
+        private const val CACHED_DATA_MESSAGE = "Showing cached data — couldn't reach server"
     }
 
     private val _selectedStatus = MutableStateFlow(MatchCacheService.LIVE)
@@ -122,6 +125,10 @@ class LiveActivityViewModel(
     private var lastManualRefreshMs = 0L
 
     private val cachedMatches = mutableMapOf<String, List<CricketMatch>>()
+
+    // Statuses fetched this session. [cachedMatches] also holds lists seeded from disk at start,
+    // so "has an entry" no longer means "has been fetched".
+    private val freshStatuses = mutableSetOf<String>()
     private val pollingTasks = ConcurrentHashMap<String, Job>()
     @Volatile private var isPollingActive = false
     private var hasCompletedInitialFetch = false
@@ -146,8 +153,23 @@ class LiveActivityViewModel(
         })
     }
 
+    // Whether a list of live scores is on screen. Off it — a news article, a series, Settings, an
+    // open match — the Live list is still kept current, but once a minute rather than every 6 s:
+    // that was ten page downloads and parses a minute for a list nobody could see.
+    private var liveListVisible = true
+
+    fun setLiveListVisible(visible: Boolean) {
+        if (liveListVisible == visible) return
+        liveListVisible = visible
+        if (!isPollingActive) return
+        // The running loop is asleep on the old interval; restart it on the new one.
+        pollingTasks.remove(MatchCacheService.LIVE)?.cancel()
+        startPollingForStatus(MatchCacheService.LIVE)
+        if (visible) runFastResumeFetch()
+    }
+
     private fun getPollingInterval(status: String): Long = when (status) {
-        MatchCacheService.LIVE -> LIVE_POLL_INTERVAL_MS
+        MatchCacheService.LIVE -> if (liveListVisible) LIVE_POLL_INTERVAL_MS else SLOW_POLL_INTERVAL_MS
         MatchCacheService.UPCOMING, MatchCacheService.RECENT -> SLOW_POLL_INTERVAL_MS
         else -> DEFAULT_POLL_INTERVAL_MS
     }
@@ -175,7 +197,7 @@ class LiveActivityViewModel(
         _selectedStatus.value = status
         matchesForStatus(cachedMatches, status)?.let { filterAndEmitMatches(it) }
 
-        val missing = statusesToFetch(status).filterNot(cachedMatches::containsKey)
+        val missing = statusesToFetch(status).filterNot(freshStatuses::contains)
         if (missing.isNotEmpty()) {
             viewModelScope.launch(bouncerExceptionHandler) {
                 missing.forEach { runCatching { updateMatches(it) } }
@@ -217,7 +239,7 @@ class LiveActivityViewModel(
         findMatchById(id)?.let { return it }
         initialFetchJob?.join()
         findMatchById(id)?.let { return it }
-        FETCHABLE_STATUSES.filterNot(cachedMatches::containsKey).forEach { status ->
+        FETCHABLE_STATUSES.filterNot(freshStatuses::contains).forEach { status ->
             try {
                 updateMatches(status)
             } catch (e: CancellationException) {
@@ -280,32 +302,40 @@ class LiveActivityViewModel(
 
     private fun runInitialFetch() {
         initialFetchJob = viewModelScope.launch(bouncerExceptionHandler) {
-            if (_currentMatches.value.isEmpty()) {
-                _isLoading.value = true
-            }
-            for (status in FETCHABLE_STATUSES) {
-                try {
-                    updateMatches(status)
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    handleInitialFetchError(status, e)
-                }
+            seedFromDisk()
+            _isLoading.value = _currentMatches.value.isEmpty()
+            // Concurrently, and loading ends with the status on screen. In sequence, an evening
+            // with no live cricket showed the skeleton for all three scrapes before the empty state.
+            coroutineScope {
+                FETCHABLE_STATUSES.forEach { status -> launch { fetchInitial(status) } }
             }
             _isLoading.value = false
             hasCompletedInitialFetch = true
         }
     }
 
-    private fun handleInitialFetchError(status: String, e: Exception) {
-        Log.e(TAG, "Initial fetch error for $status", e)
-        breadcrumb(
-            category = "data.error",
-            message = "Initial fetch failed for status: $status",
-            level = SentryLevel.ERROR,
-            data = mapOf("status" to status),
-        )
-        Sentry.captureException(e)
-        _loadingState.value = LoadingState.Error(e.message ?: "Unknown error")
+    private suspend fun fetchInitial(status: String) {
+        try {
+            updateMatches(status)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handlePollFailure(status, e)
+        }
+        if (status == _selectedStatus.value) _isLoading.value = false
+    }
+
+    /**
+     * Paints the lists this device saved on its last poll, before any request has answered. They
+     * were written on every poll and read only after a failure, so a cold start showed a skeleton
+     * until Cricbuzz's page had been downloaded and parsed.
+     */
+    private suspend fun seedFromDisk() {
+        FETCHABLE_STATUSES.filterNot(cachedMatches::containsKey).forEach { status ->
+            val saved = MatchCacheService.getOfflineMatches(status)
+            if (!saved.isNullOrEmpty()) cachedMatches[status] = saved
+        }
+        if (cachedMatches.isNotEmpty()) publish(_selectedStatus.value)
     }
 
     private fun runFastResumeFetch() {
@@ -396,20 +426,27 @@ class LiveActivityViewModel(
         Sentry.metrics().count("live.poll.error", 1.0)
         Sentry.logger().log(SentryLogLevel.WARN, "Polling failure #%s for %s", failures.toString(), status)
 
-        // Suppress until 3 consecutive failures to reduce noise.
-        if (failures >= FAILURE_REPORT_THRESHOLD) Sentry.captureException(e)
+        // Suppress until 3 consecutive failures to reduce noise. The scraper has already reported
+        // what it could not fetch, and an offline device is not an error.
+        if (failures >= FAILURE_REPORT_THRESHOLD && e !is MatchListUnavailableException) Sentry.captureException(e)
 
         if (_currentMatches.value.isEmpty()) {
             applyOfflineFallback(status, e)
+        } else if (status !in freshStatuses && statusIsOnScreen(status)) {
+            // The list on screen is the one seeded from disk, and nothing newer has arrived.
+            _loadingState.value = LoadingState.Error(CACHED_DATA_MESSAGE)
         }
     }
+
+    private fun statusIsOnScreen(status: String): Boolean =
+        _selectedStatus.value.let { it == status || it == STATUS_ALL }
 
     private suspend fun applyOfflineFallback(status: String, e: Exception) {
         val offline = MatchCacheService.getOfflineMatches(status)
         _loadingState.value = if (!offline.isNullOrEmpty()) {
             Log.d(TAG, "Using offline cache for $status (${offline.size} matches)")
             filterAndEmitMatches(offline)
-            LoadingState.Error("Showing cached data — couldn't reach server")
+            LoadingState.Error(CACHED_DATA_MESSAGE)
         } else {
             LoadingState.Error(e.localizedMessage ?: "Network error")
         }
@@ -433,30 +470,57 @@ class LiveActivityViewModel(
         // Win probability is computed server-side by bouncer-match-sync and published as one
         // aggregate file; the device only joins it on. A match the server has no number for keeps
         // a null probability and renders no bar.
+        //
+        // The list is published first, with whatever the store already holds, and again once the
+        // file has been refreshed. It used to wait for the download — an Appwrite Storage request
+        // with a 10 s read timeout — so a slow one held up scores that were already in hand.
+        // Until the file has been read once, a match keeps the figure it was seeded with, so a
+        // cold start does not draw the bar, drop it, and draw it again.
+        val seeded = if (WinProbabilityStore.hasData) emptyMap() else cachedMatches[status].orEmpty().associateBy { it.id }
+        val first = distinctMatches.map { withProbability(it, seeded[it.id]) }
+        store(status, first)
+        PlayedMatchIndex.record(status, distinctMatches)
+
         refreshWinProbabilityFor(distinctMatches)
-        val matchesWithProbability = distinctMatches.map { match ->
-            when {
-                match.isCompleted -> match.copy(winProbability = match.resolvedWinProbability())
-                // Upcoming fixtures were `else -> match` — no number, no bar, which is the half of
-                // the original report that stayed broken longest. The server now publishes a
-                // pre-match prior for the fixtures where both sides are known, and the flag rides
-                // with it so the renderer can label it as a prior rather than a reading.
-                match.isLive || match.isUpcoming -> {
-                    val probability = WinProbabilityStore.probabilityFor(match.id)
-                    match.copy(
-                        winProbability = probability?.team1Percent,
-                        winProbabilityDraw = probability?.drawPercent,
-                        winProbabilityIsPrematch = probability?.isPrematch == true,
-                    )
-                }
-                else -> match
+        val joined = distinctMatches.map { withProbability(it, seeded[it.id]) }
+        // Only if nothing newer was stored for this status while the file was downloading.
+        if (joined != first && cachedMatches[status] === first) store(status, joined)
+    }
+
+    private fun withProbability(match: CricketMatch, seeded: CricketMatch?): CricketMatch = when {
+        match.isCompleted -> match.copy(winProbability = match.resolvedWinProbability())
+        // Upcoming fixtures were `else -> match` — no number, no bar, which is the half of
+        // the original report that stayed broken longest. The server now publishes a
+        // pre-match prior for the fixtures where both sides are known, and the flag rides
+        // with it so the renderer can label it as a prior rather than a reading.
+        match.isLive || match.isUpcoming -> {
+            val probability = WinProbabilityStore.probabilityFor(match.id)
+            if (probability == null && seeded != null && !WinProbabilityStore.hasData) {
+                match.copy(
+                    winProbability = seeded.winProbability,
+                    winProbabilityDraw = seeded.winProbabilityDraw,
+                    winProbabilityIsPrematch = seeded.winProbabilityIsPrematch,
+                )
+            } else {
+                match.copy(
+                    winProbability = probability?.team1Percent,
+                    winProbabilityDraw = probability?.drawPercent,
+                    winProbabilityIsPrematch = probability?.isPrematch == true,
+                )
             }
         }
+        else -> match
+    }
 
-        MatchCacheService.updateCache(matchesWithProbability, status)
-        PlayedMatchIndex.record(status, distinctMatches)
-        cachedMatches[status] = matchesWithProbability
+    private suspend fun store(status: String, matches: List<CricketMatch>) {
+        MatchCacheService.updateCache(matches, status)
+        cachedMatches[status] = matches
+        freshStatuses += status
+        publish(status)
+    }
 
+    /** Pushes [cachedMatches] to the flows the screens read, after [status] changed. */
+    private fun publish(status: String) {
         val selected = _selectedStatus.value
         if (status == selected || selected == STATUS_ALL) {
             matchesForStatus(cachedMatches, selected)?.let { filterAndEmitMatches(it) }
@@ -473,7 +537,7 @@ class LiveActivityViewModel(
      * tabs use, so an already-warm status costs nothing.
      */
     fun warmAllStatuses() {
-        val missing = FETCHABLE_STATUSES.filterNot(cachedMatches::containsKey)
+        val missing = FETCHABLE_STATUSES.filterNot(freshStatuses::contains)
         if (missing.isEmpty()) return
         viewModelScope.launch(bouncerExceptionHandler) {
             missing.forEach { status ->

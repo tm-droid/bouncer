@@ -4,7 +4,6 @@ import android.util.Log
 import com.tanush.bouncer.BuildConfig
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
-import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -24,6 +23,8 @@ import java.util.concurrent.TimeUnit
 object HttpClientProvider {
     private const val TAG = "HttpClientProvider"
     private const val CACHE_SIZE_BYTES = 10L * 1024 * 1024
+    // A conditional GET that found nothing new. Not successful by OkHttp's 2xx test, and not a failure.
+    private const val HTTP_NOT_MODIFIED = 304
 
     @Volatile private var cacheDir: java.io.File? = null
 
@@ -70,8 +71,8 @@ object HttpClientProvider {
     }
 
     /**
-     * Interceptor that adds Sentry breadcrumbs for all HTTP requests/responses.
-     * Captures request URL, method, response code, and timing information.
+     * Interceptor that records request timing, and leaves a Sentry breadcrumb for a request that
+     * failed or answered with an error status. A successful request leaves none.
      * 
      * Benign cancellations (e.g. Coil image loads canceled on scroll) are
      * logged at DEBUG level and NOT reported to Sentry.
@@ -82,45 +83,26 @@ object HttpClientProvider {
         val method = request.method
         val startTime = System.currentTimeMillis()
         
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "network.http"
-            message = "HTTP $method request"
-            level = SentryLevel.INFO
-            setData("url", url)
-            setData("method", method)
-        })
-        Sentry.metrics().count("http.request", 1.0)
-        
         var response: Response? = null
         try {
             response = chain.proceed(request)
             val duration = System.currentTimeMillis() - startTime
             
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "network.http"
-                message = "HTTP $method response"
-                level = if (response.isSuccessful) SentryLevel.INFO else SentryLevel.WARNING
-                setData("url", url)
-                setData("method", method)
-                setData("statusCode", response.code)
-                setData("durationMs", duration)
-            })
             Sentry.metrics().distribution("http.duration_ms", duration.toDouble())
-            Sentry.metrics().count(
-                "http.response",
-                1.0,
-                null
-            )
-            Sentry.logger().log(
-                if (response.isSuccessful) SentryLogLevel.INFO else SentryLogLevel.WARN,
-                "HTTP %s %s -> %d (%dms)",
-                method,
-                request.url.encodedPath,
-                response.code,
-                duration
-            )
-            
-            if (!response.isSuccessful) {
+            // Only a response worth reading about leaves a breadcrumb. One per request, plus one
+            // per response, plus a log line, on a client that also carries every image load and
+            // the list poll, filled Sentry's ~100-entry ring in about two minutes — a crash report
+            // then held nothing but poll traffic.
+            if (!response.isSuccessful && response.code != HTTP_NOT_MODIFIED) {
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "network.http"
+                    message = "HTTP $method response"
+                    level = SentryLevel.WARNING
+                    setData("url", url)
+                    setData("method", method)
+                    setData("statusCode", response.code)
+                    setData("durationMs", duration)
+                })
                 Log.w(TAG, "HTTP $method $url returned ${response.code} in ${duration}ms")
             }
             
@@ -131,14 +113,6 @@ object HttpClientProvider {
             if (isCancellationException(e)) {
                 // Benign cancellation — log at debug level only, never report to Sentry
                 Log.d(TAG, "HTTP $method $url canceled after ${duration}ms (lifecycle cancellation)")
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "network.http"
-                    message = "HTTP $method request canceled (lifecycle)"
-                    level = SentryLevel.DEBUG
-                    setData("url", url)
-                    setData("method", method)
-                    setData("durationMs", duration)
-                })
             } else if (isConnectivityException(e)) {
                 // Transient connectivity error (e.g. no internet, captive portal, DNS failure).
                 // The device may be connected to a network without actual internet access —

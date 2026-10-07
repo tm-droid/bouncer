@@ -72,11 +72,11 @@ class ScorePollingWorker(
         }
     }
 
-    private suspend fun onPollSuccess(matchesResponse: SanwebMatchesListResponse): Result {
+    private fun onPollSuccess(matchesResponse: SanwebMatchesListResponse): Result {
         val matchCount = matchesResponse.matches.size
         Log.d(TAG, "Fetched $matchCount live matches")
 
-        cacheForWidgets(matchesResponse.matches)
+        recordPoll(matchesResponse.matches)
         WidgetUpdateWorker.triggerImmediateUpdate(context)
         context.sendBroadcast(
             Intent(ACTION_SCORES_UPDATED).setPackage(context.packageName)
@@ -119,22 +119,17 @@ class ScorePollingWorker(
         if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
 
     /**
-     * Refresh the widgets' one snapshot, and record the poll for the app's own bookkeeping.
-     *
-     * This used to build the widget state itself, from two producers at once and with neither
-     * reconciled: team names parsed out of the server list's free-text title, the status as
-     * `detail?.status ?: primary.status`, `is_live` hardcoded true, and `match-live-detail`'s
-     * `score` — the innings *being batted* — written into `team1_score` whichever side was
-     * batting, with `team2_score` never written at all. [WidgetSnapshotSource] is the single
-     * producer now; this is one of its triggers and not a second author.
+     * Records the poll for the app's own bookkeeping. The widgets' snapshot is refreshed by
+     * [WidgetUpdateWorker], triggered right after this, which does nothing when no widget is
+     * placed. This used to call [WidgetSnapshotSource.refresh] as well, so every poll read the
+     * detail row twice with a widget placed and once with none — a billed read each time.
      */
-    private suspend fun cacheForWidgets(matches: List<SanwebMatchSummary>) {
+    private fun recordPoll(matches: List<SanwebMatchSummary>) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putInt("live_match_count", matches.size)
             .putLong("last_poll_epoch", System.currentTimeMillis())
             .apply()
-        WidgetSnapshotSource.refresh(context)
     }
 
     companion object {

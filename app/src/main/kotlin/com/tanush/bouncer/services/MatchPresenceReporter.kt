@@ -5,6 +5,7 @@ import com.tanush.bouncer.data.remote.FunctionOutcome
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import com.tanush.bouncer.utils.sentryCaptureThrottled
 import io.sentry.SentryLevel
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
 import org.json.JSONObject
@@ -29,10 +30,36 @@ object MatchPresenceReporter {
      */
     const val HEARTBEAT_MS = 90_000L
 
+    /**
+     * A match pinged this recently is not pinged again. An open match screen and the Live Update
+     * service both heartbeat, so a match that was open and followed cost two executions every 90 s
+     * for one viewer. The server's own skip window is the same length, so it sees no difference.
+     */
+    internal const val RECENT_PING_MS = 60_000L
+
+    private val lastAcceptedAt = ConcurrentHashMap<String, Long>()
+
+    /** Replaced in tests. */
+    internal var clock: () -> Long = System::currentTimeMillis
+
+    internal fun forgetPings() = lastAcceptedAt.clear()
+
+    internal fun pingedRecently(matchId: String, nowMs: Long): Boolean =
+        lastAcceptedAt[matchId]?.let { nowMs - it in 0 until RECENT_PING_MS } == true
+
+    private fun markAccepted(ids: Collection<String>, nowMs: Long) {
+        // Followed matches come and go; entries past the window are of no further use.
+        lastAcceptedAt.entries.removeAll { nowMs - it.value >= RECENT_PING_MS }
+        ids.forEach { lastAcceptedAt[it] = nowMs }
+    }
+
     /** True when the backend accepted the ping; false means match-sync still sees this match as unwatched. */
     suspend fun ping(matchId: String): Boolean {
         if (matchId.isBlank()) return false
+        val nowMs = clock()
+        if (pingedRecently(matchId, nowMs)) return true
         return send(JSONObject().put("matchId", matchId).toString(), matchId)
+            .also { accepted -> if (accepted) markAccepted(listOf(matchId), nowMs) }
     }
 
     /**
@@ -40,9 +67,13 @@ object MatchPresenceReporter {
      * and one call per match per heartbeat would multiply executions by the number followed.
      */
     suspend fun pingAll(matchIds: Collection<String>): Boolean {
-        val ids = matchIds.filter { it.isNotBlank() }.distinct()
-        if (ids.isEmpty()) return false
+        val nowMs = clock()
+        val named = matchIds.filter { it.isNotBlank() }.distinct()
+        if (named.isEmpty()) return false
+        val ids = named.filterNot { pingedRecently(it, nowMs) }
+        if (ids.isEmpty()) return true
         return send(JSONObject().put("matchIds", JSONArray(ids)).toString(), ids.joinToString(","))
+            .also { accepted -> if (accepted) markAccepted(ids, nowMs) }
     }
 
     private suspend fun send(body: String, matchId: String): Boolean {
