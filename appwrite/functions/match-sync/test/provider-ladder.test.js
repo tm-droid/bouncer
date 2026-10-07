@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { __setRetry503DelayMs, chainDepth, drainUnknownQuotaIds, generateBatch, generateLine, generateVerifiedLine, probeProviders, resetProviderHealth, verifyBatch, verifyLine } from "../src/llm.js";
+import { __setRetry503DelayMs, chainDepth, drainUnknownQuotaIds, generateBatch, generateLine, generateVerifiedLine, modelOfRung, probeProviders, resetProviderHealth, verifyBatch, verifyLine } from "../src/llm.js";
 
 // The ladder became four rungs on two accounts on 2026-09-16, when cerebras and sambanova were
 // dropped for answering 402 to every call and three Gemini model ids took their place. Gemini bills
@@ -553,4 +553,118 @@ test("a line stops walking the ladder once its time budget is spent", async () =
   } finally {
     Date.now = realNow;
   }
+});
+
+// ── A vendor that hangs, a deadline that spans the request, and who checks whose line ─────────
+//
+// Each Gemini rung is the same endpoint, and a project's twins sit directly behind their rung. A
+// walk that met a hang spent its whole 45s on that one host and never reached groq.
+
+const timedOut = () => {
+  const e = new Error("The operation was aborted due to timeout");
+  e.name = "TimeoutError";
+  throw e;
+};
+
+test("one timeout from an endpoint is enough: the walk moves on to the next vendor", async () => {
+  const attempts = [];
+  const { result, seen } = await withSecondProject(
+    (name) => (name.startsWith("gemini") ? timedOut() : completion("19.2: Bumrah beats the bat.")),
+    () => generateLine("19.2: Bumrah to Maxwell, no run", { attempts })
+  );
+  assert.equal(result, "19.2: Bumrah beats the bat.");
+  assert.deepEqual(seen, ["gemini-flash-lite", "groq"], "no twin and no other Gemini rung is asked after the hang");
+  assert.ok(attempts.some((a) => /^gemini-flash-lite-2: not asked: this endpoint timed out/.test(a)));
+});
+
+test("a refusal is not a hang: the next rung on the same endpoint is still asked", async () => {
+  const { seen } = await withSecondProject(
+    (name) => (name === "gemini-flash-lite" ? quota429("x-PerMinute-y") : completion("19.2: A dot ball.")),
+    () => generateLine("19.2: Bumrah to Maxwell, no run", {})
+  );
+  assert.deepEqual(seen, ["gemini-flash-lite", "gemini-flash-lite-2"]);
+});
+
+test("an endpoint that hung is not asked again on the line's later walks", async () => {
+  const unavailable = new Set();
+  const { seen } = await withSecondProject(
+    (name) => (name.startsWith("gemini") ? timedOut() : completion("PASS")),
+    async () => {
+      await generateLine("19.2: Bumrah to Maxwell, no run", { unavailable });
+      await generateLine("19.2: Bumrah to Maxwell, no run", { unavailable });
+    }
+  );
+  assert.equal(seen.filter((n) => n.startsWith("gemini")).length, 1, "one timeout for the whole line");
+});
+
+test("no rung is asked past the request's deadline", async () => {
+  const attempts = [];
+  const { result, seen } = await withSecondProject(
+    () => completion("19.2: A dot ball."),
+    () => generateLine("19.2: Bumrah to Maxwell, no run", { attempts, deadlineAt: Date.now() - 1 })
+  );
+  assert.equal(result, null);
+  assert.equal(seen.length, 0);
+  assert.match(attempts.at(-1), /^all: request deadline reached/);
+});
+
+test("a verified line has one deadline for all of its walks", async () => {
+  const realNow = Date.now;
+  let clock = realNow();
+  Date.now = () => clock;
+  try {
+    const { result, seen } = await withSecondProject(
+      () => {
+        clock += 20_000; // every call costs 20s
+        return completion("FAIL");
+      },
+      () => generateVerifiedLine("19.2: Bumrah to Maxwell, no run", { verify: true, context: { snippet1: "x" } })
+    );
+    // Write (20s), check (40s), rewrite (60s, already past 45s when it returns): the fourth walk
+    // is never started. Each walk used to get its own 45s.
+    assert.equal(result.line, null);
+    assert.ok(seen.length <= 3, `asked ${seen.length} rungs: ${seen.join(", ")}`);
+  } finally {
+    Date.now = realNow;
+  }
+});
+
+test("a rung's model is its own or its twin's", () => {
+  assert.equal(modelOfRung("gemini-flash-lite"), "gemini-3.5-flash-lite");
+  assert.equal(modelOfRung("gemini-flash-lite-2"), "gemini-3.5-flash-lite");
+  assert.equal(modelOfRung("groq"), "openai/gpt-oss-20b");
+  assert.equal(modelOfRung("nobody"), null);
+});
+
+const oneItem = [{ key: "k", source: "Ball 19.2: Bumrah to Maxwell, no run", line: "19.2: A dot ball." }];
+
+test("with the checker spent, the verdict comes from a model that did not write the line", async () => {
+  const { result, seen } = await withSecondProject(
+    (name) => (name === "groq-qwen" ? quota429("x-PerMinute-y") : completion("[#1]: PASS")),
+    () => verifyBatch(oneItem, { writtenBy: "gemini-flash-lite" })
+  );
+  assert.equal(result.verdicts.get("k"), true);
+  // Not gemini-flash-lite, and not its twin either: the same model on another project.
+  assert.deepEqual(seen, ["groq-qwen", "gemini-3.1-flash-lite-preview"]);
+});
+
+test("the writer's own model is asked only when no other gives a verdict", async () => {
+  const attempts = [];
+  const { result, seen } = await withSecondProject(
+    (name) => (name.startsWith("gemini-flash-lite") ? completion("[#1]: PASS") : quota429("x-PerMinute-y")),
+    () => verifyBatch(oneItem, { writtenBy: "gemini-flash-lite", attempts })
+  );
+  assert.equal(result.verdicts.get("k"), true);
+  assert.equal(seen.at(-1), "gemini-flash-lite");
+  // The rungs that refused in the first walk are not asked a second time.
+  assert.equal(seen.filter((n) => n === "groq").length, 1);
+  assert.ok(attempts.some((a) => /no other model gave a verdict/.test(a)));
+});
+
+test("with no writer named, the check is the walk it always was", async () => {
+  const { seen } = await withSecondProject(
+    (name) => (name === "groq-qwen" ? quota429("x-PerMinute-y") : completion("[#1]: PASS")),
+    () => verifyBatch(oneItem, {})
+  );
+  assert.deepEqual(seen, ["groq-qwen", "gemini-flash-lite"]);
 });

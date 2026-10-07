@@ -228,6 +228,14 @@ let batchTimer = null;
 let batchFn = generateBatch;
 let verifyBatchFn = verifyBatch;
 
+// When this run stops asking providers. The function is killed at 120s, and a killed run reaches
+// neither its Sentry flush nor its backlog write; a write, its check and a retry of both could
+// each spend a 45s chain budget. Whatever has no line by the deadline is held, as any delivery
+// nobody answered is. Module state that every run sets at its start: when two executions overlap
+// in one container the earlier one reads the later one's deadline, which is looser, never tighter.
+const RUN_LLM_BUDGET_MS = 90_000;
+let llmDeadlineAt = Infinity;
+
 /** Queue one delivery for the next batch. Resolves to its rewritten line, or null. */
 function queueRewrite(entry) {
   return new Promise((resolve) => {
@@ -354,7 +362,7 @@ async function rewriteAndCheck(items, exclude) {
   // Mutated by generateLine with the rung that answered, so each row records its real provider
   // rather than a placeholder. Every delivery in a batch shares one rung by construction.
   const used = {};
-  const lines = await batchFn(items.map((t) => ({ key: t.key, text: t.text })), { log, error, attempts, used, exclude });
+  const lines = await batchFn(items.map((t) => ({ key: t.key, text: t.text })), { log, error, attempts, used, exclude, deadlineAt: llmDeadlineAt });
   // A writer that hands the source back unchanged has not written a line, and the checker cannot
   // catch it — a copy of the source agrees with the source on every fact. That is how raw Cricbuzz
   // text was stored as `ai_generated: true, provider: groq` on 2026-10-03 (match 151554, 15.5),
@@ -384,7 +392,7 @@ async function rewriteAndCheck(items, exclude) {
   }));
   const checkAttempts = [];
   const { verdicts, available } = toCheck.length
-    ? await verifyBatchFn(toCheck, { log, error, attempts: checkAttempts })
+    ? await verifyBatchFn(toCheck, { log, error, attempts: checkAttempts, writtenBy: used.provider, deadlineAt: llmDeadlineAt })
     : { verdicts: new Map(), available: false };
   const results = new Map();
   for (const t of items) {
@@ -1565,6 +1573,7 @@ async function handleRun({ req, res, log, error }) {
   const slowState = await readSlowState({ storage, error });
   const recent = polled?.lists?.recent?.matches ?? null;
   const startMs = Date.now();
+  llmDeadlineAt = startMs + RUN_LLM_BUDGET_MS;
   for (const m of matches) if (m?.id) lastSeenLiveAt.set(String(m.id), startMs);
   for (const [id, at] of lastSeenLiveAt) if (startMs - at > 60 * 60 * 1000) lastSeenLiveAt.delete(id);
   const ending = endedMatches({

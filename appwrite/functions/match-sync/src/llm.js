@@ -170,6 +170,16 @@ const CHAIN_BUDGET_MS = 45_000;
 // Rungs skipped without a call (latched, unkeyed) are not counted.
 const MAX_RUNGS_ASKED = 12;
 
+// One rung's share of the wait. The lower bound keeps a rung asked at the very end of a deadline
+// from being handed a timeout it cannot possibly meet.
+const RUNG_TIMEOUT_MS = 15_000;
+const MIN_RUNG_TIMEOUT_MS = 1_000;
+
+/** The model id behind a rung name, or null. Twins share their rung's model. */
+export function modelOfRung(name) {
+  return ladder().find((p) => p.name === name)?.model ?? null;
+}
+
 // Not in the chain, still worth probing. Both answer 200 on `GET /v1/models` and 402 on every
 // completion (spent Cerebras trial, unfunded SambaNova), so calling them costs a doomed 15s round
 // trip per cold container and buys nothing — but `probeProviders` is exactly how a funded account
@@ -586,6 +596,15 @@ export async function generateLine(
     requireTerminated = true,
     // "generate" walks the writers; "verify" asks the verify-only rungs first, then the writers.
     purpose = "generate",
+    // Epoch ms after which no rung is asked, shared by every walk of one request. The chain
+    // budget below is per walk, and a request makes several: `generateVerifiedLine` makes up to
+    // four, a rewritten batch a write and a check and then a retry of both. Each had its own 45s,
+    // so the worst case was several times a function's whole timeout — and a run the platform
+    // kills never reaches its Sentry flush or its backlog write.
+    deadlineAt = Infinity,
+    // Model ids whose rungs are not asked. A line is better checked by a model that did not write
+    // it; see `verifyBatch`.
+    excludeModels = [],
   } = {}
 ) {
   const note = (provider, reason) => attempts?.push(`${provider}: ${reason}`);
@@ -601,11 +620,27 @@ export async function generateLine(
 
   const startedAt = Date.now();
   let asked = 0;
+  // Endpoints that timed out during this walk. Every Gemini rung is one endpoint, and each
+  // project's twins sit directly behind their rung — so when Google hung rather than refused, the
+  // walk spent its whole budget on three 15s timeouts against the same host and never reached
+  // groq, which was answering. One timeout is now enough to move on to the next vendor.
+  const hung = new Set();
   for (const provider of rungsFor(purpose)) {
     if (exclude.includes(provider.name) || unavailable?.has(provider.name)) continue;
+    if (excludeModels.includes(provider.model)) continue;
     if (Date.now() - startedAt > CHAIN_BUDGET_MS) {
       note("all", `chain budget spent (${CHAIN_BUDGET_MS}ms) — remaining rungs not asked`);
       break;
+    }
+    if (Date.now() >= deadlineAt) {
+      note("all", "request deadline reached — remaining rungs not asked");
+      break;
+    }
+    if (hung.has(provider.url)) {
+      note(provider.name, "not asked: this endpoint timed out earlier in the walk");
+      // For the rest of the line too: an endpoint that hung a second ago is not worth 15s more.
+      unavailable?.add(provider.name);
+      continue;
     }
     if (asked >= MAX_RUNGS_ASKED) {
       note("all", `${MAX_RUNGS_ASKED} rungs asked — remaining rungs not asked`);
@@ -651,7 +686,8 @@ export async function generateLine(
           temperature,
           ...(provider.extraBody ?? {}),
         }),
-        signal: AbortSignal.timeout(15_000),
+        // Never past the request's deadline; a rung asked with two seconds left gets two.
+        signal: AbortSignal.timeout(Math.max(MIN_RUNG_TIMEOUT_MS, Math.min(RUNG_TIMEOUT_MS, deadlineAt - Date.now()))),
       });
         // A 503 is Google's "this model is currently experiencing high demand": the server, not our
         // quota, and gone in seconds. On 2026-09-25 it was the only thing between the one writer
@@ -709,6 +745,7 @@ export async function generateLine(
       note(provider.name, e?.message ?? "threw");
       noteHealth(provider.name, "error");
       unavailable?.add(provider.name);
+      if (e?.name === "TimeoutError" || e?.name === "AbortError") hung.add(provider.url);
     }
   }
   return null;
@@ -957,7 +994,7 @@ const VERIFY_SYSTEM_INSTRUCTION =
  */
 export async function verifyLine(
   { line, snippet1 = "", snippet2 = "", ball = "", bowler = "", batsman = "" },
-  { log, error, attempts, unavailable, outcome } = {}
+  { log, error, attempts, unavailable, outcome, deadlineAt } = {}
 ) {
   const prompt = VERIFICATION_PROMPT_TEMPLATE
     .replace("{snippet1}", snippet1)
@@ -993,6 +1030,7 @@ export async function verifyLine(
     error,
     attempts,
     unavailable,
+    deadlineAt,
   });
   // `outcome.available` separates "a verifier said FAIL" from "no verifier answered". Both fail
   // closed, but they are opposite diagnoses — a hallucination versus a spent chain — and recording
@@ -1036,7 +1074,7 @@ const VERIFY_BATCH_RULES =
  *
  * @param items [{ key, source, line }]
  */
-export async function verifyBatch(items, { log, error, attempts, used } = {}) {
+export async function verifyBatch(items, { log, error, attempts, used, writtenBy, deadlineAt } = {}) {
   const verdicts = new Map();
   if (!items?.length) return { verdicts, available: true };
 
@@ -1052,7 +1090,15 @@ export async function verifyBatch(items, { log, error, attempts, used } = {}) {
     tagged.map((i) => `[${i.tag}]\nSource: ${i.source}\nCommentary: ${i.line}`).join("\n\n") +
     `\n\nAnswer all ${items.length} items, one line each: [#n]: PASS or [#n]: FAIL`;
 
-  const raw = await generateLine(prompt, {
+  // The checker is asked first among the models that did NOT write these lines. `groq-qwen` checks
+  // until its daily tokens run out; after that a verdict came from the first writer rung that
+  // answered, which is usually the one that wrote the batch — a model grading its own prose shares
+  // its blind spots. Only when no other model answers is the writer's own asked, so a thin evening
+  // still gets a verdict rather than a held delivery. One `unavailable` set across both walks, so
+  // a rung that refused in the first is not asked again in the second.
+  const writerModel = writtenBy ? modelOfRung(writtenBy) : null;
+  const unavailable = new Set();
+  const ask = (excludeModels) => generateLine(prompt, {
     // A verdict line is ~6 tokens with a short tag; 16 leaves room for a model that adds a word.
     // The reasoning rungs' floors apply on top when the checker falls through.
     maxTokens: 16 * items.length + 64,
@@ -1064,7 +1110,15 @@ export async function verifyBatch(items, { log, error, attempts, used } = {}) {
     error,
     attempts,
     used,
+    unavailable,
+    deadlineAt,
+    excludeModels,
   });
+  let raw = await ask(writerModel ? [writerModel] : []);
+  if (!raw && writerModel) {
+    attempts?.push(`all: no other model gave a verdict — asking the writer's (${writerModel})`);
+    raw = await ask([]);
+  }
   if (!raw) return { verdicts, available: false };
 
   for (const line of raw.split("\n").map((l) => l.trim()).filter(Boolean)) {
@@ -1097,7 +1151,9 @@ export async function generateVerifiedLine(prompt, options = {}) {
   // for this ball may well answer the next one, and an Appwrite container is reused across
   // executions, so a longer-lived Set would blacklist a recovered provider for the container's life.
   const unavailable = new Set();
-  const pass = { attempts, log, error, unavailable };
+  // One deadline for the line, not one chain budget per walk.
+  const deadlineAt = genOptions.deadlineAt ?? Date.now() + CHAIN_BUDGET_MS;
+  const pass = { attempts, log, error, unavailable, deadlineAt };
 
   const used = {};
   const first = await generateLine(prompt, { ...genOptions, ...pass, used });
