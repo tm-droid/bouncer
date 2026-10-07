@@ -2,6 +2,7 @@ package com.tanush.bouncer
 
 import android.content.Context
 import android.util.Log
+import com.tanush.bouncer.utils.PreferencesHelper
 import io.sentry.Sentry
 import io.sentry.android.core.SentryAndroid
 import java.io.File
@@ -24,8 +25,36 @@ import java.io.File
 object Diagnostics {
     private const val TAG = "Diagnostics"
     internal const val OPT_OUT_FILE = "diagnostics_off"
+    internal const val LEGACY_CHECKED_FILE = "diagnostics_choice_checked"
+    private const val LEGACY_PREFERENCE_KEY = "share_diagnostics"
 
-    fun isEnabled(context: Context): Boolean = isEnabledIn(context.filesDir)
+    fun isEnabled(context: Context): Boolean =
+        isEnabledIn(context.filesDir) && earlierChoiceAllows(context.filesDir) {
+            PreferencesHelper.getBoolean(context, LEGACY_PREFERENCE_KEY, true)
+        }
+
+    /**
+     * Carries over an opt-out made in the one build that kept the choice as a preference.
+     *
+     * That build shipped to testers before the choice became a file, and without this the file's
+     * absence would read as "on" for anyone who had switched off in it. The preference is read
+     * once: "off" becomes the opt-out file, "on" (or never set) is recorded as checked. Until a
+     * read has succeeded nothing is sent, the same rule as everywhere else here.
+     */
+    internal fun earlierChoiceAllows(filesDir: File?, readEarlierChoice: () -> Boolean): Boolean {
+        if (filesDir == null) return false
+        return try {
+            val checked = File(filesDir, LEGACY_CHECKED_FILE)
+            if (checked.exists()) return true
+            val wasOn = readEarlierChoice()
+            if (!wasOn) recordChoice(filesDir, enabled = false)
+            checked.createNewFile()
+            wasOn
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not read the earlier diagnostics choice; treating it as off", e)
+            false
+        }
+    }
 
     /** Starts Sentry if diagnostics are on. Every `Sentry.*` call is a no-op when it has not started. */
     fun start(context: Context) {
@@ -38,7 +67,8 @@ object Diagnostics {
      * stays off.
      */
     fun setEnabled(context: Context, enabled: Boolean): Boolean {
-        val inForce = recordChoice(context.filesDir, enabled)
+        recordChoice(context.filesDir, enabled)
+        val inForce = isEnabled(context)
         if (inForce) start(context) else Sentry.close()
         return inForce
     }
