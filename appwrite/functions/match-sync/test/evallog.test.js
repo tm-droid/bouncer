@@ -293,9 +293,11 @@ test("the log names both sides and the start time, which is what a Cricinfo matc
 
 test("a pre-match figure is recorded by the fixture's own team id, with or without a context", async () => {
   const { fixtureTeamId, notePrematch, PREMATCH_TTL_MS } = await import("../src/evallog.js");
-  const fixture = { id: 173737, title: "Kuwait vs Thailand", teams: [{ id: 527, name: "Kuwait" }, { id: 303, name: "Thailand" }] };
+  // The shape `matchlist.js` writes: `teamId`, a string, empty when Cricbuzz gave none.
+  const fixture = { id: 173737, title: "Kuwait vs Thailand", teams: [{ teamId: "527", name: "Kuwait" }, { teamId: "303", name: "Thailand" }] };
   assert.equal(fixtureTeamId(fixture, "Kuwait"), "527");
-  assert.equal(fixtureTeamId({ teams: [{ id: 388, name: "Zimbabwe Women" }] }, "zimbabwe  women"), "388");
+  assert.equal(fixtureTeamId({ teams: [{ teamId: "388", name: "Zimbabwe Women" }] }, "zimbabwe  women"), "388");
+  assert.equal(fixtureTeamId({ teams: [{ teamId: "", name: "Kuwait" }] }, "Kuwait"), null);
   // A side the fixture does not name has no id, and so no entry: the orientation is not guessed.
   assert.equal(fixtureTeamId(fixture, "Qatar"), null);
   assert.equal(fixtureTeamId({ title: "A vs B" }, "A"), null);

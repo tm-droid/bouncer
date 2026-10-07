@@ -129,10 +129,14 @@ const sameName = (a, b) => {
   return fold(a) !== "" && fold(a) === fold(b);
 };
 
-/** The Cricbuzz team id of the side a fixture's title names as [sideName], or null. */
+/**
+ * The Cricbuzz team id of the side a fixture's title names as [sideName], or null. The match list
+ * writes it as `teamId`, and as an empty string when Cricbuzz gave none.
+ */
 export function fixtureTeamId(fixture, sideName) {
   const hit = (Array.isArray(fixture?.teams) ? fixture.teams : []).find((t) => sameName(t?.name, sideName));
-  return hit?.id == null ? null : String(hit.id);
+  const id = hit?.teamId ?? hit?.id;
+  return id == null || String(id) === "" ? null : String(id);
 }
 
 /**
