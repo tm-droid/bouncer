@@ -37,9 +37,9 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.util.Log
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
 
 /**
  * AboutScreenV2 — App info, version, links.
@@ -137,7 +137,7 @@ private fun Context.openStoreListing() {
     val listing = "details?id=$packageName"
     for (uri in listOf("market://$listing", "https://play.google.com/store/apps/$listing")) {
         try {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            startActivity(Intent(Intent.ACTION_VIEW, uri.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             return
         } catch (e: ActivityNotFoundException) {
             // No Play Store on this device; try the web address.

@@ -1,5 +1,6 @@
 package com.tanush.bouncer.data.remote
 
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -15,6 +16,30 @@ import org.junit.Test
  * never receive an event, so the live card silently stops updating. Hence the explicit table.
  */
 class MatchRowIdTest {
+
+    /**
+     * The JS rule itself, read from the file. [jsEquivalent] below is a Kotlin copy of it, and a
+     * copy cannot notice the original changing: without this, an edit to `sanitizeMatchId` in
+     * main.js left every test here green while the device subscribed to a row id nobody writes.
+     */
+    @Test
+    fun `the javascript rule is the one this test mirrors`() {
+        val js = locate("appwrite/functions/match-sync/src/main.js").readText(Charsets.UTF_8)
+        assertTrue(
+            "sanitizeMatchId in main.js changed; update sanitizeMatchId in Kotlin and jsEquivalent here, then this line",
+            js.contains("""const sanitizeMatchId = (id) => String(id).replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 36);"""),
+        )
+    }
+
+    private fun locate(relativePath: String): File {
+        var dir: File? = File(System.getProperty("user.dir") ?: ".").absoluteFile
+        while (dir != null) {
+            val candidate = File(dir, relativePath)
+            if (candidate.isFile) return candidate
+            dir = dir.parentFile
+        }
+        error("could not find $relativePath from ${System.getProperty("user.dir")} — do not delete this check")
+    }
 
     /** Reference implementation of the JS regex + slice, kept separate from the one under test. */
     private fun jsEquivalent(id: String): String {

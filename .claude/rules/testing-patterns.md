@@ -12,12 +12,12 @@ rejects the filter). Every filtered run must name a concrete variant task — `t
 
 **Single test class:**
 ```bash
-./gradlew testDebugUnitTest --tests "com.tanush.bouncer.analysis.ml.ScorePredictionModelTest"
+./gradlew testDebugUnitTest --tests "com.tanush.bouncer.analysis.MatchProjectionsTest"
 ```
 
 **Single test method:**
 ```bash
-./gradlew testDebugUnitTest --tests "com.tanush.bouncer.analysis.ml.ScorePredictionModelTest.testPredictionAccuracy"
+./gradlew testDebugUnitTest --tests "com.tanush.bouncer.viewmodels.LiveActivityColdStartTest"
 ```
 
 **Pattern matching:**
@@ -32,15 +32,12 @@ rejects the filter). Every filtered run must name a concrete variant task — `t
 
 ## Test Organization
 
-**ML/Analysis tests** (`app/src/test/java/com/tanush/bouncer/analysis/ml/`)
-- `TrainingPipelineTest` — end-to-end model training
-- `GradientDescentTest` — optimization algorithm
-- `FeatureExtractorTest` — feature pipeline
-- `ScorePredictionModelTest` — prediction accuracy
-- `LossFunctionTest` — loss computation
+**Analysis tests** (`app/src/test/java/com/tanush/bouncer/analysis/`)
+- `MatchProjectionsTest` — run rate, projected score, required rate. The ML models moved
+  server-side; their tests are the functions' `node --test` suites.
 
 **Network tests** (`app/src/test/java/com/tanush/bouncer/network/`)
-- `CricBuzzScraperTest` — scraper validation + live data parsing
+- `CricBuzzScraperTest` — parser checks against hand-written markup; the captured-page tests are the `*RscTest` and `*FlightTest` classes
 
 **Data layer** (`app/src/test/java/com/tanush/bouncer/data/`)
 - `AppResultTest` — Result<T> monad behavior
@@ -69,3 +66,11 @@ Enable on debug build to identify recomposition issues:
 ```
 
 Look for unstable classes and excessive recomposition in function chains.
+
+## Function tests (Node)
+
+```bash
+cd appwrite/functions/match-sync && node --test     # each function directory has its own suite
+```
+
+CI runs every function's suite (`Function Tests` job) and the Play upload waits on it.

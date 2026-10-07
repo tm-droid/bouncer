@@ -12,6 +12,7 @@ import com.tanush.bouncer.ui.navigation.BouncerScreen
 import com.tanush.bouncer.ui.navigation.navigateForward
 import com.tanush.bouncer.ui.navigation.navigateToTab
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
+import androidx.core.net.toUri
 
 // A link is handled once and then cleared by the activity. It used to be remembered here by
 // its URI string, and every alert for one match carries the same URI — so the second alert a
@@ -46,7 +47,7 @@ internal fun HandleDeepLink(
 
 /** `app://bouncer/…`, or null for anything else. */
 private fun parseBouncerLink(deepLinkUri: String): Uri? =
-    runCatching { Uri.parse(deepLinkUri) }.getOrNull()
+    runCatching { deepLinkUri.toUri() }.getOrNull()
         ?.takeIf { it.scheme == "app" && it.host == "bouncer" }
 
 /** The match a link names, or null when it is not a match link or carries no usable id. */

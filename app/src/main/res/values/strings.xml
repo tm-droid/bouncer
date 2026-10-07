@@ -245,7 +245,15 @@
     <string name="common_no_live_matches">No live matches</string>
     <string name="common_no_scorecard_available">No scorecard available</string>
     <string name="scorecard_wagon_title">Where the runs went</string>
-    <string name="scorecard_wagon_covers">%1$d runs off %2$d balls</string>
+    <string name="scorecard_wagon_covers">%1$s off %2$s</string>
+    <plurals name="scorecard_wagon_runs">
+        <item quantity="one">%d run</item>
+        <item quantity="other">%d runs</item>
+    </plurals>
+    <plurals name="scorecard_wagon_balls">
+        <item quantity="one">%d ball</item>
+        <item quantity="other">%d balls</item>
+    </plurals>
     <string name="scorecard_wagon_bowler_end">Bowler\'s end</string>
     <string name="scorecard_wagon_description">%1$s: runs by area of the ground. Most, %2$d, %3$s.</string>
     <string name="scorecard_wagon_source">Zones as scored by ESPNcricinfo</string>

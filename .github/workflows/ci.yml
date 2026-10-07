@@ -23,9 +23,11 @@ on:
     branches: [main]
   pull_request:
 
+# A newer push cancels an older run on a pull request, never on main. On main every run ends in an
+# upload to Play, and cancelling one part-way through that upload leaves a release half made.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
@@ -45,28 +47,10 @@ jobs:
           distribution: temurin
           cache: gradle
 
+      # Signing placeholders only. The list that used to be here named provider keys the build
+      # stopped reading long ago, and blank Appwrite ids, which the build treats as absent.
       - name: Create local.properties
-        run: |
-          cat > local.properties << 'EOF'
-          RAPIDAPI_KEY=
-          GROQ_API_KEY=
-          CEREBRAS_API_KEY=
-          SAMBANOVA_API_KEY=
-          APPWRITE_ENDPOINT=
-          APPWRITE_PROJECT_ID=
-          APPWRITE_AI_CACHE_DB_ID=
-          APPWRITE_AI_CACHE_COL_ID=
-          APPWRITE_FAVOURITES_COL_ID=
-          HIGHLIGHTLY_API_KEY=
-          APPWRITE_HIGHLIGHTS_DB_ID=
-          APPWRITE_HIGHLIGHTS_COL_ID=
-          APPWRITE_PLAYER_FORMS_DB_ID=
-          APPWRITE_PLAYER_FORMS_COL_ID=
-          APPWRITE_PLAYER_PROFILES_COL_ID=
-          KEYSTORE_PASSWORD=placeholder
-          KEY_ALIAS=placeholder
-          KEY_PASSWORD=placeholder
-          EOF
+        run: printf 'KEYSTORE_PASSWORD=placeholder\nKEY_ALIAS=placeholder\nKEY_PASSWORD=placeholder\n' > local.properties
 
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
@@ -91,28 +75,10 @@ jobs:
           distribution: temurin
           cache: gradle
 
+      # Signing placeholders only. The list that used to be here named provider keys the build
+      # stopped reading long ago, and blank Appwrite ids, which the build treats as absent.
       - name: Create local.properties
-        run: |
-          cat > local.properties << 'EOF'
-          RAPIDAPI_KEY=
-          GROQ_API_KEY=
-          CEREBRAS_API_KEY=
-          SAMBANOVA_API_KEY=
-          APPWRITE_ENDPOINT=
-          APPWRITE_PROJECT_ID=
-          APPWRITE_AI_CACHE_DB_ID=
-          APPWRITE_AI_CACHE_COL_ID=
-          APPWRITE_FAVOURITES_COL_ID=
-          HIGHLIGHTLY_API_KEY=
-          APPWRITE_HIGHLIGHTS_DB_ID=
-          APPWRITE_HIGHLIGHTS_COL_ID=
-          APPWRITE_PLAYER_FORMS_DB_ID=
-          APPWRITE_PLAYER_FORMS_COL_ID=
-          APPWRITE_PLAYER_PROFILES_COL_ID=
-          KEYSTORE_PASSWORD=placeholder
-          KEY_ALIAS=placeholder
-          KEY_PASSWORD=placeholder
-          EOF
+        run: printf 'KEYSTORE_PASSWORD=placeholder\nKEY_ALIAS=placeholder\nKEY_PASSWORD=placeholder\n' > local.properties
 
       - name: Run lint
         run: ./gradlew lint --no-daemon
@@ -123,11 +89,59 @@ jobs:
           name: lint-report
           path: app/build/reports/lint-results-debug.html
 
+  detekt:
+    name: Detekt
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # detekt 1.23 cannot run on JDK 25; 21 is what this workflow uses throughout.
+      - uses: actions/setup-java@v6
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: gradle
+
+      - name: Create local.properties
+        run: printf 'KEYSTORE_PASSWORD=placeholder\nKEY_ALIAS=placeholder\nKEY_PASSWORD=placeholder\n' > local.properties
+
+      - name: Run detekt
+        run: ./gradlew detekt --no-daemon
+
+  # The provider ladder, the fact-checker, the rewrite backlog and the win-probability maths exist
+  # only in JavaScript. Their suites ran when someone remembered to run them before a deploy.
+  functions:
+    name: Function Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Run every function's tests
+        run: |
+          set -euo pipefail
+          for dir in appwrite/functions/*/; do
+            grep -q '"test"' "$dir/package.json" 2>/dev/null || continue
+            echo "::group::${dir}"
+            (cd "$dir" && npm ci --ignore-scripts --no-audit --no-fund && npm test)
+            echo "::endgroup::"
+          done
+
   build:
     name: Build Release AAB
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    needs: test
+    # Everything that can say the tree is wrong, before anything is built to ship. Lint ran beside
+    # this job without gating it, so a red lint run still published; detekt and the function
+    # suites did not run here at all.
+    needs: [test, lint, detekt, functions]
     # Repository secrets are not exposed to workflow runs triggered by dependabot[bot], so
     # KEYSTORE_BASE64 expands to an empty string, `base64 --decode` writes a zero-byte file and
     # signing dies with `Failed to read key from store: Tag number over 30 is not supported`.
@@ -170,9 +184,17 @@ jobs:
       - name: Derive versionCode
         run: echo "BOUNCER_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
 
+      # A named version, checked against its hash. This step runs with the release keystore and
+      # its passwords already on disk, and it used to pipe whatever sentry.io/get-cli/ served that
+      # minute into bash.
       - name: Install sentry-cli
+        env:
+          SENTRY_CLI_VERSION: 3.5.0
+          SENTRY_CLI_SHA256: 522d469086996996322052b8f46bb679f010c53d884521023e79aa7680627104
         run: |
-          curl -sL https://sentry.io/get-cli/ | INSTALL_DIR=/usr/local/bin bash
+          curl -fsSL -o /tmp/sentry-cli "https://downloads.sentry-cdn.com/sentry-cli/${SENTRY_CLI_VERSION}/sentry-cli-Linux-x86_64"
+          echo "${SENTRY_CLI_SHA256}  /tmp/sentry-cli" | sha256sum --check
+          sudo install -m 0755 /tmp/sentry-cli /usr/local/bin/sentry-cli
           printf 'defaults.project=android\ndefaults.org=tanush-4w\ncli.executable=/usr/local/bin/sentry-cli\n' > sentry.properties
 
       - name: Build release AAB
@@ -202,13 +224,34 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # A push that changed only the functions, the docs or this workflow has no new app to ship,
+      # and each upload starts a closed-testing review. When the range cannot be read (the first
+      # push of a branch, a rewritten history) the build is published, as before.
+      - name: Did this push change the app?
+        id: app
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          changed=yes
+          if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            git diff --name-only "${BEFORE}" "${GITHUB_SHA}" \
+              | grep -qE '^(app/|baselineprofile/|gradle/|distribution/|[^/]*\.gradle\.kts$|gradle\.properties$|local\.properties\.template$)' \
+              || changed=no
+          fi
+          echo "changed=${changed}" >> "$GITHUB_OUTPUT"
+          echo "App changed in this push: ${changed}"
 
       - uses: actions/download-artifact@v8
+        if: steps.app.outputs.changed == 'yes'
         with:
           name: release-aab
           path: app/build/outputs/bundle/release/
 
       - uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        if: steps.app.outputs.changed == 'yes'
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.tanush.bouncer

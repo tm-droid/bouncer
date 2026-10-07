@@ -290,6 +290,13 @@ android {
         )
             .withPropertyName("searchNormalizationParityFixture")
             .withPathSensitivity(PathSensitivity.RELATIVE)
+
+        // CommentaryRunsParityTest and MatchRowIdTest both assert on lines of match-sync's main.js.
+        // It was the one file a parity test read that was not declared here, so on a warm build an
+        // edit to it left the task UP-TO-DATE and neither check ran.
+        inputs.files(rootProject.file("appwrite/functions/match-sync/src/main.js"))
+            .withPropertyName("matchSyncMainParitySource")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
     }
 
     // MigrationTestHelper loads the exported Room schemas from the instrumentation APK's assets.

@@ -30,6 +30,7 @@ import com.tanush.bouncer.models.WagonWheel
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import kotlin.math.cos
 import kotlin.math.sin
+import androidx.compose.ui.res.pluralStringResource
 
 /** Octants in a wheel, as the server validates them. */
 internal const val WAGON_ZONES = 8
@@ -109,7 +110,11 @@ private fun WagonWheelCard(wheel: WagonWheel) {
             Text(wheel.name, style = typography.labelLarge, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
             // What the wheel covers — the snapshot's own figures, not the scorecard's.
             Text(
-                text = stringResource(R.string.scorecard_wagon_covers, wheel.runs, wheel.balls),
+                text = stringResource(
+                    R.string.scorecard_wagon_covers,
+                    pluralStringResource(R.plurals.scorecard_wagon_runs, wheel.runs, wheel.runs),
+                    pluralStringResource(R.plurals.scorecard_wagon_balls, wheel.balls, wheel.balls),
+                ),
                 style = typography.labelSmall,
                 color = colors.textSecondary,
             )

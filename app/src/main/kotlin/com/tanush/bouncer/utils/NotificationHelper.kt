@@ -5,7 +5,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.tanush.bouncer.BouncerActivity
@@ -13,6 +12,7 @@ import com.tanush.bouncer.R
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
+import androidx.core.net.toUri
 
 object NotificationHelper {
     private const val CHANNEL_ID = "live_match_events"
@@ -59,7 +59,7 @@ object NotificationHelper {
             // A reminder for a match opens that match, the same link a match alert carries.
             val intent = Intent(context, BouncerActivity::class.java).apply {
                 if (matchId != null) {
-                    data = Uri.parse("app://bouncer/match/$matchId")
+                    data = "app://bouncer/match/$matchId".toUri()
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 } else {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
@@ -53,6 +52,7 @@ import com.tanush.bouncer.data.local.entities.HighlightEntity
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.sentry.SentryLevel
+import androidx.core.net.toUri
 
 private const val VIDEO_ASPECT = 16f / 9f
 
@@ -266,7 +266,7 @@ private fun openExternally(context: Context, url: String) {
     }
     try {
         context.startActivity(
-            Intent(Intent.ACTION_VIEW, Uri.parse(url.trim()))
+            Intent(Intent.ACTION_VIEW, url.trim().toUri())
                 .addCategory(Intent.CATEGORY_BROWSABLE)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )

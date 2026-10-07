@@ -14,7 +14,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Git Workflow
 - After completing requested changes, commit and push directly to main (do not create a PR unless explicitly asked).
-- Always run a clean build and tests before pushing; do not push a broken build.
+- Always run a clean build and tests before pushing; do not push a broken build. CI gates the Play upload on unit tests, lint, detekt and every function's `node --test` (`ci.yml`, `needs:` on the build job), so run `./gradlew lintDebug` as well as detekt before pushing — lint was red on main for weeks while it gated nothing.
+- A push that changes no app path (`app/`, `gradle/`, `distribution/`, the Gradle files) builds but does not upload to Play. A push to main never cancels an earlier run.
 - Every push to main uploads to Play with `distribution/whatsnew/whatsnew-en-US` as "What's new". A commit touching `app/src/main/` must update that file (user-facing wording, ≤500 chars — see `distribution/whatsnew/README.md`). `.claude/hooks/release-notes-check.sh` blocks the commit otherwise; prefix `SKIP_RELEASE_NOTES=1` only when nothing user-visible changed.
 - The Play bundle's Appwrite ids and Sentry DSN come from `local.properties.template`, not from GitHub secrets; `verifyReleaseConfig` fails a release artifact built without them. A green CI run does not mean the bundle can reach the backend — see "The Play build takes its ids from the template" in `.claude/rules/api-keys-and-setup.md`.
 
@@ -82,10 +83,10 @@ app/src/main/kotlin/com/tanush/bouncer/
 │   ├── navigation/     # BouncerNavHost.kt — single NavHost, all routes
 │   └── theme/          # Material3 theme
 ├── viewmodels/         # MVVM ViewModels (no Hilt — manual construction)
-├── services/           # FCM, CommentaryFusion, LiveCommentary, Workers, AICacheService
+├── services/           # FCM, match alert gate, presence, match cache, Workers, AICacheService (dormant)
 │                       # RetryPolicy.kt: WORKER_MAX_RETRIES — shared retry cap for all Workers
 ├── managers/           # Singleton managers (TeamLogo, TeamAcronym, FavouriteTeams, MatchSubscription, NotificationInbox)
-├── network/            # Retrofit + Jsoup scrapers (CricBuzz, CricInfo, Series, PointsTable, PlayerProfile)
+├── network/            # OkHttp + Jsoup scrapers (CricBuzz, CricInfo, Series, PointsTable, PlayerProfile)
 ├── data/               # Room DB, repositories, AppResult<T> monad
 │   ├── CacheConfig.kt  # All cache TTLs + realtime reconnect backoff + permanent-cache sentinel — no magic numbers
 │   └── remote/         # AppwriteClient (singleton) + table clients extending AppwriteTableClient
@@ -128,6 +129,57 @@ Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` 
 **Error handling:** `AppResult<T>` monad (`data/AppResult.kt`) wraps success/failure. Use `.fold(onSuccess, onFailure)` in ViewModels; propagate via `return AppResult.Error(e)` in repositories. Don't unwrap with `!!`.
 
 **Navigation:** Single `BouncerNavHost` with Compose Navigation. Deep link entry via `app://bouncer/match/{matchId}` — scheme `app`, host `bouncer`, as registered in `AndroidManifest.xml` and parsed by `handleExternalDeepLink` in `ui/MainAppContainer.kt`. A `bouncer://` URI does not resolve.
+
+**Home paints from disk, and a fetch that fails is a failure.** `LiveActivityViewModel` seeds
+Live, Upcoming and Recent from `MatchCacheService.getOfflineMatches` before any request answers,
+then fetches the three concurrently. `cachedMatches` therefore holds seeded lists as well as
+fetched ones: "has this status been fetched" is `freshStatuses`, never `cachedMatches.containsKey`.
+`CricBuzzScraper.fetchLiveMatches` throws `MatchListUnavailableException` when it cannot fetch; it
+used to return an empty list, which the caller stored — offline showed "no matches" and wrote `[]`
+over the saved list. An empty list from it is a real answer. The list is published before the
+win-probability file is refreshed and again after. Pinned by `LiveActivityColdStartTest`.
+
+**The Live list is scraped every 6 s only where a list of live scores is on screen**
+(`LIVE_LIST_ROUTES`: Home, All matches) and once a minute elsewhere, including under an open match —
+where it used to stop. The overlay reads the list's current entry (`currentListEntry`), so
+`MatchDetailViewModel.onMatchUpdated` runs on each emission; with a frozen entry and a stopped poll
+it ran once, and "the matches list outranks a row that stopped being written" could not happen on
+the tap path.
+
+**A deep link is consumed once and cleared by the activity** (`ui/DeepLinks.kt`). It was remembered
+by its URI string, and every alert for a match carries the same URI, so the second alert tapped for
+a match opened nothing. A match link opens through `onMatchClick` — the overlay — after
+`resolveMatch` has waited for the first fetch and loaded the statuses not yet fetched.
+
+**Gender is read off the names** (`network/MatchGender.kt`). Cricbuzz's list has no gender field
+and the scraper wrote a constant `"Men"`, so the filter in the ViewModel had nothing to separate.
+Home's two filters are `HomeFilters` (`ui/HomeFilters.kt`), saved on change and restored once per
+ViewModel; All matches reads `statusMatches`, the selected status before those filters.
+
+**Diagnostics can be switched off, and every doubt resolves to off** (`Diagnostics.kt`). The
+opt-out is a file in `filesDir`, read before Sentry starts with no dependency on `PreferenceStore`
+— an unreadable store answers every read with its default, and the default is "on". It is in both
+backup rule sets. `sendDefaultPii` is off. Do not move the choice back into a preference.
+
+**News keeps its last headlines and opened bodies** (`NewsDiskCache`, JSON files in the cache
+directory; no Room). Images are asked for at the size drawn (`NewsArticleData.imageUrlAt`):
+Cricbuzz's image host renders any `WxH`. Cricbuzz body text carries placeholders (`@B0$`, `@L0$`)
+whose words are in the payload's top-level `format` array; `bouncer-news-sync` resolves them
+(`articleBody.js`, pinned against `test/fixtures/detail-140424.json`). The function fetches a body
+upstream only for a story in its own headline index, claims the fetch before making it
+(`claimFetch`, once per story per ten minutes, 40 stories per container per window), and decides a
+refetch by the stored body's `formatResolved` mark — never by what the text looks like.
+
+**A hang is not a refusal in the provider ladder.** An endpoint that times out is skipped for the
+rest of the walk and the line (every Gemini rung is one endpoint, so a Google hang used to spend the
+whole 45 s there and never ask groq); a 429 still falls through to the next rung on the same
+endpoint. `deadlineAt` spans every walk of a request, and match-sync stops asking providers 90 s
+into a run. `verifyBatch` takes `writtenBy` and asks models that did not write the lines first.
+
+**The legacy `textTertiary` and `textMuted` are text roles.** They are raised at the bridge
+(`LegacyColorBridge.kt`) to clear 4.5:1, because sixteen files draw text in them; so
+`LegacyDarkColors` is no longer exactly `BouncerColors()`. Over-strip chips are a solid fill with
+`ballChipInk`. Both pinned in `LightModeContrastTest`.
 
 **The More tab is Settings, Appearance, About (and DevTools in debug), nothing else.** Its "Explore" grid was removed in September 2026 because none of its four tiles was a feature: Stats opened a hub whose Analytics page was entirely hardcoded (a fixed "V Kohli 9.4" leaderboard and an India-vs-Australia bar); Trophies and Achievements both opened one badge gallery where 3 of 24 badges could ever unlock; and Activity (`IntelligenceFeedScreenV2`) was navigated to with no match and no ViewModel, so it was always empty. That feed was the only caller of `LiveActivityViewModel.holdCommentary`, so the device-side commentary hold, `probabilityEvents`, `aiCommentary` and `keyEvent` went with it — all had been unreachable. The match-detail screen's own commentary subscription and presence ping (`MatchDetailViewModel`) are unaffected. Do not re-add a tile without a real data source behind it.
 
@@ -1190,7 +1242,7 @@ fails reports its code through the IFrame API — 150 on the emulator was a vide
 - **Sentry**: Error monitoring + performance (configured in `SentryOptionsConfig.kt`)
 - **Firebase Cloud Messaging (FCM)**: Push notifications
 - **Room + Paging 3**: Offline cache + paginated queries
-- **Retrofit + OkHttp**: REST APIs; **Jsoup**: HTML scraping for Cricbuzz
+- **OkHttp**: every HTTP call (there is no Retrofit); **Jsoup**: HTML scraping for Cricbuzz
 - **Kotlin Symbol Processing (KSP)**: Code generation for Room
 - **Android Auto**: `BouncerCarAppService` for car display
 - **Appwrite Android SDK** (`io.appwrite:sdk-for-android`): Realtime subscriptions, TablesDB sync — endpoint `https://sgp.cloud.appwrite.io/v1`, project `6a02f7f3000e6e100b19`

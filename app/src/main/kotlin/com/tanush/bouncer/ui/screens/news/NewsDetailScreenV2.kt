@@ -3,7 +3,6 @@ package com.tanush.bouncer.ui.screens.news
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -42,6 +41,7 @@ import com.tanush.bouncer.ui.components.v2.ShimmerBox
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.viewmodels.NewsViewModel
 import io.sentry.Sentry
+import androidx.core.net.toUri
 
 /**
  * One article: its photograph and credit, what kind of story it is, the headline, who published it
@@ -121,7 +121,7 @@ private fun Context.shareArticle(article: NewsArticleData) {
 
 private fun Context.openOriginal(article: NewsArticleData) {
     try {
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(article.articleUrl)))
+        startActivity(Intent(Intent.ACTION_VIEW, article.articleUrl.toUri()))
     } catch (e: ActivityNotFoundException) {
         // A device with no browser. Nothing to open it in, and not a reason to crash the screen.
         Sentry.captureException(e)

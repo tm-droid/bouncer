@@ -4,12 +4,13 @@
 
 Order matters for dependency + error isolation:
 
+0. **Diagnostics.start()** — starts Sentry unless the user has switched diagnostics off
 1. **Global exception handler** — Installed before anything else. Captures all uncaught exceptions to Sentry, then delegates to default handler
 2. **TeamLogoManager.initialize()** — Team branding assets
 3. **TeamAcronymManager.initialize()** — Team shorthand text
 4. **FavouriteTeamsManager.initialize()** — Restore persisted user favorites
 5. **MatchSubscriptionManager.initialize()** — FCM match subscription state (lightweight, no I/O)
-6. **MatchCacheService.initDiskCache()** — Initialize Room database + disk cache
+6. **MatchCacheService.initDiskCache()** — Initialize Room database + disk cache, then **NewsDiskCache.initialize(cacheDir)**
 7. **AppwriteClient.initialize()** — Creates SDK singleton; sets `isReady = false` if keys blank
 8. **AppwriteClient.client?.ping()** — Fired on `Dispatchers.IO`; verifies connectivity
 9. **AppwriteAICache.initialize()** — Reads DB/table IDs, validates readiness
@@ -25,7 +26,7 @@ Each step wrapped in `initializeSafely()` block (try-catch + Sentry breadcrumb).
 
 **TabTemplate UI:** Live/Upcoming/Recent tabs for match data (HomeScreenV2)
 
-**WidgetManager:** Syncs app widget state with FCM score_update messages + WorkManager polling
+**Widgets:** one snapshot and one writer (`WidgetSnapshotSource` → `WidgetSnapshotStore`), refreshed by `WidgetUpdateWorker`, which does nothing when no widget is placed. `WidgetManager` was deleted.
 
 **Commentary generation is server-side only.** `bouncer-match-sync` writes every line into `match-commentary` and the device reads it. `CommentaryFusionService` — a second, complete pipeline that called `bouncer-generate-commentary` per ball — was deleted: nothing in the app ever constructed it, only its own tests referenced it, and it was still wired to the live function and its per-device rate limiter. Do not reintroduce a device-side generator.
 
