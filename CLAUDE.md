@@ -552,8 +552,10 @@ downloads that file and no list shows factors.
 The lab scores the model on Cricsheet; nothing scored the numbers match-sync published from live
 Cricbuzz inputs, where the failures are a name that does not join or a side oriented wrongly. On
 the run that ends a match, `writeEvalLog` (`match-sync/src/main.js`, shape in `evallog.js`) writes
-`wpe-{matchId}`: the `p` stamps already on the over history, the pre-match figure (kept on the
-context as `prematch`, by team id, rewritten only when it moves 0.02), and the outcome from
+`wpe-{matchId}`: the `p` stamps already on the over history, the pre-match figure (kept in the
+`prematch-log` file by match and team id, rewritten only when it moves 0.02 — it was first kept on
+the context, which `buildContext` rebuilds from scratch when the elevens arrive, so no finished
+match had one), and the outcome from
 `matchHeader.result.winningteamId` — a structured field, so the status line is never parsed for a
 winner, and anything unresolved is `unknown` and unscored. `appwrite/tools/winprob-live-score.mjs`
 reads them: accuracy, log-loss, Brier and calibration by phase, format and what the model had, with
@@ -570,8 +572,20 @@ same parser run from a laptop. The page answered the container on 2026-10-06 —
 matches — with a sample identical to the laptop's; a refusal is logged as `[CRICINFO] unavailable`
 and retried hourly. Both shapes were first seen on India v West Indies that day: Cricbuzz
 `{team1: {id, percent}, team2: {id, percent}, drawTiePercent, lastUpdatedOver}`, Cricinfo
-`{inningNumber, oversUnique, score, winProbability}`. The report compares only on points where both sides
-published, and its `cb`/`ci` columns stay empty until a real sample has been read.
+`{inningNumber, oversUnique, score, winProbability}`. The report reads both (`cricbuzzForTeam1`, `cricinfoForTeam1` in the tool): Cricbuzz by team
+id, and Cricinfo as the **batting side's** chance — an inference from one match, where it tracked
+Cricbuzz's batting-side figure through both innings — joined to a log by both team names and the
+start time, since Cricinfo has its own match ids. It compares only on points both published.
+
+**A first innings that is over is scored as the chase it has become** (`chaseStart`, `main.js`).
+All out with balls unused was scored as a side still batting ten wickets down, which the model
+puts on its 0.03 floor (West Indies all out 171, a minute after 0.52 at 171/9), and a full innings
+as no balls left, which is `undetermined` — so the app showed a cliff or nothing through every
+innings break. The position is now the other side needing one more from the full allotment, with
+the current rate set to the required one: the chase head is very sensitive to the current rate
+early on (same chase of 172 with the real context: 0.50 after one dot ball, 0.37 after a single,
+0.19 after a 15-run over), and a rate of zero reads as a side scoring nothing. That early-chase
+sensitivity is the model's, not this rule's, and is unexamined.
 
 **A finished match is finalised from the recent list, because it is never on the live one.**
 The final run — last detail and scorecard rows, the result alert, the summary, the `wpe-` log —
@@ -1135,6 +1149,7 @@ blocked, this cap — go through `reportThrottled`; they were one event per one-
 | `live-winprob`, `slow-sync-state`, `rewrite-backlog` | `match-sync` | published probabilities; the per-match slow-tier clock; deliveries held until a line passes the checker |
 | `mc-{matchId}` | `match-sync` | one match's context: sides, ground, record, elevens, forecast, preview, summary. Read by the device (Info and Overview tabs). Pruned after 14 days by `pruneContexts`, selected by `startsWith("$id", "mc-")` |
 | `wpe-{matchId}` | `match-sync` | one finished match's evaluation log: the per-over probabilities the model published, the pre-match figure, Cricbuzz's structured result. Not read by the device. Pruned after 60 days by `pruneEvalLogs` |
+| `prematch-log` | `match-sync` | each upcoming fixture's latest pre-match probability, `{matchId: {teamId, p, at}}`, kept a week so the match's `wpe-` log can carry it |
 | `wci-{cricinfoId}` | `match-sync` | Cricinfo's live win prediction for one match, a sample per ball polled, keyed by CRICINFO's match id; pruned after 60 days |
 | `wpr-{matchId}` | `match-sync` | a live match's raw Cricbuzz win-probability samples, one per over; folded into `wpe-{matchId}` and deleted when the match ends |
 | `winprob-manifest`, `winprob-v6-<stamp>` | `train-win-probability` | the pointer to the serving model, and the model (the current one and the one before it) |

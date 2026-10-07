@@ -72,6 +72,7 @@ export function mergeRival(stored, memory) {
 export function buildEvalLog({
   matchId, title, format, gender, team1Id, otherTeamIds = [], result, status, overs,
   prematch = null, modelVersion = null, hadContext = false, hadElevens = false, rival = [], now = Date.now(),
+  teams = [], startMs = null,
 }) {
   const points = (Array.isArray(overs) ? overs : [])
     .filter((o) => Number.isFinite(o?.p) && Number.isInteger(o.innings) && Number.isFinite(o.over))
@@ -91,6 +92,9 @@ export function buildEvalLog({
     gender: gender ?? null,
     team1Id: first,
     team2Id: second,
+    // Names and the start time, which is all a Cricinfo match can be joined on: it has its own ids.
+    teams: (Array.isArray(teams) ? teams : []).slice(0, 2).map((t) => ({ id: t?.id == null ? null : String(t.id), name: t?.name ?? null })),
+    startMs: Number.isFinite(startMs) ? startMs : null,
     modelVersion,
     hadContext,
     hadElevens,
@@ -114,4 +118,33 @@ export function prematchMoved(stored, teamId, p, threshold = 0.02) {
   if (!Number.isFinite(p) || teamId == null) return false;
   if (!stored || String(stored.teamId) !== String(teamId)) return true;
   return Math.abs(stored.p - p) >= threshold;
+}
+
+/** Every upcoming fixture's latest pre-match figure, by match id, until its match has been logged. */
+export const PREMATCH_FILE = "prematch-log";
+export const PREMATCH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+const sameName = (a, b) => {
+  const fold = (v) => String(v ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return fold(a) !== "" && fold(a) === fold(b);
+};
+
+/** The Cricbuzz team id of the side a fixture's title names as [sideName], or null. */
+export function fixtureTeamId(fixture, sideName) {
+  const hit = (Array.isArray(fixture?.teams) ? fixture.teams : []).find((t) => sameName(t?.name, sideName));
+  return hit?.id == null ? null : String(hit.id);
+}
+
+/**
+ * [log] with [matchId]'s figure recorded, or null when nothing changed. Entries past
+ * `PREMATCH_TTL_MS` are dropped on the way, so the file is bounded by a week of fixtures.
+ */
+export function notePrematch(log, matchId, teamId, p, now = Date.now()) {
+  if (!prematchMoved(log?.[String(matchId)], teamId, p)) return null;
+  const next = {};
+  for (const [id, entry] of Object.entries(log ?? {})) {
+    if (entry && Number.isFinite(entry.at) && now - entry.at < PREMATCH_TTL_MS) next[id] = entry;
+  }
+  next[String(matchId)] = { teamId: String(teamId), p: round3(p), at: now };
+  return next;
 }

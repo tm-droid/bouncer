@@ -42,7 +42,7 @@ import {
   CRICINFO_MAX_ROWS_PER_POLL, asCricbuzzLine, ballKey, disagreement, fetchCricinfoMatch, fetchCricinfoPredictions, fetchCricinfoStats, joinCricinfoMatch,
   labelsInGap, mergeCricinfo, probeCricinfoMatchPages, storableRow,
 } from "./cricinfo.js";
-import { EVAL_PREFIX, EVAL_RETENTION_MS, RIVAL_PREFIX, buildEvalLog, mergeRival, prematchMoved, rivalSample } from "./evallog.js";
+import { EVAL_PREFIX, EVAL_RETENTION_MS, PREMATCH_FILE, RIVAL_PREFIX, buildEvalLog, fixtureTeamId, mergeRival, notePrematch, rivalSample } from "./evallog.js";
 import { sideContext } from "./contextmath.js";
 import { createContextStore, newBudget } from "./contextstore.js";
 import { parseSquads, squadsUrl } from "./squads.js";
@@ -2529,10 +2529,12 @@ export async function writeEvalLog({ storage, matchId, title, detail, context, m
       result: meta?.result ?? null,
       status: detail?.status ?? null,
       overs,
-      prematch: context?.prematch ?? null,
+      prematch: (await loadPrematchLog({ storage, error }))?.[String(matchId)] ?? null,
       modelVersion: model?.version ?? null,
       hadContext: !!context,
       hadElevens: hasElevens(context),
+      teams: meta?.teams ?? [],
+      startMs: meta?.startMs ?? null,
       rival,
       now,
     });
@@ -2564,6 +2566,40 @@ export async function writeEvalLog({ storage, matchId, title, detail, context, m
  * Non-fatal throughout: this runs before the live sync and must never be the reason a live match
  * goes unscored.
  */
+// The pre-match log, held for the container's life once read. It lived on the match context, which
+// is rebuilt from scratch when the elevens arrive and kept only its forecast — so no finished
+// match ever had its pre-match figure — and a fixture with no context yet had nowhere to keep one.
+let prematchLog = null;
+
+async function loadPrematchLog({ storage, error }) {
+  if (prematchLog) return prematchLog;
+  try {
+    const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, PREMATCH_FILE));
+    prematchLog = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch (e) {
+    if (e?.code === 404) prematchLog = {};
+    else error(`Could not read ${PREMATCH_FILE}: ${e?.message}`);
+  }
+  return prematchLog;
+}
+
+async function savePrematchLog({ storage, log: next, error }) {
+  try {
+    await storage.deleteFile(BUCKET_ID, PREMATCH_FILE).catch(() => {});
+    await storage.createFile(
+      BUCKET_ID, PREMATCH_FILE, InputFile.fromBuffer(Buffer.from(JSON.stringify(next), "utf8"), `${PREMATCH_FILE}.json`), READ_ANY
+    );
+    prematchLog = next;
+  } catch (e) {
+    error(`Could not write ${PREMATCH_FILE}: ${e?.message}`);
+  }
+}
+
+/** Test seam: forget the pre-match log this container holds. */
+export function __resetPrematchLog() {
+  prematchLog = null;
+}
+
 async function prematchEntries({ storage, model, contexts, budget, log, error }) {
   const entries = {};
   if (!model) return entries;
@@ -2583,6 +2619,9 @@ async function prematchEntries({ storage, model, contexts, budget, log, error })
 
   const teamStats = teamStatsOf(model);
   let resolved = 0;
+  // Null when the file could not be read: nothing is recorded this run rather than saved over it.
+  let known = await loadPrematchLog({ storage, error });
+  let moved = false;
   for (const fixture of fixtures.slice(0, MAX_PREMATCH)) {
     if (!fixture?.id || !fixture.title) continue;
     const title = String(fixture.title);
@@ -2611,7 +2650,7 @@ async function prematchEntries({ storage, model, contexts, budget, log, error })
 
     // The fixture's context — ground, record, forecast — built a couple a run until every
     // fixture has one. A fixture without one yet is scored on team terms alone.
-    let context = await contexts
+    const context = await contexts
       .ensure({ matchId: fixture.id, model, format: slice, gender, budget, live: false })
       .catch(() => null);
     const firstNamed = context?.teams?.find((t) => t.key === stripWomenSuffix(sides[0]));
@@ -2625,12 +2664,16 @@ async function prematchEntries({ storage, model, contexts, budget, log, error })
       model,
     });
     if (result.undetermined) continue;
-    // Kept on the context so the match's evaluation log can carry it: by the time a match ends,
-    // the fixture pass that produced this number is long gone. Stored by team id, and rewritten
-    // only when it has really moved (the elevens arriving, a refit).
-    if (slice !== "TEST" && firstNamed?.id != null && prematchMoved(context.prematch, firstNamed.id, result.battingTeamWinProbability)) {
-      const prematch = { teamId: String(firstNamed.id), p: Math.round(result.battingTeamWinProbability * 1000) / 1000, at: Date.now() };
-      context = (await contexts.patch(fixture.id, { prematch }).catch(() => null)) ?? context;
+    // Kept for the match's evaluation log: by the time a match ends, the fixture pass that produced
+    // this number is long gone. By team id — the fixture's own, so a fixture with no context yet
+    // is recorded too — and no id means no entry rather than a guess at the orientation.
+    const firstId = fixtureTeamId(fixture, sides[0]) ?? (firstNamed?.id != null ? String(firstNamed.id) : null);
+    if (slice !== "TEST" && firstId !== null && known) {
+      const next = notePrematch(known, fixture.id, firstId, result.battingTeamWinProbability);
+      if (next) {
+        known = next;
+        moved = true;
+      }
     }
     await ensurePreview({
       contexts, matchId: fixture.id, context, chance: slice === "TEST" ? null : result.battingTeamWinProbability, budget, log, error,
@@ -2647,6 +2690,7 @@ async function prematchEntries({ storage, model, contexts, budget, log, error })
     };
   }
   log(`Pre-match: ${resolved} of ${fixtures.length} upcoming fixtures scored`);
+  if (moved) await savePrematchLog({ storage, log: known, error });
   return entries;
 }
 
@@ -2686,14 +2730,46 @@ export function orientToTeam1({ battingTeamWinProbability, drawProbability, batt
   return Math.min(1, Math.max(0, other));
 }
 
+/**
+ * The position a completed first innings has become: the other side's chase, before a ball of it.
+ *
+ * Null unless this is a limited-overs first innings that is over — all out, or out of balls. Such
+ * an innings used to be scored as a side still batting: all out with balls unused read as ten
+ * wickets down mid-innings, which the model puts on its floor (West Indies all out 171 with four
+ * balls left scored 0.03, a minute after 0.52 at 171/9), and a full innings read as no balls left,
+ * which is `undetermined` — so the app showed a cliff or nothing for the whole innings break.
+ *
+ * The chase is taken from the format's full allotment. A reduced chase is not known until
+ * Cricbuzz publishes the revised target, which arrives with the chase itself.
+ *
+ * The current rate is set to the required one: before a ball is bowled the chasing side is neither
+ * ahead of the rate nor behind it. Zero is not neutral — the chase model reads it as a side scoring
+ * nothing, and on a chase of 172 put the defending side at 0.49 where being on the rate says 0.34.
+ */
+export function chaseStart(s, format) {
+  if (!s || s.long || s.target != null || !s.battingTeamIsTeam1 || !Number.isFinite(s.runsScored)) return null;
+  const allotment = ballsRemainingFor({ ballsBowled: 0, format });
+  if (!allotment) return null;
+  const left = ballsRemainingFor({ oversRemaining: s.oversRemaining, ballsBowled: s.ballsBowled, format });
+  if (!((s.wicketsLost ?? 0) >= 10 || left === 0)) return null;
+  const runsNeeded = s.runsScored + 1;
+  const requiredRunRate = Math.round((runsNeeded / (allotment / 6)) * 100) / 100;
+  return { runsNeeded, runsScored: 0, ballsRemaining: allotment, wicketsLost: 0, currentRunRate: requiredRunRate, requiredRunRate };
+}
+
 function winProbFor(detail, title, model, matchContext = null) {
   const s = detail?.situation;
   if (!s) return null;
+  const format = formatFromText(s.matchFormat, title);
+  const chase = chaseStart(s, format);
   // The payload's team1 is the first-innings side; the context knows sides by Cricbuzz team id.
-  const battingId = s.battingTeamIsTeam1 ? detail.team1Id : detail.team2Id;
+  // Between innings the side being scored is the one about to chase, which has not batted and so
+  // has no slot in the payload yet: its id is the context's other team.
+  const battingId = chase
+    ? matchContext?.teams?.find((t) => detail.team1Id != null && String(t.id) !== String(detail.team1Id))?.id ?? null
+    : s.battingTeamIsTeam1 ? detail.team1Id : detail.team2Id;
   const context = matchContext && battingId != null ? sideContextFor(matchContext, battingId) : null;
 
-  const format = formatFromText(s.matchFormat, title);
   // The miniscore names teams by short code ("SA", "SUR"), the model keys them by Cricsheet full
   // name, so passing the raw code missed every lookup and left teamStrengthDiff at zero. Resolution
   // is off the title and returns null for anything outside the corpus, which is most domestic
@@ -2705,8 +2781,12 @@ function winProbFor(detail, title, model, matchContext = null) {
     format,
     gender: genderFromTitle(title),
   });
-  const battingTeam = resolved?.battingTeam ?? s.battingTeamName ?? "";
-  const bowlingTeam = resolved?.bowlingTeam ?? s.bowlingTeamName ?? "";
+  const firstSide = resolved?.battingTeam ?? s.battingTeamName ?? "";
+  const secondSide = resolved?.bowlingTeam ?? s.bowlingTeamName ?? "";
+  const battingTeam = chase ? secondSide : firstSide;
+  const bowlingTeam = chase ? firstSide : secondSide;
+  // Whose probability the model's answer is: the chaser's between innings, never team1's.
+  const scoredIsTeam1 = chase ? false : s.battingTeamIsTeam1;
   const gender = resolved?.gender ?? genderFromTitle(title);
 
   const result = s.long
@@ -2726,16 +2806,18 @@ function winProbFor(detail, title, model, matchContext = null) {
       model,
     })
     : evaluate({
-      runsNeeded: s.runsNeeded ?? 0,
-      runsScored: s.runsScored ?? 0,
-      ballsRemaining: ballsRemainingFor({
-        oversRemaining: s.oversRemaining,
-        ballsBowled: s.ballsBowled,
-        format,
-      }) ?? 0,
-      wicketsLost: s.wicketsLost ?? 0,
-      currentRunRate: s.currentRunRate ?? 0,
-      requiredRunRate: s.requiredRunRate ?? 0,
+      ...(chase ?? {
+        runsNeeded: s.runsNeeded ?? 0,
+        runsScored: s.runsScored ?? 0,
+        ballsRemaining: ballsRemainingFor({
+          oversRemaining: s.oversRemaining,
+          ballsBowled: s.ballsBowled,
+          format,
+        }) ?? 0,
+        wicketsLost: s.wicketsLost ?? 0,
+        currentRunRate: s.currentRunRate ?? 0,
+        requiredRunRate: s.requiredRunRate ?? 0,
+      }),
       battingTeam,
       bowlingTeam,
       gender,
@@ -2749,7 +2831,7 @@ function winProbFor(detail, title, model, matchContext = null) {
     team1WinProbability: orientToTeam1({
       battingTeamWinProbability: result.battingTeamWinProbability,
       drawProbability: result.drawProbability,
-      battingTeamIsTeam1: s.battingTeamIsTeam1,
+      battingTeamIsTeam1: scoredIsTeam1,
     }),
     // A draw belongs to neither side, so unlike the win probability it is not re-oriented.
     drawProbability: result.drawProbability,
@@ -2760,7 +2842,7 @@ function winProbFor(detail, title, model, matchContext = null) {
     // cannot tell this "team1" from its own teams[0], which is Cricbuzz's listing order.
     team1Id: s.firstInningsTeamId ?? null,
     format,
-    factors: factorsForTeam1(result.factors, s.battingTeamIsTeam1),
+    factors: factorsForTeam1(result.factors, scoredIsTeam1),
   };
 }
 

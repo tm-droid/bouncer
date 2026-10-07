@@ -124,6 +124,7 @@ function fakeStorage() {
   const files = new Map();
   return {
     files,
+    getFileDownload: async () => { const e = new Error("nf"); e.code = 404; throw e; },
     deleteFile: async (_bucket, id) => { files.delete(id); },
     createFile: async (_bucket, id, input) => { files.set(id, input); return { $id: id }; },
   };
@@ -147,7 +148,7 @@ test("the log is written under its own prefix, and a failed write does not throw
   assert.equal(await writeEvalLog({ storage, ...args }), true);
   assert.deepEqual([...storage.files.keys()], ["wpe-99"]);
 
-  const broken = { deleteFile: async () => {}, createFile: async () => { throw new Error("503"); } };
+  const broken = { ...fakeStorage(), deleteFile: async () => {}, createFile: async () => { throw new Error("503"); } };
   const errors = [];
   assert.equal(await writeEvalLog({ storage: broken, ...args, error: (m) => errors.push(m) }), false);
   assert.equal(errors.length, 1);
@@ -277,4 +278,54 @@ test("rival samples survive a container restart: stored as they arrive, merged a
   } finally {
     globalThis.fetch = realFetch;
   }
+});
+
+test("the log names both sides and the start time, which is what a Cricinfo match is joined on", () => {
+  const body = buildEvalLog({
+    matchId: 151565, team1Id: 10, otherTeamIds: ["2"], result: { type: "win", winnerId: "2" },
+    overs: [{ innings: 1, over: 1, score: 5, wickets: 0, p: 0.18 }],
+    teams: [{ id: "2", name: "India", shortName: "IND" }, { id: "10", name: "West Indies", shortName: "WI" }],
+    startMs: 1791293400000,
+  });
+  assert.deepEqual(body.teams, [{ id: "2", name: "India" }, { id: "10", name: "West Indies" }]);
+  assert.equal(body.startMs, 1791293400000);
+});
+
+test("a pre-match figure is recorded by the fixture's own team id, with or without a context", async () => {
+  const { fixtureTeamId, notePrematch, PREMATCH_TTL_MS } = await import("../src/evallog.js");
+  const fixture = { id: 173737, title: "Kuwait vs Thailand", teams: [{ id: 527, name: "Kuwait" }, { id: 303, name: "Thailand" }] };
+  assert.equal(fixtureTeamId(fixture, "Kuwait"), "527");
+  assert.equal(fixtureTeamId({ teams: [{ id: 388, name: "Zimbabwe Women" }] }, "zimbabwe  women"), "388");
+  // A side the fixture does not name has no id, and so no entry: the orientation is not guessed.
+  assert.equal(fixtureTeamId(fixture, "Qatar"), null);
+  assert.equal(fixtureTeamId({ title: "A vs B" }, "A"), null);
+
+  const t0 = 1_000_000;
+  const first = notePrematch({}, 173737, "527", 0.6584, t0);
+  assert.deepEqual(first, { 173737: { teamId: "527", p: 0.658, at: t0 } });
+  // The number drifts in its third decimal every run; that is not worth a file write.
+  assert.equal(notePrematch(first, 173737, "527", 0.662, t0 + 60_000), null);
+  const moved = notePrematch(first, 173737, "527", 0.71, t0 + 120_000);
+  assert.equal(moved[173737].p, 0.71);
+  // A week-old fixture is dropped when the file is next rewritten.
+  const later = notePrematch(first, 999, "1", 0.5, t0 + PREMATCH_TTL_MS + 1);
+  assert.deepEqual(Object.keys(later), ["999"]);
+});
+
+test("a first innings that is over is scored as the chase it has become", async () => {
+  const { chaseStart } = await import("../src/main.js");
+  const live = { battingTeamIsTeam1: true, runsScored: 171, wicketsLost: 9, ballsBowled: 114, target: null, long: null };
+  assert.equal(chaseStart(live, "T20"), null, "an innings still in progress is scored as it is");
+  // All out with four balls unused: scored on its own this read as ten down mid-innings (0.03).
+  const allOut = chaseStart({ ...live, wicketsLost: 10, ballsBowled: 116 }, "T20");
+  assert.deepEqual(allOut, { runsNeeded: 172, runsScored: 0, ballsRemaining: 120, wicketsLost: 0, currentRunRate: 8.6, requiredRunRate: 8.6 });
+  // A full innings: no balls left, which the model cannot score at all.
+  assert.deepEqual(chaseStart({ ...live, wicketsLost: 6, ballsBowled: 120 }, "T20"), allOut);
+  assert.equal(chaseStart({ ...live, runsScored: 300, wicketsLost: 10, ballsBowled: 280 }, "ODI").ballsRemaining, 300);
+  // Not a first innings, not limited overs, or a format with no allotment: left alone.
+  assert.equal(chaseStart({ ...live, wicketsLost: 10, battingTeamIsTeam1: false }, "T20"), null);
+  assert.equal(chaseStart({ ...live, wicketsLost: 10, target: 172 }, "T20"), null);
+  assert.equal(chaseStart({ ...live, wicketsLost: 10, long: { lead: 0 } }, "TEST"), null);
+  assert.equal(chaseStart({ ...live, wicketsLost: 10 }, "UNKNOWN"), null);
+  assert.equal(chaseStart(null, "T20"), null);
 });
