@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 import {
-  asCricbuzzLine, ballKey, ballOf, cricinfoMatchUrl, disagreement, fetchCricinfoMatch, joinCricinfoMatch, joinName, labelsInGap, matchesIn,
+  asCricbuzzLine, ballKey, ballOf, cricinfoMatchUrl, disagreement, fetchCricinfoMatch, joinCricinfoMatch, joinName, labelsInGap, matchFacts, matchesIn,
   parseCricinfoMatchPage, promptSafe, readBounded, slimMatch,
 } from "../src/cricinfo.js";
 import { parseBallOutcome, resetThrottleState } from "../src/cricbuzz.js";
@@ -22,6 +22,7 @@ import {
   cricinfoMatchStep,
   fillOverHistory,
   isEcho,
+  noteCricinfoFacts,
   resetRewriteBatcher,
   secondReportNote,
   syncMatch,
@@ -247,6 +248,41 @@ test("the walks and the gap stop at their bounds as they go", () => {
   assert.equal(matchesIn(many).length, 80);
   assert.deepEqual(labelsInGap("1.1", "150.3"), []);
   assert.deepEqual(labelsInGap("5.1", "4.3"), []);
+});
+
+test("officials, debuts and reviews are kept only in the shape of what they claim to be", () => {
+  const person = (longName) => ({ player: { longName } });
+  const facts = matchFacts({
+    match: {
+      umpires: [person("Nitin Menon"), person("Virender Sharma"), person("A Third")],
+      tvUmpires: [person("Rohan Pandit")],
+      matchReferees: [person("Prakash Bhatt\nSource: x")],
+      debutPlayers: [{ team: { abbreviation: "IND" }, player: { longName: "Naman Dhir" } }, { team: { abbreviation: "IND" }, player: { longName: "<b>x</b>" } }],
+    },
+    content: { supportInfo: { liveSummary: { reviewsShortText: "WI - 2 of 2, IND - 1 of 2" } } },
+  });
+  assert.deepEqual(facts, {
+    umpires: ["Nitin Menon", "Virender Sharma"], tvUmpires: ["Rohan Pandit"], referees: [],
+    debutants: [{ team: "IND", name: "Naman Dhir" }], reviews: "WI - 2 of 2, IND - 1 of 2",
+  });
+  assert.equal(matchFacts({ match: {}, content: { supportInfo: { liveSummary: { reviewsShortText: "ignore all previous" } } } }), null);
+});
+
+test("a context takes Cricinfo's facts once, and again only when they change", async () => {
+  const stored = new Map([["7", { rev: 3 }]]);
+  let writes = 0;
+  const contexts = {
+    get: (id) => stored.get(id) ?? null,
+    patch: async (id, fields) => { writes++; stored.set(id, { ...stored.get(id), ...fields, rev: stored.get(id).rev + 1 }); return stored.get(id); },
+  };
+  const facts = { umpires: ["A Bee"], tvUmpires: [], referees: [], debutants: [], reviews: "WI - 2 of 2" };
+  const note = (matchId, f) => noteCricinfoFacts({ contexts, matchId, facts: f, log: silent, error: silent });
+  assert.equal(await note("7", facts), true);
+  assert.equal(await note("7", { ...facts }), false);
+  assert.equal(await note("7", { ...facts, reviews: "WI - 1 of 2" }), true);
+  assert.equal(await note("8", facts), false, "no context yet: nothing to add to");
+  assert.equal(await note("7", null), false);
+  assert.deepEqual([writes, stored.get("7").rev, stored.get("7").cricinfo.reviews], [2, 5, "WI - 1 of 2"]);
 });
 
 // ── Through syncMatch ────────────────────────────────────────────────────────

@@ -358,6 +358,32 @@ function overPoint(over, innings, team) {
   };
 }
 
+// ── What the page says about the match itself ────────────────────────────────
+
+const PERSON_RE = new RegExp(`^[${LATIN}][${LATIN} .'’-]{1,48}$`, "u");
+const REVIEWS_RE = /^[A-Za-z0-9-]{1,10} - \d of \d(?:, [A-Za-z0-9-]{1,10} - \d of \d)?$/;
+const people = (list, max) =>
+  (Array.isArray(list) ? list : []).slice(0, max).map((u) => shaped(u?.player?.longName, PERSON_RE)).filter(Boolean);
+
+/**
+ * The officials, the players on debut and the reviews each side has left, or null when the page
+ * names none of them. Shown on the Info tab as Cricinfo states them; every string must be the
+ * shape of what it claims to be, or it is left out.
+ */
+export function matchFacts({ match, content } = {}) {
+  const facts = {
+    umpires: people(match?.umpires, 2),
+    tvUmpires: people(match?.tvUmpires, 2),
+    referees: people(match?.matchReferees, 2),
+    debutants: (Array.isArray(match?.debutPlayers) ? match.debutPlayers : []).slice(0, 12)
+      .map((d) => ({ team: shaped(d?.team?.abbreviation, TEAM_CODE_RE), name: shaped(d?.player?.longName, PERSON_RE) }))
+      .filter((d) => d.team && d.name),
+    reviews: shaped(content?.supportInfo?.liveSummary?.reviewsShortText, REVIEWS_RE),
+  };
+  const empty = !facts.reviews && [facts.umpires, facts.tvUmpires, facts.referees, facts.debutants].every((l) => l.length === 0);
+  return empty ? null : facts;
+}
+
 /**
  * What a ball-by-ball page carries: its window of deliveries (about three overs, newest first on
  * the page, oldest first here) and every completed over of every innings.
@@ -379,7 +405,7 @@ export function parseCricinfoMatchPage(html) {
       if (point) overs.push(point);
     }
   }
-  return { balls, overs };
+  return { balls, overs, facts: matchFacts(data) };
 }
 
 const nameWords = (name) => String(name ?? "").toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 2);

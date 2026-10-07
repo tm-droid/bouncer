@@ -1,6 +1,7 @@
 package com.tanush.bouncer.models
 
 import com.tanush.bouncer.data.remote.MatchContextStore
+import com.tanush.bouncer.ui.screens.matchdetail.v2.officialRows
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -95,5 +96,23 @@ class MatchContextTest {
         )
         val thin = """{"teams":[{"name":"A"},{"name":"B"}],"h2h":{"games":2,"firstWins":2,"secondWins":0}}"""
         assertNull(MatchContextStore.parse(thin)?.recordedMeetings())
+    }
+
+    @Test
+    fun `Cricinfo's officials parse, and a file without them is unchanged`() {
+        assertNull(MatchContextStore.parse(file)?.cricinfo)
+        val withFacts = file.replace(
+            "\"rev\":3",
+            "\"cricinfo\":{\"umpires\":[\"Nitin Menon\",\"Virender Sharma\"],\"tvUmpires\":[\"Rohan Pandit\"],\"referees\":[]," +
+                "\"debutants\":[{\"team\":\"IND\",\"name\":\"Naman Dhir\"}],\"reviews\":\"WI - 2 of 2, IND - 1 of 2\"},\"rev\":3",
+        )
+        val officials = checkNotNull(MatchContextStore.parse(withFacts)?.cricinfo)
+        assertEquals(
+            listOf("Nitin Menon, Virender Sharma", "Rohan Pandit", "WI - 2 of 2, IND - 1 of 2", "Naman Dhir (IND)"),
+            officialRows(officials, showUmpires = true).map { it.second },
+        )
+        // The match already names its umpires: the pair is not listed a second time.
+        assertEquals(3, officialRows(officials, showUmpires = false).size)
+        assertEquals(emptyList<Pair<Int, String>>(), officialRows(MatchContext.Officials(), showUmpires = true))
     }
 }

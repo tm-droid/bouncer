@@ -1,9 +1,9 @@
-Highlights play again instead of showing a player error.
+Commentary is richer on big matches: lines are now written from two sources, and balls the main feed skipped are filled in.
 
-The Wickets and Boundaries filters in commentary now show the whole match, not just the last few overs.
+The run-rate worm now covers the whole innings even if you open a match late.
 
-Win probability is sharper: it reads each side's form, the ground, and both playing elevens. The swing chart and Key Moments cover the whole match.
+The Info tab lists the TV umpire, match referee, reviews left and players on debut where available.
 
-New: a short preview before a match and a summary after it, with a forecast and the ground's record on the Info tab.
+The Wickets and Boundaries filters in commentary show the whole match.
 
-Commentary now marks a fifty or a hundred and a big partnership.
+New: a short preview before a match and a summary after it.

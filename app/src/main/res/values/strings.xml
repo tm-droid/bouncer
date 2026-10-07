@@ -137,6 +137,11 @@
     <string name="match_info_toss">Toss</string>
     <string name="match_info_umpire_1">Umpire 1</string>
     <string name="match_info_umpire_2">Umpire 2</string>
+    <string name="match_info_umpires">Umpires</string>
+    <string name="match_info_tv_umpire">TV umpire</string>
+    <string name="match_info_referee">Match referee</string>
+    <string name="match_info_reviews">Reviews left</string>
+    <string name="match_info_debuts">On debut</string>
     <string name="match_info_day">Day</string>
     <string name="match_info_additional">Additional Info</string>
     <string name="match_info_info">Info</string>

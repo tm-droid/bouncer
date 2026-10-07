@@ -1686,7 +1686,9 @@ async function handleRun({ req, res, log, error }) {
           rivalStore,
           cricinfoFor: async () => {
             await cricinfoReady;
-            return cricinfoMatchStep({ matchId, summary: m, log, error });
+            const read = await cricinfoMatchStep({ matchId, summary: m, log, error });
+            await noteCricinfoFacts({ contexts, matchId, facts: read?.facts, log, error });
+            return read;
           },
           onFinalised: async ({ detail, context, meta, winProb: last, overs, rival }) => {
             const logged = await writeEvalLog({
@@ -2308,10 +2310,28 @@ export async function cricinfoMatchStep({ matchId, summary, log, error, now = Da
     }
     for (const key of [...held.keys()].slice(0, Math.max(0, held.size - CRICINFO_BALLS_KEPT))) held.delete(key);
     log(`[CRICINFO] match ${matchId} (${match.objectId}) status=${page.status} bytes=${page.bytes} balls=${page.balls.length} held=${held.size} overs=${page.overs.length}`);
-    return { balls: held, overs: page.overs };
+    return { balls: held, overs: page.overs, facts: page.facts ?? null };
   } catch (e) {
     error(`[CRICINFO] match ${matchId} step failed: ${e?.message}`);
     return null;
+  }
+}
+
+/**
+ * Keep a match's context in step with what Cricinfo's page says about the match — officials,
+ * debuts, reviews left. Written only when it differs: reviews change a handful of times a match,
+ * the rest once. A match with no context yet is left for the run that has built one. Never throws.
+ */
+export async function noteCricinfoFacts({ contexts, matchId, facts, log, error }) {
+  try {
+    const current = contexts?.get(matchId);
+    if (!facts || !current || JSON.stringify(current.cricinfo ?? null) === JSON.stringify(facts)) return false;
+    await contexts.patch(matchId, { cricinfo: facts });
+    log(`Context ${matchId}: Cricinfo facts updated (reviews ${facts.reviews ?? "none"})`);
+    return true;
+  } catch (e) {
+    error?.(`Context ${matchId}: Cricinfo facts not stored: ${e?.message}`);
+    return false;
   }
 }
 

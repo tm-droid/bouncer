@@ -138,6 +138,13 @@ fun InfoTabV2(
                 // Umpires
                 match.umpire1?.let { StatRowV2(label = stringResource(R.string.match_info_umpire_1), value = it, modifier = pad) }
                 match.umpire2?.let { StatRowV2(label = stringResource(R.string.match_info_umpire_2), value = it, modifier = pad) }
+                // Cricinfo's officials, where it covers the match. The on-field pair only when the
+                // match itself did not carry one, so the same two names are never listed twice.
+                context?.cricinfo?.let { officials ->
+                    officialRows(officials, showUmpires = match.umpire1 == null && match.umpire2 == null).forEach { (label, value) ->
+                        StatRowV2(label = stringResource(label), value = value, modifier = pad)
+                    }
+                }
 
                 // Show match day for Tests
                 val dayInfo = extractDayInfo(match.currentStatus, match.matchType)
@@ -276,6 +283,20 @@ fun InfoTabV2(
         }
 
         item(key = "bottom") { Spacer(Modifier.height(spacing.xxl)) }
+    }
+}
+
+/**
+ * The rows Cricinfo's facts add to the match-info card, in order, as (label, value). A list the
+ * page left empty adds no row.
+ */
+internal fun officialRows(officials: MatchContext.Officials, showUmpires: Boolean): List<Pair<Int, String>> = buildList {
+    if (showUmpires && officials.umpires.isNotEmpty()) add(R.string.match_info_umpires to officials.umpires.joinToString(", "))
+    if (officials.tvUmpires.isNotEmpty()) add(R.string.match_info_tv_umpire to officials.tvUmpires.joinToString(", "))
+    if (officials.referees.isNotEmpty()) add(R.string.match_info_referee to officials.referees.joinToString(", "))
+    officials.reviews?.takeIf { it.isNotBlank() }?.let { add(R.string.match_info_reviews to it) }
+    if (officials.debutants.isNotEmpty()) {
+        add(R.string.match_info_debuts to officials.debutants.joinToString(", ") { "${it.name} (${it.team})" })
     }
 }
 

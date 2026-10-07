@@ -18,7 +18,27 @@ data class MatchContext(
     val summary: Surface? = null,
     val teams: List<Side> = emptyList(),
     val h2h: Record? = null,
+    val cricinfo: Officials? = null,
 ) {
+    /**
+     * Who is standing in the match, who is on debut and how many reviews each side has left, as
+     * ESPNcricinfo's match page states them. Absent for a match Cricinfo does not cover, which is
+     * most of them. [reviews] is its own short line ("WI - 2 of 2, IND - 1 of 2") and is as old as
+     * the file: it changes a few times a match, not every ball.
+     */
+    @Serializable
+    data class Officials(
+        val umpires: List<String> = emptyList(),
+        val tvUmpires: List<String> = emptyList(),
+        val referees: List<String> = emptyList(),
+        val debutants: List<Debutant> = emptyList(),
+        val reviews: String? = null,
+    )
+
+    /** A player in their first match of this kind, with their side's short code. */
+    @Serializable
+    data class Debutant(val team: String = "", val name: String = "")
+
     /** One of the two sides, in the order [Record] counts them. */
     @Serializable
     data class Side(val name: String = "")
