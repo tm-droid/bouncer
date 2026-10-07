@@ -2,7 +2,6 @@ package com.tanush.bouncer.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,15 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SportsCricket
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -35,14 +30,10 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -63,7 +54,6 @@ import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
 import com.tanush.bouncer.ui.screens.RefreshFailureSnackbarEffect
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.v2.bouncerScreenBackground
-import com.tanush.bouncer.utils.PreferencesHelper
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.viewmodels.STATUS_ALL
 
@@ -87,14 +77,8 @@ fun HomeScreenV2(
     onSearchClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
 ) {
-    val context = LocalContext.current
-    LaunchedEffect(Unit) {
-        val pref = PreferencesHelper.getString(context, PreferencesHelper.KEY_PREFERRED_CATEGORY, CATEGORY_ALL)
-        if (pref != CATEGORY_ALL) viewModel.setCompetitionType(pref)
-    }
-
+    val (filters, onFiltersChanged) = rememberHomeFilters(viewModel)
     val selectedStatus by viewModel.selectedStatus.collectAsStateWithLifecycle()
-    val selectedCompetitionType by viewModel.selectedCompetitionType.collectAsStateWithLifecycle()
     val currentMatches by viewModel.currentMatches.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
@@ -119,9 +103,9 @@ fun HomeScreenV2(
                 NetworkStatusBanner(isOffline = isOffline)
                 HomeFilterBar(
                     selectedStatus = selectedStatus,
-                    selectedCategory = selectedCompetitionType,
+                    filters = filters,
                     onStatusSelected = { viewModel.setAndFetchMatches(it) },
-                    onCategorySelected = { viewModel.setCompetitionType(it) },
+                    onFiltersChanged = onFiltersChanged,
                 )
             }
         },
@@ -132,7 +116,8 @@ fun HomeScreenV2(
             onRefresh = { viewModel.refreshMatches() },
             modifier = Modifier.padding(innerPadding),
         ) {
-            HomeMatchList(currentMatches, isLoading, onMatchClick, onMoreMatchesClick)
+            val filtered = if (filters.active) FilteredList(filters.label) { onFiltersChanged(HomeFilters()) } else null
+            HomeMatchList(currentMatches, isLoading, filtered, onMatchClick, onMoreMatchesClick)
         }
     }
 }
@@ -174,9 +159,9 @@ private fun HomeTopBar(unreadCount: Int, onNotificationsClick: () -> Unit, onSea
 @Composable
 private fun HomeFilterBar(
     selectedStatus: String,
-    selectedCategory: String,
+    filters: HomeFilters,
     onStatusSelected: (String) -> Unit,
-    onCategorySelected: (String) -> Unit,
+    onFiltersChanged: (HomeFilters) -> Unit,
 ) {
     val colors = BouncerThemeV2.colors
     val selectedIndex = STATUS_TABS.indexOf(tabForStatus(selectedStatus)).coerceAtLeast(0)
@@ -209,53 +194,17 @@ private fun HomeFilterBar(
                     )
                 }
             }
-            CategoryFilterMenu(selectedCategory, onCategorySelected)
+            HomeFilterMenu(filters, onFiltersChanged)
         }
         HorizontalDivider(color = colors.divider)
     }
-}
-
-/** Competition filter. Gold when it is narrowing the list, so a hidden filter never shapes it silently. */
-@Composable
-private fun CategoryFilterMenu(selectedCategory: String, onCategorySelected: (String) -> Unit) {
-    val colors = BouncerThemeV2.colors
-    var expanded by remember { mutableStateOf(false) }
-    val current = selectedCategory.ifBlank { CATEGORY_ALL }
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(
-                Icons.Default.FilterList,
-                contentDescription = stringResource(R.string.cd_filter_category),
-                tint = if (current != CATEGORY_ALL) colors.primaryText else colors.textSecondary,
-            )
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, containerColor = colors.surface) {
-            CATEGORY_OPTIONS.forEach { option ->
-                CategoryMenuItem(option = option, selected = option == current) {
-                    expanded = false
-                    onCategorySelected(option)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CategoryMenuItem(option: String, selected: Boolean, onClick: () -> Unit) {
-    val colors = BouncerThemeV2.colors
-    DropdownMenuItem(
-        text = { Text(option, color = if (selected) colors.primaryText else colors.onSurface) },
-        onClick = onClick,
-        trailingIcon = {
-            if (selected) Icon(Icons.Default.Check, contentDescription = null, tint = colors.primaryText)
-        },
-    )
 }
 
 @Composable
 private fun HomeMatchList(
     matches: List<CricketMatch>,
     isLoading: Boolean,
+    filtered: FilteredList?,
     onMatchClick: (CricketMatch) -> Unit,
     onMoreMatchesClick: () -> Unit,
 ) {
@@ -274,6 +223,20 @@ private fun HomeMatchList(
             isLoading && matches.isEmpty() -> items(SHIMMER_ROWS, key = { "shimmer_$it" }) {
                 // Mirror the real row's geometry so first paint does not jump.
                 ShimmerMatchCard(Modifier.padding(horizontal = spacing.lg, vertical = spacing.rowVertical))
+            }
+            // A filter that empties the list says which filter, and offers the way out. It used to
+            // read "No matches found" with no action and no link to the full list.
+            matches.isEmpty() && filtered != null -> {
+                item(key = "empty_filtered") {
+                    EmptyStateV2(
+                        title = stringResource(R.string.home_empty_filtered_title, filtered.label),
+                        subtitle = stringResource(R.string.home_empty_filtered_subtitle),
+                        icon = Icons.Outlined.SportsCricket,
+                        onRetry = filtered.onShowAll,
+                        actionLabel = stringResource(R.string.home_show_all),
+                    )
+                }
+                item(key = "all_matches") { AllMatchesLink(onMoreMatchesClick) }
             }
             matches.isEmpty() -> item(key = "empty") {
                 EmptyStateV2(
@@ -352,7 +315,5 @@ private fun tabForStatus(vmStatus: String): String = when (vmStatus) {
 // broken: the highlight jumped to Live and the feed never changed.
 private val STATUS_BY_TAB = linkedMapOf("All" to STATUS_ALL, "Live" to "Live", "Upcoming" to "Upcoming", "Recent" to "Recent")
 private val STATUS_TABS = STATUS_BY_TAB.keys.toList()
-private const val CATEGORY_ALL = "All"
-private val CATEGORY_OPTIONS = listOf(CATEGORY_ALL, "International", "League", "Domestic")
 private const val SHIMMER_ROWS = 3
 private const val MAX_BADGE_COUNT = 9

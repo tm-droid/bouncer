@@ -415,7 +415,7 @@ class CricBuzzScraper {
                 currentStatus = status,
                 info = state,
                 category = competitionType,
-                gender = "Men",
+                gender = matchGender(seriesName, team1, team2),
                 competitionType = competitionType,
                 tossWinner = tossWinner,
                 tossDecision = tossDecision,

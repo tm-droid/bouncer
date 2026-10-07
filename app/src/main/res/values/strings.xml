@@ -37,6 +37,11 @@
     <string name="cd_search">Search</string>
     <string name="cd_filter_category">Filter by competition</string>
     <string name="home_all_matches">All matches</string>
+    <string name="home_empty_filtered_title">No %1$s matches here</string>
+    <string name="home_empty_filtered_subtitle">This list is filtered</string>
+    <string name="home_show_all">Show all</string>
+    <string name="home_filter_competition">Competition</string>
+    <string name="home_filter_teams">Teams</string>
     <string name="match_starts_today">Starts today, %1$s</string>
     <string name="match_starts_tomorrow">Starts tomorrow, %1$s</string>
     <string name="match_starts_on">Starts %1$s, %2$s</string>

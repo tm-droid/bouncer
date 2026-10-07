@@ -118,10 +118,11 @@ fun AllMatchesScreenV2(
  */
 @Composable
 private fun rememberMatchSource(viewModel: LiveActivityViewModel, byDate: Boolean): List<CricketMatch> {
-    val currentMatches by viewModel.currentMatches.collectAsStateWithLifecycle()
+    // Not `currentMatches`: that is Home's list, already narrowed by Home's competition filter.
+    val statusMatches by viewModel.statusMatches.collectAsStateWithLifecycle()
     val allMatches by viewModel.allMatches.collectAsStateWithLifecycle()
     LaunchedEffect(byDate) { if (byDate) viewModel.warmAllStatuses() }
-    return if (byDate) allMatches else currentMatches
+    return if (byDate) allMatches else statusMatches
 }
 
 private fun List<CricketMatch>.withFormat(format: String): List<CricketMatch> =

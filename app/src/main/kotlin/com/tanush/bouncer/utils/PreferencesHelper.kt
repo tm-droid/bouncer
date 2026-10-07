@@ -50,6 +50,7 @@ object PreferencesHelper {
     const val KEY_ONBOARDING_TEAMS = "onboarding_teams"
     const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
     const val KEY_PREFERRED_CATEGORY = "preferred_category"
+    const val KEY_PREFERRED_GENDER = "preferred_gender"
 
     fun getBoolean(context: Context, key: String, default: Boolean): Boolean {
         PreferenceStore.initialize(context)

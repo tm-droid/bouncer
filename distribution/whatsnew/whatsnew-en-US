@@ -2,12 +2,12 @@ Matches appear the moment you open the app, then refresh.
 
 With no connection, your last match list stays on screen instead of "no matches".
 
-An open match keeps up even when its live feed stalls.
+Home's filter now stays where you set it, and can show men's or women's cricket only.
 
-Less data and battery used away from live scores.
+"All matches" shows every match, whatever Home is filtered to.
 
 Tapping a match alert always opens that match, even a second alert for the same match.
 
-Match reminders survive a phone restart, and tapping one opens the match.
+Match reminders survive a phone restart.
 
-Fixed: a widget that stayed blank after being removed and added again.
+Fixed: a news article that could close itself when a paragraph repeated.

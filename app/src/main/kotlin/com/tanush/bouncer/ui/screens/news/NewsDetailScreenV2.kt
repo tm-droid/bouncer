@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Newspaper
 import androidx.compose.material3.HorizontalDivider
@@ -161,7 +162,9 @@ fun NewsDetailScreenV2(
             }
 
             // Body paragraphs
-            items(articleBody, key = { "para_${it.hashCode()}" }) { paragraph ->
+            // Keyed on position. Keyed on the text, an article that repeats a paragraph ("Brief
+            // scores", a pull quote) threw "Key … was already used" and took the screen down.
+            itemsIndexed(articleBody, key = { index, _ -> "para_$index" }) { _, paragraph ->
                 Text(
                     text = paragraph,
                     style = typography.bodyMedium,

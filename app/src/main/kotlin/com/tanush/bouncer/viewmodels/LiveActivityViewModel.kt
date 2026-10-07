@@ -102,6 +102,14 @@ class LiveActivityViewModel(
     private val _currentMatches = MutableStateFlow<List<CricketMatch>>(emptyList())
     val currentMatches: StateFlow<List<CricketMatch>> = _currentMatches.asStateFlow()
 
+    /**
+     * The selected status's list before the competition and gender filters. All matches reads
+     * this: it used to read [currentMatches], so a filter chosen on Home narrowed a screen that
+     * has no control for it and nothing to say it was applied.
+     */
+    private val _statusMatches = MutableStateFlow<List<CricketMatch>>(emptyList())
+    val statusMatches: StateFlow<List<CricketMatch>> = _statusMatches.asStateFlow()
+
     private val _allMatchesForHome = MutableStateFlow<List<CricketMatch>>(emptyList())
     val allMatchesForHome: StateFlow<List<CricketMatch>> = _allMatchesForHome.asStateFlow()
 
@@ -214,6 +222,19 @@ class LiveActivityViewModel(
         matchesForStatus(cachedMatches, _selectedStatus.value)?.let { filterAndEmitMatches(it) }
     }
 
+    private var filtersRestored = false
+
+    /**
+     * Applies the saved filters, once per ViewModel. Home used to re-apply the onboarding choice
+     * every time it entered composition, which undid whatever the menu had been set to since.
+     */
+    fun restoreFilters(type: String, gender: String) {
+        if (filtersRestored) return
+        filtersRestored = true
+        setCompetitionType(type)
+        setGender(gender)
+    }
+
     fun setGender(gender: String) {
         if (_selectedGender.value == gender) return
         breadcrumb("user.action", "Gender filter changed to: $gender")
@@ -252,6 +273,7 @@ class LiveActivityViewModel(
     }
 
     private fun filterAndEmitMatches(matches: List<CricketMatch>) {
+        if (_statusMatches.value != matches) _statusMatches.value = matches
         val type = _selectedCompetitionType.value
         val gender = _selectedGender.value
 
