@@ -1188,11 +1188,17 @@ export function selectSlowTier({ live, viewed, state, now, cooldownUntil = 0 }) 
  *
  * It rides in the same flat `{ key: epochMs }` map as the slow-tier clock rather than a nested
  * object, so `selectSlowTier` — which only ever reads `state[<bare id>]` — cannot see it and needs
- * no change. The prune below compares the id BEFORE the suffix, and keeps a marker for as long as
- * the match is on the recent list — which is where `endedMatches` finds a match to finalise, so a
- * marker that outlived the list would be dead weight and one that did not would finalise it again.
+ * no change.
+ *
+ * A marker is kept by AGE. It was kept for as long as its match was on the recent list, and that
+ * list is the newest twenty: two matches trading its last place lost their markers on alternate
+ * runs and were finalised on alternate runs — 173691 eighty-eight times in half a day, each one
+ * two page fetches and two forced row writes. `endedMatches` can only nominate a match the poll
+ * saw live within its six-day memory, so a marker that lives a day longer than that can never be
+ * outlived by the thing that would re-nominate its match.
  */
 const FINAL_SUFFIX = ":final";
+export const FINAL_MARKER_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const finalKey = (matchId) => `${matchId}${FINAL_SUFFIX}`;
 
@@ -1202,13 +1208,12 @@ export function isFinalised(state, matchId) {
 }
 
 /** The slow-tier clock, stamped for the matches that just ran and pruned to those still live. */
-export function nextSlowState({ state, processed, liveIds, now, finalised = [], recentIds = null }) {
+export function nextSlowState({ state, processed, liveIds, now, finalised = [] }) {
   const next = {};
   for (const [key, ts] of Object.entries(state ?? {})) {
-    const final = key.endsWith(FINAL_SUFFIX);
-    const id = final ? key.slice(0, -FINAL_SUFFIX.length) : key;
-    const kept = liveIds.has(id) || (final && recentIds !== null && recentIds.has(id));
-    if (kept && typeof ts === "number") next[key] = ts;
+    if (typeof ts !== "number") continue;
+    const kept = key.endsWith(FINAL_SUFFIX) ? now - ts < FINAL_MARKER_TTL_MS : liveIds.has(key);
+    if (kept) next[key] = ts;
   }
   for (const id of processed) next[id] = now;
   for (const id of finalised) next[finalKey(id)] = now;
@@ -1819,11 +1824,6 @@ async function handleRun({ req, res, log, error }) {
       liveIds,
       now: Date.now(),
       finalised: finalisedNow,
-      // With no recent list this run, every marker is kept: dropping one would finalise its match
-      // a second time when the list came back.
-      recentIds: recent
-        ? new Set(recent.map((m) => String(m?.id)))
-        : new Set(Object.keys(slowState).filter((k) => k.endsWith(FINAL_SUFFIX)).map((k) => k.slice(0, -FINAL_SUFFIX.length))),
     }),
     previous: slowState,
     log,

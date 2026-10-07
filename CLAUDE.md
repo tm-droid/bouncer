@@ -582,9 +582,11 @@ fires when `syncMatch` sees a terminal status, and that was written when an ende
 last live run left them (174057 read "need 87 runs in 56 balls" a day after it was won; 173113 read
 "Innings Break"). `endedMatches` (`main.js`) now takes up to two a run from the recent list — only
 ids in the poll's `startedIds`, so a match that was already over when first seen is left alone —
-and adds them to that run's set and to nothing published. The `:final` marker lives as long as the
-match is on the recent list, and every marker is kept on a run with no recent list; either way a
-dropped marker is a second finalisation. A match finalised more than ten minutes after it was last
+and adds them to that run's set and to nothing published. The `:final` marker is kept by **age** (seven days, a
+day longer than `startedIds` remembers a match). It was first kept only while the match was on the
+recent list, which is the newest twenty: two matches trading its last place lost their markers on
+alternate runs, and 173691 was finalised 88 times in half a day. A dropped marker is a second
+finalisation, so count `finalised on` per match in the run logs after touching this. A match finalised more than ten minutes after it was last
 seen live sends no alert, and the finalising run does not stamp a probability. **Check a finished
 match's `match-live-detail` status after any change to which list a match is on.**
 

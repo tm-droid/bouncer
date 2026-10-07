@@ -216,12 +216,16 @@ test("an ended match is taken from the recent list once, and only if it was foll
   assert.deepEqual(endedMatches({ recent: null, started, state, liveIds: new Set() }), []);
   assert.deepEqual(endedMatches({ recent, started: null, state, liveIds: new Set() }), []);
 
-  // The marker outlives the live list for as long as the match is on the recent one, or the next
-  // run would finalise it again.
-  const kept = nextSlowState({ state, processed: [], liveIds: new Set(), now: 99, finalised: ["1"], recentIds: new Set(["1", "2"]) });
+  // The marker is kept by age, whatever list the match is on this run. Two matches trading the
+  // last place of the recent list used to lose their markers on alternate runs.
+  const { FINAL_MARKER_TTL_MS } = await import("../src/main.js");
+  const kept = nextSlowState({ state, processed: [], liveIds: new Set(), now: 99, finalised: ["1"] });
   assert.deepEqual(kept, { [finalKey("2")]: 50, [finalKey("1")]: 99 });
-  const gone = nextSlowState({ state, processed: [], liveIds: new Set(), now: 99, recentIds: new Set(["9"]) });
-  assert.deepEqual(gone, {});
+  assert.deepEqual(endedMatches({ recent, started, state: kept, liveIds: new Set() }).map((m) => m.id), [4]);
+  const aged = nextSlowState({ state: kept, processed: [], liveIds: new Set(), now: 50 + FINAL_MARKER_TTL_MS });
+  assert.deepEqual(aged, { [finalKey("1")]: 99 }, "a marker goes only once it is older than the poll can remember its match");
+  // The slow-tier clock is still pruned to what is live.
+  assert.deepEqual(nextSlowState({ state: { 7: 10, 8: 10 }, processed: [], liveIds: new Set(["7"]), now: 20 }), { 7: 10 });
 });
 
 test("rival samples survive a container restart: stored as they arrive, merged at the end", async () => {

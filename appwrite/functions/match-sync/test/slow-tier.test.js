@@ -117,10 +117,10 @@ test("the finalised marker rides in the same file without disturbing the tier", 
   );
 });
 
-test("the marker lives exactly as long as the match stays in the live list", () => {
-  // Long enough to stop the finalisation repeating every minute — and on every cold container,
-  // which is why it is persisted at all — and gone once the match can never sync again.
-  const state = { [finalKey("144783")]: NOW - 60_000, [finalKey("ended")]: NOW - 60_000 };
+test("the marker outlives the live list, and goes only with age", () => {
+  // Long enough to stop the finalisation repeating every minute and on every cold container. It
+  // was dropped the moment its match left a list, and a match that came back was finalised again.
+  const state = { [finalKey("144783")]: NOW - 60_000, [finalKey("ended")]: NOW - 60_000, [finalKey("old")]: NOW - 8 * 24 * 60 * 60 * 1000 };
   const next = nextSlowState({
     state,
     processed: new Set(),
@@ -128,7 +128,8 @@ test("the marker lives exactly as long as the match stays in the live list", () 
     now: NOW,
   });
   assert.equal(isFinalised(next, "144783"), true, "still listed live, so still finalised");
-  assert.equal(isFinalised(next, "ended"), false, "left the list, so the marker goes with it");
+  assert.equal(isFinalised(next, "ended"), true, "left the list, and is still finalised");
+  assert.equal(isFinalised(next, "old"), false, "past the poll's memory of the match, so nothing can re-nominate it");
 });
 
 test("the cap encodes the tier: 10 for a viewer, 2 for the slow tier, 0 otherwise", () => {
