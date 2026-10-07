@@ -12,6 +12,7 @@ import io.sentry.Sentry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
 
 /**
  * What the user follows, per match, in two independent parts:
@@ -59,6 +60,7 @@ object MatchSubscriptionManager {
             _alertPrefs.value = loadAlerts()
             initialized = true
             Log.d(TAG, "Initialized with ${_subscriptions.value.size} subscriptions")
+            joinTopicsAfterRestore(context, _alertPrefs.value, topics)
             if (resumePending) {
                 resumePending = false
                 resumeLiveUpdates(context)
@@ -202,5 +204,28 @@ private object FirebaseTopics : MatchTopicSubscriber {
         FirebaseMessaging.getInstance().unsubscribeFromTopic(topic).addOnFailureListener {
             Log.w(TAG, "unsubscribe $topic failed", it)
         }
+    }
+}
+
+private const val TOPICS_JOINED_MARKER = "match_topics_joined"
+
+/**
+ * Joins the topic of every match whose alerts are on, once per install.
+ *
+ * The alert choices are in a preferences file that Android backup restores onto a new phone; the
+ * topic memberships belong to the old phone's FCM registration and do not come with it. So after a
+ * restore the Follow sheet showed alerts as on and none arrived until the user switched them off
+ * and on. The marker is in the no-backup directory, which is exactly the state that should not
+ * travel. Subscribing to a topic already joined does nothing.
+ */
+private fun joinTopicsAfterRestore(context: Context, alerts: Map<String, MatchAlertPrefs>, topics: MatchTopicSubscriber) {
+    try {
+        val marker = File(context.noBackupFilesDir, TOPICS_JOINED_MARKER)
+        if (marker.exists()) return
+        alerts.filterValues { it.anyOn }.keys.forEach { topics.subscribe(matchTopic(it)) }
+        marker.createNewFile()
+    } catch (e: Exception) {
+        // The alerts still read as on; this is reported so a failure here is not silent.
+        Sentry.captureException(e)
     }
 }

@@ -34,7 +34,6 @@ import com.tanush.bouncer.services.SeriesSyncWorker
 import com.tanush.bouncer.ui.notifications.RichNotificationBuilder
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
-import io.sentry.android.core.SentryAndroid
 import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
 import java.io.File
@@ -47,6 +46,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import com.tanush.bouncer.data.repository.NewsDiskCache
+import com.tanush.bouncer.utils.RemindersManager
 
 /**
  * Global health snapshot of init steps. Other code can query whether a specific
@@ -83,7 +83,8 @@ class BouncerApp : Application() {
         // transport timeouts, replay/trace refinements) only runs via manual init. init still
         // reads all manifest meta-data (DSN, environment, replay masking), then applies our
         // configure() on top. Must run first so everything below reports through the filter.
-        SentryAndroid.init(this, SentryOptionsConfig())
+        // Unless the user has switched diagnostics off in Settings.
+        Diagnostics.start(this)
 
         // ── Install global uncaught-exception handler ────────────────────
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
@@ -123,6 +124,9 @@ class BouncerApp : Application() {
         initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }
         applicationScope.launch(Dispatchers.IO) {
             initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this@BouncerApp) }
+            // Alarms do not survive a restore onto a new phone, an app update on some devices, or
+            // a force stop. Setting one that is already set changes nothing.
+            initializeSafely("Reminders") { RemindersManager.rescheduleAll(this@BouncerApp) }
         }
         initializeSafely("NotificationChannels") {
             RichNotificationBuilder.CricketNotificationChannel.createNotificationChannels(this)

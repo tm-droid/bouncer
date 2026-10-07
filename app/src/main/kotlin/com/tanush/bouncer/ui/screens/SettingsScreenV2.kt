@@ -59,6 +59,7 @@ import com.tanush.bouncer.ui.components.v2.SettingsTrailing
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.widgets.WidgetUpdateWorker
 import com.tanush.bouncer.utils.PreferencesHelper
+import com.tanush.bouncer.Diagnostics
 
 /**
  * SettingsScreenV2 — Clean grouped settings with toggles.
@@ -122,6 +123,8 @@ fun SettingsScreenV2(
     var aiInsights by remember {
         mutableStateOf(PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_AI_INSIGHTS, false))
     }
+
+    var shareDiagnostics by remember { mutableStateOf(Diagnostics.isEnabled(context)) }
 
     fun togglePref(key: String, current: Boolean, setter: (Boolean) -> Unit) {
         val next = !current
@@ -253,6 +256,15 @@ fun SettingsScreenV2(
                         subtitle = stringResource(R.string.settings_use_simpler_transitions),
                         trailing = SettingsTrailing.Toggle(reducedMotion),
                         onClick = { togglePref(PreferencesHelper.KEY_REDUCED_MOTION, reducedMotion) { reducedMotion = it } },
+                    )
+                    SettingsItemV2(
+                        title = stringResource(R.string.settings_share_diagnostics),
+                        subtitle = stringResource(R.string.settings_share_diagnostics_detail),
+                        trailing = SettingsTrailing.Toggle(shareDiagnostics),
+                        onClick = {
+                            shareDiagnostics = !shareDiagnostics
+                            Diagnostics.setEnabled(context, shareDiagnostics)
+                        },
                     )
                     SettingsItemV2(
                         icon = Icons.Default.Delete,

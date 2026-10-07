@@ -31,6 +31,7 @@ import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import java.util.concurrent.TimeUnit
+import androidx.work.PeriodicWorkRequest
 
 /**
  * Data class for scheduled match information
@@ -49,7 +50,7 @@ data class ScheduledMatchData(
  * Next Match Countdown Widget
  * 
  * Shows time remaining until the next scheduled match starts.
- * Updates every minute via WorkManager.
+ * Updates every 15 minutes via WorkManager, the shortest period it allows.
  * 
  * Features:
  * - Countdown format: "2d 5h 30m" or "Starting in 45 min"
@@ -115,11 +116,16 @@ class CountdownWidget : GlanceAppWidget() {
         }
         
         /**
-         * Schedule periodic countdown updates via WorkManager (every minute)
+         * Schedule periodic countdown updates via WorkManager, every 15 minutes.
+         *
+         * This asked for one minute. WorkManager's shortest period is 15, and it raises anything
+         * shorter to that without saying so — so the widget has always redrawn every quarter of
+         * an hour, while this code and its comments said every minute. The figure it shows can
+         * therefore be up to 15 minutes behind the clock.
          */
         fun scheduleCountdownUpdates(context: Context) {
             val workRequest = PeriodicWorkRequestBuilder<CountdownUpdateWorker>(
-                1, TimeUnit.MINUTES
+                PeriodicWorkRequest.MIN_PERIODIC_INTERVAL_MILLIS, TimeUnit.MILLISECONDS
             ).setConstraints(
                 Constraints.Builder()
                     .setRequiresBatteryNotLow(true)
@@ -445,7 +451,7 @@ class CountdownWidget : GlanceAppWidget() {
 
 /**
  * WorkManager Worker for countdown updates
- * Runs every minute to refresh countdown display
+ * Runs every 15 minutes to refresh the countdown display
  */
 class CountdownUpdateWorker(
     private val context: Context,

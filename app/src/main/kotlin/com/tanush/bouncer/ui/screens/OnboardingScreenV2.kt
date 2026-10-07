@@ -51,7 +51,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.google.firebase.messaging.FirebaseMessaging
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.widgets.BouncerGlanceWidgetReceiver
@@ -100,7 +99,6 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
     fun finishOnboarding() {
         selectedTeams.forEach { team ->
             FavouriteTeamsManager.add(team)
-            FirebaseMessaging.getInstance().subscribeToTopic("team_${team.lowercase().replace(" ", "_")}")
         }
         PreferencesHelper.setString(context, PreferencesHelper.KEY_PREFERRED_CATEGORY, selectedCategory)
         PreferencesHelper.setBoolean(context, PreferencesHelper.KEY_ONBOARDING_COMPLETE, true)

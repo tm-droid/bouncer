@@ -47,7 +47,9 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
 
         // ── Core telemetry behavior ──────────────────────────────────────
         options.isDebug = isDebugBuild
-        options.setSendDefaultPii(true)
+        // Off. On, the SDK attaches the client IP address and request detail to every event, and
+        // nothing in a cricket scores app's reports needs to say who sent them.
+        options.setSendDefaultPii(false)
         options.logs.setEnabled(true)
         options.metrics.setEnabled(true)
 

@@ -215,11 +215,9 @@
     <string name="highlight_player_error">This clip can\'t be played here. Open it in YouTube instead.</string>
 
     <!-- Extracted UI strings -->
-    <string name="about_changelog">Changelog</string>
+    <string name="about_changelog">What\'s new</string>
+    <string name="about_changelog_on_play">On Google Play</string>
     <string name="about_made_with_by_tanush">Made with ❤️ by Tanush</string>
-    <string name="about_open_source_licenses">Open Source Licenses</string>
-    <string name="about_privacy_policy">Privacy Policy</string>
-    <string name="about_terms_of_service">Terms of Service</string>
     <string name="matches_couldnt_load">Couldn\'t load matches</string>
     <string name="matches_none">No matches</string>
     <string name="notification_channel_live_events_desc">Notifications for live match events</string>
@@ -396,6 +394,8 @@
     <string name="settings_feel_the_game_with_vibrations">Feel the game with vibrations</string>
     <string name="settings_get_notified_when_your_favorite_team">Alerts for the matches you follow</string>
     <string name="settings_haptic_feedback">Haptic Feedback</string>
+    <string name="settings_share_diagnostics">Share diagnostics</string>
+    <string name="settings_share_diagnostics_detail">Crash reports and usage data, sent to Sentry. Takes effect at once.</string>
     <string name="settings_live_match_alerts">Live Match Alerts</string>
     <string name="settings_never_miss_a_crucial_wicket">Never miss a crucial wicket</string>
     <string name="settings_re_run_the_onboarding_flow_to">Re-run the onboarding flow to update your teams and preferences</string>

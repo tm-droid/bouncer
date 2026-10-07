@@ -34,6 +34,7 @@ import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.launch
+import androidx.activity.enableEdgeToEdge
 
 private data class WidgetMatchData(
     val matchId: String,
@@ -90,6 +91,9 @@ class WidgetConfigurationActivity : ComponentActivity() {
             level = SentryLevel.INFO
         })
         
+        // targetSdk 36 draws under the system bars whether asked to or not; opting in here is what
+        // makes the insets below report them.
+        enableEdgeToEdge()
         setContent {
             BouncerTheme {
                 WidgetConfigurationContent()
@@ -110,6 +114,8 @@ class WidgetConfigurationActivity : ComponentActivity() {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    // The header sat under the status bar and Confirm under the navigation bar.
+                    .safeDrawingPadding()
                     .padding(16.dp)
             ) {
                 // Header

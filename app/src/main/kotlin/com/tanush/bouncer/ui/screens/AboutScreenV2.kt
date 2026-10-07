@@ -14,9 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Gavel
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.SportsCricket
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -37,6 +34,12 @@ import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.v2.SettingsItemV2
 import com.tanush.bouncer.ui.components.v2.SettingsTrailing
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.util.Log
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * AboutScreenV2 — App info, version, links.
@@ -47,6 +50,7 @@ fun AboutScreenV2(onBackClick: () -> Unit) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -98,37 +102,18 @@ fun AboutScreenV2(onBackClick: () -> Unit) {
                 Spacer(Modifier.height(spacing.lg))
             }
 
-            // Navigation items
+            // One row, and it goes somewhere. There were four here — Changelog, Open Source
+            // Licenses, Privacy Policy, Terms of Service — each with a chevron and an empty
+            // onClick. A row labelled Privacy Policy that opens nothing is worse than no row; the
+            // other three come back when there is something for them to open.
             item(key = "changelog") {
                 SettingsItemV2(
                     icon = Icons.Default.NewReleases,
                     title = stringResource(R.string.about_changelog),
+                    subtitle = stringResource(R.string.about_changelog_on_play),
                     trailing = SettingsTrailing.Navigation,
-                    onClick = {},
-                )
-            }
-            item(key = "licenses") {
-                SettingsItemV2(
-                    icon = Icons.Default.Description,
-                    title = stringResource(R.string.about_open_source_licenses),
-                    trailing = SettingsTrailing.Navigation,
-                    onClick = {},
-                )
-            }
-            item(key = "privacy") {
-                SettingsItemV2(
-                    icon = Icons.Default.Lock,
-                    title = stringResource(R.string.about_privacy_policy),
-                    trailing = SettingsTrailing.Navigation,
-                    onClick = {},
-                )
-            }
-            item(key = "terms") {
-                SettingsItemV2(
-                    icon = Icons.Default.Gavel,
-                    title = stringResource(R.string.about_terms_of_service),
-                    trailing = SettingsTrailing.Navigation,
-                    onClick = {},
+                    showDivider = false,
+                    onClick = { context.openStoreListing() },
                 )
             }
 
@@ -143,6 +128,20 @@ fun AboutScreenV2(onBackClick: () -> Unit) {
                     textAlign = TextAlign.Center,
                 )
             }
+        }
+    }
+}
+
+/** The app's Play listing, where "What's new" is published. Play Store first, a browser if there is none. */
+private fun Context.openStoreListing() {
+    val listing = "details?id=$packageName"
+    for (uri in listOf("market://$listing", "https://play.google.com/store/apps/$listing")) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            return
+        } catch (e: ActivityNotFoundException) {
+            // No Play Store on this device; try the web address.
+            Log.d("AboutScreen", "Nothing opens $uri", e)
         }
     }
 }

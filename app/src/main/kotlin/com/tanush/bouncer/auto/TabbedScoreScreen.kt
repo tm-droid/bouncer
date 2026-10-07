@@ -16,44 +16,64 @@ import androidx.core.graphics.drawable.IconCompat
 import com.tanush.bouncer.R
 import com.tanush.bouncer.data.CricketRepository
 import com.tanush.bouncer.network.models.SanwebMatchSummary
-import kotlinx.coroutines.CoroutineScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val TAB_LIVE = "live"
 private const val TAB_UPCOMING = "upcoming"
 private const val TAB_ALL = "all"
+private const val REFRESH_INTERVAL_MS = 60_000L
 
 class TabbedScoreScreen(carContext: CarContext) : Screen(carContext) {
 
     private var activeTab = TAB_LIVE
+
+    // Null means that list has never loaded; empty means it loaded and there is nothing on. The
+    // two used to be one state, so a failed fetch read as "No matches" — on the one surface where
+    // the phone is out of reach.
     private var liveMatches: List<SanwebMatchSummary>? = null
     private var upcomingMatches: List<SanwebMatchSummary>? = null
     private var allMatches: List<SanwebMatchSummary>? = null
     private var loading = true
 
     init {
-        fetchAll()
+        // Refreshed for as long as the screen is on the car display, and not after. The scores
+        // were fetched once, when the screen was created, and stayed there for the whole drive;
+        // each tap on Refresh also started a coroutine on a scope nothing ever cancelled.
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    fetchAll()
+                    delay(REFRESH_INTERVAL_MS)
+                }
+            }
+        }
     }
 
-    private fun fetchAll() {
-        loading = true
-        liveMatches = null
-        upcomingMatches = null
-        allMatches = null
-        invalidate()
-
-        CoroutineScope(Dispatchers.IO).launch {
-            // No captureException on the error paths: CricketRepository already reports the failure
-            // with the `storage_read_reason` and `matches_type` tags that say which of its five
-            // branches fired. A second, tagless capture of the same exception groups into the same
-            // Sentry issue and leaves those tags reading empty (ANDROID-4H).
+    private suspend fun fetchAll() {
+        // No captureException on the error paths: CricketRepository already reports the failure
+        // with the `storage_read_reason` and `matches_type` tags that say which of its five
+        // branches fired. A second, tagless capture of the same exception groups into the same
+        // Sentry issue and leaves those tags reading empty (ANDROID-4H).
+        //
+        // A list that fails to refresh keeps what it last held: a score a minute old is worth
+        // more on this screen than a blank one.
+        withContext(Dispatchers.IO) {
             CricketRepository.getMatches("live").onSuccess { liveMatches = it.matches }
             CricketRepository.getMatches("upcoming").onSuccess { upcomingMatches = it.matches }
             CricketRepository.getMatches("recent").onSuccess { allMatches = it.matches }
-            loading = false
-            invalidate()
         }
+        loading = false
+        invalidate()
+    }
+
+    private fun refreshNow() {
+        lifecycleScope.launch { fetchAll() }
     }
 
     override fun onGetTemplate(): Template {
@@ -95,10 +115,10 @@ class TabbedScoreScreen(carContext: CarContext) : Screen(carContext) {
         }
 
         if (matches.isNullOrEmpty()) {
-            return MessageTemplate.Builder("No matches")
+            return MessageTemplate.Builder(if (matches == null) "Couldn't load scores" else "No matches")
                 .setTitle("Bouncer")
                 .setHeaderAction(Action.APP_ICON)
-                .addAction(Action.Builder().setTitle("Refresh").setOnClickListener { fetchAll() }.build())
+                .addAction(Action.Builder().setTitle("Refresh").setOnClickListener { refreshNow() }.build())
                 .build()
         }
 

@@ -50,7 +50,6 @@
         <activity
             android:name=".BouncerActivity"
             android:exported="true"
-            android:supportsPictureInPicture="true"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:theme="@style/Theme.Bouncer.Splash">
             <intent-filter>
@@ -177,6 +176,13 @@
                 android:resource="@xml/automotive_app_desc" />
         </service>
 
+        <!-- Required by the Car App library: without it AppInfo throws when a host binds
+             BouncerCarAppService, so the Auto screen could not start. 6 is the level TabTemplate,
+             which TabbedScoreScreen is built on, was added at. -->
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="6" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -200,11 +206,11 @@
     <meta-data android:name="io.sentry.logs.enabled" android:value="true" />
     <!-- Enable Sentry Metrics API ingestion -->
     <meta-data android:name="io.sentry.metrics.enabled" android:value="true" />
-    <!-- Capture request/response context where supported -->
-    <meta-data android:name="io.sentry.send-default-pii" android:value="true" />
+    <!-- No IP address or request detail on events. SentryOptionsConfig sets the same. -->
+    <meta-data android:name="io.sentry.send-default-pii" android:value="false" />
 
     <!-- Session Replay defaults (final rates are refined in SentryOptionsConfig) -->
-    <meta-data android:name="io.sentry.session-replay.on-error-sample-rate" android:value="1.0" />
+    <meta-data android:name="io.sentry.session-replay.on-error-sample-rate" android:value="0.25" />
     <meta-data android:name="io.sentry.session-replay.session-sample-rate" android:value="0.1" />
     <meta-data android:name="io.sentry.session-replay.mask-all-text" android:value="true" />
     <meta-data android:name="io.sentry.session-replay.mask-all-images" android:value="true" />
