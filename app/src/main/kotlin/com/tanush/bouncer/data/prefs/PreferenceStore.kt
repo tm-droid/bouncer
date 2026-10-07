@@ -67,6 +67,17 @@ object PreferenceStore {
     @Volatile private var store: DataStore<Preferences>? = null
     @Volatile private var snapshot: Preferences = emptyPreferences()
     @Volatile private var hydrated = false
+
+    /**
+     * True once a read of the store has failed and defaults were served in its place.
+     *
+     * Every caller but one is content with a default. `Diagnostics` is not: it reads an opt-out,
+     * and "the store could not be read" answering as the default "on" would undo it. The flag is
+     * for the life of the installed store — the failing flow ends, so nothing later corrects it.
+     */
+    @Volatile
+    var readFailed = false
+        private set
     @Volatile private var collector: Job? = null
 
     /**
@@ -140,6 +151,7 @@ object PreferenceStore {
         store = null
         snapshot = emptyPreferences()
         hydrated = false
+        readFailed = false
     }
 
     /** Test seam: swap in a store over a temp file. */
@@ -150,6 +162,7 @@ object PreferenceStore {
         pending.clear()
         store = dataStore
         hydrated = false
+        readFailed = false
         snapshot = emptyPreferences()
         collector = scope.launch {
             dataStore.data
@@ -158,6 +171,7 @@ object PreferenceStore {
                     // error. Reporting and continuing with defaults beats taking down every caller
                     // of a preference read.
                     if (e is IOException) Sentry.captureException(e) else throw e
+                    readFailed = true
                     emit(emptyPreferences())
                 }
                 .collect {
@@ -237,6 +251,7 @@ object PreferenceStore {
             store.data
                 .catch { e ->
                     if (e is IOException) Sentry.captureException(e) else throw e
+                    readFailed = true
                     emit(emptyPreferences())
                 }
                 .first()

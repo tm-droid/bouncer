@@ -2,6 +2,7 @@ package com.tanush.bouncer
 
 import android.content.Context
 import android.util.Log
+import com.tanush.bouncer.data.prefs.PreferenceStore
 import com.tanush.bouncer.utils.PreferencesHelper
 import io.sentry.Sentry
 import io.sentry.android.core.SentryAndroid
@@ -30,7 +31,11 @@ object Diagnostics {
 
     fun isEnabled(context: Context): Boolean =
         isEnabledIn(context.filesDir) && earlierChoiceAllows(context.filesDir) {
-            PreferencesHelper.getBoolean(context, LEGACY_PREFERENCE_KEY, true)
+            val wasOn = PreferencesHelper.getBoolean(context, LEGACY_PREFERENCE_KEY, true)
+            // An unreadable store answers every read with its default, which here is "on". That
+            // is not an answer about what was chosen.
+            check(!PreferenceStore.readFailed) { "the preference store could not be read" }
+            wasOn
         }
 
     /**
@@ -47,7 +52,12 @@ object Diagnostics {
             val checked = File(filesDir, LEGACY_CHECKED_FILE)
             if (checked.exists()) return true
             val wasOn = readEarlierChoice()
-            if (!wasOn) recordChoice(filesDir, enabled = false)
+            if (!wasOn) {
+                recordChoice(filesDir, enabled = false)
+                // Not marked as checked unless the opt-out is on disk: marked without it, the
+                // next launch would find neither the file nor a reason to look again.
+                if (!File(filesDir, OPT_OUT_FILE).exists()) return false
+            }
             checked.createNewFile()
             wasOn
         } catch (e: Exception) {

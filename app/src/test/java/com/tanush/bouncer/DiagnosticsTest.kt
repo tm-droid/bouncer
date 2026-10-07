@@ -91,4 +91,16 @@ class DiagnosticsTest {
         assertFalse(File(dir, Diagnostics.LEGACY_CHECKED_FILE).exists())
         assertFalse(Diagnostics.earlierChoiceAllows(null) { true })
     }
+
+    @Test
+    fun `an earlier opt-out that cannot be written down is not marked as dealt with`() {
+        // Read-only: neither the opt-out file nor the marker can be created.
+        assertTrue(dir.setWritable(false))
+        assertFalse(Diagnostics.earlierChoiceAllows(dir) { false })
+        dir.setWritable(true)
+        assertFalse("it must be looked at again next launch", File(dir, Diagnostics.LEGACY_CHECKED_FILE).exists())
+        // And next launch, with the directory writable, the opt-out lands.
+        assertFalse(Diagnostics.earlierChoiceAllows(dir) { false })
+        assertFalse(Diagnostics.isEnabledIn(dir))
+    }
 }
