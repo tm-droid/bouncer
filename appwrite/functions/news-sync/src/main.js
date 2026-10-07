@@ -7,8 +7,8 @@ import {
   BODY_PRUNE_MAX,
   bodyFileId,
   extractParagraphs,
-  hasUnresolvedTokens,
   listedStoryIds,
+  needsRefetch,
   selectBodiesToPrune,
   withoutTokens,
   shapeHint,
@@ -17,26 +17,39 @@ import {
 const NEWS_CACHE_FILE_ID = "news-cache";
 let cacheMemo = null; // warm-container copy of the headline cache
 
-// Story ids whose upstream fetch has just failed, by when. A failed fetch is not asked again for
-// FAILED_FETCH_HOLD_MS: without this a caller repeating one id spent a RapidAPI call per request
-// for as long as upstream kept failing, which is exactly when the quota is already the problem.
-// Per container, so it is a brake and not a guarantee.
-const FAILED_FETCH_HOLD_MS = 10 * 60 * 1000;
-const FAILED_FETCH_MAX_ENTRIES = 200;
-const failedFetches = new Map();
+// Upstream body fetches this container has made, by story id and time.
+//
+// A story is asked for at most once per FETCH_HOLD_MS, whatever came of the request, and at most
+// MAX_FETCHES_PER_HOLD stories are asked for in that window. The claim is taken BEFORE the request
+// is sent and with no `await` between the check and the mark, so requests arriving together cannot
+// all pass the check. It records attempts, not failures: a fetch that succeeds but whose body
+// could not be stored would otherwise be repeated by every request after it.
+//
+// Per container. Several containers each have their own, so this bounds the spend rather than
+// fixing it at one call.
+const FETCH_HOLD_MS = 10 * 60 * 1000;
+const MAX_FETCHES_PER_HOLD = 40;
+const fetchAttempts = new Map();
 
-/** True while [storyId]'s last upstream failure is inside the hold. */
-export function fetchIsHeld(storyId, now, failures = failedFetches) {
-  const at = failures.get(storyId);
-  return typeof at === "number" && now - at < FAILED_FETCH_HOLD_MS;
+/**
+ * Takes the right to fetch [storyId] upstream now. False when it was asked for inside the hold, or
+ * the container has used its allowance for the window.
+ */
+export function claimFetch(storyId, now, attempts = fetchAttempts) {
+  for (const [id, at] of attempts) if (now - at >= FETCH_HOLD_MS) attempts.delete(id);
+  if (attempts.has(storyId) || attempts.size >= MAX_FETCHES_PER_HOLD) return false;
+  attempts.set(storyId, now);
+  return true;
 }
 
-/** Records an upstream failure for [storyId], dropping entries past the hold and the oldest past the cap. */
-export function noteFailedFetch(storyId, now, failures = failedFetches) {
-  for (const [id, at] of failures) if (now - at >= FAILED_FETCH_HOLD_MS) failures.delete(id);
-  failures.delete(storyId);
-  failures.set(storyId, now);
-  while (failures.size > FAILED_FETCH_MAX_ENTRIES) failures.delete(failures.keys().next().value);
+// Bodies fetched by this container, so one that could not be written to Storage is still served
+// for the rest of its hold instead of answering 503. Bounded like the claims.
+const fetchedBodies = new Map();
+
+function rememberBody(storyId, paragraphs) {
+  fetchedBodies.delete(storyId);
+  fetchedBodies.set(storyId, paragraphs);
+  while (fetchedBodies.size > MAX_FETCHES_PER_HOLD) fetchedBodies.delete(fetchedBodies.keys().next().value);
 }
 
 // Enough of the upstream body to identify the failure, short enough not to flood the log.
@@ -237,7 +250,7 @@ async function serveArticleBody({ storyId, storage, STATS_BUCKET_ID, RAPIDAPI_KE
   try {
     const cached = parseJsonFile(await storage.getFileDownload(STATS_BUCKET_ID, fileId));
     if (Array.isArray(cached?.paragraphs) && cached.paragraphs.length > 0) {
-      if (!hasUnresolvedTokens(cached.paragraphs)) {
+      if (!needsRefetch(cached)) {
         log(`Story ${storyId}: cache hit (${cached.paragraphs.length} paragraphs)`);
         return res.json({ storyId, paragraphs: cached.paragraphs });
       }
@@ -255,17 +268,23 @@ async function serveArticleBody({ storyId, storage, STATS_BUCKET_ID, RAPIDAPI_KE
     return res.json({ error: "Unknown story" }, 404);
   }
 
-  const now = Date.now();
-  if (fetchIsHeld(storyId, now)) {
-    const served = serveUnresolved("upstream failed for it minutes ago");
-    if (served) return served;
-    log(`Story ${storyId}: upstream failed for it minutes ago — not asked again yet`);
-    return res.json({ error: "Article body unavailable" }, 503);
+  const fetched = fetchedBodies.get(storyId);
+  if (fetched) {
+    log(`Story ${storyId}: served from this container's memory (${fetched.length} paragraphs)`);
+    return res.json({ storyId, paragraphs: fetched });
   }
 
   if (!RAPIDAPI_KEY) {
     error("RAPIDAPI_KEY not set");
     return serveUnresolved("no RAPIDAPI_KEY") ?? res.json({ error: "News service not configured" }, 503);
+  }
+
+  // Nothing is awaited between this claim and the request below.
+  if (!claimFetch(storyId, Date.now())) {
+    const served = serveUnresolved("already asked upstream minutes ago");
+    if (served) return served;
+    log(`Story ${storyId}: already asked upstream minutes ago, or this container's allowance is spent`);
+    return res.json({ error: "Article body unavailable" }, 503);
   }
 
   let detail;
@@ -283,14 +302,12 @@ async function serveArticleBody({ storyId, storage, STATS_BUCKET_ID, RAPIDAPI_KE
         `RapidAPI detail ${storyId} returned HTTP ${response.status}: ` +
         detailText.slice(0, UPSTREAM_ERROR_LOG_CHARS)
       );
-      noteFailedFetch(storyId, now);
       return serveUnresolved(`upstream HTTP ${response.status}`)
         ?? res.json({ error: `Upstream error: ${response.status}` }, response.status);
     }
     detail = await response.json();
   } catch (e) {
     error(`RapidAPI detail ${storyId} fetch failed: ${e?.message}`);
-    noteFailedFetch(storyId, now);
     return serveUnresolved("upstream unreachable") ?? res.json({ error: "Failed to fetch article" }, 503);
   }
 
@@ -299,13 +316,16 @@ async function serveArticleBody({ storyId, storage, STATS_BUCKET_ID, RAPIDAPI_KE
     // An upstream shape change reads exactly like an empty article, so say which one it is. Keys
     // and block types only; the payload itself is several KB.
     error(`Story ${storyId}: no text blocks in detail payload — ${shapeHint(detail)}`);
-    noteFailedFetch(storyId, now);
     return serveUnresolved("no text blocks upstream") ?? res.json({ error: "Article body unavailable" }, 503);
   }
 
+  rememberBody(storyId, paragraphs);
+
   // Non-fatal: a body we could not cache is still a body we can serve.
   try {
-    const payload = { fetchedAt: new Date().toISOString(), storyId, paragraphs };
+    // formatResolved: stored by code that resolves placeholders, so never fetched again for
+    // looking unresolved. See needsRefetch.
+    const payload = { fetchedAt: new Date().toISOString(), storyId, paragraphs, formatResolved: true };
     const buffer = Buffer.from(JSON.stringify(payload), "utf8");
     await storage.deleteFile(STATS_BUCKET_ID, fileId).catch(() => {});
     await storage.createFile(

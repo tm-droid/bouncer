@@ -7,11 +7,13 @@ import {
   formatSubstitutions,
   hasUnresolvedTokens,
   listedStoryIds,
+  needsRefetch,
   resolveTokens,
+  stripTokens,
   shapeHint,
   withoutTokens,
 } from "../src/articleBody.js";
-import { fetchIsHeld, noteFailedFetch } from "../src/main.js";
+import { claimFetch } from "../src/main.js";
 
 // Captured from RapidAPI on 2026-10-08, unedited.
 const captured = JSON.parse(readFileSync(new URL("./fixtures/detail-140424.json", import.meta.url), "utf8"));
@@ -135,24 +137,44 @@ test("a body cached with placeholders is still servable without them", () => {
   assert.equal(hasUnresolvedTokens(withoutTokens(["a @L0$ b"])), false);
 });
 
-test("a story whose fetch just failed is not asked again inside the hold", () => {
-  const failures = new Map();
-  const t0 = 1_800_000_000_000;
-  assert.equal(fetchIsHeld("1", t0, failures), false);
-  noteFailedFetch("1", t0, failures);
-  assert.equal(fetchIsHeld("1", t0 + 9 * 60_000, failures), true);
-  assert.equal(fetchIsHeld("1", t0 + 10 * 60_000, failures), false);
-  assert.equal(fetchIsHeld("2", t0, failures), false);
+// Removing a placeholder can leave another behind. One pass over "@B@B0$0$" leaves "@B0$".
+test("stripping placeholders leaves none, however they nest", () => {
+  for (const text of ["@B@B0$0$", "@L@L@L1$2$3$", "a @B0$@B@B1$0$ b", "@@B0$B0$"]) {
+    const out = stripTokens(text);
+    assert.equal(hasUnresolvedTokens([out]), false, `${text} -> ${out}`);
+  }
+  const detail = { content: [{ content: { contentType: "text", contentValue: "x @B@B0$0$ y" } }] };
+  assert.equal(hasUnresolvedTokens(extractParagraphs(detail)), false);
+  assert.equal(hasUnresolvedTokens(withoutTokens(["x @B@B0$0$ y"])), false);
 });
 
-test("the record of failed fetches is bounded", () => {
-  const failures = new Map();
+// The decision to fetch again must not rest on what the text looks like alone.
+test("a body this code stored is never fetched again, whatever its text looks like", () => {
+  assert.equal(needsRefetch({ paragraphs: ["in the @L0$."] }), true, "stored before placeholders were resolved");
+  assert.equal(needsRefetch({ paragraphs: ["in the @L0$."], formatResolved: true }), false);
+  assert.equal(needsRefetch({ paragraphs: ["plain"] }), false);
+  assert.equal(needsRefetch(null), false);
+});
+
+test("a story is asked upstream once per hold, whatever came of it", () => {
+  const attempts = new Map();
   const t0 = 1_800_000_000_000;
-  for (let i = 0; i < 500; i += 1) noteFailedFetch(String(i), t0 + i, failures);
-  assert.equal(failures.size, 200);
-  assert.equal(failures.has("0"), false, "oldest dropped first");
-  assert.equal(failures.has("499"), true);
-  // Entries past the hold go when the next failure is recorded.
-  noteFailedFetch("x", t0 + 11 * 60_000, failures);
-  assert.equal(failures.size, 1);
+  assert.equal(claimFetch("1", t0, attempts), true);
+  // Arriving together: the second finds the claim already taken.
+  assert.equal(claimFetch("1", t0, attempts), false);
+  assert.equal(claimFetch("1", t0 + 9 * 60_000, attempts), false);
+  assert.equal(claimFetch("2", t0, attempts), true, "another story is its own claim");
+  assert.equal(claimFetch("1", t0 + 10 * 60_000, attempts), true, "the hold has passed");
+});
+
+test("a container asks upstream for a bounded number of stories per hold", () => {
+  const attempts = new Map();
+  const t0 = 1_800_000_000_000;
+  let granted = 0;
+  for (let i = 0; i < 500; i += 1) if (claimFetch(String(i), t0 + i, attempts)) granted += 1;
+  assert.equal(granted, 40);
+  assert.equal(attempts.size, 40);
+  // The window moves on and the allowance comes back.
+  assert.equal(claimFetch("later", t0 + 11 * 60_000, attempts), true);
+  assert.equal(attempts.size, 1);
 });

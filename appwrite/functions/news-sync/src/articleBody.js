@@ -124,9 +124,19 @@ export function resolveTokens(text, substitutions) {
   return text.replace(FORMAT_TOKEN, (token) => substitutions.get(token) ?? "");
 }
 
-/** [text] with every placeholder removed. What is left when there are no words to put in its place. */
+/**
+ * [text] with every placeholder removed, repeated until none is left.
+ *
+ * One pass is not enough: removing the inner placeholder from `@B@B0$0$` leaves `@B0$`. Each pass
+ * shortens the text, so this ends.
+ */
 export function stripTokens(text) {
-  return text.replace(FORMAT_TOKEN, "");
+  let out = text;
+  for (;;) {
+    const next = out.replace(FORMAT_TOKEN, "");
+    if (next === out) return out;
+    out = next;
+  }
 }
 
 /**
@@ -141,13 +151,27 @@ export function withoutTokens(paragraphs) {
 }
 
 /**
- * True when stored paragraphs still carry a placeholder — a body cached before they were resolved.
- * The stored copy has no `format` to resolve it from, so it is fetched again.
+ * True when stored paragraphs still carry a placeholder.
+ *
+ * This is a reading of the TEXT, and text is not proof of anything: an article may legitimately
+ * contain something shaped like a placeholder. So it is never the whole test for fetching again —
+ * see [needsRefetch], which asks first whether the body was stored by code that resolves them.
  */
 export function hasUnresolvedTokens(paragraphs) {
   return (Array.isArray(paragraphs) ? paragraphs : []).some(
     (p) => typeof p === "string" && p.search(FORMAT_TOKEN) !== -1
   );
+}
+
+/**
+ * Whether a stored body should be fetched again: only one written before placeholders were
+ * resolved (no `formatResolved` mark) that still shows one.
+ *
+ * A body this code stored is marked and is never fetched again, whatever its text looks like. That
+ * is what keeps "the text still looks unresolved" from becoming an upstream call on every request.
+ */
+export function needsRefetch(cached) {
+  return cached?.formatResolved !== true && hasUnresolvedTokens(cached?.paragraphs);
 }
 
 /**
