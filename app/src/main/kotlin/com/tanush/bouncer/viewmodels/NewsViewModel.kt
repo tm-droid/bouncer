@@ -6,12 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.data.remote.RealtimeLifecycleController
 import com.tanush.bouncer.data.repository.CricbuzzNewsRepository
+import com.tanush.bouncer.data.repository.NewsDiskCache
+import com.tanush.bouncer.data.repository.NewsStore
 import com.tanush.bouncer.data.repository.NewsRepository
 import com.tanush.bouncer.data.repository.NewsUnavailableException
 import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.utils.BoundedLruCache
 import com.tanush.bouncer.utils.bouncerExceptionHandler
-import io.sentry.Breadcrumb
+import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
@@ -32,6 +34,13 @@ import kotlinx.coroutines.launch
  */
 data class StaleHeadlines(val ageMs: Long?)
 
+/** Puts the saved headlines on screen, unless a list is already there. */
+private suspend fun NewsStore.seed(into: MutableStateFlow<List<NewsArticleData>>) {
+    if (into.value.isNotEmpty()) return
+    val saved = readHeadlines()
+    if (saved.isNotEmpty() && into.value.isEmpty()) into.value = saved
+}
+
 /**
  * ViewModel for Cricbuzz News.
  * Fetches headlines from RapidAPI and scrapes article bodies from cricbuzz.com.
@@ -39,6 +48,7 @@ data class StaleHeadlines(val ageMs: Long?)
  */
 class NewsViewModel(
     private val repository: NewsRepository = CricbuzzNewsRepository(),
+    private val store: NewsStore = NewsDiskCache,
 ) : ViewModel() {
     companion object {
         private const val TAG = "NewsViewModel"
@@ -120,22 +130,26 @@ class NewsViewModel(
     fun ensureLoaded() {
         if (loadStarted) return
         loadStarted = true
-        fetchNews()
+        viewModelScope.launch(bouncerExceptionHandler) {
+            // The saved list first, so the tab paints at once and has something to show offline;
+            // fetchNews then treats what follows as a refresh of it.
+            store.seed(_articles)
+            fetchNews()
+        }
         startAutoRefresh()
     }
 
-    private fun breadcrumb(
-        category: String,
-        message: String,
-        level: SentryLevel = SentryLevel.INFO,
-        data: Map<String, Any?> = emptyMap(),
-    ) {
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            this.category = category
-            this.message = message
-            this.level = level
-            data.forEach { (k, v) -> setData(k, v) }
-        })
+    /**
+     * Selects the story a restored route names. After process death the back stack returns to the
+     * article route with no selection in memory; this finds the story in the saved list. False
+     * when it is in neither, and the route has nothing to show.
+     */
+    suspend fun restoreArticle(storyId: Long): Boolean {
+        _selectedArticle.value?.let { return it.id == storyId }
+        store.seed(_articles)
+        val article = _articles.value.firstOrNull { it.id == storyId } ?: return false
+        selectArticle(article)
+        return true
     }
 
     fun fetchNews() {
@@ -153,7 +167,7 @@ class NewsViewModel(
 
                 if (!AppwriteClient.isReady) {
                     Log.w(TAG, "Skipping news fetch — Appwrite not initialized")
-                    breadcrumb("news.fetch", "Skipped news fetch — Appwrite not ready", SentryLevel.WARNING)
+                    sentryBreadcrumb("news.fetch", "Skipped news fetch — Appwrite not ready", SentryLevel.WARNING)
                     Sentry.metrics().count("news.fetch.skipped.missing_key", 1.0)
                     _error.value = "News is unavailable in this build."
                     return@launch
@@ -161,6 +175,7 @@ class NewsViewModel(
 
                 val headlines = repository.fetchHeadlines()
                 _articles.value = headlines.articles
+                store.writeHeadlines(headlines.articles)
                 _staleHeadlines.value = if (headlines.isStale) StaleHeadlines(headlines.staleAgeMs) else null
                 lastFetchTime = System.currentTimeMillis()
                 Sentry.metrics().gauge("news.articles.count", headlines.articles.size.toDouble())
@@ -176,14 +191,14 @@ class NewsViewModel(
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to fetch news", e)
-                breadcrumb(
+                sentryBreadcrumb(
                     category = "news.error",
                     message = "Failed to fetch news articles",
                     level = SentryLevel.ERROR,
-                    data = mapOf(
-                        "error_type" to e.javaClass.simpleName,
-                        "status_code" to (e as? NewsUnavailableException)?.statusCode,
-                    ),
+                    data = buildMap {
+                        put("error_type", e.javaClass.simpleName)
+                        (e as? NewsUnavailableException)?.statusCode?.let { put("status_code", it) }
+                    },
                 )
                 // Reported unless the call never left the device. `transportFailure` is set at
                 // the throw site, not inferred here — the version of this that shipped as a PR
@@ -217,7 +232,7 @@ class NewsViewModel(
      * set it.
      */
     fun refreshNews() {
-        breadcrumb("user.action", "Manual news refresh triggered")
+        sentryBreadcrumb("user.action", "Manual news refresh triggered")
         lastFetchTime = 0L
         fetchNews()
     }
@@ -237,7 +252,7 @@ class NewsViewModel(
                     throw e
                 } catch (e: Exception) {
                     Log.e(TAG, "Error during auto-refresh", e)
-                    breadcrumb("news.error", "Auto-refresh failed", SentryLevel.WARNING)
+                    sentryBreadcrumb("news.error", "Auto-refresh failed", SentryLevel.WARNING)
                     Sentry.captureException(e)
                 }
             }
@@ -245,7 +260,7 @@ class NewsViewModel(
     }
 
     fun selectArticle(article: NewsArticleData) {
-        breadcrumb(
+        sentryBreadcrumb(
             category = "user.action",
             message = "Article selected: ${article.headline.take(50)}",
             data = mapOf("article_id" to article.id),
@@ -277,16 +292,19 @@ class NewsViewModel(
         viewModelScope.launch(bouncerExceptionHandler) {
             _isLoadingArticle.value = true
             try {
-                val paragraphs = repository.fetchArticleBody(storyId, url)
+                // A published story's text does not change, so a saved copy is the story.
+                val saved = store.readBody(storyId)
+                val paragraphs = saved.ifEmpty { repository.fetchArticleBody(storyId, url) }
                 _articleBody.value = paragraphs
                 if (paragraphs.isNotEmpty()) bodies[storyId] = paragraphs
+                if (saved.isEmpty()) store.writeBody(storyId, paragraphs)
                 Sentry.metrics().distribution("news.article.paragraphs", paragraphs.size.toDouble())
                 Log.d(TAG, "Loaded ${paragraphs.size} paragraphs for article $storyId")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load article body for $storyId", e)
-                breadcrumb(
+                sentryBreadcrumb(
                     category = "news.error",
                     message = "Failed to load article body",
                     level = SentryLevel.ERROR,

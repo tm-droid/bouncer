@@ -7,6 +7,8 @@ import {
   BODY_PRUNE_MAX,
   bodyFileId,
   extractParagraphs,
+  hasUnresolvedTokens,
+  listedStoryIds,
   selectBodiesToPrune,
   shapeHint,
 } from "./articleBody.js";
@@ -202,11 +204,20 @@ async function serveArticleBody({ storyId, storage, STATS_BUCKET_ID, RAPIDAPI_KE
   try {
     const cached = parseJsonFile(await storage.getFileDownload(STATS_BUCKET_ID, fileId));
     if (Array.isArray(cached?.paragraphs) && cached.paragraphs.length > 0) {
-      log(`Story ${storyId}: cache hit (${cached.paragraphs.length} paragraphs)`);
-      return res.json({ storyId, paragraphs: cached.paragraphs });
+      if (!hasUnresolvedTokens(cached.paragraphs)) {
+        log(`Story ${storyId}: cache hit (${cached.paragraphs.length} paragraphs)`);
+        return res.json({ storyId, paragraphs: cached.paragraphs });
+      }
+      log(`Story ${storyId}: cached body still carries format placeholders — fetching again`);
     }
   } catch (_) {
     log(`Story ${storyId}: no cached body — fetching`);
+  }
+
+  // Upstream is asked only about a story this function has listed. See listedStoryIds.
+  if (!(await isListedStory({ storyId, storage, STATS_BUCKET_ID }))) {
+    log(`Story ${storyId}: not in the headline index — not fetched`);
+    return res.json({ error: "Unknown story" }, 404);
   }
 
   if (!RAPIDAPI_KEY) {
@@ -262,6 +273,21 @@ async function serveArticleBody({ storyId, storage, STATS_BUCKET_ID, RAPIDAPI_KE
   }
 
   return res.json({ storyId, paragraphs });
+}
+
+/**
+ * Whether [storyId] is in the headline index: the warm copy if there is one, else the stored file.
+ * An index that cannot be read lists nothing — the device then falls back to its own scrape, which
+ * costs no quota.
+ */
+async function isListedStory({ storyId, storage, STATS_BUCKET_ID }) {
+  if (listedStoryIds(cacheMemo).has(storyId)) return true;
+  try {
+    cacheMemo = parseJsonFile(await storage.getFileDownload(STATS_BUCKET_ID, NEWS_CACHE_FILE_ID));
+  } catch (_) {
+    return false;
+  }
+  return listedStoryIds(cacheMemo).has(storyId);
 }
 
 /**

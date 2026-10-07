@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.screens.news
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -26,18 +28,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
-import com.tanush.bouncer.ui.components.v2.NewsCardV2
+import com.tanush.bouncer.ui.components.v2.NewsImage
+import com.tanush.bouncer.ui.components.v2.NewsRowSkeleton
+import com.tanush.bouncer.ui.components.v2.NewsRowV2
 import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
-import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.viewmodels.NewsViewModel
 import com.tanush.bouncer.viewmodels.StaleHeadlines
@@ -81,8 +83,7 @@ fun NewsScreenV2(
             val emptySubtitle = stringResource(R.string.news_pull_down_to_refresh_and_try)
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = spacing.md),
-                verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                contentPadding = PaddingValues(bottom = BOTTOM_BAR_CLEARANCE),
             ) {
                 newsItems(
                     state = NewsListState(articles, isLoading, error, staleHeadlines),
@@ -129,7 +130,8 @@ private fun LazyListScope.newsItems(
 
     // Loading
     if (state.isLoading && articles.isEmpty()) {
-        items(4, key = { "shimmer_$it" }) { ShimmerMatchCard(modifier = rowPadding) }
+        // News-shaped and still. These were match-row skeletons, so first paint jumped.
+        items(SKELETON_ROWS, key = { "skeleton_$it" }) { NewsRowSkeleton() }
         return
     }
 
@@ -153,26 +155,29 @@ private fun LazyListScope.newsItems(
         item(key = "stale_banner") { StaleHeadlinesBanner(ageMs = stale.ageMs, modifier = rowPadding) }
     }
 
-    // Featured article (hero card)
-    val featuredArticle = articles.first()
-    item(key = "featured_${featuredArticle.id}") {
-        FeaturedNewsCard(article = featuredArticle, onClick = { onArticleClick(featuredArticle) }, modifier = rowPadding)
+    // The lead story, then every other as a row. One background, split by dividers.
+    val lead = articles.first()
+    item(key = "lead_${lead.id}") {
+        LeadStory(article = lead, onClick = { onArticleClick(lead) })
+        NewsDivider()
     }
-
-    // Regular article list
     items(articles.drop(1), key = { "article_${it.id}" }) { article ->
-        NewsCardV2(
+        NewsRowV2(
             headline = article.headline,
-            source = article.source,
-            timeAgo = article.timeAgo,
-            imageUrl = article.imageUrl,
+            byline = article.byline,
+            imageUrl = article.imageUrlAt(THUMBNAIL_PX, THUMBNAIL_PX),
             onClick = { onArticleClick(article) },
-            modifier = rowPadding,
         )
+        NewsDivider()
     }
+}
 
-    // Bottom spacing
-    item(key = "bottom_spacer") { Spacer(Modifier.height(80.dp)) }
+@Composable
+private fun NewsDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = BouncerThemeV2.spacing.lg),
+        color = BouncerThemeV2.colors.divider,
+    )
 }
 
 /**
@@ -226,46 +231,44 @@ private fun describeAge(ageMs: Long): String {
 
 private fun plural(count: Long, unit: String) = if (count == 1L) unit else "${unit}s"
 
-/**
- * Featured/hero news card — large image top, headline below.
- */
+/** The first story: its photograph at full width, then the headline. Not a card. */
 @Composable
-private fun FeaturedNewsCard(
-    article: NewsArticleData,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun LeadStory(article: NewsArticleData, onClick: () -> Unit) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    BouncerCard(modifier = modifier.fillMaxWidth(), onClick = onClick) {
-        Column {
-            if (article.imageUrl != null) {
-                AsyncImage(
-                    model = article.imageUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp),
-                    contentScale = ContentScale.Crop,
-                )
-            }
-            Column(modifier = Modifier.padding(spacing.lg)) {
-                Text(
-                    text = article.headline,
-                    style = typography.headlineMedium,
-                    color = colors.onSurface,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(spacing.xs))
-                Text(
-                    text = "${article.source} • ${article.timeAgo}",
-                    style = typography.bodySmall,
-                    color = colors.textSecondary,
-                )
-            }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = spacing.lg, vertical = spacing.lg),
+    ) {
+        if (article.imageUrl != null) {
+            NewsImage(
+                url = article.imageUrlAt(HERO_PX_WIDTH, HERO_PX_HEIGHT),
+                modifier = Modifier.fillMaxWidth().aspectRatio(HERO_ASPECT),
+            )
+            Spacer(Modifier.height(spacing.md))
+        }
+        Text(
+            text = article.headline,
+            style = typography.headlineMedium,
+            color = colors.onSurface,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (article.byline.isNotBlank()) {
+            Spacer(Modifier.height(spacing.xs))
+            Text(text = article.byline, style = typography.bodySmall, color = colors.textSecondary)
         }
     }
 }
+
+// A 72dp thumbnail at 4x density. The stored URL asks for 2048x1152.
+private const val THUMBNAIL_PX = 288
+internal const val HERO_PX_WIDTH = 1080
+internal const val HERO_PX_HEIGHT = 608
+internal const val HERO_ASPECT = 16f / 9f
+private const val SKELETON_ROWS = 6
+private val BOTTOM_BAR_CLEARANCE = 80.dp

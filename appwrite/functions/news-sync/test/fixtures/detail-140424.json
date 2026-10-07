@@ -1,0 +1,138 @@
+{
+ "id": 140424,
+ "context": "West Indies Women tour of Zimbabwe, 2026",
+ "headline": "All-round Stafanie Taylor helps West Indies sweep T20I series",
+ "publishTime": "1791386940000",
+ "coverImage": {
+  "id": "1091708",
+  "caption": "Taylor smashed a 39-ball 64 after taking 2 for 8 (File photo)",
+  "source": "Getty"
+ },
+ "content": [
+  {
+   "content": {
+    "contentType": "text",
+    "contentValue": "West Indies completed a 3-0 sweep of the T20I series against Zimbabwe with an eight-wicket win in the @L0$. Zimbabwe put up their best total of the series, with Kelis Ndhlovu's 65 helping them reach 142/6, but Stafanie Taylor's unbeaten 39-ball 64 ensured the visitors chased the target down with 18 balls to spare.",
+    "hasFormat": true
+   }
+  },
+  {
+   "content": {
+    "contentType": "text",
+    "contentValue": "Zimbabwe, after being restricted to 97/9 and 106/7 in the first two games, made a better start after choosing to bat. Beloved Biza struck four boundaries in her 16-ball 21 and added 27 with Ndhlovu before Shawnisha Hector had her caught by Chinelle Henry in the fourth over."
+   }
+  },
+  {
+   "ad": {
+    "name": "news_mpu",
+    "layout": "native_carousel",
+    "position": 2
+   }
+  },
+  {
+   "content": {
+    "contentType": "text",
+    "contentValue": "Ndhlovu then put together another useful partnership of 39 with Chiedza Dhururu, although the pair scored at exactly a run a ball. The slow progress meant Zimbabwe were 79/3 after 13.1 overs, but Ndhlovu remained the key wicket."
+   }
+  },
+  {
+   "content": {
+    "contentType": "text",
+    "contentValue": "Taylor broke the partnership by having Dhururu trapped lbw for 9. She then struck again to remove Mugeri-Tiripano earlier in the innings and finished with excellent figures of 2 for 8 from four overs. Ndhlovu eventually found another gear. She brought up her half-century off 36 balls, hitting six fours and three sixes, before falling to Jahzara Claxton in the 19th over for 65 off 48. Christine Mutasa's unbeaten 24 off 19 and a late six from Michelle Mavunga helped Zimbabwe add 49 runs in the final five overs and finish on 142/6."
+   }
+  },
+  {
+   "content": {
+    "contentType": "text",
+    "contentValue": "West Indies began the chase positively, reaching 43 in the powerplay, but lost Realeanna Grimmond for 17 in the third over. Jahzara Claxton joined Taylor and the pair kept the required rate under control, putting on 71 off 56 balls."
+   }
+  },
+  {
+   "content": {
+    "contentType": "text",
+    "contentValue": "Claxton's 38 off 37 was eventually ended by  Biza in the 12th over, leaving West Indies 90/2. That was as close as Zimbabwe came to making a game of the chase. Taylor took charge thereafter. She had reached 35 off 23 when Claxton departed and then accelerated alongside Jannillea Glasgow. The veteran struck 11 fours in an unbeaten 64 off 39 balls, while Glasgow finished unbeaten on 15 off 15. The pair added 53 off 30 balls to take West Indies past the target in the 17th over."
+   }
+  },
+  {
+   "content": {
+    "contentType": "text",
+    "contentValue": "@B0$ Zimbabwe 142/6 in 20 overs (Kelis Ndhlovu 65; Stafanie Taylor 2-8) lost to West Indies 143/2 in 17 overs (Stafanie Taylor 64*; Christine Mutasa 1-19) by eight wickets",
+    "hasFormat": true
+   }
+  },
+  {
+   "ad": {
+    "name": "news_mpu",
+    "layout": "native_carousel",
+    "position": 2
+   }
+  }
+ ],
+ "format": [
+  {
+   "type": "bold",
+   "value": [
+    {
+     "id": "@B0$",
+     "value": "Brief scores:"
+    }
+   ]
+  },
+  {
+   "type": "urls",
+   "value": [
+    {
+     "id": "@L0$",
+     "value": "cricbuzz://match?id=173123&name=ZIMW VS WIW 3RD T20I&tab=scorecard"
+    }
+   ]
+  },
+  {
+   "type": "links",
+   "value": [
+    {
+     "id": "@L0$",
+     "value": "third and final game in Harare"
+    }
+   ]
+  }
+ ],
+ "authors": [
+  {
+   "id": 1,
+   "name": "Cricbuzz Staff",
+   "imageId": 295740
+  }
+ ],
+ "tags": [
+  {
+   "itemName": "West Indies Women tour of Zimbabwe, 2026",
+   "itemType": "series",
+   "itemId": "13217"
+  },
+  {
+   "itemName": "West Indies Women tour of Zimbabwe, 2026, 3rd T20I",
+   "itemType": "match",
+   "itemId": "173123"
+  },
+  {
+   "itemName": "West Indies Women",
+   "itemType": "team",
+   "itemId": "257"
+  },
+  {
+   "itemName": "Zimbabwe Women",
+   "itemType": "team",
+   "itemId": "388"
+  }
+ ],
+ "appIndex": {
+  "seoTitle": "All-round Stafanie Taylor helps West Indies sweep T20I series\n  | Cricbuzz.com",
+  "webURL": "http://www.cricbuzz.com/cricket-news/140424/all-round-stafanie-taylor-helps-west-indies-sweep-t20i-series"
+ },
+ "storyType": "Reports",
+ "lastUpdatedTime": "1791391869505",
+ "intro": "Zimbabwe produced a better batting effort in the final game but still lost rather comprehensively\n",
+ "source": "Cricbuzz",
+ "entitlements": {}
+}

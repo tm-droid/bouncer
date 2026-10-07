@@ -311,6 +311,8 @@
     <string name="more_version_licenses_and_credits">Version, licenses and credits</string>
     <string name="news_article">Article</string>
     <string name="news_article_unavailable">Article unavailable</string>
+    <string name="news_share">Share</string>
+    <string name="news_open_original">Open on Cricbuzz</string>
     <string name="news_couldn_t_load_the_full_story">Couldn\'t load the full story</string>
     <string name="news_news">News</string>
     <string name="news_pull_down_to_refresh_and_try">Pull down to refresh and try again</string>

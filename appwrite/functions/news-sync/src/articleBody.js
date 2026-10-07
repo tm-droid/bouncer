@@ -72,16 +72,81 @@ export function selectBodiesToPrune(files, now, {
  */
 export function extractParagraphs(detail) {
   const blocks = Array.isArray(detail?.content) ? detail.content : [];
+  const substitutions = formatSubstitutions(detail?.format);
   return blocks
-    .map((block) => textOf(block?.content))
+    .map((block) => textOf(block?.content, substitutions))
     .filter((text) => text.length > 0);
 }
 
-function textOf(content) {
+function textOf(content, substitutions) {
   if (!content || content.contentType !== "text") return "";
   const value = content.contentValue;
   const raw = typeof value === "string" ? value : value?.content;
-  return typeof raw === "string" ? raw.replace(/\s+/g, " ").trim() : "";
+  if (typeof raw !== "string") return "";
+  return resolveTokens(raw, substitutions).replace(/\s+/g, " ").trim();
+}
+
+/**
+ * A placeholder Cricbuzz leaves in body text where a bold run or a link goes: `@B0$`, `@L0$`.
+ *
+ * The text for each is in the payload's top-level `format` array, not in the paragraph. Captured
+ * 2026-10-08 (story 140424, `test/fixtures/detail-140424.json`):
+ *
+ *   "…an eight-wicket win in the @L0$. Zimbabwe put up…"      format: links  @L0$ → "third and final game in Harare"
+ *   "@B0$ Zimbabwe 142/6 in 20 overs…"                        format: bold   @B0$ → "Brief scores:"
+ *
+ * The paragraphs were stored and shown with the placeholders still in them.
+ */
+const FORMAT_TOKEN = /@[A-Z]+\d+\$/g;
+
+/**
+ * Placeholder → the words it stands for.
+ *
+ * `urls` shares its id with `links` and carries the target (`cricbuzz://match?id=…`), not words,
+ * so it is skipped: substituting it would put a deep link in the middle of a sentence.
+ */
+export function formatSubstitutions(format) {
+  const out = new Map();
+  for (const entry of Array.isArray(format) ? format : []) {
+    if (entry?.type === "urls") continue;
+    for (const item of Array.isArray(entry?.value) ? entry.value : []) {
+      if (typeof item?.id === "string" && typeof item?.value === "string") out.set(item.id, item.value);
+    }
+  }
+  return out;
+}
+
+/** [text] with each placeholder replaced by its words. One with no entry is removed, never shown. */
+export function resolveTokens(text, substitutions) {
+  return text.replace(FORMAT_TOKEN, (token) => substitutions.get(token) ?? "");
+}
+
+/**
+ * True when stored paragraphs still carry a placeholder — a body cached before they were resolved.
+ * The stored copy has no `format` to resolve it from, so it is fetched again.
+ */
+export function hasUnresolvedTokens(paragraphs) {
+  return (Array.isArray(paragraphs) ? paragraphs : []).some(
+    (p) => typeof p === "string" && p.search(FORMAT_TOKEN) !== -1
+  );
+}
+
+/**
+ * The ids of the stories in a cached headline index.
+ *
+ * A body is fetched upstream only for a story this function has itself listed. The function is
+ * callable by anyone holding the project id, the body fetch is a RapidAPI call against a small
+ * monthly quota that has been exhausted once already, and any numeric id used to be enough to
+ * spend one — with no memory of an id that had just failed.
+ */
+export function listedStoryIds(cachedIndex) {
+  const list = cachedIndex?.response?.storyList;
+  const ids = new Set();
+  for (const item of Array.isArray(list) ? list : []) {
+    const id = item?.story?.id;
+    if (typeof id === "number" || typeof id === "string") ids.add(String(id));
+  }
+  return ids;
 }
 
 /**

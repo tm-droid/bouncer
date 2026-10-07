@@ -376,19 +376,21 @@ private fun NavGraphBuilder.detailDestinations(
             ?.decodeUrlSafe() ?: return@composable
 
         val selectedArticle by newsViewModel.selectedArticle.collectAsStateWithLifecycle()
+        // The id in the route was read and never used: a route restored after process death had
+        // no selection in memory and popped straight back. It now finds the story by that id.
+        val unavailable by produceState(initialValue = false, articleId) {
+            value = articleId.toLongOrNull()?.let { newsViewModel.restoreArticle(it) } != true
+        }
 
-        selectedArticle?.let {
-            NewsDetailScreenV2(
+        when {
+            selectedArticle != null -> NewsDetailScreenV2(
                 viewModel = newsViewModel,
                 onBack = {
                     newsViewModel.clearSelectedArticle()
                     navController.popBackStack()
                 }
             )
-        } ?: run {
-            LaunchedEffect(Unit) {
-                navController.popBackStack()
-            }
+            unavailable -> LaunchedEffect(Unit) { navController.popBackStack() }
         }
     }
 

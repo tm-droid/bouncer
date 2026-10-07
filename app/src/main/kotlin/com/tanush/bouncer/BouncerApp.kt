@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.tanush.bouncer.data.repository.NewsDiskCache
 
 /**
  * Global health snapshot of init steps. Other code can query whether a specific
@@ -127,6 +128,7 @@ class BouncerApp : Application() {
             RichNotificationBuilder.CricketNotificationChannel.createNotificationChannels(this)
         }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
+        initializeSafely("NewsDiskCache") { NewsDiskCache.initialize(cacheDir) }
         // Restore the persisted 402 breaker latch before any Appwrite read can fire, so a
         // relaunch after a budget-exhausted 402 keeps short-circuiting instead of re-probing.
         initializeSafely("AppwriteReadGuard") {
