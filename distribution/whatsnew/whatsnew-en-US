@@ -1,13 +1,13 @@
 Matches appear the moment you open the app, then refresh.
 
-With no connection, your last match list stays on screen instead of "no matches".
+With no connection, your last match list stays on screen.
 
-Home's filter now stays where you set it, and can show men's or women's cricket only.
+Easier to read: scorecard figures, ball-by-ball chips and card captions have stronger contrast, and nothing is cut off at large text sizes.
 
-"All matches" shows every match, whatever Home is filtered to.
+Home's filter stays where you set it, and can show men's or women's cricket only.
 
-Tapping a match alert always opens that match, even a second alert for the same match.
+Tapping a match alert always opens that match.
 
 Match reminders survive a phone restart.
 
-Fixed: a news article that could close itself when a paragraph repeated.
+Better with TalkBack: switches say whether they are on.

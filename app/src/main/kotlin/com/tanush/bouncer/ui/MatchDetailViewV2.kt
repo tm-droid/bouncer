@@ -97,8 +97,10 @@ import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.meaningfulRequiredRunRate
+import androidx.compose.ui.semantics.Role
 
 private const val EVENT_FLASH_MILLIS = 1500L
+private val SERIES_LINK_TOUCH_PADDING = 8.dp
 
 /**
  * MatchDetailViewV2 — Clean match detail screen with score header and tabbed content.
@@ -610,7 +612,10 @@ private fun MatchContextLine(
     }
     Column(modifier = modifier) {
         Row(
-            modifier = Modifier.clickable { seriesLink(match.seriesId) },
+            // Padded inside the click area: the text alone was a 16dp-tall target.
+            modifier = Modifier
+                .clickable(role = Role.Button) { seriesLink(match.seriesId) }
+                .padding(vertical = SERIES_LINK_TOUCH_PADDING),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(

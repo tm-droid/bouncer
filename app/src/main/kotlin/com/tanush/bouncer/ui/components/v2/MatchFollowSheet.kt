@@ -26,6 +26,7 @@ import com.tanush.bouncer.R
 import com.tanush.bouncer.managers.MatchAlertPrefs
 import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import androidx.compose.foundation.selection.toggleable
 
 /**
  * What following one match means, set in one place: the Live Update card (one ongoing notification
@@ -118,7 +119,8 @@ private fun FollowToggle(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(role = Role.Switch) { onCheckedChange(!checked) }
+            // toggleable, not clickable: a click with Role.Switch has no on/off state to announce.
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
             .padding(horizontal = spacing.lg, vertical = spacing.sm),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,

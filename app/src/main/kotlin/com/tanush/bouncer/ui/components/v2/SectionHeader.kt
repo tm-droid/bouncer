@@ -11,6 +11,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 
 /**
  * Section title with optional "See All" button.
@@ -43,14 +48,18 @@ fun SectionHeaderV2(
             style = typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = colors.onSurface,
+            modifier = Modifier.semantics { heading() },
         )
         if (action != null && onAction != null) {
-            Text(
-                text = action,
-                style = typography.labelLarge,
-                color = colors.primaryText,
-                modifier = Modifier.clickable(onClick = onAction),
-            )
+            // The text alone is about 20dp tall; the box gives it a 48dp target.
+            Box(
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .clickable(role = Role.Button, onClick = onAction),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(text = action, style = typography.labelLarge, color = colors.primaryText)
+            }
         }
     }
 }

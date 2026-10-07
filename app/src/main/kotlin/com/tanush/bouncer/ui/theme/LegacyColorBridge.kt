@@ -15,6 +15,7 @@ import com.tanush.bouncer.ui.theme.v2.Gray50
 import com.tanush.bouncer.ui.theme.v2.Gray600
 import com.tanush.bouncer.ui.theme.v2.Gray900
 import com.tanush.bouncer.ui.theme.v2.White
+import com.tanush.bouncer.ui.theme.v2.DarkTextSecondary
 
 /**
  * Light/dark instances of the legacy [BouncerColors] palette, so `BouncerDesignSystem.colors`
@@ -27,13 +28,22 @@ import com.tanush.bouncer.ui.theme.v2.White
  * charcoal surfaces and near-white text onto a white page. `BouncerThemeV2` now provides
  * [legacyColorsFor].
  *
- * [LegacyDarkColors] is `BouncerColors()` — the constructor defaults *are* the dark palette — so the
- * dark rendering is byte-identical to what shipped before. Only the light instance is new.
+ * [LegacyDarkColors] is `BouncerColors()` — the constructor defaults *are* the dark palette — with
+ * two text roles raised to a legible contrast. The light instance is new throughout.
  *
  * This is a bridge, not a destination: it buys light mode for the unmigrated component layer without
  * a 260-call-site rewrite. New code uses `BouncerThemeV2.colors`.
  */
-internal val LegacyDarkColors: BouncerColors = BouncerColors()
+internal val LegacyDarkTextMuted = Color(0xFF8A919C)
+
+internal val LegacyDarkColors: BouncerColors = BouncerColors(
+    // The two dimmest text roles are the exception to "the defaults are the dark palette". Their
+    // defaults (#8D7E61, #665844) are 4.3:1 and 2.5:1 on a card, and both are drawn as text: the
+    // scorecard's balls, fours and sixes, the analytics cards' captions and axis labels. They are
+    // neutral here, like every other dark text grey, and clear 4.5:1 on surface1 and surface2.
+    textTertiary = DarkTextSecondary,
+    textMuted = LegacyDarkTextMuted,
+)
 
 internal val LegacyLightColors: BouncerColors = BouncerColors(
     backgroundBase = Gray50,
@@ -60,8 +70,8 @@ internal val LegacyLightColors: BouncerColors = BouncerColors(
     textPrimary = Gray900,
     textSecondary = Gray600,
     textTertiary = Gray500,
-    // Decorative only — matches the 2.4:1 the dark palette gives this role.
-    textMuted = Gray400,
+    // Drawn as text across the scorecard, so it is held to the text floor: Gray400 was 2.5:1.
+    textMuted = Gray500,
 
     statusLive = Color(0xFFDC2626),
     statusSuccess = Color(0xFF15803D),

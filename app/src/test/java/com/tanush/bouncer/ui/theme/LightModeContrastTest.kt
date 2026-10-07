@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.tanush.bouncer.ui.components.v2.ballChipInk
 import com.tanush.bouncer.ui.theme.v2.BouncerColorsV2
 import com.tanush.bouncer.ui.theme.v2.DarkColors
 import com.tanush.bouncer.ui.theme.v2.LightColors
@@ -163,6 +164,36 @@ class LightModeContrastTest {
             "LightColors.primary is expected to fail AA as ink; if it now passes, collapse the roles",
             LightColors.primary.contrastRatio(LightColors.surface) < AA,
         )
+    }
+
+    /**
+     * The legacy layer's two dimmest text roles. Both were treated as decoration and drawn as
+     * text: the scorecard's balls, fours and sixes, and every caption on the analytics cards.
+     */
+    @Test
+    fun `legacy tertiary and muted text is legible on the surfaces it is drawn on`() {
+        for ((mode, legacy) in listOf("dark" to legacyColorsFor(true), "light" to legacyColorsFor(false))) {
+            for ((role, ink) in listOf("textTertiary" to legacy.textTertiary, "textMuted" to legacy.textMuted)) {
+                assertContrast(ink, legacy.backgroundBase, AA, "$mode legacy $role on backgroundBase")
+                assertContrast(ink, legacy.surface1, AA, "$mode legacy $role on surface1")
+            }
+        }
+        // Dark cards also sit on surface2. Light's surface2 is a wash, never a text ground.
+        val dark = legacyColorsFor(true)
+        assertContrast(dark.textTertiary, dark.surface2, AA, "dark legacy textTertiary on surface2")
+        assertContrast(dark.textMuted, dark.surface2, AA, "dark legacy textMuted on surface2")
+    }
+
+    /** What the over strip draws: a solid event fill and the ink [ballChipInk] picks for it. */
+    @Test
+    fun `ball chips carry their glyph in both palettes`() {
+        for ((mode, palette) in listOf("light" to LightColors, "dark" to DarkColors)) {
+            val cricket = palette.cricket
+            listOf("wicket" to cricket.wicket, "four" to cricket.four, "six" to cricket.six, "wide" to cricket.wide)
+                .forEach { (name, fill) ->
+                    assertContrast(ballChipInk(fill), fill, AA, "$mode ball chip ink on $name")
+                }
+        }
     }
 
     @Test

@@ -1,18 +1,13 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
-import android.content.Intent
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,51 +18,41 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.Immutable
 import com.tanush.bouncer.data.remote.CommentaryEntry
-import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.ui.components.v2.BallGlyphKind
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.ballGlyphKindOf
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.components.v2.ShimmerCommentaryList
-import com.tanush.bouncer.ui.theme.v2.BouncerColorsV2
-import com.tanush.bouncer.ui.theme.v2.CricketEventColors
 import com.tanush.bouncer.ui.theme.v2.BouncerSpacingV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import com.tanush.bouncer.utils.TimelineEventExtractor
 import com.tanush.bouncer.viewmodels.CommentaryEventKind
 import com.tanush.bouncer.viewmodels.CommentaryEventPage
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.semantics
 
 // ── Main composable ──────────────────────────────────────────────────────────
 
@@ -376,16 +361,13 @@ private fun OverSeparatorCard(overNumber: Int, balls: List<ParsedBall>) {
 
 // ── Commentary row ───────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CommentaryLine(ball: ParsedBall, modifier: Modifier = Modifier) {
     val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
-    val clipboardManager = LocalClipboardManager.current
-    val context = LocalContext.current
 
     var showMenu by remember { mutableStateOf(false) }
+    val menuLabel = stringResource(R.string.commentary_line_actions)
 
     val bgColor = when {
         ball.isWicket -> colors.live.copy(alpha = 0.08f)
@@ -398,36 +380,29 @@ private fun CommentaryLine(ball: ParsedBall, modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(bgColor)
-                .combinedClickable(
-                    onClick = {},
-                    onLongClick = { showMenu = true },
-                )
+                // Long press only. This was a combinedClickable with an empty onClick, so TalkBack
+                // announced every delivery as a button whose double-tap did nothing, and the one
+                // real action had no spoken name.
+                .pointerInput(Unit) { detectTapGestures(onLongPress = { showMenu = true }) }
+                .semantics {
+                    onLongClick(label = menuLabel) {
+                        showMenu = true
+                        true
+                    }
+                }
                 .padding(horizontal = spacing.lg, vertical = spacing.sm),
         ) {
             Row(verticalAlignment = Alignment.Top) {
                 if (ball.ballLabel != null) {
                     ResultPill(ball)
                     Spacer(Modifier.width(spacing.xs))
-                    Box(
-                        modifier = Modifier
-                            .size(width = 36.dp, height = 24.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(colors.surfaceVariant),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = ball.ballLabel,
-                            style = typography.labelSmall,
-                            color = colors.onSurface,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
+                    BallLabel(ball.ballLabel)
                     Spacer(Modifier.width(spacing.sm))
                 }
 
                 Text(
                     text = parseBoldTags(ball.ballText),
-                    style = typography.bodySmall,
+                    style = BouncerThemeV2.typography.bodySmall,
                     color = colors.onSurface,
                     modifier = Modifier.weight(1f),
                 )
@@ -438,34 +413,7 @@ private fun CommentaryLine(ball: ParsedBall, modifier: Modifier = Modifier) {
             )
         }
 
-        val shareText = buildShareText(ball)
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-        ) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.commentary_action_copy)) },
-                onClick = {
-                    clipboardManager.setText(AnnotatedString(shareText))
-                    showMenu = false
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.commentary_action_share)) },
-                onClick = {
-                    context.startActivity(
-                        Intent.createChooser(
-                            Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, shareText)
-                            },
-                            null,
-                        )
-                    )
-                    showMenu = false
-                },
-            )
-        }
+        CommentaryLineMenu(expanded = showMenu, shareText = buildShareText(ball), onDismiss = { showMenu = false })
     }
 }
 
@@ -499,18 +447,19 @@ private fun BallBadge(ball: String, size: Dp = 28.dp) {
     // the treatment differs. Two copies of this `when` disagreed on `W1` for as long as they
     // existed.
     val (bg, fg) = when (ballGlyphKindOf(ball)) {
-        BallGlyphKind.WICKET -> cricket.wicket.copy(alpha = 0.2f) to cricket.wicket
-        BallGlyphKind.SIX -> cricket.six.copy(alpha = 0.2f) to cricket.six
-        BallGlyphKind.FOUR -> cricket.four.copy(alpha = 0.2f) to cricket.four
-        BallGlyphKind.EXTRA -> cricket.wide.copy(alpha = 0.15f) to cricket.wide
+        // The tint carries the event colour; the glyph is the page's ink. Event ink on its own
+        // tint was 3.4–4.2:1 for an 11sp glyph.
+        BallGlyphKind.WICKET -> cricket.wicket.copy(alpha = 0.2f) to colors.onSurface
+        BallGlyphKind.SIX -> cricket.six.copy(alpha = 0.2f) to colors.onSurface
+        BallGlyphKind.FOUR -> cricket.four.copy(alpha = 0.2f) to colors.onSurface
+        BallGlyphKind.EXTRA -> cricket.wide.copy(alpha = 0.15f) to colors.onSurface
         BallGlyphKind.DOT -> colors.surfaceVariant to colors.textSecondary
         BallGlyphKind.RUNS -> colors.surfaceVariant to colors.onSurface
     }
 
     Box(
         modifier = Modifier
-            .height(size)
-            .defaultMinSize(minWidth = size)
+            .defaultMinSize(minWidth = size, minHeight = size)
             .clip(RoundedCornerShape(if (size <= 22.dp) 4.dp else 6.dp))
             .background(bg)
             .padding(horizontal = 4.dp),

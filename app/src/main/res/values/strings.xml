@@ -40,6 +40,8 @@
     <string name="home_empty_filtered_title">No %1$s matches here</string>
     <string name="home_empty_filtered_subtitle">This list is filtered</string>
     <string name="home_show_all">Show all</string>
+    <string name="commentary_line_actions">Copy or share</string>
+    <string name="match_card_more_actions">More actions</string>
     <string name="home_filter_competition">Competition</string>
     <string name="home_filter_teams">Teams</string>
     <string name="match_starts_today">Starts today, %1$s</string>

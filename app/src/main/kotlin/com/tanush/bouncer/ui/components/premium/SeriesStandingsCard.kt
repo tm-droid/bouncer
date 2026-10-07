@@ -324,7 +324,7 @@ private fun StandingsTeamRow(
                                 "W" -> colors.statusSuccess
                                 "L" -> colors.statusLive
                                 "T" -> colors.statusWarning
-                                else -> Color.Gray
+                                else -> BouncerThemeV2.colors.textSecondary
                             }
                             Text(
                                 text = result,

@@ -400,7 +400,7 @@ fun LiveScoringGraphCard(
                 listOf("0", "6", "10", "15", "20").forEach { over ->
                     Text(
                         text = over,
-                        color = Color.Gray,
+                        color = BouncerThemeV2.colors.textSecondary,
                         fontSize = 10.sp,
                     )
                 }
@@ -473,7 +473,7 @@ private fun LegendItem(
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = "($score)",
-                color = Color.Gray,
+                color = BouncerThemeV2.colors.textSecondary,
                 fontSize = 11.sp,
             )
         }
@@ -490,7 +490,7 @@ private fun ScoringStatItem(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,
-            color = Color.Gray,
+            color = BouncerThemeV2.colors.textSecondary,
             fontSize = 10.sp,
         )
         Text(
@@ -501,7 +501,7 @@ private fun ScoringStatItem(
         )
         Text(
             text = subtext,
-            color = Color.Gray,
+            color = BouncerThemeV2.colors.textSecondary,
             fontSize = 10.sp,
         )
     }

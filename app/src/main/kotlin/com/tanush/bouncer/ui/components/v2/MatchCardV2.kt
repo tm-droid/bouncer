@@ -40,6 +40,7 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.PreferencesHelper
 import com.tanush.bouncer.utils.rememberHapticFeedback
+import androidx.compose.foundation.layout.heightIn
 
 /**
  * One match in a list: series header, two team rows, status line, and a trailing divider.
@@ -93,6 +94,7 @@ fun MatchCardV2(
                     if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onClick()
                 },
+                onLongClickLabel = stringResource(R.string.match_card_more_actions),
                 onLongClick = {
                     if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     showContextMenu = true
@@ -168,7 +170,7 @@ private fun MatchCardHeaderRow(
     // Rows without a bell still get its height, so a decided match's header does not sit tighter
     // against its team rows than the live match above it.
     Row(
-        modifier = Modifier.fillMaxWidth().height(HEADER_HEIGHT),
+        modifier = Modifier.fillMaxWidth().heightIn(min = HEADER_HEIGHT),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (isFavouriteTeam) {

@@ -26,6 +26,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.PreferencesHelper
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 
 /**
  * Settings list item — icon, title, subtitle, trailing widget (toggle/chevron/text).
@@ -54,13 +56,19 @@ fun SettingsItemV2(
     val context = LocalContext.current
     val hapticEnabled = remember { PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true) }
 
-    val clickMod = if (onClick != null) {
-        Modifier.clickable(onClick = {
+    val act = onClick?.let { action ->
+        {
             if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            onClick()
-        })
-    } else {
-        Modifier
+            action()
+        }
+    }
+    // A toggle row is one switch, not a button with a second switch inside it: the row carries
+    // the on/off state and the Switch below is drawing only.
+    val clickMod = when {
+        act == null -> Modifier
+        trailing is SettingsTrailing.Toggle ->
+            Modifier.toggleable(value = trailing.checked, role = Role.Switch, onValueChange = { act() })
+        else -> Modifier.clickable(onClick = act)
     }
 
     Column {
@@ -98,7 +106,7 @@ fun SettingsItemV2(
                 is SettingsTrailing.Toggle -> {
                     Switch(
                         checked = trailing.checked,
-                        onCheckedChange = { onClick?.invoke() },
+                        onCheckedChange = null,
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = colors.onPrimary,
                             checkedTrackColor = colors.primary,
