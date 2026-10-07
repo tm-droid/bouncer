@@ -39,7 +39,7 @@ import {
 } from "./cricbuzz.js";
 import { fetchForecast, hasElevens, sideContextFor } from "./context.js";
 import {
-  CRICINFO_MAX_ROWS_PER_POLL, asCricbuzzLine, ballKey, disagreement, fetchCricinfoMatch, fetchCricinfoPredictions, joinCricinfoMatch,
+  CRICINFO_MAX_ROWS_PER_POLL, asCricbuzzLine, ballKey, disagreement, fetchCricinfoMatch, fetchCricinfoPredictions, fetchCricinfoStats, joinCricinfoMatch,
   labelsInGap, mergeCricinfo, probeCricinfoMatchPages, storableRow,
 } from "./cricinfo.js";
 import { EVAL_PREFIX, EVAL_RETENTION_MS, RIVAL_PREFIX, buildEvalLog, mergeRival, prematchMoved, rivalSample } from "./evallog.js";
@@ -1086,8 +1086,12 @@ async function seedOverHistory({ db, matchId, error }) {
   readsThisRun++;
   try {
     const row = await db.getDocument(DB_ID, SCORECARD_COL, sanitizeMatchId(matchId));
-    const stored = JSON.parse(row?.scorecard ?? "{}")?.overs;
+    const scorecard = JSON.parse(row?.scorecard ?? "{}");
+    const stored = scorecard?.overs;
     overHistoryByMatch.set(matchId, mergeOverHistory(stored, overHistoryByMatch.get(matchId)));
+    // The same read seeds the wagon snapshots: a batter who was out before this container started
+    // is on no page any more, only in the row.
+    wagonByMatch.set(matchId, mergeWagon(scorecard?.wagon, wagonByMatch.get(matchId)));
     overHistorySeeded.add(matchId);
   } catch (e) {
     if (e?.code === 404) overHistorySeeded.add(matchId); // no row yet: nothing to seed from
@@ -1690,6 +1694,10 @@ async function handleRun({ req, res, log, error }) {
             await noteCricinfoFacts({ contexts, matchId, facts: read?.facts, log, error });
             return read;
           },
+          wagonFor: async () => {
+            await cricinfoReady;
+            return cricinfoWagonStep({ matchId, summary: m, log, error });
+          },
           onFinalised: async ({ detail, context, meta, winProb: last, overs, rival }) => {
             const logged = await writeEvalLog({
               storage, matchId, title: m.title ?? "", detail, context, meta, winProb: last, overs, rival, model, log, error,
@@ -2271,6 +2279,8 @@ export function __setCricinfoList(list) {
   cricinfoBalls.clear();
   cricinfoMatchRetryAt.clear();
   storedBalls.clear();
+  wagonByMatch.clear();
+  lastStatsAt.clear();
 }
 
 /**
@@ -2314,6 +2324,70 @@ export async function cricinfoMatchStep({ matchId, summary, log, error, now = Da
   } catch (e) {
     error(`[CRICINFO] match ${matchId} step failed: ${e?.message}`);
     return null;
+  }
+}
+
+// ── Wagon wheels ─────────────────────────────────────────────────────────────
+//
+// Cricinfo's statistics page splits the runs of the two batters at the crease over eight zones of
+// the ground (see `wagonOf`). Nothing carries the whole innings, so the latest snapshot of each
+// batter is kept here and published on the scorecard row: a batter's wheel is as complete as the
+// last read before they were out, and it says how many runs it covers, which the device shows
+// rather than the scorecard's total. Read for the detail tier only — it is a second ~900 KB page
+// — and no more often than the scorecard row is written.
+const CRICINFO_STATS_EVERY_MS = SCORECARD_MIN_INTERVAL_MS - 10_000;
+const WAGON_BATTERS_KEPT = 60;
+/** Cricbuzz match id -> "innings|name" -> the batter's latest snapshot. */
+const wagonByMatch = new Map();
+const lastStatsAt = new Map();
+
+/** Test seam: forget every wagon snapshot and when each match's page was last read. */
+export function __resetWagon() {
+  wagonByMatch.clear();
+  lastStatsAt.clear();
+}
+
+/** [held] with [fresh] snapshots folded in. A snapshot never replaces one that covers more balls. */
+export function mergeWagon(held, fresh) {
+  const byBatter = new Map();
+  for (const w of [...(Array.isArray(held) ? held : []), ...(Array.isArray(fresh) ? fresh : [])]) {
+    if (!w || !Number.isInteger(w.innings) || typeof w.name !== "string" || !Array.isArray(w.zones) || w.zones.length !== 8) continue;
+    const key = `${w.innings}|${w.name}`;
+    const prior = byBatter.get(key);
+    if (!prior || (w.balls ?? 0) >= (prior.balls ?? 0)) byBatter.set(key, w);
+  }
+  return [...byBatter.values()].slice(-WAGON_BATTERS_KEPT);
+}
+
+/**
+ * This match's wagon snapshots, reading Cricinfo's statistics page when one is due. Returns what
+ * is held either way — an array, possibly empty — and never throws.
+ */
+export async function cricinfoWagonStep({ matchId, summary, log, error, now = Date.now(), fetchStats = fetchCricinfoStats }) {
+  const held = wagonByMatch.get(matchId) ?? [];
+  try {
+    const match = joinCricinfoMatch(summary, cricinfoList);
+    // Zones are scored by Cricinfo's own commentator; a match with a scorer alone has none.
+    if (!match?.ballByBallSource) return held;
+    const blocked = now < cricinfoBlockedUntil || now < (cricinfoMatchRetryAt.get(matchId) ?? 0);
+    if (blocked || now - (lastStatsAt.get(matchId) ?? 0) < CRICINFO_STATS_EVERY_MS) return held;
+    lastStatsAt.set(matchId, now);
+    const page = await fetchStats(match);
+    if (!page.ok) {
+      if (page.status === 403 || page.status === 429) cricinfoBlockedUntil = now + CRICINFO_BLOCK_RETRY_MS;
+      log(`[CRICINFO] stats ${matchId} (${match.objectId}) unavailable (${page.reason}) status=${page.status} bytes=${page.bytes}`);
+      reportThrottled(`cricinfo-stats-unavailable:${matchId}`, STEADY_STATE_REPORT_MS, "A Cricinfo statistics page could not be read", {
+        matchId, cricinfoId: match.objectId, reason: page.reason, status: page.status ?? "none", bytes: page.bytes,
+      }, "error");
+      return held;
+    }
+    const merged = mergeWagon(held, page.wagon);
+    wagonByMatch.set(matchId, merged);
+    log(`[CRICINFO] stats ${matchId} (${match.objectId}) status=${page.status} bytes=${page.bytes} batters=${page.wagon.length} held=${merged.length}`);
+    return merged;
+  } catch (e) {
+    error(`[CRICINFO] stats ${matchId} step failed: ${e?.message}`);
+    return held;
   }
 }
 
@@ -2774,7 +2848,7 @@ async function activeViewerIds({ storage, log, error }) {
 
 // Exported for `finalise.test.js`: the finalisation wiring (which tier writes, and once) is
 // invisible in production until a match ends, which is the class of defect this file keeps finding.
-export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error, alerts = null, contextFor = null, onFinalised = null, rivalStore = null, cricinfoFor = null }) {
+export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error, alerts = null, contextFor = null, onFinalised = null, rivalStore = null, cricinfoFor = null, wagonFor = null }) {
   // Queues one push to this match's topic. [alerts] is null when FCM is unconfigured or in tests
   // that do not exercise alerts, and then nothing is sent.
   const alert = (data) => {
@@ -2813,6 +2887,8 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
     // Cricinfo's page for the same match, where it has one. Null everywhere else, and then
     // nothing below differs from a run without it.
     storeCommentary && cricinfoFor ? cricinfoFor().catch(() => null) : Promise.resolve(null),
+    // Held in `wagonByMatch` for the scorecard write below; nothing here reads the result.
+    detailTier && wagonFor ? wagonFor().catch(() => null) : Promise.resolve(null),
   ]);
 
   // 3. Build + upsert the live-detail snapshot.
@@ -2908,6 +2984,8 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
       await seedOverHistory({ db, matchId, error });
       const overs = overHistoryByMatch.get(matchId) ?? [];
       if (overs.length > 0) detail.scorecard.overs = overs;
+      const wagon = wagonByMatch.get(matchId) ?? [];
+      if (wagon.length > 0) detail.scorecard.wagon = wagon;
       // Whose probability the `p` on those points is, as a Cricbuzz team id — the first-innings
       // side, which is not necessarily the side the device lists first.
       if (winProb?.team1Id && overs.some((o) => o.p != null)) detail.scorecard.probabilityTeamId = winProb.team1Id;

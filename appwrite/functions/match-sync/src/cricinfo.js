@@ -477,9 +477,47 @@ export function labelsInGap(after, before, ballsPerOver = 6) {
   return out;
 }
 
+// ── Where a batter's runs went ───────────────────────────────────────────────
+//
+// The statistics page carries, for the batters AT THE CREASE and nobody else, their runs split
+// over eight zones of the ground. It is a snapshot of an innings in progress, so each one says
+// how many runs and balls it covers and the caller keeps the latest per batter.
+//
+// The zones are octants of the field as Cricinfo draws it, numbered clockwise from the top, with
+// the bowler's end at the BOTTOM: measured 2026-10-07 against per-ball coordinates and the
+// commentary's own words on match 1529230 — "drilled straight back down the ground" is zone 4,
+// at the bottom; a left-hander's pull "over deep backward square leg" is zone 7, upper left. They
+// are the ground's geometry, not mirrored for a left-hander.
+
+export const WAGON_ZONES = 8;
+const MAX_BATTER_RUNS = 500;
+
+/** One batter's snapshot, or null unless its zones are whole numbers that add up to the runs. */
+export function wagonOf(entry) {
+  const innings = int(entry?.inningNumber);
+  const runs = int(entry?.runs);
+  const balls = int(entry?.balls);
+  const name = shaped(entry?.player?.longName, PERSON_RE);
+  const zones = Array.isArray(entry?.wagonData) ? entry.wagonData : [];
+  if (!innings || innings < 1 || innings > 4 || !name || runs === null || runs < 0 || runs > MAX_BATTER_RUNS) return null;
+  if (balls === null || balls < 0 || balls > 2000 || zones.length !== WAGON_ZONES) return null;
+  if (!zones.every((z) => Number.isInteger(z) && z >= 0 && z <= MAX_BATTER_RUNS)) return null;
+  // The page's own arithmetic is the check that the eight numbers mean what this says they do.
+  if (zones.reduce((a, b) => a + b, 0) !== runs) return null;
+  return { innings, name, runs, balls, zones: [...zones] };
+}
+
+/** The statistics page's wagon snapshots: the batters at the crease, at most a handful. */
+export function parseCricinfoStats(html) {
+  const data = matchPageData(html);
+  if (!data) return null;
+  const list = Array.isArray(data.content.batsmenPerformance) ? data.content.batsmenPerformance : [];
+  return { wagon: list.slice(0, 6).map(wagonOf).filter(Boolean) };
+}
+
 /** One match page. `ok` false says why; nothing here throws. */
-export async function fetchCricinfoMatch(match, { fetchImpl = fetch, timeoutMs = 8_000 } = {}) {
-  const url = cricinfoMatchUrl(match, "ball-by-ball-commentary");
+export async function fetchCricinfoMatch(match, { fetchImpl = fetch, timeoutMs = 8_000, tab = "ball-by-ball-commentary", parse = parseCricinfoMatchPage } = {}) {
+  const url = cricinfoMatchUrl(match, tab);
   if (!url) return { ok: false, reason: "no usable slug", status: null, bytes: 0 };
   try {
     const resp = await fetchImpl(url, { headers: HEADERS, signal: AbortSignal.timeout(timeoutMs) });
@@ -487,13 +525,17 @@ export async function fetchCricinfoMatch(match, { fetchImpl = fetch, timeoutMs =
     if (body === null) return { ok: false, reason: "page too large", status: resp.status, bytes: MAX_PAGE_BYTES };
     const base = { status: resp.status, bytes: body.length };
     if (resp.status !== 200) return { ok: false, reason: `http ${resp.status}`, ...base };
-    const parsed = parseCricinfoMatchPage(body);
+    const parsed = parse(body);
     if (!parsed) return { ok: false, reason: "no data block", ...base };
     return { ok: true, ...base, ...parsed };
   } catch (e) {
     return { ok: false, reason: e?.message ?? "fetch failed", status: null, bytes: 0 };
   }
 }
+
+/** The statistics page of a match, through the same bounded fetch. */
+export const fetchCricinfoStats = (match, options = {}) =>
+  fetchCricinfoMatch(match, { ...options, tab: "match-statistics", parse: parseCricinfoStats });
 
 /**
  * Follow one live match from the live page to each tab this function reads, and say what came

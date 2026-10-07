@@ -36,6 +36,8 @@ import com.tanush.bouncer.analysis.MatchProjections
 import com.tanush.bouncer.ui.components.BowlerPerformance
 import com.tanush.bouncer.ui.components.BowlingPerformanceCard
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.screens.matchdetail.v2.WagonWheelRow
+import com.tanush.bouncer.ui.screens.matchdetail.v2.wagonWheelsFor
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.parseRuns
 import java.util.Locale
@@ -172,6 +174,13 @@ fun PremiumScorecardTab(
                 item {
                     FallOfWicketsCarousel(innings.fallOfWickets)
                 }
+            }
+
+            // Where the runs went — only on the matches Cricinfo scores by zone.
+            val wheels = wagonWheelsFor(scorecard.wagon, selectedInningsIndex + 1)
+            if (wheels.isNotEmpty()) {
+                item(key = "wagon_header") { SectionHeader(stringResource(R.string.scorecard_wagon_title)) }
+                item(key = "wagon_wheels") { WagonWheelRow(wheels) }
             }
 
             // Partnerships

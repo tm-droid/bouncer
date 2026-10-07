@@ -1027,6 +1027,54 @@ under the existing `VERIFY_BATCH_RULES`, 3/3 on qwen and on `gemini-flash-lite-2
 reworded rule scored the same, so nothing was changed. Why they passed in production is not
 established.
 
+**Cricinfo is a second source where it has a commentator, and its page cannot be paged.**
+`/series/{slug}-{id}/{slug}-{id}/ball-by-ball-commentary` is server-rendered: `__NEXT_DATA__` →
+`props.appPageProps.data.content.comments` is ~19 deliveries (three overs) as data, and
+`content.innings[].inningOvers` is **every completed over of every innings**. Measured 2026-10-06
+from the Appwrite container: 200, ~900 KB, 250 ms. `?fromInningOver=` is ignored and
+`/_next/data/…` and `hs-consumer-api` are 403, so the window is polled on every run for every
+joined live match and kept in memory (`cricinfoMatchStep`, `main.js`). A match joins by both team
+names plus start time within 12 h (`joinCricinfoMatch`); a delivery by innings + ball label, which
+the two sites write identically (`18.6` ≡ `18.6`). A wide or no-ball is never joined. Prose exists
+only where `ballByBallSource` is `"feedback"` — internationals and A tours, 2 of 8 live matches
+when measured — so this changes nothing for associate cricket. Three uses:
+
+- **Second report.** When the two sites agree on bowler, batter, runs and wicket (`disagreement`),
+  the delivery's text gains ` [Second report: …]`, read by the writer AND the checker
+  (`BATCH_SYSTEM_INSTRUCTION`, `VERIFY_BATCH_RULES`). Cricinfo's text is never stored; `isEcho`
+  drops a line that carries it whole. A bare scorer's line is templated (`plainLine`) only when
+  Cricinfo has no description either. Nothing waits for the second site.
+- **Gap fill.** A hole between two of a run's Cricbuzz deliveries is filled from Cricinfo's
+  (`cricinfoFills` → `asCricbuzzLine`), through the same rewrite, check and hold. `provider` ends
+  `+cricinfo`; `sort_key` is the ball before the hole plus 1, 2, 3 ms. A label this container has
+  already stored is not a hole — Cricbuzz republishes old balls under new timestamps.
+- **Over history.** `fillOverHistory` adds only overs the history lacks; a Cricbuzz reading and
+  its stamped `p` are never replaced. This is what gives the worm an innings a cold container missed.
+
+**Everything from that page is untrusted, and the cleaner is an allowlist.** `promptSafe`
+(`cricinfo.js`) keeps Latin letters, digits, spaces and sentence punctuation — **no colon, no
+bracket, no line break** — because the prompt's structure is `[key]:` tags, `Source:` labels and
+bracketed notes. Four denylist versions were each shown a case they missed (nested entities, a
+lone surrogate joining two halves of a label, full-width colons, look-alike scripts); do not go
+back to one. A header and a dismissal are not cleaned at all: each must BE its shape or is dropped.
+Bodies are size-capped while read (`readBounded`). What an allowlist cannot stop is a plain-English
+instruction; the writer is told both accounts are reported text, and the checker and `carriesLink`
+gate what is stored. A 403/429 latches every Cricinfo request for an hour and reports at error
+level; any other failure latches that one match.
+
+**The same page feeds the Info tab, and the statistics page a wagon wheel.** `matchFacts` puts
+umpires, TV umpire, referee, debutants and reviews left on `mc-{matchId}` as `cricinfo`, written
+only when changed. `match-statistics` carries `batsmenPerformance[].wagonData` — eight zones that
+sum to the batter's runs — **for the two batters at the crease only**, so `cricinfoWagonStep` keeps
+the latest snapshot per batter (detail tier, at most every scorecard interval) and publishes
+`scorecard.wagon`; the device shows the runs and balls the snapshot covers, not the scorecard's.
+Zones are octants clockwise from the top with the bowler's end at the bottom, not mirrored for a
+left-hander (verified against per-ball coordinates and the commentary's words). **The pitch map is
+not shipped**: `bowlersPerformance[].{lhb,rhb}PitchMap` has numeric `line`/`length` codes whose
+meaning has not been verified against per-ball `pitchLine`/`pitchLength` names — do that on a live
+covered match before drawing it. A manual execution with body `probe-sources` runs the
+reachability probe without `PROBE_SOURCES`.
+
 **`match-commentary` table:** written by `bouncer-match-sync` (every minute). Columns: `match_id`, `innings`, `ball`, `sort_key` (timestamp, used for ordering), `commentary` (AI-rewritten line), `ai_generated` (boolean, default true), `provider`, `created_at`. Read by `AppwriteMatchCommentaryClient` — newest-first, ordered by `sort_key` desc, **48 rows on the first page and 150 on every page behind it** (`FIRST_PAGE_LIMIT`/`FEED_LIMIT`): reads bill per row RETURNED, and the common case is a glance at the last over or two, so `getOlderThan(sortKey)` pages further back on a reader's tap and only that reader pays for it. Ordering on `sort_key` needs a user index; the fallback ladder is `orderDesc("$createdAt")` — a built-in, always orderable, still newest-first — and only then an unordered fetch, which returns Appwrite's own order (the OLDEST rows of the match) and is the last rung before a blank feed. The degraded rungs cannot page (the cursor filters on the attribute that just failed), so they serve one `FEED_LIMIT` page and a caller asking for older lines gets nothing. **The Wickets and Boundaries chips ask the table for the whole match** (`getEvents`: `equal("event", …)` over the same `idx_match_sort`, 60 rows a page, fetched once when the chip is first selected and held by `CommentaryEventPager` apart from the feed — merged into it, an old wicket would move the load-earlier cursor past every ball between). They used to filter the loaded feed only, so a reader saw the last eight overs' events and no way to the rest; that was misread as a rewrite-backlog ordering problem when the backlog was empty. The fetched rows are unioned with the loaded feed by `sort_key` (`mergeEventRows`), because a wicket that falls while the chip is selected arrives over Realtime into the feed. A failed fetch leaves the chip on the loaded feed and is not "no wickets". Milestones still draws from the loaded feed only — match-sync writes no milestone event — which is why its empty state carries its own load-earlier action;  Realtime subscription emits `CommentaryEvent` on create. **`ai_generated = false` means the row holds raw Cricbuzz text**, and **no new row has been written that way since 2026-09-27** — a delivery without a verified line is held in the rewrite backlog instead (see above); the false rows in the table are older ones, pruned after 14 days. Before that it meant either the provider chain returned nothing, or the delivery was past the run's LLM budget. The device does not read the column — it exists so "is the stored commentary actually AI?" is answerable from the storage layer, which it was not when a dead chain and a working one produced identical-looking rows. **`provider` is the same question one level finer**, because `ai_generated: false` conflates a chain that FAILED with a delivery that had no rewrite budget — a defect and a design decision, indistinguishable in storage and needing opposite responses. A rung name (`groq`, `gemini-flash-lite`, …) means rewritten; `cricbuzz` means nobody tried; `cricbuzz:providers_exhausted` / `cricbuzz:verification_failed` / `cricbuzz:verifier_unavailable` mean somebody tried and failed, and which. So the ladder's real mix is a GROUP BY rather than a guess. Both columns come from `commentaryOrigin` in `main.js` — one function, because two fields describing one fact drift apart, and the invariant that `ai_generated` is true exactly when `provider` is not a `cricbuzz*` value is pinned in `commentary-storage.test.js`.
 
 **`match-live-detail` table:** written by `bouncer-match-sync` (every minute). One row per match, upserted. Columns: `match_id`, `payload` (JSON `MatchLiveDetailPayload`), `updated_at`. Row ID = sanitized `matchId`. Read by `AppwriteMatchDetailClient`; Realtime emits `DetailEvent` on create/update. Both clients use `appwriteAiCacheDbId` as their DB ID.

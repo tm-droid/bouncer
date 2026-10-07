@@ -238,6 +238,11 @@
     <string name="common_matches">Matches</string>
     <string name="common_no_live_matches">No live matches</string>
     <string name="common_no_scorecard_available">No scorecard available</string>
+    <string name="scorecard_wagon_title">Where the runs went</string>
+    <string name="scorecard_wagon_covers">%1$d runs off %2$d balls</string>
+    <string name="scorecard_wagon_bowler_end">Bowler\'s end</string>
+    <string name="scorecard_wagon_description">%1$s: runs by area of the ground. Most, %2$d, %3$s.</string>
+    <string name="scorecard_wagon_source">Zones as scored by ESPNcricinfo</string>
     <string name="common_remove">Remove</string>
     <string name="common_set_reminder">Set Reminder</string>
     <string name="common_settings">Settings</string>

@@ -20,6 +20,29 @@ data class Scorecard(
      * a guess between two.
      */
     val probabilityTeamId: String? = null,
+    /**
+     * Where each batter's runs went, for the matches ESPNcricinfo scores by zone — a minority.
+     * Each entry is the last snapshot `bouncer-match-sync` read while that batter was at the
+     * crease, so [WagonWheel.runs] is what the wheel covers and can trail the scorecard's figure
+     * by the batter's last couple of minutes. Empty everywhere else.
+     */
+    val wagon: List<WagonWheel> = emptyList(),
+)
+
+/**
+ * One batter's runs over eight zones of the ground. [zones] are octants numbered clockwise from
+ * the top as Cricinfo draws the field, with the bowler's end at the bottom, and always sum to
+ * [runs] — the server drops a snapshot that does not. They are the ground's geometry and are not
+ * mirrored for a left-hander.
+ */
+@Serializable
+@Immutable
+data class WagonWheel(
+    val innings: Int = 0,
+    val name: String = "",
+    val runs: Int = 0,
+    val balls: Int = 0,
+    val zones: List<Int> = emptyList(),
 )
 
 /** The batting side's position at the end of one over. Every figure nullable: absent is not zero. */

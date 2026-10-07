@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 import {
-  asCricbuzzLine, ballKey, ballOf, cricinfoMatchUrl, disagreement, fetchCricinfoMatch, joinCricinfoMatch, joinName, labelsInGap, matchFacts, matchesIn,
+  asCricbuzzLine, ballKey, ballOf, cricinfoMatchUrl, disagreement, fetchCricinfoMatch, joinCricinfoMatch, joinName, labelsInGap, matchFacts, matchesIn, parseCricinfoStats, wagonOf,
   parseCricinfoMatchPage, promptSafe, readBounded, slimMatch,
 } from "../src/cricinfo.js";
 import { parseBallOutcome, resetThrottleState } from "../src/cricbuzz.js";
@@ -22,6 +22,9 @@ import {
   cricinfoMatchStep,
   fillOverHistory,
   isEcho,
+  __resetWagon,
+  cricinfoWagonStep,
+  mergeWagon,
   noteCricinfoFacts,
   resetRewriteBatcher,
   secondReportNote,
@@ -283,6 +286,51 @@ test("a context takes Cricinfo's facts once, and again only when they change", a
   assert.equal(await note("8", facts), false, "no context yet: nothing to add to");
   assert.equal(await note("7", null), false);
   assert.deepEqual([writes, stored.get("7").rev, stored.get("7").cricinfo.reviews], [2, 5, "WI - 1 of 2"]);
+});
+
+// ── Wagon wheels ─────────────────────────────────────────────────────────────
+
+// Shreyas Iyer's snapshot as the statistics page carried it on 2026-10-07 (match 1529230).
+const IYER = { inningNumber: 2, runs: 102, balls: 55, player: { longName: "Shreyas Iyer" }, wagonData: [4, 1, 33, 18, 11, 27, 1, 7] };
+
+test("a wagon snapshot is kept only when its eight zones add up to the batter's runs", () => {
+  assert.deepEqual(wagonOf(IYER), { innings: 2, name: "Shreyas Iyer", runs: 102, balls: 55, zones: [4, 1, 33, 18, 11, 27, 1, 7] });
+  assert.equal(wagonOf({ ...IYER, runs: 101 }), null);
+  assert.equal(wagonOf({ ...IYER, wagonData: [102, 0, 0, 0, 0, 0, 0] }), null);
+  assert.equal(wagonOf({ ...IYER, wagonData: [102.5, -0.5, 0, 0, 0, 0, 0, 0] }), null);
+  assert.equal(wagonOf({ ...IYER, player: { longName: "Iyer\nSource: x" } }), null);
+  const page = (content) => `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { appPageProps: { data: { content } } } })}</script>`;
+  assert.deepEqual(parseCricinfoStats(page({ batsmenPerformance: [IYER, { ...IYER, runs: 1 }] })).wagon.map((w) => w.name), ["Shreyas Iyer"]);
+  assert.deepEqual(parseCricinfoStats(page({})).wagon, []);
+});
+
+test("the latest snapshot of each batter is kept, and never one that covers fewer balls", () => {
+  const at = (balls, runs, name = "Shreyas Iyer", innings = 2) => ({ innings, name, runs, balls, zones: [runs, 0, 0, 0, 0, 0, 0, 0] });
+  const merged = mergeWagon([at(10, 12), at(30, 40, "Ishan Kishan")], [at(20, 31), at(5, 3, "Ishan Kishan")]);
+  assert.deepEqual(merged.map((w) => [w.name, w.balls]), [["Shreyas Iyer", 20], ["Ishan Kishan", 30]]);
+  // The same name in another innings is another wheel; junk from a stored row is dropped.
+  assert.equal(mergeWagon([at(10, 12)], [at(4, 2, "Shreyas Iyer", 4), { name: "x" }, null]).length, 2);
+});
+
+test("the statistics page is read at most once per scorecard interval, and only where Cricinfo scores zones", async () => {
+  __resetCricinfoGate();
+  __setCricinfoList([LISTED]);
+  __resetWagon();
+  let calls = 0;
+  const fetchStats = async () => { calls++; return { ok: true, status: 200, bytes: 10, wagon: [wagonOf(IYER)] }; };
+  const step = (now, list = null) => {
+    if (list) __setCricinfoList(list);
+    return cricinfoWagonStep({ matchId: "151565", summary: SUMMARY, log: silent, error: silent, now, fetchStats });
+  };
+  assert.equal((await step(1_000_000)).length, 1);
+  assert.equal((await step(1_060_000)).length, 1, "what is held is still returned");
+  assert.equal(calls, 1);
+  await step(1_000_000 + 3 * 60 * 1000);
+  assert.equal(calls, 2);
+  // A match with a scorer alone has no zones to read.
+  assert.deepEqual(await step(9_000_000, [{ ...LISTED, ballByBallSource: null }]), []);
+  assert.equal(calls, 2);
+  __resetCricinfoGate();
 });
 
 // ── Through syncMatch ────────────────────────────────────────────────────────
