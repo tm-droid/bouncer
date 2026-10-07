@@ -11,7 +11,14 @@ import io.sentry.Sentry
 import io.sentry.SentryLevel
 
 object ReminderScheduler {
-    fun scheduleReminder(context: Context, id: Int, title: String, body: String, delayMillis: Long) {
+    fun scheduleReminder(
+        context: Context,
+        id: Int,
+        title: String,
+        body: String,
+        delayMillis: Long,
+        matchId: String? = null,
+    ) {
         try {
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "util.reminder"
@@ -23,8 +30,10 @@ object ReminderScheduler {
             })
             
             val intent = Intent(context, ReminderReceiver::class.java).apply {
-                putExtra("title", title)
-                putExtra("body", body)
+                putExtra(ReminderReceiver.EXTRA_TITLE, title)
+                putExtra(ReminderReceiver.EXTRA_BODY, body)
+                putExtra(ReminderReceiver.EXTRA_ID, id)
+                matchId?.let { putExtra(ReminderReceiver.EXTRA_MATCH_ID, it) }
             }
 
             val pending = PendingIntent.getBroadcast(
@@ -73,8 +82,8 @@ object ReminderScheduler {
                 it.cancel()
             }
         } catch (e: Exception) {
+            // Best-effort: the Reminders screen calls this from a click with no catch of its own.
             Sentry.captureException(e)
-            throw e
         }
     }
 }

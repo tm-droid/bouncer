@@ -19,10 +19,12 @@ import android.widget.RemoteViews
 import com.tanush.bouncer.R
 import com.tanush.bouncer.BouncerActivity
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.utils.bouncerExceptionHandler
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import io.sentry.Sentry
@@ -41,7 +43,9 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
 
     companion object {
         private const val TAG = "LiveMatchWidget"
-        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        // Lives as long as the process: a provider instance is created per broadcast, and the
+        // process outlives the last widget, so this scope must stay launchable after onDisabled.
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main + bouncerExceptionHandler)
         const val ACTION_REFRESH = "com.tanush.bouncer.widget.REFRESH"
         const val ACTION_NEXT_MATCH = "com.tanush.bouncer.widget.NEXT_MATCH"
         const val EXTRA_MATCH_ID = "match_id"
@@ -64,21 +68,24 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
             
                 context.sendBroadcast(intent)
             } catch (e: Exception) {
+                // A widget refresh is never worth the caller's crash.
                 Sentry.captureException(e)
-                throw e
             }
         }
     }
     
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         scope.launch {
-            try {
-                appWidgetIds.forEach { appWidgetId ->
+            appWidgetIds.forEach { appWidgetId ->
+                // updateWidget reports its own failure; one widget failing must not stop the
+                // rest, and must not reach the uncaught handler from a background broadcast.
+                try {
                     updateWidget(context, appWidgetManager, appWidgetId)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(TAG, "Widget $appWidgetId failed to render", e)
                 }
-            } catch (e: Exception) {
-                Sentry.captureException(e)
-                throw e
             }
         }
     }
@@ -91,7 +98,9 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
 
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
-        scope.cancel()
+        // Children only: a cancelled scope cannot launch again, and a widget re-added while the
+        // process is alive would then never render.
+        scope.coroutineContext.cancelChildren()
     }
     
     override fun onReceive(context: Context, intent: Intent) {
@@ -121,8 +130,8 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
                 }
             }
         } catch (e: Exception) {
+            // Rethrowing from onReceive kills the process, possibly while another app is in front.
             Sentry.captureException(e)
-            throw e
         }
     }
     
@@ -283,7 +292,8 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
         } catch (e: Exception) {
-            Sentry.captureException(e)
+            // Removing the last widget cancels an in-flight render; that is not a failure.
+            if (e !is CancellationException) Sentry.captureException(e)
             throw e
         }
     }

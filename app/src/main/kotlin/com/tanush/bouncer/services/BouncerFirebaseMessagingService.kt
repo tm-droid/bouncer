@@ -177,6 +177,10 @@ class BouncerFirebaseMessagingService : FirebaseMessagingService() {
             Log.d(TAG, "Alert not shown: type=$type matchId=$matchId")
             return
         }
+        if (isAlertStale(type, remoteMessage.sentTime, System.currentTimeMillis())) {
+            Log.d(TAG, "Alert too old to show: type=$type matchId=$matchId")
+            return
+        }
 
         NotificationInboxManager.add(
             NotificationItem(
@@ -254,7 +258,7 @@ class BouncerFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         val notification = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_stat_ball)
             .setContentTitle(title)
             .setContentText(body)
             .setSubText(subText)

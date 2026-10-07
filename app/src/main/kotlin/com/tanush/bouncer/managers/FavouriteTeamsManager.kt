@@ -75,8 +75,9 @@ object FavouriteTeamsManager {
             Log.d(TAG, "Added $team (total: ${current.size})")
             return true
         } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
+            // save() has reported it. The star stays as it was instead of crashing the tap.
+            Log.w(TAG, "Could not add $team", e)
+            return false
         }
     }
 
@@ -89,8 +90,7 @@ object FavouriteTeamsManager {
                 Log.d(TAG, "Removed $team (total: ${current.size})")
             }
         } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
+            Log.w(TAG, "Could not remove $team", e)
         }
     }
 
@@ -101,16 +101,12 @@ object FavouriteTeamsManager {
      */
     @Synchronized
     fun toggle(team: String): Boolean? {
-        try {
-            return if (isFavourite(team)) {
-                remove(team)
-                false
-            } else {
-                if (add(team)) true else null
-            }
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
+        return if (isFavourite(team)) {
+            remove(team)
+            // Reads back rather than assuming: a remove that failed leaves the team a favourite.
+            isFavourite(team)
+        } else {
+            if (add(team)) true else null
         }
     }
 
@@ -130,8 +126,7 @@ object FavouriteTeamsManager {
             save(current)
             Log.d(TAG, "Moved ${item} from $fromIndex to $toIndex")
         } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
+            Log.w(TAG, "Could not move favourite", e)
         }
     }
 
@@ -144,31 +139,16 @@ object FavouriteTeamsManager {
             save(newOrder)
             Log.d(TAG, "Reordered: ${newOrder.size} teams")
         } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
+            Log.w(TAG, "Could not reorder favourites", e)
         }
     }
 
-    fun isFavourite(team: String): Boolean {
-        try {
-            return _favourites.value.contains(team)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
+    fun isFavourite(team: String): Boolean = _favourites.value.contains(team)
 
     /**
      * Get the position of a team in the favourites list (-1 if not found)
      */
-    fun indexOf(team: String): Int {
-        try {
-            return _favourites.value.indexOf(team)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
+    fun indexOf(team: String): Int = _favourites.value.indexOf(team)
 
     private fun save(list: List<String>) {
         try {
@@ -178,7 +158,9 @@ object FavouriteTeamsManager {
             // Only commit() would, and that is a main-thread disk write. The real answer is
             // DataStore; until then this ordering is the best available, not a durability promise.
             val json = AppJson.encodeToString(list)
-            prefs.edit().putString(KEY, json).apply()
+            // initialize() failing leaves prefs unset. The choice then holds for this session
+            // only, which beats an UninitializedPropertyAccessException on every star tap.
+            if (::prefs.isInitialized) prefs.edit().putString(KEY, json).apply()
             _favourites.value = list
         } catch (e: Exception) {
             Sentry.captureException(e)

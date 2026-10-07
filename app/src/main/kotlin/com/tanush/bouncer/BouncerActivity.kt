@@ -55,11 +55,16 @@ class BouncerActivity : ComponentActivity() {
         val onboardingDone = PreferencesHelper.getBoolean(this, PreferencesHelper.KEY_ONBOARDING_COMPLETE, false)
             || FavouriteTeamsManager.favourites.value.isNotEmpty()
         if (onboardingDone) requestNotificationPermissionIfNeeded()
-        externalDeepLinkUri.value = intent?.dataString
+        // Only on a fresh launch. A recreation (theme, font scale, locale) hands back the same
+        // intent, and reading it again reopened a match the reader had already closed.
+        if (savedInstanceState == null) externalDeepLinkUri.value = intent?.dataString
 
         setContent {
             com.tanush.bouncer.ui.BouncerAppContent(
-                externalDeepLinkUri = externalDeepLinkUri.value
+                externalDeepLinkUri = externalDeepLinkUri.value,
+                // Cleared once handled, so the next alert for the same match — the same URI — is
+                // a new value and opens it again.
+                onDeepLinkConsumed = { externalDeepLinkUri.value = null },
             )
         }
     }

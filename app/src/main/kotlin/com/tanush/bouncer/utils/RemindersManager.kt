@@ -7,7 +7,14 @@ import org.json.JSONArray
 import org.json.JSONObject
 import io.sentry.Sentry
 
-data class Reminder(val id: Int, val title: String, val body: String, val triggerAt: Long)
+/** [matchId] is null on records written before reminders carried one; those open Home when tapped. */
+data class Reminder(
+    val id: Int,
+    val title: String,
+    val body: String,
+    val triggerAt: Long,
+    val matchId: String? = null,
+)
 
 object RemindersManager {
     private const val KEY = "reminders"
@@ -16,12 +23,7 @@ object RemindersManager {
         try {
             PreferenceStore.initialize(context)
             val arr = JSONArray(BouncerPreferences.getString(KEY, "[]"))
-            val obj = JSONObject()
-            obj.put("id", reminder.id)
-            obj.put("title", reminder.title)
-            obj.put("body", reminder.body)
-            obj.put("triggerAt", reminder.triggerAt)
-            arr.put(obj)
+            arr.put(reminder.toJson())
             BouncerPreferences.putString(KEY, arr.toString())
         } catch (e: Exception) {
             Sentry.captureException(e)
@@ -29,6 +31,10 @@ object RemindersManager {
         }
     }
 
+    /**
+     * The stored reminders, or none when the record cannot be read. The Reminders screen and the
+     * boot receiver both read this unguarded, and an unreadable record must not take either down.
+     */
     fun getReminders(context: Context): List<Reminder> {
         try {
             PreferenceStore.initialize(context)
@@ -36,12 +42,20 @@ object RemindersManager {
             val out = mutableListOf<Reminder>()
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
-                out.add(Reminder(o.getInt("id"), o.getString("title"), o.getString("body"), o.getLong("triggerAt")))
+                out.add(
+                    Reminder(
+                        id = o.getInt("id"),
+                        title = o.getString("title"),
+                        body = o.getString("body"),
+                        triggerAt = o.getLong("triggerAt"),
+                        matchId = o.optString("matchId").takeIf { it.isNotBlank() },
+                    )
+                )
             }
             return out
         } catch (e: Exception) {
             Sentry.captureException(e)
-            throw e
+            return emptyList()
         }
     }
 
@@ -57,10 +71,10 @@ object RemindersManager {
             BouncerPreferences.putString(KEY, newArr.toString())
         } catch (e: Exception) {
             Sentry.captureException(e)
-            throw e
         }
     }
 
+    /** Throws on failure: the caller tells the user the reminder was not set. */
     fun updateReminder(context: Context, reminder: Reminder) {
         try {
             // Replace reminder with same id
@@ -71,25 +85,13 @@ object RemindersManager {
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
                 if (o.getInt("id") == reminder.id) {
-                    val obj = JSONObject()
-                    obj.put("id", reminder.id)
-                    obj.put("title", reminder.title)
-                    obj.put("body", reminder.body)
-                    obj.put("triggerAt", reminder.triggerAt)
-                    newArr.put(obj)
+                    newArr.put(reminder.toJson())
                     replaced = true
                 } else {
                     newArr.put(o)
                 }
             }
-            if (!replaced) {
-                val obj = JSONObject()
-                obj.put("id", reminder.id)
-                obj.put("title", reminder.title)
-                obj.put("body", reminder.body)
-                obj.put("triggerAt", reminder.triggerAt)
-                newArr.put(obj)
-            }
+            if (!replaced) newArr.put(reminder.toJson())
             BouncerPreferences.putString(KEY, newArr.toString())
         } catch (e: Exception) {
             Sentry.captureException(e)
@@ -110,14 +112,43 @@ object RemindersManager {
         return live
     }
 
+    /**
+     * Sets every pending reminder's alarm again. AlarmManager drops its alarms at reboot, so
+     * without this a reminder stayed listed under Notifications › Reminders and never fired.
+     */
+    fun rescheduleAll(context: Context, nowMs: Long = System.currentTimeMillis()) {
+        upcoming(context, nowMs).forEach { reminder ->
+            try {
+                ReminderScheduler.scheduleReminder(
+                    context = context,
+                    id = reminder.id,
+                    title = reminder.title,
+                    body = reminder.body,
+                    delayMillis = reminder.triggerAt - nowMs,
+                    matchId = reminder.matchId,
+                )
+            } catch (e: Exception) {
+                // ReminderScheduler has reported it; the remaining reminders still get their alarm.
+                android.util.Log.w("RemindersManager", "Could not reschedule reminder ${reminder.id}", e)
+            }
+        }
+    }
+
     fun clearAll(context: Context) {
         try {
             PreferenceStore.initialize(context)
             BouncerPreferences.putString(KEY, "[]")
         } catch (e: Exception) {
             Sentry.captureException(e)
-            throw e
         }
+    }
+
+    private fun Reminder.toJson(): JSONObject = JSONObject().apply {
+        put("id", id)
+        put("title", title)
+        put("body", body)
+        put("triggerAt", triggerAt)
+        matchId?.let { put("matchId", it) }
     }
 }
 

@@ -208,6 +208,27 @@ class LiveActivityViewModel(
         cachedMatches.values.firstNotNullOfOrNull { list -> list.firstOrNull { it.id == id } }
             ?: _currentMatches.value.firstOrNull { it.id == id }
 
+    /**
+     * [findMatchById], waiting for what has not loaded yet. An alert tapped on a cold start
+     * arrives before the first fetch, and one tapped after its match ended names a match that is
+     * on Recent, which Home may never have fetched this session.
+     */
+    suspend fun resolveMatch(id: String): CricketMatch? {
+        findMatchById(id)?.let { return it }
+        initialFetchJob?.join()
+        findMatchById(id)?.let { return it }
+        FETCHABLE_STATUSES.filterNot(cachedMatches::containsKey).forEach { status ->
+            try {
+                updateMatches(status)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                breadcrumb("deeplink.resolve", "Could not load $status: ${e.message}")
+            }
+        }
+        return findMatchById(id)
+    }
+
     private fun filterAndEmitMatches(matches: List<CricketMatch>) {
         val type = _selectedCompetitionType.value
         val gender = _selectedGender.value

@@ -31,6 +31,7 @@
     <!-- ── Home ─────────────────────────────────────────────────────────── -->
     <string name="home_title" translatable="false">Bouncer</string>
     <string name="home_empty_title">No matches found</string>
+    <string name="deep_link_match_unavailable">That match is no longer available</string>
     <string name="home_empty_subtitle">Try changing your filters or pull to refresh</string>
     <string name="section_matches">Matches</string>
     <string name="cd_search">Search</string>

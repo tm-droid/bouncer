@@ -12,8 +12,8 @@ class HapticFeedback(private val view: View) {
         try {
             view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
         } catch (e: Exception) {
+            // A haptic is decoration: the tap it accompanies must still happen.
             Sentry.captureException(e)
-            throw e
         }
     }
     
@@ -21,8 +21,8 @@ class HapticFeedback(private val view: View) {
         try {
             view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
         } catch (e: Exception) {
+            // A haptic is decoration: the tap it accompanies must still happen.
             Sentry.captureException(e)
-            throw e
         }
     }
     
@@ -30,8 +30,8 @@ class HapticFeedback(private val view: View) {
         try {
             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
         } catch (e: Exception) {
+            // A haptic is decoration: the tap it accompanies must still happen.
             Sentry.captureException(e)
-            throw e
         }
     }
     
@@ -39,8 +39,8 @@ class HapticFeedback(private val view: View) {
         try {
             view.performHapticFeedback(HapticFeedbackConstants.REJECT)
         } catch (e: Exception) {
+            // A haptic is decoration: the tap it accompanies must still happen.
             Sentry.captureException(e)
-            throw e
         }
     }
 

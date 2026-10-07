@@ -63,4 +63,16 @@ class MatchAlertGateTest {
         assertTrue(MatchAlertPrefs.DEFAULT.anyOn)
         assertFalse(MatchAlertPrefs.NONE.anyOn)
     }
+
+    @Test
+    fun `a push past its age is stale, and one of unknown age is not`() {
+        val now = 1_800_000_000_000L
+        assertFalse(isAlertStale(MatchAlertType.WICKET, now - 60_000, now))
+        assertTrue(isAlertStale(MatchAlertType.WICKET, now - 6 * 60_000, now))
+        // A result is still news hours later.
+        assertFalse(isAlertStale(MatchAlertType.MATCH_END, now - 2 * 60 * 60_000, now))
+        assertTrue(isAlertStale(MatchAlertType.MATCH_END, now - 7 * 60 * 60_000, now))
+        // FCM reports 0 when it has no send time. Unknown is not old.
+        assertFalse(isAlertStale(MatchAlertType.WICKET, 0, now))
+    }
 }

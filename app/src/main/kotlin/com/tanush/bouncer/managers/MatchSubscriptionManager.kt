@@ -33,7 +33,10 @@ object MatchSubscriptionManager {
 
     private lateinit var prefs: SharedPreferences
     private var appContext: Context? = null
-    private var initialized = false
+    @Volatile private var initialized = false
+
+    // The activity asked for the Live Update before the off-thread initialize() had finished.
+    private var resumePending = false
 
     private val _subscriptions = MutableStateFlow<Set<String>>(emptySet())
     val subscriptions: StateFlow<Set<String>> = _subscriptions.asStateFlow()
@@ -46,6 +49,7 @@ object MatchSubscriptionManager {
     // `MutableStateFlow.update {}` alone would let two concurrent callers persist in the opposite
     // order to the one they published.
 
+    @Synchronized
     fun initialize(context: Context) {
         if (initialized) return
         try {
@@ -55,6 +59,10 @@ object MatchSubscriptionManager {
             _alertPrefs.value = loadAlerts()
             initialized = true
             Log.d(TAG, "Initialized with ${_subscriptions.value.size} subscriptions")
+            if (resumePending) {
+                resumePending = false
+                resumeLiveUpdates(context)
+            }
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -124,8 +132,15 @@ object MatchSubscriptionManager {
     }
 
     /** Start tracking whatever is already subscribed. Called once the app is in the foreground. */
+    @Synchronized
     fun resumeLiveUpdates(context: Context) {
-        if (!initialized || _subscriptions.value.isEmpty()) return
+        if (!initialized) {
+            // BouncerApp initialises this on Dispatchers.IO, so the activity's onCreate can get
+            // here first. Returning then skipped the followed-match card for the whole launch.
+            resumePending = true
+            return
+        }
+        if (_subscriptions.value.isEmpty()) return
         LiveUpdateService.start(context.applicationContext)
     }
 

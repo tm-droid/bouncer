@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -13,11 +14,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleStartEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.ui.components.v2.BottomNavBarV2
@@ -83,7 +84,8 @@ private fun loadThemeMode(context: android.content.Context): ThemeModeV2 {
 
 @Composable
 fun BouncerAppContent(
-    externalDeepLinkUri: String? = null
+    externalDeepLinkUri: String? = null,
+    onDeepLinkConsumed: () -> Unit = {},
 ) {
     var currentMatch by remember { mutableStateOf<CricketMatch?>(null) }
     val context = LocalContext.current
@@ -127,11 +129,10 @@ fun BouncerAppContent(
             // series, a search or a team landed on Home instead of where the reader was.
             MainAppContainer(
                 navController = navController,
-                onMatchClick = { clickedMatch ->
-                    currentMatch = clickedMatch
-                },
+                onMatchClick = { currentMatch = it },
                 isCovered = currentMatch != null,
                 externalDeepLinkUri = externalDeepLinkUri,
+                onDeepLinkConsumed = onDeepLinkConsumed,
                 themeMode = themeMode,
                 onThemeModeChanged = {
                     themeMode = it
@@ -216,11 +217,10 @@ fun MainAppContainer(
     /** A match is open over the app; the list poll pauses, as it did when this was disposed. */
     isCovered: Boolean = false,
     externalDeepLinkUri: String? = null,
+    onDeepLinkConsumed: () -> Unit = {},
     themeMode: ThemeModeV2 = ThemeModeV2.System,
     onThemeModeChanged: (ThemeModeV2) -> Unit = {}
 ) {
-    var consumedDeepLink by remember { mutableStateOf<String?>(null) }
-
     val context = LocalContext.current
     val isOnboardingComplete = remember {
         PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_ONBOARDING_COMPLETE, false)
@@ -233,22 +233,25 @@ fun MainAppContainer(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Determine if viewModel has live matches for badge
-    val currentMatches by viewModel.currentMatches.collectAsStateWithLifecycle()
-
-    LaunchedEffect(externalDeepLinkUri, currentMatches) {
+    // A link is handled once and then cleared by the activity. It used to be remembered here by
+    // its URI string, and every alert for one match carries the same URI — so the second alert a
+    // reader tapped for that match brought the app forward and opened nothing.
+    LaunchedEffect(externalDeepLinkUri) {
         val incomingLink = externalDeepLinkUri?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
-        if (consumedDeepLink == incomingLink) return@LaunchedEffect
-
-        val consumed = handleExternalDeepLink(
-            deepLinkUri = incomingLink,
-            navController = navController,
-            availableMatches = currentMatches,
-            onMatchClick = onMatchClick
-        )
-        if (consumed) {
-            consumedDeepLink = incomingLink
+        val matchId = deepLinkMatchId(incomingLink)
+        if (matchId != null) {
+            // Opened through onMatchClick, the overlay a tapped match uses. The NavHost route this
+            // used to push drew the same match under the bottom bar with the list poll running.
+            val match = viewModel.resolveMatch(matchId)
+            if (match != null) {
+                onMatchClick(match)
+            } else {
+                Toast.makeText(context, R.string.deep_link_match_unavailable, Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            handleExternalDeepLink(incomingLink, navController)
         }
+        onDeepLinkConsumed()
     }
 
     // Map current route to bottom nav route (for child routes like settings -> more)
@@ -299,41 +302,56 @@ private fun getBottomNavRouteForCurrentRoute(route: String?): String {
     return BouncerScreen.getParentTab(route)
 }
 
+/** `app://bouncer/…`, or null for anything else. */
+private fun parseBouncerLink(deepLinkUri: String): Uri? =
+    runCatching { Uri.parse(deepLinkUri) }.getOrNull()
+        ?.takeIf { it.scheme == "app" && it.host == "bouncer" }
+
+/** The match a link names, or null when it is not a match link or carries no usable id. */
+private fun deepLinkMatchId(deepLinkUri: String): String? {
+    val uri = parseBouncerLink(deepLinkUri) ?: return null
+    val segments = uri.pathSegments.filter { it.isNotBlank() }
+    if (segments.firstOrNull()?.lowercase() != "match") return null
+    return (segments.getOrNull(1) ?: uri.getQueryParameter("matchId"))
+        ?.takeIf { it.isNotBlank() && it.length <= MAX_DEEP_LINK_ID_LENGTH }
+}
+
+private const val MAX_DEEP_LINK_ID_LENGTH = 64
+
+// Top-level segment of an `app://bouncer/…` link to the tab it selects. A match link with a
+// usable id never reaches this table (see deepLinkMatchId); one without lands on Home.
+private val DEEP_LINK_TABS = mapOf(
+    "home" to BouncerScreen.Home.route,
+    "match" to BouncerScreen.Home.route,
+    "series" to BouncerScreen.SeriesList.route,
+    "favorites" to BouncerScreen.Favorites.route,
+    "favourites" to BouncerScreen.Favorites.route,
+    "more" to BouncerScreen.More.route,
+    "news" to BouncerScreen.News.route,
+)
+
+// …and to the page it pushes.
+private val DEEP_LINK_PAGES = mapOf(
+    "matches" to BouncerScreen.Matches.route,
+    "all_matches" to BouncerScreen.Matches.route,
+    "settings" to BouncerScreen.Settings.route,
+    "appearance" to BouncerScreen.Appearance.route,
+    "about" to BouncerScreen.About.route,
+)
+
 private fun handleExternalDeepLink(
     deepLinkUri: String,
     navController: NavHostController,
-    availableMatches: List<CricketMatch>,
-    onMatchClick: (CricketMatch) -> Unit
 ): Boolean {
-    val parsedUri = runCatching { Uri.parse(deepLinkUri) }.getOrNull() ?: return false
+    val parsedUri = parseBouncerLink(deepLinkUri) ?: return false
+    val topLevel = parsedUri.pathSegments.firstOrNull { it.isNotBlank() }?.lowercase() ?: "home"
 
-    if (parsedUri.scheme != "app" || parsedUri.host != "bouncer") {
-        return false
-    }
-
-    val pathSegments = parsedUri.pathSegments.filter { it.isNotBlank() }
-    val topLevel = pathSegments.firstOrNull()?.lowercase() ?: "home"
-
-    when (topLevel) {
-        "home" -> navController.navigateToTab(BouncerScreen.Home.route)
-        "matches", "all_matches" -> navController.navigateForward(BouncerScreen.Matches.route)
-        "series" -> navController.navigateToTab(BouncerScreen.SeriesList.route)
-        "favorites", "favourites" -> navController.navigateToTab(BouncerScreen.Favorites.route)
-        "more" -> navController.navigateToTab(BouncerScreen.More.route)
-        "settings" -> navController.navigateForward(BouncerScreen.Settings.route)
-        "appearance" -> navController.navigateForward(BouncerScreen.Appearance.route)
-        "about" -> navController.navigateForward(BouncerScreen.About.route)
-        "news" -> navController.navigateToTab(BouncerScreen.News.route)
-        "match" -> {
-            val deepLinkMatchId = pathSegments.getOrNull(1) ?: parsedUri.getQueryParameter("matchId")
-            if (deepLinkMatchId != null) {
-                navController.navigateForward(BouncerScreen.MatchDetail.createRoute(deepLinkMatchId))
-            } else {
-                navController.navigateToTab(BouncerScreen.Home.route)
-            }
-        }
+    val tab = DEEP_LINK_TABS[topLevel]
+    val page = DEEP_LINK_PAGES[topLevel]
+    when {
+        tab != null -> navController.navigateToTab(tab)
+        page != null -> navController.navigateForward(page)
         else -> return false
     }
-
     return true
 }

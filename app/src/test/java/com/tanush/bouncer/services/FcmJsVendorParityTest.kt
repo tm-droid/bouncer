@@ -41,6 +41,22 @@ class FcmJsVendorParityTest {
         assertEquals("match_", matchTopic("é"))
     }
 
+    @Test
+    fun `the device ages a push out on the server's own figures`() {
+        val js = read(canonicalPath)
+        // Pinned against the exact JS, so a change to either side fails here.
+        assertTrue("ALERT_TTL_SECONDS changed in fcm.js", js.contains("export const ALERT_TTL_SECONDS = 300;"))
+        assertTrue(
+            "TTL_SECONDS_BY_TYPE changed in fcm.js",
+            js.contains("const TTL_SECONDS_BY_TYPE = { match_end: 6 * 60 * 60, match_start: 30 * 60 };"),
+        )
+        assertEquals(300_000L, alertMaxAgeMs(MatchAlertType.WICKET))
+        assertEquals(300_000L, alertMaxAgeMs(MatchAlertType.BOUNDARY))
+        assertEquals(300_000L, alertMaxAgeMs(MatchAlertType.MILESTONE))
+        assertEquals(30 * 60 * 1000L, alertMaxAgeMs(MatchAlertType.MATCH_START))
+        assertEquals(6 * 60 * 60 * 1000L, alertMaxAgeMs(MatchAlertType.MATCH_END))
+    }
+
     private fun read(relativePath: String): String {
         var dir: File? = File(System.getProperty("user.dir") ?: ".").absoluteFile
         while (dir != null) {

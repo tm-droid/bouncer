@@ -27,6 +27,18 @@ let tokenInFlight = null;
 // than one would hold the run open on an FCM outage for an alert that is minutes stale anyway.
 const MAX_SEND_ATTEMPTS = 2;
 
+// How long FCM holds a message for a device it cannot reach. Unset, FCM keeps it four weeks, so a
+// phone back from flight mode received every wicket of the flight at once. The server already
+// refuses to send a delivery older than ALERT_MAX_AGE_MS; this is the same bound in transit.
+// Mirrored by `alertMaxAgeMs` on the device and pinned by FcmJsVendorParityTest.
+export const ALERT_TTL_SECONDS = 300;
+// A result is still news hours later. A start is not, once the match is well under way.
+const TTL_SECONDS_BY_TYPE = { match_end: 6 * 60 * 60, match_start: 30 * 60 };
+
+export function ttlSecondsFor(type) {
+  return TTL_SECONDS_BY_TYPE[type] ?? ALERT_TTL_SECONDS;
+}
+
 /** Both secrets present. Callers log this once per run so an unset secret is visible in the logs. */
 export function fcmConfigured(env = process.env) {
   return Boolean(env.FIREBASE_SERVICE_ACCOUNT_JSON && env.FIREBASE_PROJECT_ID);
@@ -132,7 +144,13 @@ export async function sendTopicMessage(topic, data, {
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ message: { topic, data: stringData, android: { priority: "HIGH" } } }),
+          body: JSON.stringify({
+            message: {
+              topic,
+              data: stringData,
+              android: { priority: "HIGH", ttl: `${ttlSecondsFor(stringData.type)}s` },
+            },
+          }),
           signal: AbortSignal.timeout(TIMEOUT_MS),
         }
       );

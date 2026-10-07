@@ -148,10 +148,11 @@ private fun scheduleReminder(
             title = matchTitle,
             body = body,
             delayMillis = triggerTime - System.currentTimeMillis(),
+            matchId = matchId,
         )
         // Recorded so Settings › Match reminders can list and cancel it. The alarm alone left no
         // trace a user could find.
-        RemindersManager.updateReminder(context, Reminder(id, matchTitle, body, triggerTime))
+        RemindersManager.updateReminder(context, Reminder(id, matchTitle, body, triggerTime, matchId))
         saveReminderPreference(context, matchId, minutesBefore)
         Toast.makeText(context, "Reminder set: $label", Toast.LENGTH_SHORT).show()
     } catch (e: Exception) {

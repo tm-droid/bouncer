@@ -8,12 +8,13 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.tanush.bouncer.ui.widgets.WidgetUpdateWorkManagerWorker
 import io.sentry.Breadcrumb
+import com.tanush.bouncer.utils.RemindersManager
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import java.util.concurrent.TimeUnit
 
 /**
- * Re-enqueues periodic score polling after the device reboots.
+ * Re-enqueues periodic score polling and re-sets match reminders after the device reboots.
  *
  * Register in AndroidManifest.xml with:
  *   <receiver android:name=".services.BootCompletedReceiver"
@@ -41,6 +42,10 @@ class BootCompletedReceiver : BroadcastReceiver() {
             Log.e(TAG, "Failed to enqueue score polling on boot", e)
             Sentry.captureException(e)
         }
+
+        // AlarmManager forgets every alarm at reboot. getReminders degrades to none on a bad record
+        // and rescheduleAll isolates each reminder, so this cannot throw out of onReceive.
+        RemindersManager.rescheduleAll(context)
 
         // Refresh widgets 30s after boot using cached data — don't wait up to 15 min
         // for the first ScorePollingWorker tick.

@@ -40,6 +40,25 @@ private fun globalAllows(type: String, global: GlobalAlertSwitches): Boolean = w
     else -> true
 }
 
+private const val ALERT_MAX_AGE_MS = 5 * 60 * 1000L
+private const val RESULT_MAX_AGE_MS = 6 * 60 * 60 * 1000L
+private const val START_MAX_AGE_MS = 30 * 60 * 1000L
+
+/**
+ * How old a push of [type] may be and still be shown. The same figures as `ttlSecondsFor` in
+ * `fcm.js`, pinned by `FcmJsVendorParityTest`: FCM drops a message past its TTL, and this is the
+ * device's half for one that was already queued, or delivered late by a dozing phone.
+ */
+fun alertMaxAgeMs(type: String): Long = when (type) {
+    MatchAlertType.MATCH_END -> RESULT_MAX_AGE_MS
+    MatchAlertType.MATCH_START -> START_MAX_AGE_MS
+    else -> ALERT_MAX_AGE_MS
+}
+
+/** A push with no send time ([sentAtMs] ≤ 0) is of unknown age, which is never the same as old. */
+fun isAlertStale(type: String, sentAtMs: Long, nowMs: Long): Boolean =
+    sentAtMs > 0 && nowMs - sentAtMs > alertMaxAgeMs(type)
+
 /** The `type` values `match-sync` and `poll-live-matches` send to a match topic. */
 object MatchAlertType {
     const val WICKET = "wicket"

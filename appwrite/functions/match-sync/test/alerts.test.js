@@ -4,7 +4,7 @@ import { generateKeyPairSync } from "crypto";
 
 import { ALERT_MAX_AGE_MS, deliveryAlert, milestoneAlerts, resultAlert } from "../src/alerts.js";
 import { classifyEvent } from "../src/llm.js";
-import { matchTopic, resetFcmTokenCache, sendTopicMessage } from "../src/fcm.js";
+import { ALERT_TTL_SECONDS, matchTopic, resetFcmTokenCache, sendTopicMessage, ttlSecondsFor } from "../src/fcm.js";
 
 const NOW = 1_800_000_000_000;
 const base = { matchId: 161777, title: "India vs Australia, 3rd ODI", ball: "32.1", now: NOW, score: "145/4 (32.1)" };
@@ -85,7 +85,17 @@ test("sendTopicMessage: unconfigured sends nothing; configured posts a stringifi
   assert.equal(calls.filter((c) => c.url.includes("oauth2")).length, 1, "token is cached across sends");
   assert.equal(sends[0].url, "https://fcm.googleapis.com/v1/projects/p/messages:send");
   assert.equal(sends[0].init.headers.Authorization, "Bearer tok");
-  assert.deepEqual(JSON.parse(sends[0].init.body), { message: { topic: "match_1", data: { n: "5" }, android: { priority: "HIGH" } } });
+  assert.deepEqual(JSON.parse(sends[0].init.body), { message: { topic: "match_1", data: { n: "5" }, android: { priority: "HIGH", ttl: "300s" } } });
+});
+
+test("a push expires in transit: five minutes, longer for a start and a result", () => {
+  // The default is the same bound the server applies before sending at all.
+  assert.equal(ALERT_TTL_SECONDS * 1000, ALERT_MAX_AGE_MS);
+  for (const type of ["wicket", "boundary", "milestone", "MATCH_STARTED", undefined]) {
+    assert.equal(ttlSecondsFor(type), 300, String(type));
+  }
+  assert.equal(ttlSecondsFor("match_start"), 1800);
+  assert.equal(ttlSecondsFor("match_end"), 21600);
 });
 
 test("sendTopicMessage never throws", async () => {
