@@ -16,4 +16,6 @@
 <full-backup-content>
     <include domain="database" path="bouncer_db"/>
     <include domain="sharedpref" path="."/>
+    <!-- The choice to switch diagnostics off. See data_extraction_rules.xml. -->
+    <include domain="file" path="diagnostics_off"/>
 </full-backup-content>

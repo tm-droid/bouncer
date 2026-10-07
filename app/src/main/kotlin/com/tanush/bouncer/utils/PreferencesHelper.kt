@@ -44,7 +44,6 @@ object PreferencesHelper {
     const val KEY_SHOW_WIN_PROBABILITY = "show_win_probability"
     const val KEY_REDUCED_MOTION = "reduced_motion"
     const val KEY_REFRESH_INTERVAL = "refresh_interval"
-    const val KEY_SHARE_DIAGNOSTICS = "share_diagnostics"
 
     // Personalization defaults
     const val KEY_DEFAULT_LANDING = "default_landing"

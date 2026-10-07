@@ -261,10 +261,9 @@ fun SettingsScreenV2(
                         title = stringResource(R.string.settings_share_diagnostics),
                         subtitle = stringResource(R.string.settings_share_diagnostics_detail),
                         trailing = SettingsTrailing.Toggle(shareDiagnostics),
-                        onClick = {
-                            shareDiagnostics = !shareDiagnostics
-                            Diagnostics.setEnabled(context, shareDiagnostics)
-                        },
+                        // What setEnabled reports, not what was asked for: a choice that could
+                        // not be saved as "on" stays off, and the switch must say so.
+                        onClick = { shareDiagnostics = Diagnostics.setEnabled(context, !shareDiagnostics) },
                     )
                     SettingsItemV2(
                         icon = Icons.Default.Delete,
