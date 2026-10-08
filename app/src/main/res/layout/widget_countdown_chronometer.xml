@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The countdown's figure for the last day before a match. A Chronometer ticks by itself, in the
+     launcher's process; a Glance Text shows whatever it was given at the last 15-minute redraw. -->
+<Chronometer xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/countdown_chronometer"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:countDown="true"
+    android:fontFeatureSettings="tnum"
+    android:gravity="center"
+    android:textColor="@color/shiny_gold_deep"
+    android:textSize="24sp"
+    android:textStyle="bold" />

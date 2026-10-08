@@ -93,9 +93,7 @@
         {
             "$id": "bouncer-generate-commentary",
             "name": "bouncer-generate-commentary",
-            "$permissions": [
-                "execute(\"any\")"
-            ],
+            "$permissions": [],
             "enabled": true,
             "logging": true,
             "runtime": "node-22",

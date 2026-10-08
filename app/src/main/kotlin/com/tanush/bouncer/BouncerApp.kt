@@ -147,9 +147,9 @@ class BouncerApp : Application() {
         initializeSafely("AppwriteMatchDetailClient") { AppwriteMatchDetailClient.initialize() }
         initializeSafely("AppwriteMatchScorecardClient") { AppwriteMatchScorecardClient.initialize() }
         initializeSafely("NotificationInboxManager") { NotificationInboxManager.initialize(this, applicationScope) }
-        initializeSafely("AICacheService") {
-            AICacheService.initialize(BouncerDatabase.getInstance(this).aiCacheDao())
-        }
+        // AICacheService is not started. Nothing reads or writes that cache — the device generates
+        // no commentary — and starting it ran a Room delete and query on every launch and could
+        // still push old rows to Appwrite. The class stays until an R8 usage pass removes it.
         // Start Appwrite Realtime subscriptions (app-lifetime)
         initializeSafely("AppwriteRealtime") {
             val database = BouncerDatabase.getInstance(this)

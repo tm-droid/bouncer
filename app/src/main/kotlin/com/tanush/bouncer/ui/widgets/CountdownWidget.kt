@@ -32,6 +32,9 @@ import io.sentry.Sentry
 import io.sentry.SentryLevel
 import java.util.concurrent.TimeUnit
 import androidx.work.PeriodicWorkRequest
+import android.os.SystemClock
+import android.widget.RemoteViews
+import androidx.glance.appwidget.AndroidRemoteViews
 
 /**
  * Data class for scheduled match information
@@ -63,58 +66,28 @@ class CountdownWidget : GlanceAppWidget() {
 
     companion object {
         internal const val PREF_NAME = "bouncer_countdown_widget"
+        private const val TICKING_WINDOW_MS = 24 * 60 * 60 * 1000L
 
-        /**
-         * Update countdown widget with next scheduled match data
-         */
-        fun updateCountdownData(
-            context: Context,
-            matchId: String,
-            team1Name: String,
-            team2Name: String,
-            matchTitle: String,
-            venue: String,
-            startTimeMillis: Long,
-            matchType: String = "T20"
-        ) {
-            val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-            prefs.edit().apply {
-                putString("match_id", matchId)
-                putString("team1_name", team1Name)
-                putString("team2_name", team2Name)
-                putString("match_title", matchTitle)
-                putString("venue", venue)
-                putLong("start_time_millis", startTimeMillis)
-                putString("match_type", matchType)
+        /** Stores the match the widget counts down to. Written by [CountdownFeed] alone. */
+        internal fun rememberMatch(context: Context, match: ScheduledMatchData) {
+            context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit().apply {
+                putString("match_id", match.matchId)
+                putString("team1_name", match.team1Name)
+                putString("team2_name", match.team2Name)
+                putString("match_title", match.matchTitle)
+                putString("venue", match.venue)
+                putLong("start_time_millis", match.startTimeMillis)
+                putString("match_type", match.matchType)
                 putLong("last_update", System.currentTimeMillis())
                 apply()
             }
-            
-            // Schedule countdown updates
-            scheduleCountdownUpdates(context)
-            
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "widget"
-                message = "Countdown widget updated: $team1Name vs $team2Name"
-                level = SentryLevel.INFO
-            })
         }
-        
-        /**
-         * Clear countdown widget data
-         */
-        fun clearCountdownData(context: Context) {
-            val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-            prefs.edit().clear().apply()
-            cancelCountdownUpdates(context)
-            
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "widget"
-                message = "Countdown widget data cleared"
-                level = SentryLevel.INFO
-            })
+
+        /** No fixture ahead: the widget says so. The periodic refresh keeps running and will find the next. */
+        internal fun forgetMatch(context: Context) {
+            context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit().clear().apply()
         }
-        
+
         /**
          * Schedule periodic countdown updates via WorkManager, every 15 minutes.
          *
@@ -202,6 +175,12 @@ class CountdownWidget : GlanceAppWidget() {
             }
         }
     }
+
+    private fun tickingCountdown(packageName: String, remainingMillis: Long): RemoteViews =
+        RemoteViews(packageName, R.layout.widget_countdown_chronometer).apply {
+            setChronometerCountDown(R.id.countdown_chronometer, true)
+            setChronometer(R.id.countdown_chronometer, SystemClock.elapsedRealtime() + remainingMillis, null, true)
+        }
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
@@ -316,14 +295,21 @@ class CountdownWidget : GlanceAppWidget() {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = countdownValue,
-                        style = TextStyle(
-                            color = WidgetColorScheme.primary,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold
+                    if (timeRemainingMillis in 1 until TICKING_WINDOW_MS) {
+                        // Inside the last day the figure ticks by itself. Drawn as text it was
+                        // whatever the last 15-minute redraw gave it — a quarter of an hour out,
+                        // just when a match is about to start.
+                        AndroidRemoteViews(tickingCountdown(LocalContext.current.packageName, timeRemainingMillis))
+                    } else {
+                        Text(
+                            text = countdownValue,
+                            style = TextStyle(
+                                color = WidgetColorScheme.primary,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         )
-                    )
+                    }
                     Text(
                         text = countdownLabel,
                         style = TextStyle(
@@ -460,7 +446,9 @@ class CountdownUpdateWorker(
     
     override suspend fun doWork(): Result {
         return try {
-            // Update the countdown widget
+            // Which match, first: the fixture can change between redraws, and the one being
+            // counted down to starts and has to give way to the next.
+            CountdownFeed.refresh(context)
             val glanceManager = androidx.glance.appwidget.GlanceAppWidgetManager(context)
             val glanceIds = glanceManager.getGlanceIds(CountdownWidget::class.java)
             
@@ -491,6 +479,8 @@ class CountdownWidgetReceiver : GlanceAppWidgetReceiver() {
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
         CountdownWidget.scheduleCountdownUpdates(context)
+        // And once now, so a widget just placed has its match without waiting out a period.
+        WorkManager.getInstance(context).enqueue(OneTimeWorkRequestBuilder<CountdownUpdateWorker>().build())
         
         Sentry.addBreadcrumb(Breadcrumb().apply {
             category = "widget"
