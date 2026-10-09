@@ -3,8 +3,11 @@ package com.tanush.bouncer.ui.screens
 import androidx.annotation.StringRes
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
 import com.tanush.bouncer.data.SearchRepository
@@ -55,11 +58,20 @@ internal fun SearchResultsTabRow(
     val typography = BouncerThemeV2.typography
     // A tab with nothing in it is a dead end; only All and the current tab show when empty.
     val tabs = SearchTab.entries.filter { it == SearchTab.ALL || it == selectedTab || tabCount(it, results) > 0 }
+    val selectedIndex = tabs.indexOf(selectedTab).coerceAtLeast(0)
     ScrollableTabRow(
-        selectedTabIndex = tabs.indexOf(selectedTab).coerceAtLeast(0),
+        selectedTabIndex = selectedIndex,
         containerColor = colors.background,
         contentColor = colors.primaryText,
         edgePadding = BouncerThemeV2.spacing.md,
+        // The row's default indicator indexes `tabPositions[selectedTabIndex]` unguarded, and it
+        // can recompose with the new index against the positions of the previous layout. The tabs
+        // here grow as results land, so the index outran a two-tab layout (ANDROID-52, ANDROID-5D).
+        indicator = { tabPositions ->
+            tabPositions.getOrNull(selectedIndex)?.let { position ->
+                TabRowDefaults.SecondaryIndicator(Modifier.tabIndicatorOffset(position))
+            }
+        },
     ) {
         tabs.forEach { tab ->
             Tab(

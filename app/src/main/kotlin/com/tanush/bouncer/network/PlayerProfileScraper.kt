@@ -179,8 +179,14 @@ object PlayerProfileScraper {
             delay(backoffDelayMs(attempt))
         }
 
-        Sentry.captureException(lastException ?: Exception("Player profile fetch failed for $playerName"))
+        reportScrapeFailure(lastException ?: Exception("Player profile fetch failed for $playerName"))
         null
+    }
+
+    /** Offline and the site's own 5xx leave the caller on its cache; neither is reported. */
+    private fun reportScrapeFailure(failure: Exception) {
+        if (HttpClientProvider.isConnectivityException(failure) || isUpstreamOutage(failure)) return
+        Sentry.captureException(failure)
     }
 
     private sealed class ScrapeOutcome {
@@ -209,13 +215,17 @@ object PlayerProfileScraper {
                 ?: parseFromNextJsData(html, bestMatch.id, bestMatch.name)
                 ?: parseFromHtml(doc, bestMatch.id, bestMatch.name)
             ScrapeOutcome.Success(profile)
-        } catch (e: java.net.SocketTimeoutException) {
-            ScrapeOutcome.Retry(e)
-        } catch (e: java.net.UnknownHostException) {
-            ScrapeOutcome.Retry(e)
         } catch (e: Exception) {
-            ScrapeOutcome.Fatal(e)
+            failureOutcome(e)
         }
+    }
+
+    private fun failureOutcome(e: Exception): ScrapeOutcome = when (e) {
+        // Leaving the screen mid-scrape is not a failed scrape. Caught as a Fatal outcome it was
+        // reported from `scrapeProfile` on every profile closed early (ANDROID-53).
+        is kotlinx.coroutines.CancellationException -> throw e
+        is java.net.SocketTimeoutException, is java.net.UnknownHostException -> ScrapeOutcome.Retry(e)
+        else -> ScrapeOutcome.Fatal(e)
     }
 
     private fun buildProfileUrl(match: PlayerSearchResult): String {

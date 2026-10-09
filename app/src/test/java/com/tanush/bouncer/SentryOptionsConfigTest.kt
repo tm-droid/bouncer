@@ -23,6 +23,31 @@ class SentryOptionsConfigTest {
     // ── Cancellation filters ─────────────────────────────────────────────────
 
     @Test
+    fun `a cancellation is dropped whatever R8 has named its class`() {
+        // What a release build sends: the throwable is a CancellationException, and the type the
+        // SDK wrote for it is the minified class name, which no name test can match.
+        class Renamed : java.util.concurrent.CancellationException("The coroutine scope left the composition")
+        val event = SentryEvent(Renamed()).apply {
+            exceptions = mutableListOf(SentryException().apply { type = "a1"; value = "The coroutine scope left the composition" })
+        }
+        assertTrue(config.shouldDropEvent(event))
+    }
+
+    @Test
+    fun `an exception that only wraps a cancellation is dropped`() {
+        val event = SentryEvent(RuntimeException("wrapper", java.util.concurrent.CancellationException("left")))
+        assertTrue(config.shouldDropEvent(event))
+    }
+
+    @Test
+    fun `an ordinary exception with a throwable attached is kept`() {
+        val event = SentryEvent(IllegalStateException("boom")).apply {
+            exceptions = mutableListOf(SentryException().apply { type = "IllegalStateException"; value = "boom" })
+        }
+        assertFalse(config.shouldDropEvent(event))
+    }
+
+    @Test
     fun `JobCancellationException is dropped`() {
         val event = buildEvent("JobCancellationException" to "Job was cancelled")
         assertTrue(config.shouldDropEvent(event))

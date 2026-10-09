@@ -619,7 +619,7 @@ and Cricinfo's live-scores page a `liveInningPredictions` per match, and on 2026
 empty on every match listed (24 and 23). Their populated shapes are therefore **unknown, and
 nothing parsed them when this was written**: match-sync stores Cricbuzz's raw value once per over — in `wpr-{matchId}`
 as each arrives, because a container does not outlive a match, then in the log's `cricbuzz` array
-when the match ends — and raises one info event the first time it sees one;
+when the match ends (the info event it raised on first sight was removed once the shape was parsed);
 `cricinfoStep` does the same for Cricinfo every five minutes into `wci-{cricinfoId}` (one page
 covers every match; `hs-consumer-api` is 403), and `appwrite/tools/rival-winprob-watch.mjs` is the
 same parser run from a laptop. The page answered the container on 2026-10-06 — 200, 614 KB, 29
@@ -936,6 +936,15 @@ The server's `rankPlayers` mirrors the same normalisation and typo tier; both ar
 function's own test. A score tick re-runs only the local leg (`onSourcesChanged`) — never the billed
 player lookup.
 
+**A scraped site's 5xx and a cancelled coroutine are not app errors, and neither is told by its
+name.** `ScrapeFetcher` throws `ScrapeHttpException(code)`; `isUpstreamOutage` walks the cause chain
+for a 5xx and `AppResult.Error.report()` and the ViewModels skip it (ANDROID-54/56) — a 4xx still
+reports. `SentryOptionsConfig` tests the throwable itself for `CancellationException`: R8 renames
+library-internal classes, so `type.endsWith("CancellationException")` never matched Compose's in a
+release build (ANDROID-53, whose site was `PlayerProfileScraper.attemptScrape` catching it as a
+failed scrape). `ScrollableTabRow`'s default indicator indexes `tabPositions[selectedTabIndex]`
+unguarded; a row whose tab count changes passes its own (`SearchTabs.kt`, ANDROID-52).
+
 **Cross-language rules are pinned, not commented.** `LlmJsVendorParityTest` (llm.js), `ContextMathVendorParityTest` (contextmath.js, three copies),
 `NextFlightVendorParityTest` (nextflight.js), `WinProbJsVendorParityTest` (winprob.js),
 `SeriesClassificationParityTest` (`SeriesClassification.kt` ↔ `series.js`),
@@ -1130,7 +1139,10 @@ back to one. A header and a dismissal are not cleaned at all: each must BE its s
 Bodies are size-capped while read (`readBounded`). What an allowlist cannot stop is a plain-English
 instruction; the writer is told both accounts are reported text, and the checker and `carriesLink`
 gate what is stored. A 403/429 latches every Cricinfo request for an hour and reports at error
-level; any other failure latches that one match.
+level; any other failure latches that one match. A request that got **no answer** — the 8 s timeout, a dropped connection — is not a failure of
+the page: it is asked again in five minutes and only the third in a row costs the hour
+(`askAgainSoon`). One timeout used to switch a match's second source off for an hour and raise an
+error (ANDROID-5E, 32 in two days).
 
 **The same page feeds the Info tab, and the statistics page a wagon wheel.** `matchFacts` puts
 umpires, TV umpire, referee, debutants and reviews left on `mc-{matchId}` as `cricinfo`, written

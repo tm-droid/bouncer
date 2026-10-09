@@ -164,6 +164,37 @@ test("a refused page stops every Cricinfo request for an hour; another failure s
   __resetCricinfoGate();
 });
 
+test("a request that got no answer is asked again in five minutes, and only the third in a row costs the hour", async () => {
+  __resetCricinfoGate();
+  __setCricinfoList([LISTED]);
+  let calls = 0;
+  // What a timeout looks like from `fetchCricinfoMatch`: no status at all.
+  const hung = async () => { calls++; return { ok: false, reason: "The operation was aborted due to timeout", bytes: 0 }; };
+  const ok = async () => { calls++; return { ok: true, status: 200, bytes: 10, ...page }; };
+  const step = (fetchMatch, now) => cricinfoMatchStep({ matchId: "151565", summary: SUMMARY, log: silent, error: silent, now, fetchMatch });
+  const MIN = 60_000;
+
+  await step(hung, 0);
+  await step(ok, 4 * MIN);
+  assert.equal(calls, 1, "not asked again inside five minutes");
+  assert.equal((await step(ok, 6 * MIN)).balls.size, 8, "and asked again after them");
+
+  // An answer in between clears the count: two more hangs are still short of three in a row.
+  await step(hung, 20 * MIN);
+  await step(hung, 26 * MIN);
+  await step(ok, 32 * MIN);
+  assert.equal(calls, 5);
+
+  await step(hung, 40 * MIN);
+  await step(hung, 46 * MIN);
+  await step(hung, 52 * MIN);
+  await step(ok, 60 * MIN);
+  assert.equal(calls, 8, "the third hang in a row is the hour");
+  await step(ok, 113 * MIN);
+  assert.equal(calls, 9);
+  __resetCricinfoGate();
+});
+
 test("a match Cricinfo does not list, or has no commentary on, is left alone", async () => {
   __resetCricinfoGate();
   __setCricinfoList([{ ...LISTED, hasCommentary: false }]);

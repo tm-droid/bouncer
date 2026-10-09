@@ -64,6 +64,9 @@ object HttpClientProvider {
         if (e is ConnectException) return true
         if (e is java.net.SocketTimeoutException) return true
         if (e is java.net.SocketException) return true
+        // The server closed the connection before a status line arrived. OkHttp reports it as a
+        // bare IOException("unexpected end of stream") whose cause is this (ANDROID-5A).
+        if (e is java.io.EOFException || e.cause is java.io.EOFException) return true
         val cause = e.cause
         if (cause is UnknownHostException) return true
         if (cause is ConnectException) return true

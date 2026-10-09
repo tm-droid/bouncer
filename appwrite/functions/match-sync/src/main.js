@@ -923,7 +923,10 @@ export async function drainBacklog({ db, log, error, viewers, liveIds, now }) {
     }
   }));
   const held = heldMap().size;
-  log(`Backlog: wrote ${written} late line(s), ${held} still held`);
+  // With the reason: "1 still held" was logged on sixty runs in a row for one run-out
+  // (169910, 26.4) and nothing in the log said whether a writer was asked or what came back.
+  const why = reasons.size ? ` — ${[...reasons].sort().join(",")}: ${lastAttempts.join("; ") || "no attempt recorded"}` : "";
+  log(`Backlog: wrote ${written} late line(s), ${held} still held${why}`);
   reportBacklog({ reasons, attempts: lastAttempts });
   return { written, held };
 }
@@ -1005,9 +1008,6 @@ async function noteRival({ matchId, innings, raw, history, log, store }) {
   const next = mergeRival(samples, [{ innings: innings ?? null, over, at: Date.now(), raw: sample }]);
   rivalByMatch.set(matchId, next);
   if (store) await store.save(matchId, next);
-  // The shape is unknown until this fires once; the event carries it so the report tool can be
-  // taught to read it without waiting for a match to finish.
-  reportThrottled("cricbuzz-winprob-seen", 6 * 60 * 60 * 1000, "Cricbuzz published a win probability", { matchId, sample }, "info");
 }
 const overHistorySeeded = new Set();
 
@@ -2216,13 +2216,43 @@ const CRICINFO_PREFIX = "wci-";
 /** Just under five minutes, so the fifth one-minute run is the one that polls. */
 const CRICINFO_EVERY_MS = 4.5 * 60 * 1000;
 const CRICINFO_BLOCK_RETRY_MS = 60 * 60 * 1000;
+// A request that got no answer at all — the 8 s timeout, a dropped connection — says nothing about
+// the page, and the next one usually answers. It used to cost the same hour as a 404 and raise an
+// error-level event each time (ANDROID-5E: 32 events in two days, every one "aborted due to
+// timeout"), so one slow response switched the second commentary source off for a match for an
+// hour. It is now asked again after five minutes, and only the third in a row is treated as the
+// page being unavailable. A status of any kind is still an answer and is handled as before.
+const CRICINFO_UNANSWERED_RETRY_MS = 5 * 60 * 1000;
+const CRICINFO_UNANSWERED_LIMIT = 3;
+const CRICINFO_LIVE_KEY = "live";
+/** "live" or a Cricbuzz match id -> requests in a row that got no answer. */
+const cricinfoUnanswered = new Map();
 let lastCricinfoAt = 0;
 let cricinfoBlockedUntil = 0;
+
+/**
+ * Counts a failed Cricinfo request and says whether to simply ask again soon. True only for a
+ * request with no HTTP status that is not yet the third such in a row for [key].
+ */
+function askAgainSoon(key, page) {
+  if (page.status) {
+    cricinfoUnanswered.delete(key);
+    return false;
+  }
+  const strikes = (cricinfoUnanswered.get(key) ?? 0) + 1;
+  if (strikes >= CRICINFO_UNANSWERED_LIMIT) {
+    cricinfoUnanswered.delete(key);
+    return false;
+  }
+  cricinfoUnanswered.set(key, strikes);
+  return true;
+}
 
 /** Test seam: forget when Cricinfo was last asked and whether it refused. */
 export function __resetCricinfoGate() {
   lastCricinfoAt = 0;
   cricinfoBlockedUntil = 0;
+  cricinfoUnanswered.clear();
 }
 
 /**
@@ -2235,6 +2265,10 @@ export async function cricinfoStep({ storage, log, error, now = Date.now(), fetc
   try {
     const result = await fetchPredictions({ now });
     if (!result.ok) {
+      if (askAgainSoon(CRICINFO_LIVE_KEY, result)) {
+        log(`[CRICINFO] no answer (${result.reason}) — asked again at the next poll`);
+        return result;
+      }
       cricinfoBlockedUntil = now + CRICINFO_BLOCK_RETRY_MS;
       log(`[CRICINFO] unavailable (${result.reason}) status=${result.status} bytes=${result.bytes} — next attempt in 60 min`);
       reportThrottled("cricinfo-unavailable", STEADY_STATE_REPORT_MS, "Cricinfo's live page did not answer the container", {
@@ -2242,6 +2276,7 @@ export async function cricinfoStep({ storage, log, error, now = Date.now(), fetc
       });
       return result;
     }
+    cricinfoUnanswered.delete(CRICINFO_LIVE_KEY);
     log(`[CRICINFO] status=${result.status} bytes=${result.bytes} matches=${result.matches} live=${result.live} predictions=${result.rows.length}`);
     if (Array.isArray(result.list)) cricinfoList = result.list;
     const store = rivalStoreFor({ storage, error, prefix: CRICINFO_PREFIX });
@@ -2287,6 +2322,7 @@ export function __setCricinfoList(list) {
   cricinfoList = list;
   cricinfoBalls.clear();
   cricinfoMatchRetryAt.clear();
+  cricinfoUnanswered.clear();
   storedBalls.clear();
   wagonByMatch.clear();
   lastStatsAt.clear();
@@ -2311,6 +2347,11 @@ export async function cricinfoMatchStep({ matchId, summary, log, error, now = Da
       // A refusal is the site's answer to this container and stops every Cricinfo request; any
       // other failure is this page's own and stops only this match.
       const refused = page.status === 403 || page.status === 429;
+      if (askAgainSoon(matchId, page)) {
+        cricinfoMatchRetryAt.set(matchId, now + CRICINFO_UNANSWERED_RETRY_MS);
+        log(`[CRICINFO] match ${matchId} (${match.objectId}) no answer (${page.reason}) — next attempt in 5 min`);
+        return { balls: held, overs: [] };
+      }
       if (refused) cricinfoBlockedUntil = now + CRICINFO_BLOCK_RETRY_MS;
       else cricinfoMatchRetryAt.set(matchId, now + CRICINFO_BLOCK_RETRY_MS);
       log(`[CRICINFO] match ${matchId} (${match.objectId}) unavailable (${page.reason}) status=${page.status} bytes=${page.bytes} — next attempt in 60 min`);
@@ -2318,10 +2359,13 @@ export async function cricinfoMatchStep({ matchId, summary, log, error, now = Da
         refused ? "cricinfo-match-refused" : `cricinfo-match-unavailable:${matchId}`, STEADY_STATE_REPORT_MS,
         refused ? "Cricinfo refused a match page — the second commentary source is off for an hour" : "A Cricinfo match page could not be read",
         { matchId, cricinfoId: match.objectId, reason: page.reason, status: page.status ?? "none", bytes: page.bytes },
-        "error",
+        // Three requests in a row with no answer is the network between two hosts; a status is
+        // the site saying something about this page.
+        page.status ? "error" : "warning",
       );
       return { balls: held, overs: [] };
     }
+    cricinfoUnanswered.delete(matchId);
     for (const ball of page.balls) {
       const key = ballKey(ball.innings, ball.label, ball.extra);
       // The page's reading is the newer one: a corrected ball replaces the one it corrects.

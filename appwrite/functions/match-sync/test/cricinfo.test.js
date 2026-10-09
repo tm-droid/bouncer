@@ -109,6 +109,24 @@ test("a refusal backs off for an hour and does not fail the run", async () => {
   assert.equal(await cricinfoStep({ ...args, now: t0, fetchPredictions: async () => { throw new Error("boom"); } }), null);
 });
 
+test("a live page that did not answer is asked again at the next poll; the third in a row backs off", async () => {
+  __resetCricinfoGate();
+  let calls = 0;
+  const fetchPredictions = async () => { calls++; return { ok: false, reason: "The operation was aborted due to timeout", bytes: 0, rows: [] }; };
+  const args = { storage: bucket(), log: () => {}, error: () => {}, fetchPredictions };
+  const MIN = 60_000;
+  const t0 = 2_000_000_000;
+  await cricinfoStep({ ...args, now: t0 });
+  await cricinfoStep({ ...args, now: t0 + 5 * MIN });
+  assert.equal(calls, 2, "one hang does not stop the next poll");
+  await cricinfoStep({ ...args, now: t0 + 10 * MIN });
+  await cricinfoStep({ ...args, now: t0 + 15 * MIN });
+  assert.equal(calls, 3, "the third in a row does");
+  await cricinfoStep({ ...args, now: t0 + 71 * MIN });
+  assert.equal(calls, 4);
+  __resetCricinfoGate();
+});
+
 test("page content is validated and bounded before it reaches Storage", async () => {
   const { storableRow, CRICINFO_MAX_ROWS_PER_POLL } = await import("../src/cricinfo.js");
   const { isFileSafeId, rivalStoreFor } = await import("../src/main.js");

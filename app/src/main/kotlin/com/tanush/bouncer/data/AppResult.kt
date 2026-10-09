@@ -1,8 +1,17 @@
 package com.tanush.bouncer.data
 
+import com.tanush.bouncer.network.HttpClientProvider
+import com.tanush.bouncer.network.isUpstreamOutage
 import io.sentry.Sentry
 
-fun AppResult.Error.report() = Sentry.captureException(exception)
+/**
+ * Reports a failed result, unless the failure is the device being offline or the scraped site
+ * answering 5xx. Both leave the caller on its cache and neither is something a release can fix.
+ */
+fun AppResult.Error.report() {
+    if (HttpClientProvider.isConnectivityException(exception) || isUpstreamOutage(exception)) return
+    Sentry.captureException(exception)
+}
 
 @PublishedApi internal fun Throwable.hasOomCause(): Boolean {
     var t: Throwable? = this

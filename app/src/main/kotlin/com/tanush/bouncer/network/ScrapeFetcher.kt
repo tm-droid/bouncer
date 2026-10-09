@@ -68,9 +68,35 @@ object ScrapeFetcher {
 
         HttpClientProvider.sharedClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                throw IOException("HTTP ${response.code} fetching $url")
+                throw ScrapeHttpException(response.code, url)
             }
             return response.body?.string() ?: throw IOException("Empty body fetching $url")
         }
     }
 }
+
+/**
+ * A scraped page that answered with a non-2xx status. An [IOException] with the message the plain
+ * one carried, so every existing catch block and message check behaves as before; the status is a
+ * field so a reporting site can tell the site's own outage from a page that changed.
+ */
+class ScrapeHttpException(val code: Int, url: String) : IOException("HTTP $code fetching $url")
+
+/**
+ * True when [e] is, or wraps, a 5xx from a scraped site. That is the site's outage: every caller
+ * already falls back to what it has cached, and nothing in the app can change the answer. Cricbuzz
+ * 504s reached Sentry as three issues (ANDROID-54, ANDROID-56 and, before the scorecard path
+ * checked for it, ANDROID-48). A 4xx is not covered — a 404 on a URL the app built is a defect.
+ */
+internal fun isUpstreamOutage(e: Throwable): Boolean {
+    var t: Throwable? = e
+    repeat(MAX_CAUSE_DEPTH) {
+        val current = t ?: return false
+        if (current is ScrapeHttpException && current.code >= HTTP_SERVER_ERROR) return true
+        t = current.cause
+    }
+    return false
+}
+
+private const val MAX_CAUSE_DEPTH = 6
+private const val HTTP_SERVER_ERROR = 500

@@ -19,6 +19,7 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
 
     companion object {
         private const val TAG = "SentryOptionsConfig"
+        private const val CAUSE_DEPTH = 6
 
         /** Exception messages that indicate benign cancellations, not real errors. */
         private val IGNORED_EXCEPTION_MESSAGES = setOf(
@@ -89,6 +90,7 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
      * without reflection, giving regression coverage on the noise-filter rules.
      */
     internal fun shouldDropEvent(event: SentryEvent): Boolean {
+        if (isCancellation(event.throwable)) return true
         val exceptions = event.exceptions ?: return false
 
         for (sentryException in exceptions) {
@@ -140,6 +142,22 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
             }
         }
 
+        return false
+    }
+
+    /**
+     * True when the captured throwable is, or wraps, a cancellation. The type-name test below
+     * cannot be the only one: in a release build R8 renames library-internal classes, so
+     * Compose's `LeftCompositionCancellationException` arrives here under a two-letter name and
+     * is only called that again once the server has deobfuscated it (ANDROID-53).
+     */
+    private fun isCancellation(throwable: Throwable?): Boolean {
+        var t = throwable
+        repeat(CAUSE_DEPTH) {
+            val current = t ?: return false
+            if (current is java.util.concurrent.CancellationException) return true
+            t = current.cause
+        }
         return false
     }
 

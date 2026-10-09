@@ -9,6 +9,7 @@ import com.tanush.bouncer.data.report
 import com.tanush.bouncer.data.local.entities.SeriesCacheEntity
 import com.tanush.bouncer.models.Series
 import com.tanush.bouncer.network.SeriesScraper
+import com.tanush.bouncer.network.isUpstreamOutage
 import io.sentry.Sentry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -127,7 +128,7 @@ class SeriesListViewModel(application: Application) : AndroidViewModel(applicati
             if (showingCurrent()) showLoaded(current)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            Sentry.captureException(e)
+            if (!isUpstreamOutage(e)) Sentry.captureException(e)
             // An error state only when there is nothing to show. A failed refresh over a list
             // the user is already reading is not a failure they need to be told about.
             if (showingCurrent()) {
