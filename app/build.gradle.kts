@@ -130,9 +130,11 @@ android {
         manifestPlaceholders["sentryEnvironment"] = "production"
         manifestPlaceholders["sentryDebug"] = "false"
 
-        // Only include 64-bit ABIs — androidx.graphics.path native lib doesn't ship armeabi-v7a
+        // All four ABIs. This was 64-bit only on the belief that androidx.graphics.path ships no
+        // armeabi-v7a; graphics-path 1.0.1, sentry-native-ndk and datastore-core all ship all
+        // four, and a 32-bit phone answered INSTALL_FAILED_NO_MATCHING_ABIS.
         ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64")
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
         }
     }
 

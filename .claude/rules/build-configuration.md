@@ -44,4 +44,4 @@ kotlin.daemon.jvmargs=-Xmx5g -XX:+UseG1GC -XX:+UseStringDeduplication
 
 ## NDK Configuration
 
-Only 64-bit ABIs: `arm64-v8a`, `x86_64` (androidx.graphics.path native lib doesn't ship armeabi-v7a)
+All four ABIs: `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`. It was 64-bit only until 2026-10-09 on the belief that the androidx.graphics.path native lib ships no `armeabi-v7a`; graphics-path 1.0.1, sentry-native-ndk and datastore-core all ship all four, and a 32-bit phone (`ro.product.cpu.abilist` = `armeabi-v7a,armeabi`) answered `INSTALL_FAILED_NO_MATCHING_ABIS`. Check a new native dependency's AAR for all four `jni/` directories before adding it.
