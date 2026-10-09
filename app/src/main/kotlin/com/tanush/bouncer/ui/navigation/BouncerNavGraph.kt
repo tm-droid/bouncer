@@ -228,21 +228,29 @@ sealed class BouncerScreen(val route: String) {
     companion object {
         /**
          * All primary tab routes for bottom navigation.
+         *
+         * Lazy, like [moreChildRoutes]: these are static fields of BouncerScreen, so they are
+         * built while BouncerScreen initialises. When the first class touched is one of the
+         * objects named here (`BouncerScreen.Home.route` in a top-level val), that object's
+         * own initialiser is still waiting on its superclass and its INSTANCE reads as null —
+         * the list held a null tab and the first recomposition threw (ANDROID-5F).
          */
-        val primaryTabs = listOf(Home, SeriesList, News, More)
+        val primaryTabs by lazy { listOf(Home, SeriesList, News, More) }
 
         /**
          * Routes that should highlight the "More" tab when active.
          */
-        val moreChildRoutes = setOf(
-            Settings.route,
-            Appearance.route,
-            About.route,
-            DevTools.route,
-            Search.route,
-            PlayerComparison.route,
-            Notifications.route,
-        )
+        val moreChildRoutes by lazy {
+            setOf(
+                Settings.route,
+                Appearance.route,
+                About.route,
+                DevTools.route,
+                Search.route,
+                PlayerComparison.route,
+                Notifications.route,
+            )
+        }
 
         /**
          * Check if a route is a child of the "More" tab.
