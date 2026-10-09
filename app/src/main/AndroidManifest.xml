@@ -111,6 +111,16 @@
                 android:resource="@xml/countdown_widget_info" />
         </receiver>
 
+        <!-- Glance declares this activity for taps on items of a Glance LazyColumn or
+             LazyVerticalGrid, the only two things that build an intent for it. No widget here has
+             one, so nothing in the app can start it with the extras it requires, and started
+             without them it throws in onCreate: ten cold starts straight into it, nine from Play's
+             pre-launch devices (ANDROID-58). Removed rather than left as an entry point that can
+             only crash. A widget that adopts a Glance lazy list must delete this element. -->
+        <activity
+            android:name="androidx.glance.appwidget.action.InvisibleActionTrampolineActivity"
+            tools:node="remove" />
+
         <!-- Widget Configuration Activity -->
         <activity
             android:name=".ui.widgets.WidgetConfigurationActivity"

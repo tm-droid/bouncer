@@ -29,6 +29,7 @@ import {
   resetRewriteBatcher,
   secondReportNote,
   syncMatch,
+  playerNamesOf,
 } from "../src/main.js";
 
 /**
@@ -504,4 +505,20 @@ test("a label already stored is not a hole when Cricbuzz republishes around it",
   assert.deepEqual(cricinfoFills({ matchId: "ci-6", fresh, cricinfo, fallbackInnings: 1 }), []);
   // An innings boundary and an unlabelled item are not holes.
   assert.deepEqual(cricinfoFills({ matchId: "ci-5", fresh: [fresh[0], { ...fresh[1], innings: 2 }], cricinfo, fallbackInnings: 1 }), []);
+});
+
+test("two sites' different short names for one player agree once the full name is known", () => {
+  // ANDROID-5C: Cricbuzz wrote "Ahmadzai", Cricinfo "Yamin", and every ball he bowled was reported
+  // as a different bowler.
+  const cbLine = { clean: "Ahmadzai to Shadman Islam, no run, good length outside off", runs: 0, wicket: false };
+  const theirs = { title: "Yamin to Shadman", runs: 0, wicket: false };
+  assert.equal(disagreement(cbLine, theirs), "bowler");
+  assert.equal(disagreement(cbLine, theirs, ["Shadman Islam", "Yamin Ahmadzai"]), null);
+  // Two different players do not become one because a roster exists.
+  assert.equal(disagreement(cbLine, { ...theirs, title: "Saleem to Shadman" }, ["Yamin Ahmadzai", "Mohammad Saleem Safi"]), "bowler");
+  assert.deepEqual(
+    playerNamesOf({ batsmen: [{ name: "Shadman Islam" }], bowler: { name: "Mohammad Saleem Safi" }, scorecard: { innings: [{ batsmen: [], bowlers: [{ name: "Yamin Ahmadzai" }] }] } }),
+    ["Shadman Islam", "Mohammad Saleem Safi", "Yamin Ahmadzai"],
+  );
+  assert.deepEqual(playerNamesOf(null), []);
 });

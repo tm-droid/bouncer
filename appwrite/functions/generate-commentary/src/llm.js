@@ -823,13 +823,36 @@ export async function generateBatch(items, options = {}) {
   });
   if (!raw) return out;
 
+  // A key is `matchId|ball|timestamp`, and a model does not always copy thirteen digits: for
+  // `169910|26.4|1791530585051` gemini-flash-lite answered `…585050` on four runs of four. The line
+  // was dropped as an unknown key with nothing recorded, the delivery read as `providers_exhausted`,
+  // and it was asked for again — two calls a run for two hours — until one sample copied the digits
+  // (ANDROID-4Z). The match and the ball are what identify a delivery to a reader; the timestamp
+  // only separates two deliveries that share a label (a wide and the ball after it). So a tag whose
+  // match and ball belong to exactly one delivery in the batch is that delivery's.
+  const stemOf = (key) => {
+    const parts = String(key).split("|");
+    return parts.length >= 3 ? parts.slice(0, 2).join("|") : null;
+  };
+  const byStem = new Map();
+  for (const i of items) {
+    const stem = stemOf(i.key);
+    if (stem) byStem.set(stem, byStem.has(stem) ? null : i.key);
+  }
+
   for (const line of raw.split("\n").map((l) => l.trim()).filter(Boolean)) {
     const m = line.match(/^\[([^\]]+)\]:\s*(.+)$/);
     if (!m) continue;
-    const [, key, body] = m;
+    const [, tag, body] = m;
+    const key = items.some((i) => i.key === tag) ? tag : byStem.get(stemOf(tag)) ?? null;
     // Unknown or duplicated keys are dropped rather than guessed at: both mean the model invented
     // structure, and the delivery is better served raw than served somebody else's ball.
-    if (!items.some((i) => i.key === key) || out.has(key)) continue;
+    if (!key) {
+      // Said out loud: an answer that was thrown away is not a provider that did not answer.
+      options.attempts?.push(`${options.used?.provider ?? "unknown"}: answered with a tag that matches no delivery (${tag.slice(0, 60)})`);
+      continue;
+    }
+    if (out.has(key)) continue;
     if (body.trim()) out.set(key, body.trim());
   }
   return out;

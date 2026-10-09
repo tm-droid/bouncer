@@ -26,6 +26,10 @@ let tokenInFlight = null;
 // One retry. A send is a single small POST, and FCM's own guidance for 429/5xx is to retry; more
 // than one would hold the run open on an FCM outage for an alert that is minutes stale anyway.
 const MAX_SEND_ATTEMPTS = 2;
+// The retry used to follow at once. Against a 429 that asks the same question of the same rate
+// limit in the same instant, and RESOURCE_EXHAUSTED came back on both attempts (ANDROID-50). One
+// second is long enough for a per-second quota to move and short enough not to hold the run.
+const RETRY_DELAY_MS = 1_000;
 
 // How long FCM holds a message for a device it cannot reach. Unset, FCM keeps it four weeks, so a
 // phone back from flight mode received every wicket of the flight at once. The server already
@@ -130,8 +134,11 @@ export async function sendTopicMessage(topic, data, {
   fetchFn = globalThis.fetch,
   now = Date.now(),
   onError,
+  retryDelayMs = RETRY_DELAY_MS,
 } = {}) {
   if (!fcmConfigured(env)) return false;
+  // A rate limit and a server error are worth waiting out; an expired token is not.
+  const pause = () => new Promise((resolve) => setTimeout(resolve, retryDelayMs));
   const stringData = Object.fromEntries(
     Object.entries(data).filter(([, v]) => v !== null && v !== undefined).map(([k, v]) => [k, String(v)])
   );
@@ -161,7 +168,10 @@ export async function sendTopicMessage(topic, data, {
         cachedTokenExpiresAt = 0;
       }
       const retryable = resp.status === 401 || resp.status === 429 || resp.status >= 500;
-      if (retryable && !last) continue;
+      if (retryable && !last) {
+        if (resp.status !== 401) await pause();
+        continue;
+      }
       const fcmStatus = typeof resp.text === "function" ? await errorStatusOf(resp) : null;
       onError?.(
         `FCM send to ${topic} failed: HTTP ${resp.status}${fcmStatus ? ` ${fcmStatus}` : ""} (attempt ${attempt})`,

@@ -2462,6 +2462,22 @@ export async function noteCricinfoFacts({ contexts, matchId, facts, log, error }
   }
 }
 
+/**
+ * Every full player name this run's Cricbuzz pages carry for a match: the two at the crease, the
+ * bowler, and the scorecard when this run fetched one. See `sameName` in cricinfo.js.
+ */
+export function playerNamesOf(detail) {
+  const names = new Set();
+  const add = (name) => { if (typeof name === "string" && name.trim()) names.add(name.trim()); };
+  for (const batter of detail?.batsmen ?? []) add(batter?.name);
+  add(detail?.bowler?.name);
+  for (const innings of detail?.scorecard?.innings ?? []) {
+    for (const batter of innings?.batsmen ?? []) add(batter?.name);
+    for (const bowler of innings?.bowlers ?? []) add(bowler?.name);
+  }
+  return [...names];
+}
+
 /** Opens the note that carries Cricinfo's text for a ball to the writer and the checker. */
 export const SECOND_REPORT_PREFIX = " [Second report: ";
 
@@ -2469,10 +2485,10 @@ export const SECOND_REPORT_PREFIX = " [Second report: ";
  * The note for a ball both sites describe, or "" — when Cricinfo has not published it, has no
  * description of it, or is describing something else under the same label (`disagreement`).
  */
-export function secondReportNote({ clean, ball, innings, cricinfo, matchId, log }) {
+export function secondReportNote({ clean, ball, innings, cricinfo, matchId, log, names = [] }) {
   const other = cricinfo?.balls?.get(ballKey(innings, ball, parseBallOutcome(clean).kind));
   if (!other?.text) return "";
-  const why = disagreement({ clean, runs: parseBallOutcome(clean).runs, wicket: classifyEvent(clean) === "WICKET" }, other);
+  const why = disagreement({ clean, runs: parseBallOutcome(clean).runs, wicket: classifyEvent(clean) === "WICKET" }, other, names);
   if (why) {
     log?.(`[CRICINFO-DISAGREE] ${matchId}/${ball}: ${why} — cricbuzz "${clean.slice(0, 80)}" vs cricinfo "${other.title}, ${other.runs}${other.wicket ? " W" : ""}"`);
     reportThrottled(`cricinfo-disagree:${matchId}`, STEADY_STATE_REPORT_MS, "Cricinfo and Cricbuzz disagree about a delivery — the second report was left out", {
@@ -3212,12 +3228,13 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
   const rewrites = new Map();
   if (storeCommentary) {
     const queued = [];
+    const names = playerNamesOf(detail);
     for (const item of fresh) {
       const classified = classifyCommentaryItem(item);
       if (!classified) continue;
       // A filled delivery IS Cricinfo's report, so it has no second one.
       const second = item.cricinfo ? "" : secondReportNote({
-        clean: classified.clean, ball: classified.ball, innings: item.innings ?? fallbackInnings, cricinfo, matchId, log,
+        clean: classified.clean, ball: classified.ball, innings: item.innings ?? fallbackInnings, cricinfo, matchId, log, names,
       });
       // A bare scorer's line is templated only when nobody described the ball.
       const plain = second ? null : plainLine(classified.clean, Number(item.timestamp));

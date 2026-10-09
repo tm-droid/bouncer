@@ -130,6 +130,11 @@ export function ballMetricOf(raw) {
 export function findCommentaryGaps(balls) {
   const gaps = [];
   let previous = null;
+  const present = new Set();
+  for (const entry of Array.isArray(balls) ? balls : []) {
+    const metric = ballMetricOf(entry?.ball);
+    if (metric) present.add(`${entry?.innings ?? null}|${metric.label}`);
+  }
 
   for (const entry of Array.isArray(balls) ? balls : []) {
     const metric = ballMetricOf(entry?.ball);
@@ -146,7 +151,14 @@ export function findCommentaryGaps(balls) {
 
     const missing = deliveriesBetween(previous.metric, metric);
     if (missing > 0) {
-      gaps.push({ innings, after: previous.metric.label, before: metric.label, missing });
+      // A ball that is elsewhere in this same batch is not missing. The batch is in timestamp
+      // order, and Cricbuzz's timestamps do not always follow the over: match 172671's run of
+      // 08:47 on 2026-10-09 wrote 26.1 to 26.4 and was reported as having lost 26.3 and 26.4,
+      // because a 26.5 sat between 26.2 and 26.3 (ANDROID-5H).
+      const absent = labelsBetween(previous.metric, metric).filter((label) => !present.has(`${innings}|${label}`));
+      if (absent.length > 0) {
+        gaps.push({ innings, after: previous.metric.label, before: metric.label, missing: absent.length });
+      }
     }
     // Advance on any forward move, gap or not. Staying put would re-report the same hole against
     // every later ball in the over.
@@ -179,6 +191,20 @@ function deliveriesBetween(from, to) {
 
 /** Legal deliveries in an over — used only to size an over that was skipped in full. */
 const BALLS_PER_OVER = 6;
+
+/** The labels `deliveriesBetween` counts, in order. The source over's tail is left out there too. */
+function labelsBetween(from, to) {
+  const labels = [];
+  if (to.over === from.over) {
+    for (let ball = from.ball + 1; ball < to.ball; ball++) labels.push(`${to.over}.${ball}`);
+    return labels;
+  }
+  for (let over = from.over + 1; over < to.over; over++) {
+    for (let ball = 1; ball <= BALLS_PER_OVER; ball++) labels.push(`${over}.${ball}`);
+  }
+  for (let ball = 1; ball < to.ball; ball++) labels.push(`${to.over}.${ball}`);
+  return labels;
+}
 
 // Returns newest-first, de-duplicated by timestamp: [{ timestamp, commText, ballMetric, innings }]
 export function parseCommentary(html) {

@@ -142,3 +142,36 @@ test("the token budget scales with the batch, or later lines get truncated away"
   assert.ok(sent[0].max_tokens >= 120 * ITEMS.length, `max_tokens ${sent[0].max_tokens} must scale with 3 items`);
   assert.ok(BATCH_MAX_ITEMS >= 6 && BATCH_MAX_ITEMS <= 20, "a batch is an over-ish, not a whole innings");
 });
+
+test("a tag with a miscopied timestamp still reaches its delivery, by match and ball", async () => {
+  // ANDROID-4Z as it happened: the last digit of thirteen came back one lower.
+  const items = [
+    { key: "169910|26.4|1791530585051", text: "Ajayveer Hundal to Mujibur Ali, out Hasnain Ul Wahab Run Out!!" },
+    { key: "172671|6.5|1791530600000", text: "Ahmadzai to Shadman Islam, no run" },
+  ];
+  const attempts = [];
+  const { result } = await withStub(
+    () => generateBatch(items, { attempts }),
+    () => reply("[169910|26.4|1791530585050]: run out for ninety-three.\n[172671|6.5|1791530600000]: defended.")
+  );
+  assert.equal(result.get("169910|26.4|1791530585051"), "run out for ninety-three.");
+  assert.equal(result.get("172671|6.5|1791530600000"), "defended.");
+  assert.deepEqual(attempts, []);
+});
+
+test("a miscopied tag is not guessed at when two deliveries share the ball label", async () => {
+  // A wide carries the label of the ball after it; only the timestamp tells them apart.
+  const items = [
+    { key: "169910|26.4|1000000000001", text: "Hundal to Ali, wide" },
+    { key: "169910|26.4|1000000000002", text: "Hundal to Ali, no run" },
+  ];
+  const attempts = [];
+  const used = {};
+  const { result } = await withStub(
+    () => generateBatch(items, { attempts, used }),
+    () => reply("[169910|26.4|1000000000009]: somebody's ball.")
+  );
+  assert.equal(result.size, 0);
+  assert.equal(attempts.length, 1);
+  assert.match(attempts[0], /answered with a tag that matches no delivery \(169910\|26\.4\|1000000000009\)/);
+});

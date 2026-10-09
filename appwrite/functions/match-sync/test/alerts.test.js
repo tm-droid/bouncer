@@ -158,3 +158,17 @@ test("sendTopicMessage: concurrent cold sends share one token exchange", async (
   assert.deepEqual(results, [true, true, true]);
   assert.equal(exchanges, 1);
 });
+
+test("sendTopicMessage: a rate limit is waited out before the one retry", async () => {
+  // ANDROID-50: the retry followed at once and FCM answered RESOURCE_EXHAUSTED to both.
+  resetFcmTokenCache();
+  const sendTimes = [];
+  const fetchFn = async (url) => {
+    if (String(url).includes("oauth2")) return tokenOk;
+    sendTimes.push(Date.now());
+    return sendTimes.length === 1 ? { ok: false, status: 429, text: async () => "" } : { ok: true, status: 200 };
+  };
+  assert.equal(await sendTopicMessage("match_1", { a: 1 }, { env: sendEnv(), fetchFn, now: NOW, retryDelayMs: 40 }), true);
+  assert.equal(sendTimes.length, 2);
+  assert.ok(sendTimes[1] - sendTimes[0] >= 35, `retried after ${sendTimes[1] - sendTimes[0]}ms`);
+});

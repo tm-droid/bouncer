@@ -411,7 +411,21 @@ export function parseCricinfoMatchPage(html) {
 const nameWords = (name) => String(name ?? "").toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 2);
 // Cricinfo's header is a short name and not always the surname ("Arshdeep" for Arshdeep Singh,
 // "Hosein" for Akeal Hosein), so one shared word is the test.
-const sameName = (a, b) => nameWords(a).some((w) => nameWords(b).includes(w));
+//
+// The two sites can also shorten one name to different halves: Cricbuzz wrote "Ahmadzai" and
+// Cricinfo "Yamin" for Yamin Ahmadzai, so every ball he bowled read as a different bowler and lost
+// its second report (ANDROID-5C). `names` is the full names this match's Cricbuzz pages carry —
+// the crease, the bowler, the scorecard — and two short names that are both part of one of them
+// are one player. With no such name the test is the shared word, as before.
+const sameName = (a, b, names = []) => {
+  const first = nameWords(a);
+  const second = nameWords(b);
+  if (first.some((w) => second.includes(w))) return true;
+  return names.some((full) => {
+    const words = nameWords(full);
+    return first.some((w) => words.includes(w)) && second.some((w) => words.includes(w));
+  });
+};
 
 /**
  * Whether Cricinfo's delivery and Cricbuzz's are the same event, or the reason they are not.
@@ -422,13 +436,14 @@ const sameName = (a, b) => nameWords(a).some((w) => nameWords(b).includes(w));
  * of this ball, and is left out.
  *
  * @param cb `{ clean, runs, wicket }` — the Cricbuzz line and what its outcome clause says
+ * @param names full player names known for this match, for two sites' different short names
  */
-export function disagreement(cb, ball) {
+export function disagreement(cb, ball, names = []) {
   const header = String(cb?.clean ?? "").match(/^(.+?) to ([^,]+),/);
   const title = String(ball?.title ?? "").match(/^(.+?) to (.+)$/);
   if (!header || !title) return "unreadable header";
-  if (!sameName(header[1], title[1])) return "bowler";
-  if (!sameName(header[2], title[2])) return "batter";
+  if (!sameName(header[1], title[1], names)) return "bowler";
+  if (!sameName(header[2], title[2], names)) return "batter";
   if (Boolean(cb.wicket) !== ball.wicket) return "wicket";
   // A dismissal's clause states no runs on Cricbuzz, so there is nothing to compare.
   if (!ball.wicket && cb.runs !== null && cb.runs !== ball.runs) return "runs";

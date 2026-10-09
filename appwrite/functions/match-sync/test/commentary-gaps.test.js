@@ -72,3 +72,21 @@ test("a null innings is still one innings, and is compared", () => {
     { innings: null, after: "12.5", before: "13.4", missing: 3 },
   ]);
 });
+
+test("a ball elsewhere in the same batch is not missing", () => {
+  // Match 172671, the run of 08:47 on 2026-10-09: all of 26.1 to 26.4 were written, and the run
+  // reported 26.3 and 26.4 lost, because the batch is in timestamp order and a 26.5 came early.
+  assert.deepEqual(findCommentaryGaps(over(1, "26.1", "26.2", "26.5", "26.6", "26.3", "26.4")), []);
+});
+
+test("an out-of-order batch still reports the balls that really are absent", () => {
+  assert.deepEqual(
+    findCommentaryGaps(over(1, "26.1", "26.2", "26.6", "26.3")),
+    [{ innings: 1, after: "26.2", before: "26.6", missing: 2 }],
+  );
+});
+
+test("the same label in another innings does not fill a hole", () => {
+  const balls = [...over(1, "26.3"), ...over(2, "26.1", "26.2", "26.5")];
+  assert.deepEqual(findCommentaryGaps(balls), [{ innings: 2, after: "26.2", before: "26.5", missing: 2 }]);
+});

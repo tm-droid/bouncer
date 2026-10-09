@@ -945,6 +945,31 @@ release build (ANDROID-53, whose site was `PlayerProfileScraper.attemptScrape` c
 failed scrape). `ScrollableTabRow`'s default indicator indexes `tabPositions[selectedTabIndex]`
 unguarded; a row whose tab count changes passes its own (`SearchTabs.kt`, ANDROID-52).
 
+**A batch key is thirteen digits long and a model does not always copy them.** `generateBatch`
+matched a reply line to its delivery by the exact `matchId|ball|timestamp` tag; for
+`169910|26.4|1791530585051` gemini-flash-lite answered `…585050` four times of four, the line was
+dropped with nothing in `attempts`, and the delivery read as `providers_exhausted` — two writer
+calls a run for two hours (ANDROID-4Z). A tag whose match and ball belong to exactly one delivery
+in the batch is now that delivery's; two deliveries sharing a label (a wide and the next ball) are
+still told apart by timestamp alone and a miscopy between them is dropped. A dropped tag is written
+to `attempts`. **`providers_exhausted` with no attempt recorded means an answer was thrown away,
+not that nobody answered.**
+
+**Three monitors were reporting things that were not so (2026-10-09).** `findCommentaryGaps` walks
+a batch in timestamp order, and Cricbuzz's timestamps do not always follow the over: a run that
+wrote 26.1–26.4 reported 26.3 and 26.4 lost (ANDROID-5H). A label elsewhere in the same batch is no
+longer missing. `disagreement` compared the two sites' short names by a shared word, and Cricbuzz's
+"Ahmadzai" and Cricinfo's "Yamin" share none, so every ball Yamin Ahmadzai bowled lost its second
+report (ANDROID-5C); it now takes `playerNamesOf(detail)` — the full names on the match's own
+Cricbuzz pages. The `batter`/`runs` disagreements that remain are the sites labelling balls one
+apart after an extra, and leaving the second report out there is correct. And FCM's one retry
+followed a 429 at once; it waits a second now (ANDROID-50).
+
+**Glance's `InvisibleActionTrampolineActivity` is removed from the manifest.** Only a Glance
+`LazyColumn`/`LazyVerticalGrid` builds an intent for it and no widget here has one, so it could only
+be started bare, where it throws in `onCreate` (ANDROID-58, nine of ten from Play's pre-launch
+devices). A widget that adopts a Glance lazy list must delete that `tools:node="remove"` element.
+
 **Cross-language rules are pinned, not commented.** `LlmJsVendorParityTest` (llm.js), `ContextMathVendorParityTest` (contextmath.js, three copies),
 `NextFlightVendorParityTest` (nextflight.js), `WinProbJsVendorParityTest` (winprob.js),
 `SeriesClassificationParityTest` (`SeriesClassification.kt` ↔ `series.js`),

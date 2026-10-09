@@ -70,14 +70,21 @@ class SeriesDetailScraper(
 
     private fun slugFor(seriesId: String): String = slugs[seriesId] ?: run {
         val landing = fetch("${CricBuzzUrls.BASE}/cricket-series/$seriesId/matches")
-        val slug = seriesSlugOf(landing, seriesId)
-            ?: throw AppException.ParseException(message = "No slugged link on series $seriesId landing page")
+        // With what came back: the page for series 13180 answered 200 with no slugged link twice
+        // on 2026-10-04 and has carried them ever since, and the report said nothing about the
+        // body it was given (ANDROID-59).
+        val slug = seriesSlugOf(landing, seriesId) ?: throw AppException.ParseException(
+            message = "No slugged link on series $seriesId landing page " +
+                "(${landing.length} chars, title \"${TITLE.find(landing)?.groupValues?.get(1)?.take(TITLE_MAX).orEmpty()}\")"
+        )
         slugs[seriesId] = slug
         slug
     }
 
     companion object {
         private const val TIMEOUT_MS = 10_000
+        private const val TITLE_MAX = 80
+        private val TITLE = Regex("<title>([^<]*)", RegexOption.IGNORE_CASE)
 
         // A slug never changes for a series id; remembering it saves one page fetch per tab.
         private val slugs = ConcurrentHashMap<String, String>()
