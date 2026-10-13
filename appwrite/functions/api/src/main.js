@@ -16,12 +16,31 @@ import presence from "./presence/main.js";
 import highlights from "./highlights/main.js";
 import prune from "./prune/main.js";
 
-/** On-demand routes, by the execution's path. The device sends one of these; nothing else is served. */
+/**
+ * On-demand routes, by the execution's path. The device sends one of these; nothing else is served.
+ *
+ * Each carries the timeout it had as its own function. The function's own timeout is 300 s, sized
+ * for the prune, and these routes are `execute("any")`: without a cap of their own, a hung upstream
+ * would let any caller hold a container ten times longer than before, against a 100 GB-hour plan.
+ */
 export const ROUTES = {
-  "/news": news,
-  "/player-search": playerSearch,
-  "/presence": presence,
+  "/news": { handler: news, timeoutMs: 30_000 },
+  "/player-search": { handler: playerSearch, timeoutMs: 90_000 },
+  "/presence": { handler: presence, timeoutMs: 15_000 },
 };
+
+/** [work]'s result, or [onTimeout]'s once [ms] has passed. Returning ends the execution. */
+export async function withTimeout(work, ms, onTimeout) {
+  let timer;
+  const expired = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(onTimeout()), ms);
+  });
+  try {
+    return await Promise.race([work, expired]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * Which scheduled jobs a quarter-hourly tick runs, as a pure function of the clock (UTC).
@@ -82,7 +101,11 @@ export default async (context) => {
     return last ?? res.json({ scheduled: true, ran });
   }
 
-  const handler = ROUTES[routeOf(req.path)];
-  if (!handler) return res.json({ error: "unknown_route", path: req.path ?? null }, 404);
-  return handler(context);
+  const path = routeOf(req.path);
+  const route = ROUTES[path];
+  if (!route) return res.json({ error: "unknown_route", path: req.path ?? null }, 404);
+  return withTimeout(route.handler(context), route.timeoutMs, () => {
+    error(`${path} exceeded its ${route.timeoutMs / 1000}s budget`);
+    return res.json({ error: "route_timeout", path }, 504);
+  });
 };

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import handler, { ROUTES, routeOf, scheduledJobs } from "../src/main.js";
+import handler, { ROUTES, routeOf, scheduledJobs, withTimeout } from "../src/main.js";
 
 const at = (iso) => scheduledJobs(new Date(iso));
 
@@ -56,4 +56,18 @@ test("an unknown route is a 404, never a default handler", async () => {
   const out = await handler({ req: { path: "/", headers: {} }, res, log() {}, error() {} });
   assert.equal(out.status, 404);
   assert.equal(out.body.error, "unknown_route");
+});
+
+test("each public route keeps the timeout it had as its own function", () => {
+  // The function's timeout is 300 s for the prune. These are callable by anyone.
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(ROUTES).map(([path, r]) => [path, r.timeoutMs])),
+    { "/news": 30_000, "/player-search": 90_000, "/presence": 15_000 },
+  );
+});
+
+test("a route that outlives its budget is answered for, not waited on", async () => {
+  const never = new Promise(() => {});
+  assert.equal(await withTimeout(never, 20, () => "timed out"), "timed out");
+  assert.equal(await withTimeout(Promise.resolve("done"), 1000, () => "timed out"), "done");
 });
