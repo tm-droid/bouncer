@@ -597,6 +597,44 @@ test("an endpoint that hung is not asked again on the line's later walks", async
   assert.equal(seen.filter((n) => n.startsWith("gemini")).length, 1, "one timeout for the whole line");
 });
 
+test("a rung that timed out is not asked again for five minutes, on any line", async () => {
+  // 2026-10-13: gemini-flash-lite-2 hung for four hours. The skip above lasts one line, a run makes
+  // several walks, and each paid its own 15s: runs went from 17s to 52s, which is compute the
+  // Free plan meters. The next rung answers at once, as it did after the wait.
+  const realNow = Date.now;
+  let now = realNow();
+  Date.now = () => now;
+  try {
+    const attempts = [];
+    const { seen } = await withSecondProject(
+      (name) => (name === "gemini-flash-lite" ? timedOut() : completion("19.2: A dot ball.")),
+      async () => {
+        await generateLine("19.2: Bumrah to Maxwell, no run", {});
+        await generateLine("19.3: Bumrah to Maxwell, no run", { attempts });
+        now += 5 * 60 * 1000 + 1;
+        await generateLine("19.4: Bumrah to Maxwell, no run", {});
+      }
+    );
+    assert.equal(seen.filter((n) => n === "gemini-flash-lite").length, 2, "once, then once more after the latch expires");
+    assert.ok(attempts.some((a) => /^gemini-flash-lite: not asked: timed out/.test(a)), "the skip is on the record");
+  } finally {
+    Date.now = realNow;
+  }
+});
+
+test("a rung cut short by the request's deadline is not marked as hanging", async () => {
+  // Asked with two seconds left, it is given two seconds. Running out of them says nothing about
+  // the rung, and latching on it would remove a working one.
+  const { seen } = await withSecondProject(
+    (name) => (name === "gemini-flash-lite" ? timedOut() : completion("19.2: A dot ball.")),
+    async () => {
+      await generateLine("19.2: Bumrah to Maxwell, no run", { deadlineAt: Date.now() + 2_000 });
+      await generateLine("19.3: Bumrah to Maxwell, no run", {});
+    }
+  );
+  assert.equal(seen.filter((n) => n === "gemini-flash-lite").length, 2);
+});
+
 test("no rung is asked past the request's deadline", async () => {
   const attempts = [];
   const { result, seen } = await withSecondProject(

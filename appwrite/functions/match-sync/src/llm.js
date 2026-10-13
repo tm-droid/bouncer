@@ -312,6 +312,32 @@ const paymentBlocked = new Set();
 const dailyExhausted = new Map();
 const GROQ_DAY_LATCH_MS = 30 * 60 * 1000;
 
+// Rungs that timed out, not asked again until the stamp passes.
+//
+// The fourth kind of refusal: no answer at all. `hung`, inside a walk, already stops one walk
+// paying twice for one host, and `unavailable` carries that across a line. Neither outlives the
+// line, and a run makes several walks for several lines, so a rung that hangs for hours costs every
+// one of them a full timeout. Measured 2026-10-13: gemini-flash-lite-2 hung from 12:00 UTC, 3-5
+// timeouts a run, and the average run went from 17s to 52s — on a plan that meters compute.
+// Nothing is lost by skipping: the walk moves to the next rung, which is where it went after
+// waiting. Five minutes because the cost of asking is one timeout per window and the cost of not
+// asking is a working rung left idle; one probe in five minutes is cheap on both sides.
+//
+// Keyed by rung, not endpoint: one model on one project hanging says nothing about the others.
+const hungUntil = new Map();
+const HUNG_LATCH_MS = 5 * 60 * 1000;
+
+/** True while this rung's last timeout is recent. Expired entries clear themselves. */
+function recentlyHung(providerName, now = Date.now()) {
+  const until = hungUntil.get(providerName);
+  if (until === undefined) return false;
+  if (now >= until) {
+    hungUntil.delete(providerName);
+    return false;
+  }
+  return true;
+}
+
 let retry503DelayMs = 2_000;
 /** Test seam: the 503 retry's wait. Returns the previous value. */
 export function __setRetry503DelayMs(ms) {
@@ -468,6 +494,7 @@ export function resetProviderHealth() {
   health.clear();
   paymentBlocked.clear();
   dailyExhausted.clear();
+  hungUntil.clear();
   unknownQuotaIds.clear();
 }
 
@@ -661,6 +688,10 @@ export async function generateLine(
       note(provider.name, "daily quota spent (latched until the Pacific reset)");
       continue;
     }
+    if (recentlyHung(provider.name)) {
+      note(provider.name, `not asked: timed out within the last ${HUNG_LATCH_MS / 60_000} minutes`);
+      continue;
+    }
     const apiKey = process.env[provider.keyEnv];
     if (!apiKey) {
       note(provider.name, `no ${provider.keyEnv}`);
@@ -668,6 +699,8 @@ export async function generateLine(
       continue;
     }
     asked += 1;
+    // Never past the request's deadline; a rung asked with two seconds left gets two.
+    const timeoutMs = Math.max(MIN_RUNG_TIMEOUT_MS, Math.min(RUNG_TIMEOUT_MS, deadlineAt - Date.now()));
     try {
       let resp;
       for (let attempt = 1; ; attempt++) {
@@ -686,8 +719,7 @@ export async function generateLine(
           temperature,
           ...(provider.extraBody ?? {}),
         }),
-        // Never past the request's deadline; a rung asked with two seconds left gets two.
-        signal: AbortSignal.timeout(Math.max(MIN_RUNG_TIMEOUT_MS, Math.min(RUNG_TIMEOUT_MS, deadlineAt - Date.now()))),
+        signal: AbortSignal.timeout(timeoutMs),
       });
         // A 503 is Google's "this model is currently experiencing high demand": the server, not our
         // quota, and gone in seconds. On 2026-09-25 it was the only thing between the one writer
@@ -745,7 +777,11 @@ export async function generateLine(
       note(provider.name, e?.message ?? "threw");
       noteHealth(provider.name, "error");
       unavailable?.add(provider.name);
-      if (e?.name === "TimeoutError" || e?.name === "AbortError") hung.add(provider.url);
+      if (e?.name === "TimeoutError" || e?.name === "AbortError") {
+        hung.add(provider.url);
+        // Only a rung that had its full allowance: one cut short by the deadline was not hanging.
+        if (timeoutMs >= RUNG_TIMEOUT_MS) hungUntil.set(provider.name, Date.now() + HUNG_LATCH_MS);
+      }
     }
   }
   return null;
