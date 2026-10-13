@@ -310,19 +310,35 @@ const GROQ_DAY_LATCH_MS = 30 * 60 * 1000;
 // waiting. Five minutes because the cost of asking is one timeout per window and the cost of not
 // asking is a working rung left idle; one probe in five minutes is cheap on both sides.
 //
-// Keyed by rung, not endpoint: one model on one project hanging says nothing about the others.
+// Keyed by rung, and one rung's timeout latches only that rung: a single slow model is not a dead
+// host. But two rungs latched on the SAME endpoint is the host, and then none of its rungs is
+// asked. The rung latch alone was deployed first and moved the cost without removing it: with
+// gemini-flash-lite-4 latched the walk asked -5, -6, -7, -8 and the preview model in turn, and each
+// hung — the same 4-5 timeouts a run, spread over ten rungs. As rung latches expire the count
+// falls below two and one rung is asked again; that is the probe.
 const hungUntil = new Map();
 const HUNG_LATCH_MS = 5 * 60 * 1000;
+const HUNG_ENDPOINT_RUNGS = 2;
 
 /** True while this rung's last timeout is recent. Expired entries clear themselves. */
 function recentlyHung(providerName, now = Date.now()) {
-  const until = hungUntil.get(providerName);
-  if (until === undefined) return false;
-  if (now >= until) {
+  const entry = hungUntil.get(providerName);
+  if (entry === undefined) return false;
+  if (now >= entry.until) {
     hungUntil.delete(providerName);
     return false;
   }
   return true;
+}
+
+/** True while at least [HUNG_ENDPOINT_RUNGS] rungs on this endpoint are latched as hanging. */
+function endpointHung(url, now = Date.now()) {
+  let latched = 0;
+  for (const [name, entry] of hungUntil) {
+    if (now >= entry.until) hungUntil.delete(name);
+    else if (entry.url === url) latched += 1;
+  }
+  return latched >= HUNG_ENDPOINT_RUNGS;
 }
 
 let retry503DelayMs = 2_000;
@@ -679,6 +695,10 @@ export async function generateLine(
       note(provider.name, `not asked: timed out within the last ${HUNG_LATCH_MS / 60_000} minutes`);
       continue;
     }
+    if (endpointHung(provider.url)) {
+      note(provider.name, "not asked: this endpoint has two rungs timing out");
+      continue;
+    }
     const apiKey = process.env[provider.keyEnv];
     if (!apiKey) {
       note(provider.name, `no ${provider.keyEnv}`);
@@ -767,7 +787,7 @@ export async function generateLine(
       if (e?.name === "TimeoutError" || e?.name === "AbortError") {
         hung.add(provider.url);
         // Only a rung that had its full allowance: one cut short by the deadline was not hanging.
-        if (timeoutMs >= RUNG_TIMEOUT_MS) hungUntil.set(provider.name, Date.now() + HUNG_LATCH_MS);
+        if (timeoutMs >= RUNG_TIMEOUT_MS) hungUntil.set(provider.name, { until: Date.now() + HUNG_LATCH_MS, url: provider.url });
       }
     }
   }

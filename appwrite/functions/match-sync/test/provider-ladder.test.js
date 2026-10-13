@@ -622,6 +622,26 @@ test("a rung that timed out is not asked again for five minutes, on any line", a
   }
 });
 
+test("two rungs hanging on one endpoint is the endpoint: none of its rungs is asked", async () => {
+  // The rung latch alone moved the cost instead of removing it. With gemini-flash-lite-4 latched
+  // the walk asked -5, then -6, -7, -8 and the preview model, and each hung in its turn: the same
+  // 4-5 timeouts a run, spread over ten rungs. Two hangs on one host is the host.
+  const lines = [];
+  const { seen } = await withSecondProject(
+    (name) => (name.startsWith("gemini") ? timedOut() : completion("19.2: A dot ball.")),
+    async () => {
+      for (const ball of ["19.2", "19.3", "19.4", "19.5"]) {
+        const attempts = [];
+        await generateLine(`${ball}: Bumrah to Maxwell, no run`, { attempts });
+        lines.push(attempts);
+      }
+    }
+  );
+  assert.deepEqual(seen.filter((n) => n.startsWith("gemini")), ["gemini-flash-lite", "gemini-flash-lite-2"]);
+  assert.ok(lines[3].some((a) => /not asked: this endpoint has two rungs timing out/.test(a)), "the skip is on the record");
+  assert.equal(seen.filter((n) => n === "groq").length, 4, "every line still reaches the next vendor");
+});
+
 test("a rung cut short by the request's deadline is not marked as hanging", async () => {
   // Asked with two seconds left, it is given two seconds. Running out of them says nothing about
   // the rung, and latching on it would remove a working one.
