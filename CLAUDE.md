@@ -90,8 +90,8 @@ app/src/main/kotlin/com/tanush/bouncer/
 ├── analysis/           # Pure on-device match math only: CricketConstants (format ball counts,
 │                       # magic numbers) + MatchProjections (run rate, projected score, required
 │                       # rate). The ML models moved server-side — score prediction and win
-│                       # probability are the `bouncer-win-probability` /
-│                       # `bouncer-train-win-probability` functions. Do not add a model here.
+│                       # probability are computed by `bouncer-match-sync`, on the model the weekly
+│                       # `train-win-probability` workflow fits. Do not add a model here.
 ├── liveactivity/       # Android Live Updates: LiveUpdateContent/Progress/Score (pure, tested),
 │                       # LiveUpdateNotifier (the promoted notification), LiveUpdateSources
 ├── auto/               # Android Auto (BouncerCarAppService)
@@ -102,8 +102,6 @@ app/src/main/kotlin/com/tanush/bouncer/
 **Appwrite cloud functions** live in `appwrite/functions/` (Node.js; deploy with `node appwrite/tools/deploy-function.mjs`). `appwrite/appwrite.config.json` defines project-level config. Details: `.claude/rules/appwrite-functions.md`.
 - `match-sync` — every minute; polls the match lists (`src/poll.js`), then live detail, scorecard, commentary, win probability and alerts
 - `api` (`bouncer-api`) — everything else that must stay on Appwrite, because the Free plan allows **two functions**. On-demand routes by execution path: `/news` (Cricbuzz news via RapidAPI into `cricket-stats`), `/player-search` (player name → Cricbuzz profile id), `/presence` (the server half of the viewer gate). Its `*/15` schedule runs one job per slot: highlights sync (first tick of each hour; Highlightly quota), the commentary prune (03:15 daily, rows older than 14 days) and the player-index rebuild (04:15 every third day). The device names a route as `bouncer-api/<route>` (`AppwriteClient.executeFunctionDetailed`)
-- `generate-commentary` — on-demand, **no caller**, execute permission empty; kept for the vendored `llm.js` and its provider probe
-- `win-probability` — on-demand, no device caller
 - `train-win-probability` — the v6 refit. Runs weekly in GitHub Actions (`.github/workflows/train-win-probability.yml`), not on Appwrite: it needs ~760 MB and Free fixes functions at 512 MB
 
 Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` and DB/collection IDs need manual env vars.
@@ -116,8 +114,8 @@ Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` 
 
 **Live data flow:** score polling (`ScorePollingWorker` + FCM, `LiveActivityViewModel` on the Live tab) → UI via StateFlow. Commentary is written server-side by `bouncer-match-sync` to `match-commentary` and read through `AppwriteMatchCommentaryClient` (match detail); no commentary is generated on the device. `AICacheService` warms cache from Appwrite Realtime events.
 
-**Cross-language rules are pinned, not commented.** `LlmJsVendorParityTest` (llm.js), `ContextMathVendorParityTest` (contextmath.js, three copies),
-`NextFlightVendorParityTest` (nextflight.js), `WinProbJsVendorParityTest` (winprob.js),
+**Cross-language rules are pinned, not commented.** `ContextMathVendorParityTest` (contextmath.js, match-sync and the trainer),
+`NextFlightVendorParityTest` (nextflight.js),
 `SeriesClassificationParityTest` (`SeriesClassification.kt` ↔ `series.js`),
 `SearchNormalizationParityTest` (`normalizeForSearch` ↔ `player-search`'s, via a shared fixture) and
 `MatchStatusParityTest` (all three classifier lists, Kotlin ↔ `matchstate.js`, plus `cricbuzz.js`'s

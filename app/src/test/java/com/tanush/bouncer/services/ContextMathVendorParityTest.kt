@@ -6,22 +6,21 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Fails the build when the three copies of `contextmath.js` stop being byte-identical.
+ * Fails the build when the two copies of `contextmath.js` stop being byte-identical.
  *
  * The win-probability model reads what is known about the two sides, the ground and the elevens.
  * `bouncer-train-win-probability` computes those terms for every historical match when it fits the
- * model; `bouncer-match-sync` and `bouncer-win-probability` compute them again for a live one. If a
+ * model; `bouncer-match-sync` computes them again for a live one. If a
  * shrinkage constant, a scale or the order of a vector differs between the copies, nothing breaks:
  * the model is handed a number that means something else and answers with a plausible
- * probability. The same reasoning as [WinProbJsVendorParityTest], one file further in.
+ * probability.
  *
- * All three paths are declared as inputs of the test task in `app/build.gradle.kts`.
+ * Both paths are declared as inputs of the test task in `app/build.gradle.kts`.
  */
 class ContextMathVendorParityTest {
 
     private val canonicalPath = "appwrite/functions/match-sync/src/contextmath.js"
     private val vendoredPaths = listOf(
-        "appwrite/functions/win-probability/src/contextmath.js",
         "appwrite/functions/train-win-probability/src/contextmath.js",
     )
 

@@ -1,6 +1,5 @@
 ---
 paths:
-  - "appwrite/functions/win-probability/**"
   - "appwrite/functions/train-win-probability/**"
   - "appwrite/functions/match-sync/src/winprob.js"
   - "appwrite/functions/match-sync/src/context*.js"
@@ -31,7 +30,7 @@ paths:
 
 **Each head ships `core` and `full`, and the reader picks.** `full` also reads both elevens and is used only when the context carries one for each side. A single model tolerating a missing eleven measured worse in BOTH cases (0.3911 masked against 0.3845). Elevens are thinned in training at the miss rates measured on 637 players of live team sheets (`JOIN_FAILURE` in `build.js`), because **a Cricbuzz player joins to a Cricsheet person by name only** (`key_cricbuzz` fills 50 of 18,554 register rows). `playerjoin.js` joins inside one side's recent roster by surname and initials (read off the name as written, so "MS Dhoni" is not a man called "Ms"), then among everyone of that gender with that surname's first letter, and returns null when two people fit. Seven of eleven joined is the floor for an eleven.
 
-**`contextmath.js` is the one implementation of those terms, vendored three times** (trainer, match-sync, win-probability). A differing shrinkage constant or vector order would break nothing visibly — the model would be handed a number that means something else. `ContextMathVendorParityTest` byte-compares the copies, all declared as Gradle inputs. `feature-parity.test.js` pins the BASE vectors; `contextFeatures` removes the retired strength term from each and appends the context.
+**`contextmath.js` is the one implementation of those terms, vendored twice** (trainer, match-sync; a third copy went with the `win-probability` function in October 2026). A differing shrinkage constant or vector order would break nothing visibly — the model would be handed a number that means something else. `ContextMathVendorParityTest` byte-compares the copies, all declared as Gradle inputs. `feature-parity.test.js` pins the BASE vectors; `contextFeatures` removes the retired strength term from each and appends the context.
 
 **Published by pointer; a bad refit is not published.** The trainer writes the tables, then `winprob-v6-<stamp>`, reads it back, and only then rewrites `winprob-manifest`; the previous model stays, so rollback is rewriting one small file. `publishProblems` refuses a refit whose as-served log-loss is 0.02 worse than the manifest's, whose ECE passes 0.04, or that scores a side needing two runs off thirty balls below 0.9. match-sync follows the manifest and re-checks hourly (it used to hold one load, or one FAILED load, for the container's life).
 

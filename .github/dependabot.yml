@@ -54,28 +54,6 @@ updates:
   # ungrouped directories at the old limit of 5 would be up to fifty PRs a week at one
   # maintainer, which is how a review queue stops being read at all.
   - package-ecosystem: "npm"
-    directory: "/appwrite/functions/generate-commentary"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 1
-    labels:
-      - "dependencies"
-      - "appwrite"
-    ignore:
-      # node-appwrite 15 is a deliberate pin, not drift. The functions are written against its
-      # API surface — `listDocuments` (there is no `listRows`), and `parseJsonFile` returning an
-      # already-parsed object for application/json, which is the bug that made player-search
-      # rebuild its whole index on every query. A major bump here is a migration with its own
-      # verification, not a dependency refresh.
-      - dependency-name: "node-appwrite"
-        update-types: ["version-update:semver-major"]
-    groups:
-      generate-commentary:
-        patterns:
-          - "*"
-
-  - package-ecosystem: "npm"
     directory: "/appwrite/functions/api"
     schedule:
       interval: "weekly"
@@ -141,30 +119,6 @@ updates:
         patterns:
           - "*"
 
-  - package-ecosystem: "npm"
-    directory: "/appwrite/functions/win-probability"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 1
-    labels:
-      - "dependencies"
-      - "appwrite"
-    ignore:
-      # node-appwrite 15 is a deliberate pin, not drift. The functions are written against its
-      # API surface — `listDocuments` (there is no `listRows`), and `parseJsonFile` returning an
-      # already-parsed object for application/json, which is the bug that made player-search
-      # rebuild its whole index on every query. A major bump here is a migration with its own
-      # verification, not a dependency refresh.
-      - dependency-name: "node-appwrite"
-        update-types: ["version-update:semver-major"]
-    groups:
-      win-probability:
-        patterns:
-          - "*"
-
-  # The local MCP dev server (screenshots, UI dumps). Nothing here ships to a user, but it was
-  # raising 30 of the 99 open alerts, and version updates never reached it.
   - package-ecosystem: "uv"
     directory: "/android-dev-mcp-server"
     schedule:

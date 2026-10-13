@@ -1,21 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { evaluate, evaluateLong, evaluatePrematch, longFeatures, formatFromText, ballsRemainingFor, inningsBalls } from "../src/winprob.js";
 import { resolveMatchTeams } from "../src/teamnames.js";
 import { orientToTeam1 } from "../src/main.js";
 import { liveSituation } from "../src/cricbuzz.js";
 
-const here = (p) => fileURLToPath(new URL(p, import.meta.url));
-
-test("winprob.js is byte-identical to the win-probability copy", () => {
-  // The module is duplicated into each function because Appwrite deploys isolated archives with
-  // no shared package. This is the guard against the copies drifting.
-  const mine = readFileSync(here("../src/winprob.js"), "utf8");
-  const canonical = readFileSync(here("../../win-probability/src/winprob.js"), "utf8");
-  assert.equal(mine, canonical, "match-sync/src/winprob.js has drifted from win-probability's copy");
-});
 
 test("balls remaining falls back to the format budget when oversRem is absent", () => {
   // Observed on a live T20 whose own status line read "need 100 runs in 95 balls" while the

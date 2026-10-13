@@ -224,13 +224,7 @@ android {
         // heap and not the tests.
         maxHeapSize = "2g"
 
-        // Both llm.js copies, not just the canonical one: CommentaryConstantParityTest only reads
-        // match-sync's, but LlmJsVendorParityTest byte-compares the pair, and with only one path
-        // declared an edit to the other leaves the task UP-TO-DATE and the drift ships.
-        inputs.files(
-            rootProject.file("appwrite/functions/match-sync/src/llm.js"),
-            rootProject.file("appwrite/functions/generate-commentary/src/llm.js"),
-        )
+        inputs.files(rootProject.file("appwrite/functions/match-sync/src/llm.js"))
             .withPropertyName("commentaryConstantParitySource")
             .withPathSensitivity(PathSensitivity.RELATIVE)
 
@@ -252,12 +246,9 @@ android {
             .withPropertyName("cricbuzzScorecardParitySource")
             .withPathSensitivity(PathSensitivity.RELATIVE)
 
-        // WinProbJsVendorParityTest byte-compares the two copies of winprob.js, and
-        // SeriesClassificationParityTest compares the Kotlin category rules against series.js.
-        // Same reasoning again, and both sides of each pair must be declared.
+        // SeriesClassificationParityTest compares the Kotlin category rules against series.js, and
+        // MatchStatusParityTest the classifier lists against matchstate.js. Same reasoning again.
         inputs.files(
-            rootProject.file("appwrite/functions/match-sync/src/winprob.js"),
-            rootProject.file("appwrite/functions/win-probability/src/winprob.js"),
             rootProject.file("appwrite/functions/match-sync/src/series.js"),
             rootProject.file("appwrite/functions/match-sync/src/matchstate.js"),
             // FcmJsVendorParityTest: matchTopic's rule, which the device mirrors.
@@ -266,12 +257,11 @@ android {
             .withPropertyName("winProbAndSeriesParitySources")
             .withPathSensitivity(PathSensitivity.RELATIVE)
 
-        // ContextMathVendorParityTest byte-compares the three copies of contextmath.js — the
-        // trainer computes the model's team, ground and player terms with it and the two readers
-        // recompute them for a live match. All three paths, for the same reason as above.
+        // ContextMathVendorParityTest byte-compares the two copies of contextmath.js — the trainer
+        // computes the model's team, ground and player terms with it and match-sync recomputes
+        // them for a live match. Both paths, for the same reason as above.
         inputs.files(
             rootProject.file("appwrite/functions/match-sync/src/contextmath.js"),
-            rootProject.file("appwrite/functions/win-probability/src/contextmath.js"),
             rootProject.file("appwrite/functions/train-win-probability/src/contextmath.js"),
         )
             .withPropertyName("contextMathVendorParitySources")

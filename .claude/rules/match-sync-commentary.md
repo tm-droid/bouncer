@@ -1,7 +1,6 @@
 ---
 paths:
   - "appwrite/functions/match-sync/**"
-  - "appwrite/functions/generate-commentary/**"
 ---
 
 # match-sync: Commentary Pipeline and Provider Ladder

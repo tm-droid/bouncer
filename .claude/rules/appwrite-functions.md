@@ -7,7 +7,7 @@ paths:
 
 # Appwrite Functions
 
-Functions live in `appwrite/functions/` (Node.js). `appwrite/appwrite.config.json` defines project-level config. `match-sync` itself is in `match-sync-commentary.md`; `win-probability` and the trainer are in `win-probability.md`.
+Functions live in `appwrite/functions/` (Node.js). `appwrite/appwrite.config.json` defines project-level config. `match-sync` itself is in `match-sync-commentary.md`; the trainer is in `win-probability.md`.
 
 ## Two functions, because the Free plan allows two
 
@@ -33,9 +33,9 @@ The sections below describe the handlers; the names are their directories under 
 - The back-window exists because Highlightly publishes a clip hours-to-days after its match; a same-day-only query permanently loses whatever the lag exceeds.
 - Deploy: the ~13 MB `--with-node-modules` archive is rejected whole by the CDN edge (`503 backend write error` in ~55 ms), so it goes up in 5 MB chunks. `node appwrite/tools/deploy-function.mjs` does that and is the deploy path.
 
-## `generate-commentary`
+## Removed in October 2026
 
-On-demand; LLM commentary via the shared groq/Gemini ladder in the vendored `llm.js`. It has never used OpenRouter. **It has no caller.** Its one device caller, `CommentaryFusionService`, was a second pipeline no production path constructed, and was deleted. The function stays deployed because its `llm.js` is the vendored copy `LlmJsVendorParityTest` pins and its provider probe is the one signal reaching the providers on a day with no live match. Do not describe it as something the device calls. Its execute permission is **empty** since 2026-10-08 (server key only): it was `execute("any")` with a caller-supplied prompt, system prompt and `maxTokens`, so anyone with the project id could spend the provider quota. `appwrite.config.json` says the same; do not reopen it.
+`generate-commentary` (on-demand, no caller since `CommentaryFusionService` was deleted; `llm.js` now has one copy, in `match-sync`) and `win-probability` (on-demand, no device caller; `winprob.js` and `contextmath.js` live in `match-sync`, the latter also in the trainer). Both went so the project fits two functions. Their unique tests moved to `match-sync/test` (`winprob.test.js`, `storage-json.test.js`). Rule files that still name them describe measurements taken on them.
 
 ## `news-sync`
 

@@ -43,7 +43,8 @@ function rawMatch({ date, first, second, winner, runs = [160, 150], venue = "Ede
 
 test("contextmath.js is byte-identical in every function that carries it", () => {
   const canonical = readFileSync(here("../../match-sync/src/contextmath.js"), "utf8");
-  for (const fn of ["train-win-probability", "win-probability"]) {
+  // Two copies since October 2026: the third went with the `win-probability` function.
+  for (const fn of ["train-win-probability"]) {
     assert.equal(readFileSync(here(`../../${fn}/src/contextmath.js`), "utf8"), canonical, `${fn}/src/contextmath.js has drifted`);
   }
 });
