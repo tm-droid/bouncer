@@ -1,0 +1,45 @@
+# Weekly refit of the win-probability model.
+#
+# This was the Appwrite function `bouncer-train-win-probability`. It peaks near 760 MB, and
+# Appwrite's Free plan fixes every function at 512 MB, so it runs here and writes the same
+# `winprob-manifest`, `winprob-v6-<stamp>`, `wpx-*` and `wps-*` files to the `cricket-stats` bucket.
+# `bouncer-match-sync` picks a new model up by itself (it re-reads the manifest hourly).
+#
+# Required GitHub Secret:
+#   APPWRITE_API_KEY — the server key the function used (Storage read and write on `cricket-stats`)
+#
+# A scheduled workflow can start late under load; for a weekly job that is harmless.
+
+name: Train win probability
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: train-win-probability
+  cancel-in-progress: false
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install
+        working-directory: appwrite/functions/train-win-probability
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Train and publish
+        env:
+          APPWRITE_FUNCTION_API_ENDPOINT: https://sgp.cloud.appwrite.io/v1
+          APPWRITE_FUNCTION_PROJECT_ID: 6a02f7f3000e6e100b19
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+          STATS_BUCKET_ID: cricket-stats
+        run: node appwrite/tools/run-function.mjs train-win-probability

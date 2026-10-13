@@ -12,8 +12,8 @@ import {
   stripTokens,
   shapeHint,
   withoutTokens,
-} from "../src/articleBody.js";
-import { claimFetch } from "../src/main.js";
+} from "../../src/news/articleBody.js";
+import { claimFetch } from "../../src/news/main.js";
 
 // Captured from RapidAPI on 2026-10-08, unedited.
 const captured = JSON.parse(readFileSync(new URL("./fixtures/detail-140424.json", import.meta.url), "utf8"));

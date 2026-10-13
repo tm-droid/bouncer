@@ -18,7 +18,7 @@ import org.jsoup.Jsoup
  *
  * [staleAgeMs] is non-null only when the server served its cache because the live source was
  * unreachable *and* it could date that cache. [isStale] is the flag to branch on; the age only
- * refines the wording. See `appwrite/functions/news-sync/src/newsResult.js`.
+ * refines the wording. See `appwrite/functions/api/src/news/newsResult.js`.
  */
 data class Headlines(
     val articles: List<NewsArticleData>,
@@ -160,7 +160,7 @@ class CricbuzzNewsRepository : NewsRepository {
     }
 
     private companion object {
-        const val FUNCTION_ID = "bouncer-news-sync"
+        const val FUNCTION_ID = "bouncer-api/news"
         const val ARTICLE_TIMEOUT_MS = 15_000
     }
 }

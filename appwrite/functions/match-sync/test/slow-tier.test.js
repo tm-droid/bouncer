@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { selectSlowTier, nextSlowState, commentaryCapFor, isFinalised, finalKey } from "../src/main.js";
+import { selectSlowTier, nextSlowState, commentaryCapFor, isFinalised, finalKey, liveMatchSlice } from "../src/main.js";
 
 // READ_BUDGET_PER_RUN = 20, READ_HEADROOM_RESERVE = 5, READ_COST_PER_MATCH = 1,
 // SLOW_MAX_MATCHES_PER_RUN = 3, SLOW_TIER_INTERVAL_MS = 60 min (15 until 2026-09-30, when followed
@@ -144,4 +144,20 @@ test("the cap encodes the tier: 10 for a viewer, 2 for the slow tier, 0 otherwis
   assert.equal(commentaryCapFor("idle", viewed, slow), 0, "0 means win-probability only, no writes");
   // A viewer arriving on a slow-tier match must promote it, never demote the fast tier.
   assert.equal(commentaryCapFor("both", new Set(["both"]), new Set(["both"])), 10);
+});
+
+test("a match the cap drops for a run keeps its slow-tier clock", () => {
+  // 2026-10-13: 21 matches were live against a cap of 16, and which five were dropped changed run
+  // to run. The clock was pruned to the capped slice, so a match returning from a dropped run had
+  // no entry, was due at once, and took a detail write, a scorecard write and a seed read every
+  // few minutes instead of hourly — 163611 was re-seeded 53 times in 300 runs.
+  const eligible = matches(...Array.from({ length: 18 }, (_, i) => String(100 + i)));
+  const { allLive, dropped, liveIds } = liveMatchSlice(eligible, new Set());
+  assert.equal(allLive.length, 16);
+  assert.deepEqual(dropped.map((m) => m.id), ["116", "117"]);
+  assert.ok(liveIds.has("116") && liveIds.has("117"), "a dropped match is still live");
+
+  const state = nextSlowState({ state: { "117": NOW - 5 * 60 * 1000 }, processed: new Set(), liveIds, now: NOW });
+  assert.equal(state["117"], NOW - 5 * 60 * 1000);
+  assert.deepEqual(selectSlowTier({ live: matches("117"), viewed: new Set(), state, now: NOW }), []);
 });

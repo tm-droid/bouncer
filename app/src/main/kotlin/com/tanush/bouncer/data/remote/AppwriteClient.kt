@@ -143,6 +143,13 @@ object AppwriteClient {
     suspend fun executeFunction(functionId: String, body: String): String? =
         (executeFunctionDetailed(functionId, body) as? FunctionOutcome.Success)?.body
 
+    /**
+     * [functionId] is a function id, or `id/route` for a function that serves several routes:
+     * `bouncer-api/news` executes `bouncer-api` with the path `/news`. The whole string stays the
+     * key for the guard's rate window, the usage tracker and every Sentry message below, so each
+     * route keeps its own budget and its own name in a report, as it had when it was its own
+     * function (Appwrite's Free plan allows two functions; five became routes of one).
+     */
     suspend fun executeFunctionDetailed(functionId: String, body: String): FunctionOutcome {
         val functions = functionsService
         if (functions == null) {
@@ -177,9 +184,10 @@ object AppwriteClient {
             // credential and is not treated as one: it is a bucket key, and a request without it
             // simply falls into the server's IP bucket instead.
             val execution = functions.createExecution(
-                functionId = functionId,
+                functionId = functionId.substringBefore('/'),
                 body = body,
                 async = false,
+                path = functionId.substringAfter('/', "").takeIf { it.isNotEmpty() }?.let { "/$it" },
                 headers = mapOf("x-bouncer-device" to DeviceIdentity.id),
             )
             AppwriteReadGuard.recordSuccess(quota = AppwriteReadGuard.Quota.EXECUTIONS)

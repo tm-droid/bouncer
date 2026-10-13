@@ -1596,7 +1596,7 @@ async function handleRun({ req, res, log, error }) {
   const eligible = matches.filter((m) => m && m.id);
   // Only `allLive.length` used to be logged, and that number can never exceed MAX_MATCHES — so the
   // one figure that would reveal the cap binding was the one the cap had already censored.
-  const { allLive, dropped } = liveMatchSlice(eligible, activeViewers);
+  const { allLive, dropped, liveIds } = liveMatchSlice(eligible, activeViewers);
   const live = allLive.filter((m) => activeViewers.has(String(m.id)));
   if (allLive.length === 0) {
     log(`No live matches — writing ${Object.keys(prematch).length} pre-match entries only`);
@@ -1609,8 +1609,8 @@ async function handleRun({ req, res, log, error }) {
   //
   // Against ALL live matches, not just viewed ones: pruning to the viewed set discarded the
   // watermark of every unviewed match on every run, so the slow tier below would have paid a fresh
-  // seed read on each of its passes for a value it already had.
-  const liveIds = new Set(allLive.map((m) => String(m.id)));
+  // seed read on each of its passes for a value it already had. And against every live match
+  // rather than this run's capped slice, for the same reason one level up (see `liveMatchSlice`).
   // Loaded before any match sync asks `isHeld`, and before a fresh batch looks for held deliveries
   // to fill its spare slots.
   await backlogLoad;
@@ -1907,12 +1907,22 @@ export function commentaryOrigin(generated) {
 /**
  * The live matches processed this run: every match with a viewer first, then Cricbuzz's order,
  * capped at [MAX_MATCHES]. Stable, so within each group the list order still decides.
+ *
+ * `liveIds` is every eligible match, dropped ones included. Per-match state is retained against it,
+ * never against the capped slice: which matches the cap drops changes from run to run, and a match
+ * that lost its watermark and its slow-tier clock on a dropped run came back as a new one — a seed
+ * read, a detail write, a scorecard write and a scorecard read each time, every few minutes
+ * instead of hourly (21 live against a cap of 16 on 2026-10-13).
  */
 export function liveMatchSlice(eligible, activeViewers, cap = MAX_MATCHES) {
   const watched = eligible.filter((m) => activeViewers.has(String(m.id)));
   const rest = eligible.filter((m) => !activeViewers.has(String(m.id)));
   const ordered = [...watched, ...rest];
-  return { allLive: ordered.slice(0, cap), dropped: ordered.slice(cap) };
+  return {
+    allLive: ordered.slice(0, cap),
+    dropped: ordered.slice(cap),
+    liveIds: new Set(ordered.map((m) => String(m.id))),
+  };
 }
 
 /** A delivery's key in a cross-match batch. Unique per delivery, not per ball label. */

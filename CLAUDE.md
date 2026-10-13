@@ -101,13 +101,10 @@ app/src/main/kotlin/com/tanush/bouncer/
 
 **Appwrite cloud functions** live in `appwrite/functions/` (Node.js; deploy with `node appwrite/tools/deploy-function.mjs`). `appwrite/appwrite.config.json` defines project-level config. Details: `.claude/rules/appwrite-functions.md`.
 - `match-sync` — every minute; polls the match lists (`src/poll.js`), then live detail, scorecard, commentary, win probability and alerts
-- `highlights-sync` — 15-min schedule, one working run an hour (Highlightly quota)
+- `api` (`bouncer-api`) — everything else that must stay on Appwrite, because the Free plan allows **two functions**. On-demand routes by execution path: `/news` (Cricbuzz news via RapidAPI into `cricket-stats`), `/player-search` (player name → Cricbuzz profile id), `/presence` (the server half of the viewer gate). Its `*/15` schedule runs one job per slot: highlights sync (first tick of each hour; Highlightly quota), the commentary prune (03:15 daily, rows older than 14 days) and the player-index rebuild (04:15 every third day). The device names a route as `bouncer-api/<route>` (`AppwriteClient.executeFunctionDetailed`)
 - `generate-commentary` — on-demand, **no caller**, execute permission empty; kept for the vendored `llm.js` and its provider probe
-- `news-sync` — on-demand; Cricbuzz news via RapidAPI into the `cricket-stats` bucket
-- `player-search` — on-demand plus `0 3 */3 * *` index rebuild; player name → Cricbuzz profile id
-- `match-presence` — on-demand; the server half of the viewer gate
-- `match-commentary-prune` — daily 03:00; deletes commentary rows older than 14 days
-- `win-probability` — on-demand, no device caller; `train-win-probability` — Mondays 02:00, refits the v6 model
+- `win-probability` — on-demand, no device caller
+- `train-win-probability` — the v6 refit. Runs weekly in GitHub Actions (`.github/workflows/train-win-probability.yml`), not on Appwrite: it needs ~760 MB and Free fixes functions at 512 MB
 
 Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` and DB/collection IDs need manual env vars.
 
@@ -135,6 +132,8 @@ the check never runs. Prove a new guard bites by mutating one rule and watching 
 **New Appwrite client pattern:** `object` singleton extending `AppwriteTableClient(tag)`. The base provides `initTable()`, `isReady`, the billed-operation funnels `guardedRead()`/`guardedWrite()`, the refcounted Realtime `acquireChannel(channel) { … }` + reconnect backoff, `stop()`/`stopAll()`, and `logSilentFailure()` — don't reimplement these, and never construct a raw `TablesDB(client)`. Subclass adds `initialize()` (calls `initTable(dbId, tableId)`) and its table ops as `runCatching` + `logSilentFailure` on failure. Register in `BouncerApp.kt` via `initializeSafely("Name") { Client.initialize() }`.
 
 **API keys:** Always access via `ApiKeys` object (`ApiKeys.kt`), never `BuildConfig` directly. Add new keys to `ApiKeys.kt` + `build.gradle.kts` + `local.properties.template`.
+
+**Appwrite Free plan (from November 2026).** 250k DB writes, 500k reads, 5 GB bandwidth, 2 GB storage *including function deployments and builds*, two functions, 512 MB per function, and a project is **paused after 7 days with no Console activity** (app traffic does not count; `.github/workflows/appwrite-alive.yml` is the alarm). `deploy-function.mjs` deletes old deployments after a verified deploy for the storage cap.
 
 **Background workers:** `ScorePollingWorker`, `SeriesSyncWorker`, `PlayerCacheWorker`, `DatabaseCleanupWorker` (weekly cleanup, WorkManager), `WidgetUpdateWorker` (Glance).
 

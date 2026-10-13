@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyResponse, fetchDate, parseRemaining } from "../src/main.js";
+import { classifyResponse, fetchDate, parseRemaining } from "../../src/highlights/main.js";
 
 // The bug these cover: `fetchHighlights` used to return a bare `[]` for a 429, a 5xx, an
 // unrecognised body and a genuine empty day alike, and the caller logged "Highlightly returned 0

@@ -29,7 +29,7 @@ class CricbuzzHttpVendorParityTest {
 
     /** Every function that scrapes www.cricbuzz.com carries its own copy. Add new ones here. */
     private val vendoredPaths = listOf(
-        "appwrite/functions/player-search/src/cricbuzz-http.js",
+        "appwrite/functions/api/src/player-search/cricbuzz-http.js",
     )
 
     @Test

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { presenceIds } from "../src/main.js";
+import { presenceIds } from "../../src/presence/main.js";
 
 test("a single matchId still works", () => {
   assert.deepEqual(presenceIds({ matchId: "151543" }), ["151543"]);

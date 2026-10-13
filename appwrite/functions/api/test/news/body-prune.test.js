@@ -4,7 +4,7 @@ import {
   BODY_ID_PREFIX,
   BODY_RETENTION_MS,
   selectBodiesToPrune,
-} from "../src/articleBody.js";
+} from "../../src/news/articleBody.js";
 
 const NOW = Date.UTC(2026, 8, 12, 16, 0, 0);
 const ago = (ms) => new Date(NOW - ms).toISOString();

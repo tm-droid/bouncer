@@ -3,17 +3,20 @@
     "endpoint": "https://sgp.cloud.appwrite.io/v1",
     "functions": [
         {
-            "$id": "bouncer-highlights-sync",
-            "name": "bouncer-highlights-sync",
+            "$id": "bouncer-api",
+            "name": "bouncer-api",
+            "$permissions": [
+                "execute(\"any\")"
+            ],
             "enabled": true,
             "logging": true,
             "runtime": "node-22",
             "schedule": "*/15 * * * *",
-            "timeout": 60,
+            "timeout": 300,
             "entrypoint": "src/main.js",
             "commands": "npm install",
             "version": "v3",
-            "path": "functions/highlights-sync",
+            "path": "functions/api",
             "vars": [
                 {
                     "key": "APPWRITE_API_KEY",
@@ -38,6 +41,22 @@
                 {
                     "key": "HIGHLIGHTLY_API_KEY",
                     "value": ""
+                },
+                {
+                    "key": "MATCH_CACHE_BUCKET_ID",
+                    "value": "cricket-stats"
+                },
+                {
+                    "key": "STATS_BUCKET_ID",
+                    "value": "cricket-stats"
+                },
+                {
+                    "key": "APPWRITE_AI_CACHE_DB_ID",
+                    "value": "bouncer-db"
+                },
+                {
+                    "key": "MATCH_COMMENTARY_COL_ID",
+                    "value": "match-commentary"
                 }
             ]
         },
@@ -174,60 +193,6 @@
             ]
         },
         {
-            "$id": "bouncer-match-presence",
-            "name": "bouncer-match-presence",
-            "$permissions": [
-                "execute(\"any\")"
-            ],
-            "enabled": true,
-            "logging": true,
-            "runtime": "node-22",
-            "timeout": 15,
-            "entrypoint": "src/main.js",
-            "commands": "npm install",
-            "version": "v3",
-            "path": "functions/match-presence",
-            "vars": [
-                {
-                    "key": "APPWRITE_API_KEY",
-                    "value": ""
-                },
-                {
-                    "key": "MATCH_CACHE_BUCKET_ID",
-                    "value": "cricket-stats"
-                }
-            ]
-        },
-        {
-            "$id": "bouncer-news-sync",
-            "name": "bouncer-news-sync",
-            "$permissions": [
-                "execute(\"any\")"
-            ],
-            "enabled": true,
-            "logging": true,
-            "runtime": "node-22",
-            "timeout": 30,
-            "entrypoint": "src/main.js",
-            "commands": "npm install",
-            "version": "v3",
-            "path": "functions/news-sync",
-            "vars": [
-                {
-                    "key": "APPWRITE_API_KEY",
-                    "value": ""
-                },
-                {
-                    "key": "RAPIDAPI_KEY",
-                    "value": ""
-                },
-                {
-                    "key": "STATS_BUCKET_ID",
-                    "value": "cricket-stats"
-                }
-            ]
-        },
-        {
             "$id": "bouncer-match-sync",
             "name": "bouncer-match-sync",
             "enabled": true,
@@ -323,59 +288,6 @@
                 {
                     "key": "FIREBASE_PROJECT_ID",
                     "value": ""
-                }
-            ]
-        },
-        {
-            "$id": "bouncer-match-commentary-prune",
-            "name": "bouncer-match-commentary-prune",
-            "enabled": true,
-            "logging": true,
-            "runtime": "node-22",
-            "schedule": "0 3 * * *",
-            "timeout": 300,
-            "entrypoint": "src/main.js",
-            "commands": "npm install",
-            "version": "v1",
-            "path": "functions/match-commentary-prune",
-            "vars": [
-                {
-                    "key": "APPWRITE_API_KEY",
-                    "value": ""
-                },
-                {
-                    "key": "APPWRITE_AI_CACHE_DB_ID",
-                    "value": "bouncer-db"
-                },
-                {
-                    "key": "MATCH_COMMENTARY_COL_ID",
-                    "value": "match-commentary"
-                }
-            ]
-        },
-        {
-            "$id": "bouncer-player-search",
-            "name": "bouncer-player-search",
-            "$permissions": [
-                "execute(\"any\")"
-            ],
-            "enabled": true,
-            "logging": true,
-            "runtime": "node-22",
-            "schedule": "0 3 */3 * *",
-            "timeout": 90,
-            "entrypoint": "src/main.js",
-            "commands": "npm install",
-            "version": "v3",
-            "path": "functions/player-search",
-            "vars": [
-                {
-                    "key": "APPWRITE_API_KEY",
-                    "value": ""
-                },
-                {
-                    "key": "MATCH_CACHE_BUCKET_ID",
-                    "value": "cricket-stats"
                 }
             ]
         }

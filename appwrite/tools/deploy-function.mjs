@@ -125,7 +125,11 @@ try {
     // already failed in production: a VCS deployment superseded a manual one 97 seconds after it
     // went live, and a deployment that reported `ready` then failed every execution for 22 minutes
     // on a module it could not load. Neither was caught by the deploy step that produced it.
-    process.exitCode = (await verifyLive(body.$id, activeBefore)) ? 0 : 1;
+    const live = await verifyLive(body.$id, activeBefore);
+    process.exitCode = live ? 0 : 1;
+    // Only once the new build is proven to serve: a failed verify leaves every older deployment
+    // in place, because one of them is the rollback.
+    if (live) await pruneDeployments(new Set([body.$id, activeBefore]));
   }
 } finally {
   fs.rmSync(tarball, { force: true });
@@ -180,6 +184,40 @@ async function upload(buf, filename) {
     if (chunked) console.log(`  chunk ${start}-${end}/${buf.length} ok`);
   }
   return body;
+}
+
+/**
+ * Delete every deployment of this function except the ones in `keep` (the one now serving and the
+ * one it replaced, which is the rollback target).
+ *
+ * Deployment source and build artifacts count toward the plan's storage, and nothing else removes
+ * them: by October 2026 `bouncer-match-sync` alone held 190 deployments and 4.8 GB, against a
+ * 2 GB Free-plan cap whose breach locks the Console. A failed delete is reported and never fails
+ * the deploy — the function is already serving.
+ */
+async function pruneDeployments(keep) {
+  const headers = { "X-Appwrite-Project": projectId, "X-Appwrite-Key": apiKey };
+  const q = [{ method: "limit", values: [100] }, { method: "orderDesc", values: ["$createdAt"] }]
+    .map((o) => "queries[]=" + encodeURIComponent(JSON.stringify(o)))
+    .join("&");
+  const res = await fetch(`${endpoint}/functions/${functionId}/deployments?${q}`, { headers });
+  if (!res.ok) {
+    console.error(`  could not list deployments to prune (HTTP ${res.status})`);
+    return;
+  }
+  const { deployments = [] } = await res.json();
+  // A deployment still building may be a concurrent VCS build; it is not ours to remove.
+  const stale = deployments.filter((d) => !keep.has(d.$id) && (d.status === "ready" || d.status === "failed"));
+  let removed = 0;
+  for (const d of stale) {
+    const del = await fetch(`${endpoint}/functions/${functionId}/deployments/${encodeURIComponent(d.$id)}`, {
+      method: "DELETE",
+      headers,
+    });
+    if (del.ok) removed++;
+    else console.error(`  could not delete deployment ${d.$id} (HTTP ${del.status})`);
+  }
+  console.log(`  pruned ${removed} old deployment(s), kept ${[...keep].filter(Boolean).join(", ")}`);
 }
 
 /**

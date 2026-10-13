@@ -239,7 +239,7 @@ android {
         // other leaves the task UP-TO-DATE and the drift ships.
         inputs.files(
             rootProject.file("appwrite/functions/match-sync/src/cricbuzz-http.js"),
-            rootProject.file("appwrite/functions/player-search/src/cricbuzz-http.js"),
+            rootProject.file("appwrite/functions/api/src/player-search/cricbuzz-http.js"),
         )
             .withPropertyName("cricbuzzHttpVendorParitySources")
             .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -288,7 +288,7 @@ android {
         // player-search's own test pins its JS copy to. Same reasoning: undeclared, an edit to the
         // fixture leaves the task UP-TO-DATE and only one side ever gets checked against it.
         inputs.files(
-            rootProject.file("appwrite/functions/player-search/test/fixtures/search-normalization.json"),
+            rootProject.file("appwrite/functions/api/test/player-search/fixtures/search-normalization.json"),
         )
             .withPropertyName("searchNormalizationParityFixture")
             .withPathSensitivity(PathSensitivity.RELATIVE)

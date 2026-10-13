@@ -1,4 +1,4 @@
-import { Client, Databases } from "node-appwrite";
+import { Client, Databases } from "node-appwrite-26";
 import { initObservability, report, reportError, flushObservability } from "./observability.js";
 
 // Appwrite auto-injects APPWRITE_FUNCTION_API_ENDPOINT and APPWRITE_FUNCTION_PROJECT_ID.

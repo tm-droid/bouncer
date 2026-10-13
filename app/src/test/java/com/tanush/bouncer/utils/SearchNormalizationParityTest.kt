@@ -18,7 +18,7 @@ import java.io.File
  */
 class SearchNormalizationParityTest {
 
-    private val fixturePath = "appwrite/functions/player-search/test/fixtures/search-normalization.json"
+    private val fixturePath = "appwrite/functions/api/test/player-search/fixtures/search-normalization.json"
 
     @Test
     fun `normalizeForSearch produces exactly what the shared fixture says`() {

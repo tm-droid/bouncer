@@ -1,4 +1,4 @@
-import { Client, TablesDB, Query } from "node-appwrite";
+import { Client, TablesDB, Query } from "node-appwrite-26";
 
 // Daily retention prune for the match-commentary table. Nothing else deletes these rows, so
 // without this the table grows one row per ball of every match forever (it had ~500k+ rows).

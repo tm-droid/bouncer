@@ -22,7 +22,7 @@ import org.json.JSONObject
  * that switches itself off.
  */
 object MatchPresenceReporter {
-    private const val FUNCTION_ID = "bouncer-match-presence"
+    private const val FUNCTION_ID = "bouncer-api/presence"
 
     /**
      * How often a watcher re-pings. Must stay under the server's `PRESENCE_TTL_MS` (4 min) with room

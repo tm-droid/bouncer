@@ -6,7 +6,7 @@ import java.text.Normalizer
  * Text normalisation and relevance scoring for search.
  *
  * Pure, so it can be unit-tested directly. [normalizeForSearch] is mirrored by `normalizeForSearch`
- * in `appwrite/functions/player-search/src/playerIndex.js`, and both are pinned against one shared
+ * in `appwrite/functions/api/src/player-search/playerIndex.js`, and both are pinned against one shared
  * fixture (`SearchNormalizationParityTest`): the device re-scores the server's player hits, so the
  * two must agree on what a name *is* before they can agree on how well it matches.
  */

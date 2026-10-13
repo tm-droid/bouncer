@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bodyObject } from "../src/main.js";
+import { bodyObject } from "../../src/news/main.js";
 
 // The Appwrite runtime exposes `bodyJson` as a GETTER over JSON.parse(bodyRaw). On the headline
 // path the device sends an empty string, so merely reading the property throws

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { planDates, isSweep, dedupeById } from "../src/main.js";
+import { planDates, isSweep, dedupeById } from "../../src/highlights/main.js";
 
 // BACKFILL_DAYS = 3, WORKING_SLOT_MINUTE = 15, SWEEP_EVERY_HOURS = 4.
 // Mirrored here rather than imported: a test that reads the constant it is checking cannot catch a

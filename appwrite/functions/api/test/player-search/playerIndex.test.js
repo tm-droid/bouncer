@@ -10,7 +10,7 @@ import {
   parsePlayerLinks,
   parseTeamLinks,
   rankPlayers,
-} from "../src/playerIndex.js";
+} from "../../src/player-search/playerIndex.js";
 
 // Markup shapes captured from cricbuzz.com on 2026-08-21. The point of fixtures rather than a live
 // fetch is that a test which silently depends on the network turns an upstream outage into a

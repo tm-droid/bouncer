@@ -7,7 +7,22 @@ paths:
 
 # Appwrite Functions
 
-Functions live in `appwrite/functions/` (Node.js). `appwrite/appwrite.config.json` defines project-level config. Nine functions; the match-list poller, once a tenth, runs inside `match-sync`. `match-sync` itself is in `match-sync-commentary.md`; `win-probability` (on-demand, same `winprob.js` as match-sync, no device caller) and `train-win-probability` (Mondays 02:00, ~280 s and ~760 MB of its 900 s / 1 GB) are in `win-probability.md`.
+Functions live in `appwrite/functions/` (Node.js). `appwrite/appwrite.config.json` defines project-level config. `match-sync` itself is in `match-sync-commentary.md`; `win-probability` and the trainer are in `win-probability.md`.
+
+## Two functions, because the Free plan allows two
+
+Appwrite's Education plan ends for this org in November 2026 and Free allows **two functions per project**, 512 MB each. So:
+
+- `bouncer-match-sync` — the per-minute job, unchanged.
+- `bouncer-api` (`functions/api`) — five former functions, each still a self-contained handler in its own directory under `src/` with its tests under `test/<name>/`. `src/main.js` only routes: an on-demand execution by its **path** (`/news`, `/player-search`, `/presence`; anything else is a 404, never a default handler), a scheduled one by the clock (`scheduledJobs`: highlights on the first tick of each hour, the prune at 03:15, the player-index rebuild at 04:15 every third day — **one job per `*/15` slot**, pinned by `router.test.js`, because together they do not fit the 300 s timeout).
+- **Two node-appwrite majors are installed in `api`**: `node-appwrite` (15) for news, player-search and presence, `node-appwrite-26` (an npm alias) for highlights and the prune, which needs bulk deletes. Moving a handler across is a migration of that handler.
+- The device calls a route as `bouncer-api/<route>`; `AppwriteClient` splits it into function id and path and keeps the whole string as the guard, usage and Sentry key.
+- **Secret variables cannot be read back** from the API, so a new function's keys come from `local.properties` or the Console. `HIGHLIGHTLY_API_KEY` is in neither file: it was set on `bouncer-api` by hand, or highlights is still running on the old function.
+- **Variable ids are project-global**, not per function: a second function's `SENTRY_DSN` needs a different `variableId`.
+- The trainer runs in GitHub Actions (`appwrite/tools/run-function.mjs` imports the handler unchanged).
+- Deployments and builds count toward the 2 GB storage cap (since 2026-09-01); `deploy-function.mjs` prunes to the serving deployment and the one before it after a verified deploy. `match-sync` alone had reached 190 deployments and 4.8 GB.
+
+The sections below describe the handlers; the names are their directories under `functions/api/src/`.
 
 ## `highlights-sync`
 
@@ -48,7 +63,7 @@ On-demand; resolves a player name to a **Cricbuzz** profile id for `PlayerProfil
 - Cricinfo's search works but answers with Cricinfo ids, and `buildProfileUrl` builds Cricbuzz `/profiles/{id}/` URLs; switching id namespace trades a dead search for a dead profile screen.
 - **The cached index is read with `parseJsonFile`, never `Buffer.from`.** node-appwrite 15 returns an already-parsed object for `application/json`; the unconditional `Buffer.from` threw into the "no cached index" catch, so every query rebuilt the corpus (39 fetches, ~14s).
 - Returns **503, never an empty 200**, when it has no index and cannot build one: absence and unavailability must stay distinguishable.
-- **A search never rebuilds an index it can answer from** (`indexPlan`). The rebuild runs on the function's schedule (`0 3 */3 * *`, detected by `x-appwrite-trigger: schedule`, a header Appwrite refuses from callers); a search serves whatever index exists, however old. Only a search that finds no index builds inline. An inline rebuild is ~15 s against the **10 s read timeout of the Android SDK's OkHttp client** (it sets none of its own), so that search drew "Online player search is unavailable" and reported nothing (`SocketTimeoutException` is filtered as connectivity). That 10 s bounds every synchronous function call the app makes.
+- **A search never rebuilds an index it can answer from** (`indexPlan`). The rebuild runs from `bouncer-api`'s schedule (04:15 every third day, detected by `x-appwrite-trigger: schedule`, a header Appwrite refuses from callers); a search serves whatever index exists, however old. Only a search that finds no index builds inline. An inline rebuild is ~15 s against the **10 s read timeout of the Android SDK's OkHttp client** (it sets none of its own), so that search drew "Online player search is unavailable" and reported nothing (`SocketTimeoutException` is filtered as connectivity). That 10 s bounds every synchronous function call the app makes.
 - **A rebuild merges, it does not replace** (`mergePlayers`, the "merge, never shrink" rule `tools/update_logos.py` follows): a failed squad page used to remove its whole team, and a dropped player became unfindable though his profile exists. The walk stays a full one — Cricbuzz has no change feed.
 
 ## `match-presence`
@@ -62,7 +77,7 @@ On-demand; the server half of the viewer gate. Env: `APPWRITE_API_KEY`, `MATCH_C
 
 ## `match-commentary-prune`
 
-Daily at 03:00; deletes `match-commentary` rows older than `COMMENTARY_RETENTION_DAYS` (14). Nothing else deletes them and the table had reached ~500k rows.
+Daily at 03:15; deletes `match-commentary` rows older than `COMMENTARY_RETENTION_DAYS` (14). Nothing else deletes them and the table had reached ~500k rows.
 
 - Each pass is one **bulk** `deleteRows` filtered server-side by `lessThan("$createdAt", cutoff)` (built-in, no user index). It used to list 100 rows and delete each: ~6,700 billed reads a day, the project's largest read cost.
 - Bounded to `BATCH` 100 (the Free-plan bulk cap; more fails the request) × `COMMENTARY_PRUNE_MAX_PASSES` 100 per run, to stay inside the 300s timeout; raise the passes temporarily to drain a backlog. A short batch ends the run.

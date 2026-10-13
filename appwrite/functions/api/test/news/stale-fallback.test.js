@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { CACHE_TTL_MS, cacheAgeMs, isFresh, staleFallback } from "../src/newsResult.js";
+import { CACHE_TTL_MS, cacheAgeMs, isFresh, staleFallback } from "../../src/news/newsResult.js";
 
 // Pinning the degradation contract behind the 2026-07-30 outage: the Cricbuzz RapidAPI plan
 // answered 429 for five days, and news-sync returned that 429 while holding a perfectly readable

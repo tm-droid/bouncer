@@ -49,7 +49,7 @@ object PlayerProfileScraper {
     private const val MAX_RETRIES = WORKER_MAX_RETRIES
     private const val PROFILE_TIMEOUT_MS = 15000
     private const val MAX_SEARCH_RESULTS = 10
-    private const val SEARCH_FUNCTION_ID = "bouncer-player-search"
+    private const val SEARCH_FUNCTION_ID = "bouncer-api/player-search"
     private const val SEARCH_CACHE_ENTRIES = 64
 
     /** Recent query → answer. Bounded because it is keyed by arbitrary user input. */

@@ -141,5 +141,5 @@ object AppwriteUsageTracker {
     }
 
     private const val FLUSH_INTERVAL_MS = 300_000L // 5 minutes
-    private const val PLAYER_SEARCH_FUNCTION_ID = "bouncer-player-search"
+    private const val PLAYER_SEARCH_FUNCTION_ID = "bouncer-api/player-search"
 }
