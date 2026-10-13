@@ -29,7 +29,13 @@ export const ROUTES = {
   "/presence": { handler: presence, timeoutMs: 15_000 },
 };
 
-/** [work]'s result, or [onTimeout]'s once [ms] has passed. Returning ends the execution. */
+/**
+ * [work]'s result, or [onTimeout]'s once [ms] has passed.
+ *
+ * This bounds the EXECUTION, which is what is billed and what holds the container: returning ends
+ * it. It does not cancel [work]. The handlers take no abort signal, so a request already in flight
+ * finishes or dies by its own timeout; every upstream call a route makes must therefore keep one.
+ */
 export async function withTimeout(work, ms, onTimeout) {
   let timer;
   const expired = new Promise((resolve) => {
@@ -81,6 +87,10 @@ export function routeOf(path) {
 export default async (context) => {
   const { req, res, log, error } = context;
 
+  // The scheduler's header is the only thing that reaches the jobs, and the routes are public, so
+  // it matters that a caller cannot send it. Measured 2026-10-13: the executions API answers 400 to
+  // any caller-supplied `x-appwrite-*` header, and this function has no domain. Giving it a domain
+  // is a decision to re-measure that, not a setting.
   if (req.headers?.["x-appwrite-trigger"] === "schedule") {
     const jobs = scheduledJobs(new Date());
     if (jobs.length === 0) return res.json({ scheduled: true, ran: [] });

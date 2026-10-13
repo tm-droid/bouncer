@@ -59,8 +59,9 @@ test("the reader regression it fixes", () => {
 test("storageJson.js is byte-identical across every function that reads storage", () => {
   const canonical = readFileSync(here("../src/storageJson.js"), "utf8");
   // poll-live-matches is not here: it was merged into match-sync and its directory is gone.
-  for (const fn of ["match-sync", "match-presence", "news-sync", "player-search"]) {
-    const copy = readFileSync(here(`../../${fn}/src/storageJson.js`), "utf8");
-    assert.equal(copy, canonical, `${fn}/src/storageJson.js has drifted`);
+  // presence, news and player-search are handlers of `api` now, each still with its own copy.
+  for (const dir of ["match-sync/src", "api/src/presence", "api/src/news", "api/src/player-search"]) {
+    const copy = readFileSync(here(`../../${dir}/storageJson.js`), "utf8");
+    assert.equal(copy, canonical, `${dir}/storageJson.js has drifted`);
   }
 });
