@@ -1,3 +1,10 @@
+---
+paths:
+  - "app/src/test/**"
+  - "app/src/androidTest/**"
+  - "appwrite/functions/**/test/**"
+---
+
 # Testing Patterns & Commands
 
 ## Unit Tests (JVM)

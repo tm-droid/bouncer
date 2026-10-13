@@ -1,3 +1,12 @@
+---
+paths:
+  - "local.properties.template"
+  - "app/build.gradle.kts"
+  - "app/src/main/kotlin/**/ApiKeys.kt"
+  - ".github/workflows/**"
+  - "appwrite/**"
+---
+
 # API Keys & Local Setup
 
 ## The rule

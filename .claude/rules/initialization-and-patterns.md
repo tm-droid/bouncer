@@ -1,3 +1,8 @@
+---
+paths:
+  - "app/src/main/kotlin/**/BouncerApp.kt"
+---
+
 # Initialization & Non-Obvious Patterns
 
 ## App Startup Sequence (BouncerApp.kt)

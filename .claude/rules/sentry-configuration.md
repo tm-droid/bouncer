@@ -1,3 +1,11 @@
+---
+paths:
+  - "app/build.gradle.kts"
+  - "app/src/main/kotlin/**/Sentry*.kt"
+  - "app/src/main/kotlin/**/Diagnostics.kt"
+  - "sentry.properties"
+---
+
 # Sentry Configuration
 
 ## Plugin Settings (app/build.gradle.kts)
@@ -39,3 +47,5 @@
 ## Breadcrumb & Logging
 
 Sentry captures breadcrumbs at lifecycle points (onCreate, initialization blocks). Exceptions from manager init wrapped in `initializeSafely()` to prevent cascading startup failures.
+
+**The Sentry exception filter never sees a `captureMessage`.** `shouldDropEvent` reads `event.exceptions`, and every `sentryCaptureThrottled` / `logSilentFailure` report is a message event, so an `UnknownHostException` inside one sailed through. Offline and already-reported causes are now skipped at each reporting site with `HttpClientProvider.isConnectivityException` — do not add a new message-level report without the same check. A `SentryHttpClientException` from a host other than `*.appwrite.io` is dropped: the Gradle-injected OkHttp integration captures every 5xx on every host and its targets cannot be set from options.

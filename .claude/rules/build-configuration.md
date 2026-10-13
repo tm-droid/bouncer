@@ -1,3 +1,11 @@
+---
+paths:
+  - "**/*.gradle.kts"
+  - "gradle.properties"
+  - "gradle/**"
+  - "baselineprofile/**"
+---
+
 # Build Configuration & Optimization
 
 ## iCloud Drive Workarounds
@@ -45,3 +53,14 @@ kotlin.daemon.jvmargs=-Xmx5g -XX:+UseG1GC -XX:+UseStringDeduplication
 ## NDK Configuration
 
 All four ABIs: `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`. It was 64-bit only until 2026-10-09 on the belief that the androidx.graphics.path native lib ships no `armeabi-v7a`; graphics-path 1.0.1, sentry-native-ndk and datastore-core all ship all four, and a 32-bit phone (`ro.product.cpu.abilist` = `armeabi-v7a,armeabi`) answered `INSTALL_FAILED_NO_MATCHING_ABIS`. Check a new native dependency's AAR for all four `jni/` directories before adding it.
+
+**Baseline profile:** `:baselineprofile` (Macrobenchmark) generates
+`app/src/release/generated/baselineProfiles/`, which ships in the release bundle and is installed by
+`profileinstaller`. Regenerate with a device or emulator attached (API 28+):
+`./gradlew :app:generateReleaseBaselineProfile`; `connectedBenchmarkReleaseAndroidTest` runs
+`StartupBenchmark` (no-compilation vs profile). The committed profile covers **cold start and
+onboarding only**: on the `bouncer_test` emulator every UiAutomator tap on onboarding's Skip is
+dropped (measured in the generator's logcat — clicked, never gone, three retries), so the Home and
+match-detail journeys never ran. A physical phone is the way to extend it. The generator must also
+keep the machine awake (`caffeinate -i`): a laptop sleeping mid-run leaves the test stuck at `0/3`
+indefinitely. `nonMinifiedRelease`/`benchmarkRelease` are in Sentry's `ignoredVariants`.

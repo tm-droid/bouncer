@@ -1,3 +1,9 @@
+---
+paths:
+  - "app/src/main/kotlin/**/data/remote/**"
+  - "appwrite/**"
+---
+
 # Appwrite Access Patterns
 
 Written after the July 2026 optimization pass that followed a production
