@@ -1,0 +1,62 @@
+# Publishes the match archiver (appwrite/tools/archive) to the `main` branch of the PUBLIC repo
+# `tm-droid/bouncer-archive`, whose own workflow runs it every three hours and appends to that
+# repo's `gh-pages` site (`.claude/rules/archive-data.md`).
+#
+# The archiver runs there because a public repo's Actions minutes are free; this repo's are spent
+# by CI. `main` there is replaced by one orphan commit of this directory each time, so this
+# directory is its only source. The site branch is never touched from here.
+#
+# Required GitHub Secret:
+#   ARCHIVE_DEPLOY_KEY: the private half of a deploy key with write access on bouncer-archive
+
+name: Publish archiver
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'appwrite/tools/archive/**'
+      - '.github/workflows/publish-archiver.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: publish-archiver
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # Here the vendored classifier is checked against match-sync's; in the public repo it cannot be.
+      - name: Test
+        working-directory: appwrite/tools/archive
+        run: npm test
+
+      - name: Publish
+        env:
+          DEPLOY_KEY: ${{ secrets.ARCHIVE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # GitHub's published host key, pinned rather than trusted on first use.
+          echo 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' >> ~/.ssh/known_hosts
+          out=/tmp/archiver
+          mkdir -p "$out/.github/workflows"
+          cp -R appwrite/tools/archive/archive.mjs appwrite/tools/archive/package.json \
+            appwrite/tools/archive/src appwrite/tools/archive/test "$out/"
+          cp appwrite/tools/archive/workflow/archive.yml "$out/.github/workflows/archive.yml"
+          cd "$out"
+          git init -q -b main
+          git add -A
+          git -c user.name="bouncer-archive" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Archiver from tm-droid/bouncer@${GITHUB_SHA::8}"
+          git push -q -f git@github.com:tm-droid/bouncer-archive.git main

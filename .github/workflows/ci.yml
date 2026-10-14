@@ -129,7 +129,9 @@ jobs:
           set -euo pipefail
           # appwrite/tools/history is the history-site builder (build-history.yml), not a function,
           # but its output is published publicly and its suite guards the scorecard arithmetic.
-          for dir in appwrite/functions/*/ appwrite/tools/history/; do
+          # appwrite/tools/archive is the match archiver (publish-archiver.yml); its suite keeps raw
+          # Cricbuzz text out of a public site and its classifier identical to match-sync's.
+          for dir in appwrite/functions/*/ appwrite/tools/history/ appwrite/tools/archive/; do
             grep -q '"test"' "$dir/package.json" 2>/dev/null || continue
             echo "::group::${dir}"
             (cd "$dir" && npm ci --ignore-scripts --no-audit --no-fund && npm test)
