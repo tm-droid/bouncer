@@ -218,6 +218,7 @@
     <string name="about_changelog">What\'s new</string>
     <string name="about_changelog_on_play">On Google Play</string>
     <string name="about_privacy_policy">Privacy policy</string>
+    <string name="commentary_source_cricsheet">Ball-by-ball from Cricsheet (cricsheet.org)</string>
     <string name="update_required_title">Update Bouncer</string>
     <string name="update_required_body">This version no longer works with Bouncer\'s servers. Update to keep following matches.</string>
     <string name="update_required_action">Update</string>

@@ -2,7 +2,7 @@
 paths:
   - "appwrite/tools/history/**"
   - ".github/workflows/build-history.yml"
-  - "app/src/main/kotlin/**/data/remote/History*.kt"
+  - "app/src/main/kotlin/**/data/history/**"
 ---
 
 # Historical match data (Cricsheet, GitHub Pages)

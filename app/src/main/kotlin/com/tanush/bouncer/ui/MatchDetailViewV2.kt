@@ -396,9 +396,12 @@ fun MatchDetailViewV2(
                         hasOlder = uiState.hasOlderCommentary,
                         isLoadingOlder = uiState.olderCommentaryLoading,
                         onLoadOlder = vm::loadOlderCommentary,
-                        eventPages = commentaryEventPages,
-                        onOpenEvents = vm.commentaryEvents::open,
-                        onLoadOlderEvents = vm.commentaryEvents::loadOlder,
+                        // Cricsheet's feed is the whole match, already loaded; the table holds no
+                        // events for it, so the chips filter what is here instead of asking.
+                        eventPages = if (uiState.commentaryFromCricsheet) emptyMap() else commentaryEventPages,
+                        onOpenEvents = vm.commentaryEvents::open.takeUnless { uiState.commentaryFromCricsheet },
+                        onLoadOlderEvents = vm.commentaryEvents::loadOlder.takeUnless { uiState.commentaryFromCricsheet },
+                        sourceCaption = if (uiState.commentaryFromCricsheet) stringResource(R.string.commentary_source_cricsheet) else null,
                     )
                     R.string.tab_highlights -> HighlightsTabV2(highlights = highlights)
                     R.string.tab_info -> InfoTabV2(match = match, preMatchData = uiState.preMatchData)

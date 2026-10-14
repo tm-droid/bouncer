@@ -69,6 +69,8 @@ fun CommentaryTabV2(
     eventPages: Map<CommentaryEventKind, CommentaryEventPage> = emptyMap(),
     onOpenEvents: ((CommentaryEventKind) -> Unit)? = null,
     onLoadOlderEvents: ((CommentaryEventKind) -> Unit)? = null,
+    /** Shown under the filters when the feed is not the table's own lines (Cricsheet's ball-by-ball). */
+    sourceCaption: String? = null,
 ) {
     if (isLoading) {
         ShimmerCommentaryList(modifier = Modifier.fillMaxSize())
@@ -96,6 +98,7 @@ fun CommentaryTabV2(
         eventPages = eventPages,
         onOpenEvents = onOpenEvents,
         onLoadOlderEvents = onLoadOlderEvents,
+        sourceCaption = sourceCaption,
     )
 }
 
@@ -106,6 +109,7 @@ private fun CommentaryFeedBody(
     eventPages: Map<CommentaryEventKind, CommentaryEventPage>,
     onOpenEvents: ((CommentaryEventKind) -> Unit)?,
     onLoadOlderEvents: ((CommentaryEventKind) -> Unit)?,
+    sourceCaption: String?,
 ) {
     val spacing = BouncerThemeV2.spacing
     var selectedFilter by remember { mutableStateOf(CommentaryFilter.ALL) }
@@ -144,6 +148,14 @@ private fun CommentaryFeedBody(
             },
             modifier = Modifier.padding(vertical = spacing.sm),
         )
+        sourceCaption?.let {
+            Text(
+                text = it,
+                style = BouncerThemeV2.typography.labelMedium,
+                color = BouncerThemeV2.colors.textSecondary,
+                modifier = Modifier.padding(horizontal = spacing.lg),
+            )
+        }
 
         // A filter that matched nothing in the loaded feed used to render an empty LazyColumn — a
         // blank page with no message and no way forward, because "load older" is offered under All

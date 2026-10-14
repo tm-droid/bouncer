@@ -16,6 +16,7 @@ import com.tanush.bouncer.models.WinProbabilityPoint
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricBuzzMatchRepository
 import com.tanush.bouncer.data.MatchRepository
+import com.tanush.bouncer.data.history.HistoryRepository
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
 import com.tanush.bouncer.data.remote.LiveDetailSnapshot
@@ -74,6 +75,12 @@ class MatchDetailViewModel(
          * load, and one empty page is what settles it.
          */
         val hasOlderCommentary: Boolean = true,
+        /**
+         * True when [commentary] is Cricsheet's ball-by-ball (`HistoryRepository`) rather than the
+         * table: a finished match match-sync never stored, or one past the 14-day prune. The tab
+         * labels it and filters it locally, since the table holds no events for it.
+         */
+        val commentaryFromCricsheet: Boolean = false,
         val liveTeam1Score: String = "",
         val liveTeam2Score: String = "",
         val liveTeam1Overs: String = "",
@@ -404,35 +411,41 @@ class MatchDetailViewModel(
                 }
             }
         }
-        if (_uiState.value.commentary.isEmpty()) {
-            val scraped = scrapeCommentary(matchRepository, match.id)
-            if (scraped.isNotEmpty()) {
-                // This is the raw-Cricbuzz path: unrewritten scraper output rendered verbatim,
-                // visually indistinguishable from stored commentary. It is a legitimate last resort
-                // but, when the store answered with nothing, it means match-sync stored no rows
-                // for a match a user is looking at right now, so that case is reported as
-                // degradation. It says nothing about AI coverage: the device never reads
-                // `ai_generated`, and a stored raw-text row is a row. A store that could not be
-                // read is the device's state and is already reported where the read failed.
-                if (storeAnsweredEmpty) {
-                    sentryCaptureThrottled(
-                        key = "commentary.raw-fallback",
-                        message = "Commentary tab fell back to scraping — match-commentary has no rows for this match",
-                        data = mapOf(
-                            "matchId" to match.id,
-                            "scrapedLines" to scraped.size
-                        )
-                    )
-                }
-                // No server verdict on this path — the scraper's own words are what the device
-                // classifies from, and they still carry Cricbuzz's uppercase FOUR/SIX/OUT.
-                _uiState.update { st ->
-                    st.copy(
-                        commentary = scraped.map { CommentaryEntry(it, event = null) },
-                        commentaryError = null,
-                    )
-                }
+        if (_uiState.value.commentary.isNotEmpty()) return
+        // Before the scrape: the scrape is one page of the match's end and cannot page back, while
+        // Cricsheet has every ball.
+        HistoryRepository.ballByBall(match)?.let { history ->
+            _uiState.update {
+                it.copy(commentary = history, commentaryError = null, commentaryFromCricsheet = true, hasOlderCommentary = false)
             }
+            return
+        }
+        val scraped = scrapeCommentary(matchRepository, match.id)
+        if (scraped.isEmpty()) return
+        // This is the raw-Cricbuzz path: unrewritten scraper output rendered verbatim,
+        // visually indistinguishable from stored commentary. It is a legitimate last resort
+        // but, when the store answered with nothing, it means match-sync stored no rows
+        // for a match a user is looking at right now, so that case is reported as
+        // degradation. It says nothing about AI coverage: the device never reads
+        // `ai_generated`, and a stored raw-text row is a row. A store that could not be
+        // read is the device's state and is already reported where the read failed.
+        if (storeAnsweredEmpty) {
+            sentryCaptureThrottled(
+                key = "commentary.raw-fallback",
+                message = "Commentary tab fell back to scraping — match-commentary has no rows for this match",
+                data = mapOf(
+                    "matchId" to match.id,
+                    "scrapedLines" to scraped.size
+                )
+            )
+        }
+        // No server verdict on this path — the scraper's own words are what the device
+        // classifies from, and they still carry Cricbuzz's uppercase FOUR/SIX/OUT.
+        _uiState.update { st ->
+            st.copy(
+                commentary = scraped.map { CommentaryEntry(it, event = null) },
+                commentaryError = null,
+            )
         }
     }
 
