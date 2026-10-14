@@ -103,6 +103,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 **Appwrite cloud functions** live in `appwrite/functions/` (Node.js; deploy with `node appwrite/tools/deploy-function.mjs`). `appwrite/appwrite.config.json` defines project-level config. Details: `.claude/rules/appwrite-functions.md`.
 - `match-sync` — every minute; polls the match lists (`src/poll.js`), then live detail, scorecard, commentary, win probability and alerts
 - `api` (`bouncer-api`) — everything else that must stay on Appwrite, because the Free plan allows **two functions**. On-demand routes by execution path: `/news` (Cricbuzz news via RapidAPI into `cricket-stats`), `/player-search` (player name → Cricbuzz profile id), `/presence` (the server half of the viewer gate). Its `*/15` schedule runs one job per slot: highlights sync (first tick of each hour; Highlightly quota), the commentary prune (03:15 daily, rows older than 14 days) and the player-index rebuild (04:15 every third day). The device names a route as `bouncer-api/<route>` (`AppwriteClient.executeFunctionDetailed`)
+- `appwrite/tools/history` — not a function: builds the historical-match site (every Cricsheet match, ball-by-ball, plus records) that `build-history.yml` publishes weekly to the public repo `tm-droid/bouncer-history` on GitHub Pages. Off Appwrite because Free cannot hold or serve it
 - `train-win-probability` — the v6 refit. Runs weekly in GitHub Actions (`.github/workflows/train-win-probability.yml`), not on Appwrite: it needs ~760 MB and Free fixes functions at 512 MB
 
 Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` and DB/collection IDs need manual env vars.
@@ -183,6 +184,7 @@ The detail lives in `.claude/rules/`. Each file loads by itself when a file unde
 | `match-sync` commentary: batching, checker, backlog, provider ladder and quotas, Cricinfo, slow tier | `match-sync-commentary.md` |
 | Win probability: v6 model, context files, eval logs, orientation | `win-probability.md` |
 | Tables, the `cricket-stats` bucket, Room, R8 keeps | `data-and-storage.md` |
+| Historical matches and records (Cricsheet site on GitHub Pages, its builder and workflow) | `history-data.md` |
 | Cricbuzz parsers and page shapes | `cricbuzz-scraping.md` |
 | Match detail screen, commentary tab, viewer gate, highlights player | `match-detail-and-commentary-ui.md` |
 | Home, navigation, deep links, Series, News, Search | `home-nav-search.md` |

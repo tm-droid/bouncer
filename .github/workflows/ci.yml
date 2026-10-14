@@ -127,7 +127,9 @@ jobs:
       - name: Run every function's tests
         run: |
           set -euo pipefail
-          for dir in appwrite/functions/*/; do
+          # appwrite/tools/history is the history-site builder (build-history.yml), not a function,
+          # but its output is published publicly and its suite guards the scorecard arithmetic.
+          for dir in appwrite/functions/*/ appwrite/tools/history/; do
             grep -q '"test"' "$dir/package.json" 2>/dev/null || continue
             echo "::group::${dir}"
             (cd "$dir" && npm ci --ignore-scripts --no-audit --no-fund && npm test)
