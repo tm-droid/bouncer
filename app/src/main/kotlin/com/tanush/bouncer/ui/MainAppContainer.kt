@@ -85,6 +85,27 @@ private fun loadThemeMode(context: android.content.Context): ThemeModeV2 {
     return ThemeModeV2.entries.firstOrNull { it.name == stored } ?: ThemeModeV2.System
 }
 
+/**
+ * The app, or only the update screen when this build is retired (`AppUpdateGate`): a retired
+ * build would render screens the backend no longer serves.
+ */
+@Composable
+fun BouncerRoot(
+    updateRequired: Boolean,
+    onUpdateClick: () -> Unit,
+    externalDeepLinkUri: String?,
+    onDeepLinkConsumed: () -> Unit,
+) {
+    if (!updateRequired) {
+        BouncerAppContent(externalDeepLinkUri, onDeepLinkConsumed)
+        return
+    }
+    val context = LocalContext.current
+    BouncerThemeV2(themeMode = remember { loadThemeMode(context) }) {
+        UpdateRequiredScreen(onUpdate = onUpdateClick)
+    }
+}
+
 @Composable
 fun BouncerAppContent(
     externalDeepLinkUri: String? = null,

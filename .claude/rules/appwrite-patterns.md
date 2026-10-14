@@ -68,8 +68,8 @@ the 402.
   reads per device per day.
 - **A table needs an index only for queries you actually run.** `ai-commentary-cache.idx_cache_key`
   is load-bearing (`AppwriteAICache.get` filters on `cache_key`).
-  `match-live-detail.idx_match_id` is redundant with the row id but stays: Android has no forced
-  update, and an old build issuing `Query.equal("match_id", …)` after a drop reintroduces the
+  `match-live-detail.idx_match_id` is redundant with the row id but stays: builds before the October 2026 `AppUpdateGate`
+  cannot be forced to update, and an old build issuing `Query.equal("match_id", …)` after a drop reintroduces the
   read-amplification this work exists to remove.
 - **`Query.select()` is bandwidth only** — it does not reduce the read count. Still worth adding on
   hot paths; see `AppwriteHighlightsClient.SELECTED_COLUMNS`.

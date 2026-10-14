@@ -9,13 +9,16 @@ import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.liveactivity.LiveUpdateNotifier
 import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.FavouriteTeamsManager
+import com.tanush.bouncer.services.AppUpdateGate
 import com.tanush.bouncer.utils.PreferencesHelper
 
 /**
@@ -26,6 +29,7 @@ import com.tanush.bouncer.utils.PreferencesHelper
  */
 class BouncerActivity : ComponentActivity() {
     private val externalDeepLinkUri = mutableStateOf<String?>(null)
+    private val updateGate = AppUpdateGate(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -58,15 +62,24 @@ class BouncerActivity : ComponentActivity() {
         // Only on a fresh launch. A recreation (theme, font scale, locale) hands back the same
         // intent, and reading it again reopened a match the reader had already closed.
         if (savedInstanceState == null) externalDeepLinkUri.value = intent?.dataString
+        updateGate.check()
 
         setContent {
-            com.tanush.bouncer.ui.BouncerAppContent(
+            val updateRequired by updateGate.required.collectAsStateWithLifecycle()
+            com.tanush.bouncer.ui.BouncerRoot(
+                updateRequired = updateRequired,
+                onUpdateClick = updateGate::update,
                 externalDeepLinkUri = externalDeepLinkUri.value,
                 // Cleared once handled, so the next alert for the same match — the same URI — is
                 // a new value and opens it again.
                 onDeepLinkConsumed = { externalDeepLinkUri.value = null },
             )
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateGate.resumeIfInProgress()
     }
 
     override fun onNewIntent(intent: Intent) {

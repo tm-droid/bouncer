@@ -244,6 +244,24 @@ jobs:
           echo "changed=${changed}" >> "$GITHUB_OUTPUT"
           echo "App changed in this push: ${changed}"
 
+      # A push whose commits carry a `Force-Update: yes` trailer uploads at in-app update priority
+      # 5, which AppUpdatePolicy turns into Play's immediate update screen on every Play install.
+      # Play fixes a release's priority at rollout, so this is the only moment to set it. When the
+      # range cannot be read, only the head commit counts: scanning the whole history would force
+      # every release after the first forced one.
+      - name: Is this a forced update?
+        id: priority
+        if: steps.app.outputs.changed == 'yes'
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          range=(-1 "${GITHUB_SHA}")
+          if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then range=("${BEFORE}..${GITHUB_SHA}"); fi
+          priority=0
+          if git log --format=%B "${range[@]}" | grep -qiE '^Force-Update:[[:space:]]*yes[[:space:]]*$'; then priority=5; fi
+          echo "value=${priority}" >> "$GITHUB_OUTPUT"
+          echo "In-app update priority: ${priority}"
+
       - uses: actions/download-artifact@v8
         if: steps.app.outputs.changed == 'yes'
         with:
@@ -261,6 +279,7 @@ jobs:
           # installable within minutes. No space after the comma.
           tracks: internal,alpha
           status: completed
+          inAppUpdatePriority: ${{ steps.priority.outputs.value }}
           # Without this every release shipped with blank release notes.
           # distribution/whatsnew/README.md says who edits it and when.
           whatsNewDirectory: distribution/whatsnew

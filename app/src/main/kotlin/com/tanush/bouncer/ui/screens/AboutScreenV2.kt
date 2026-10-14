@@ -35,12 +35,9 @@ import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.v2.SettingsItemV2
 import com.tanush.bouncer.ui.components.v2.SettingsTrailing
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
-import android.util.Log
+import com.tanush.bouncer.utils.open
+import com.tanush.bouncer.utils.openStoreListing
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.net.toUri
 
 /**
  * AboutScreenV2 — App info, version, links.
@@ -142,18 +139,3 @@ fun AboutScreenV2(onBackClick: () -> Unit) {
 
 // The address declared in Play Console (Policy › App content). Change both together.
 private const val PRIVACY_POLICY_URL = "https://gist.github.com/tm-droid/e2fc757ea447c4d6970e69112a6f7b56"
-
-/** The app's Play listing, where "What's new" is published. Play Store first, a browser if there is none. */
-private fun Context.openStoreListing() {
-    val listing = "details?id=$packageName"
-    if (!open("market://$listing")) open("https://play.google.com/store/apps/$listing")
-}
-
-/** Opens [uri] in whatever handles it. False when nothing on the device does. */
-private fun Context.open(uri: String): Boolean = try {
-    startActivity(Intent(Intent.ACTION_VIEW, uri.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    true
-} catch (e: ActivityNotFoundException) {
-    Log.d("AboutScreen", "Nothing opens $uri", e)
-    false
-}
