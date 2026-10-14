@@ -29,7 +29,7 @@ const raw = {
     outcome: { winner: "A", by: { runs: 9 } },
     player_of_match: ["a1"],
     players: { A: ["a1", "a2", "a3"], B: ["z", "y", "b1"] },
-    registry: { people: { a1: "id-a1", a2: "id-a2", a3: "id-a3", z: "id-z", y: "id-y", b1: "id-b1" } },
+    registry: { people: { a1: "0000a001", a2: "0000a002", a3: "0000a003", z: "0000000f", y: "0000000e", b1: "0000b001" } },
     venue: "Eden Gardens, Kolkata",
   },
   innings: [
@@ -76,7 +76,7 @@ test("match header keeps teams, toss, outcome and people with registry ids", () 
   assert.deepEqual(m.toss, [1, "field"]);
   assert.equal(m.o.w, 0);
   assert.deepEqual(m.o.by, { runs: 9 });
-  assert.deepEqual(m.p[idx("a1")], ["a1", "id-a1"]);
+  assert.deepEqual(m.p[idx("a1")], ["a1", "0000a001"]);
   assert.deepEqual(m.pom, [idx("a1")]);
 });
 
@@ -155,13 +155,13 @@ test("stats: team, pair, venue and player records from one match", () => {
   assert.deepEqual(pair.t, ["A", "B"]);
   assert.deepEqual(pair.f.T20I, [1, 1, 0, 0, 0, 0]);
   assert.ok([...files.keys()].some((k) => k.startsWith("s/venue/eden-gardens")));
-  const a1 = files.get("s/p/id-a1.json");
+  const a1 = files.get("s/p/0000a001.json");
   // played, innings, not outs, runs, balls, high score, not out, 50s, 100s, balls bowled,
   // conceded, wickets, best w, best r, catches, stumpings
   assert.deepEqual(a1.f.T20I, [1, 1, 1, 4, 8, 4, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0]);
-  assert.deepEqual(files.get("s/p/id-y.json").f.T20I.slice(9, 15), [6, 0, 0, 0, 0, 1]);
+  assert.deepEqual(files.get("s/p/0000000e.json").f.T20I.slice(9, 15), [6, 0, 0, 0, 0, 1]);
   const names = new Map(playerNameFiles(stats));
-  assert.ok(names.get("s/p/names/a.json").some((r) => r[1] === "id-a1"));
+  assert.ok(names.get("s/p/names/a.json").some((r) => r[1] === "0000a001"));
 });
 
 test("results from one side's view", () => {
@@ -176,4 +176,14 @@ test("women's sides get their own keys", () => {
   assert.equal(teamKey("India", "female"), "india__w");
   assert.equal(pairKey("India", "Australia", "female"), "australia__india__w");
   assert.equal(pairKey("Sri Lanka", "India", "male"), "india__sri-lanka");
+});
+
+test("a registry id that is not Cricsheet's 8-hex form never becomes a file", () => {
+  const evil = structuredClone(raw);
+  evil.info.registry.people.a1 = "../../../etc/x";
+  const stats = createStats();
+  addMatch(stats, compactMatch("1", evil));
+  const paths = [...statsFiles(stats)].map(([p]) => p);
+  assert.ok(paths.every((p) => !p.includes("..")));
+  assert.ok(!paths.includes("s/p/../../../etc/x.json"));
 });

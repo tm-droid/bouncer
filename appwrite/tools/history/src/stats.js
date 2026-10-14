@@ -27,6 +27,9 @@ export function resultFor(match, side) {
   return "N";
 }
 
+/** Cricsheet's people-register id: eight hex digits. */
+export const REGISTRY_ID = /^[0-9a-f]{8}$/;
+
 const RESULT_SLOT = { W: 1, L: 2, T: 3, D: 4, N: 5 };
 const newTally = () => [0, 0, 0, 0, 0, 0]; // played, W, L, T, D, N
 
@@ -137,7 +140,10 @@ function addPlayers(stats, m, fk) {
   for (const [idx, line] of per) {
     const person = m.p[idx];
     const id = person?.[1];
-    if (!id) continue; // no registry id: the name alone cannot be joined across matches
+    // No registry id: the name alone cannot be joined across matches. The id also becomes a file
+    // name, and it comes from a third party's file, so anything but Cricsheet's 8-hex form is
+    // dropped rather than allowed to pick a path ("../../x").
+    if (!id || !REGISTRY_ID.test(id)) continue;
     const side = sideOf.get(idx);
     if (side === undefined) continue;
     let player = stats.players.get(id);

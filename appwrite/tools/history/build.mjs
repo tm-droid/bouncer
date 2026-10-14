@@ -33,8 +33,12 @@ if (!zipPath || !outDir) {
 const mb = (n) => (n / 1024 / 1024).toFixed(1);
 let bytes = 0;
 let files = 0;
+const root = path.resolve(outDir);
 const write = (rel, obj) => {
-  const file = path.join(outDir, rel);
+  const file = path.resolve(root, rel);
+  // Every path is built from keys the builder slugs or validates; this is the backstop that keeps
+  // a key derived from Cricsheet's data from ever writing outside the site.
+  if (!file.startsWith(root + path.sep)) throw new Error(`refusing to write outside ${root}: ${rel}`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const text = JSON.stringify(obj);
   fs.writeFileSync(file, text);
