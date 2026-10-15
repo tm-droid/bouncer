@@ -3,10 +3,15 @@
 set -euo pipefail
 
 SDK="${ANDROID_HOME:-/home/vscode/android-sdk}"
-TOOLS_ZIP=commandlinetools-linux-16111833_latest.zip
-TOOLS_SHA256=0877a1d048fe4a24efe2eff536ca4223f7adeb58648bb81909d33c446918cfa8
+# Pinned to 21.0, the last release with the classic sdkmanager. From 22.0 sdkmanager hands off to the
+# new `android` CLI, and in 23.0 `--licenses` is a no-op ("no longer needed") that writes no licence
+# files. AGP still reads those files, so every SDK download on the first build failed.
+TOOLS_REVISION=21.0
+TOOLS_ZIP=commandlinetools-linux-15641748_latest.zip
+TOOLS_SHA256=a66d5ef0238fc0162e9c1446602ce0dd41702d4dd7a94d2ce42d12b7f80baf7e
 
-if [ ! -x "$SDK/cmdline-tools/latest/bin/sdkmanager" ]; then
+if ! grep -qx "Pkg.Revision=$TOOLS_REVISION" "$SDK/cmdline-tools/latest/source.properties" 2>/dev/null; then
+  rm -rf "$SDK/cmdline-tools/latest"
   tmp=$(mktemp -d)
   curl -fsSL -o "$tmp/tools.zip" "https://dl.google.com/android/repository/$TOOLS_ZIP"
   echo "$TOOLS_SHA256  $tmp/tools.zip" | sha256sum --check
