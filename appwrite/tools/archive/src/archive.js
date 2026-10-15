@@ -20,6 +20,26 @@ export const STALE_MS = 4 * 86_400_000;
 
 export const MATCH_ID = /^\d{1,12}$/;
 
+// Appwrite's billing cycle, which no API key can read (`.claude/rules/archive-data.md`). Read from
+// the Console on 2026-10-14: `billingCurrentInvoiceDate` 2026-10-14T00:00Z, `billingNextInvoiceDate`
+// 2026-11-13T00:00Z, a 30-day period from the switch to Free. Check it against the Console when a
+// cycle ends: the end-of-cycle prune spends what it believes is left of this window.
+export const CYCLE_ANCHOR_MS = Date.UTC(2026, 9, 14);
+export const CYCLE_DAYS = 30;
+
+/** The billing cycle holding `ms`: `{start, end}` as ISO strings. */
+export function cycleOf(ms) {
+  const length = CYCLE_DAYS * 86_400_000;
+  const start = CYCLE_ANCHOR_MS + Math.floor((ms - CYCLE_ANCHOR_MS) / length) * length;
+  return { start: new Date(start).toISOString(), end: new Date(start + length).toISOString() };
+}
+
+/**
+ * How many of `rows` were created at or after `startIso`: commentary rows are created by one write
+ * each, so this counts that share of the cycle's writes.
+ */
+export const countSince = (rows, startIso) => rows.filter((r) => (r.created_at ?? "") >= startIso).length;
+
 // The columns kept from a `match-commentary` row, under their table names, so the app maps an
 // archived row with the same function as a live one.
 const ROW_FIELDS = ["innings", "ball", "sort_key", "commentary", "ai_generated", "event", "runs", "extra", "provider", "created_at"];

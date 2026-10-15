@@ -1,65 +1,114 @@
 import { Client, TablesDB, Query } from "node-appwrite-26";
+import { Client as StorageClient, Storage } from "node-appwrite";
+import { InputFile } from "node-appwrite/file";
+import { parseJsonFile } from "../presence/storageJson.js";
+import { finalIdsOldestFirst, planRun } from "./budget.js";
 
-// Daily retention prune for the match-commentary table. Nothing else deletes these rows, so
-// without this the table grows one row per ball of every match forever (it had ~500k+ rows).
+// The end-of-cycle prune for match-commentary.
+//
+// It was a daily prune of rows older than 14 days, and its deletes were 28% of the project's writes
+// (a bulk delete bills one write per row). Every row is now kept by the match archive
+// (`.claude/rules/archive-data.md`) within three hours of being written, so deleting it is only
+// about storage, and storage is not short. So the prune spends only writes that would otherwise go
+// unused: once, in the last twelve hours of each billing cycle, 90% of the estimated remainder
+// (`budget.js`).
+//
+// It deletes only rows the archive already holds: rows of a match the archive has finalised,
+// created before the archive's watermark. Anything else stays, however old.
 const DB_ID = process.env.APPWRITE_AI_CACHE_DB_ID ?? "bouncer-db";
 const COMMENTARY_COL = process.env.MATCH_COMMENTARY_COL_ID ?? "match-commentary";
-const RETENTION_DAYS = Number(process.env.COMMENTARY_RETENTION_DAYS ?? "14");
+const BUCKET_ID = process.env.MATCH_CACHE_BUCKET_ID ?? "cricket-stats";
+const STATE_FILE = "prune-state";
+const ARCHIVE = process.env.ARCHIVE_BASE_URL ?? "https://tm-droid.github.io/bouncer-archive/";
 
-// Safety caps: keep a single run inside the function timeout and prevent runaway deletion.
-// Steady-state a day adds only a few thousand rows; MAX_PASSES lets a large initial backlog
-// drain over several days (raise COMMENTARY_PRUNE_MAX_PASSES temporarily to drain faster).
-// BATCH is also the bulk-operation row cap on the Free plan (1,000 on Pro); asking for more than
-// the plan allows fails the whole request, so it stays at the lower one.
+// The Free plan's bulk cap; asking for more fails the whole request.
 const BATCH = 100;
-const MAX_PASSES = Number(process.env.COMMENTARY_PRUNE_MAX_PASSES ?? "100");
+// Appwrite's limit on values in one `equal`.
+const IDS_PER_QUERY = 100;
+// Inside the 300 s function timeout, with room to save the state afterwards.
+const TIME_BUDGET_MS = 200_000;
 
-const isBudget402 = (e) => e?.code === 402 || e?.type === "limit_databases_reads_exceeded";
+const isWriteBudget402 = (e) => e?.code === 402 || /limit_databases_writes_exceeded/.test(e?.type ?? "");
 
-export default async ({ req, res, log, error }) => {
-  if (!process.env.APPWRITE_API_KEY) {
-    return res.json({ error: "Missing APPWRITE_API_KEY" }, 500);
+async function fetchJson(path) {
+  const res = await fetch(ARCHIVE + path, { headers: { "cache-control": "no-cache" } });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`archive ${path}: HTTP ${res.status}`);
+  return res.json();
+}
+
+async function finalMatchIds() {
+  const years = (await fetchJson("idx/years.json")) ?? {};
+  const months = {};
+  for (const [year, byMonth] of Object.entries(years)) {
+    for (const month of Object.keys(byMonth)) months[`${year}-${month}`] = (await fetchJson(`idx/m/${year}-${month}.json`)) ?? [];
   }
-  const client = new Client()
-    .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
-    .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
-    .setKey(process.env.APPWRITE_API_KEY);
-  const db = new TablesDB(client);
+  months.unknown = (await fetchJson("idx/m/unknown.json")) ?? [];
+  return finalIdsOldestFirst(months);
+}
 
-  const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  let deleted = 0;
-  let passes = 0;
+export default async ({ res, log, error }) => {
+  if (!process.env.APPWRITE_API_KEY) return res.json({ error: "Missing APPWRITE_API_KEY" }, 500);
+  const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT;
+  const project = process.env.APPWRITE_FUNCTION_PROJECT_ID;
+  const key = process.env.APPWRITE_API_KEY;
+  const db = new TablesDB(new Client().setEndpoint(endpoint).setProject(project).setKey(key));
+  const storage = new Storage(new StorageClient().setEndpoint(endpoint).setProject(project).setKey(key));
 
+  const manifest = await fetchJson("manifest.json");
+  let state = null;
   try {
-    for (; passes < MAX_PASSES; passes++) {
-      // One bulk delete per pass, filtered server-side on the built-in $createdAt (always
-      // queryable — no user index needed). This used to list 100 rows, filter the cutoff in memory
-      // and delete them one call each: every stale row cost a billed READ before its write, ~6,700
-      // reads a day, the largest read cost in the project. The cutoff now travels in the query, so
-      // nothing is read back.
-      const result = await db.deleteRows({
-        databaseId: DB_ID,
-        tableId: COMMENTARY_COL,
-        queries: [
-          Query.lessThan("$createdAt", cutoff),
-          Query.orderAsc("$createdAt"),
-          Query.limit(BATCH),
-        ],
-      });
-      const n = result?.total ?? result?.rows?.length ?? 0;
-      deleted += n;
-      // A short batch means everything older than the cutoff is gone.
-      if (n < BATCH) break;
+    state = parseJsonFile(await storage.getFileDownload(BUCKET_ID, STATE_FILE));
+  } catch {
+    state = null; // the first run of the first cycle
+  }
+  const plan = planRun({ manifest, state, now: Date.now() });
+  if (plan.action === "skip") return res.json({ skipped: plan.reason, state: plan.state ?? state });
+
+  const started = Date.now();
+  const ids = await finalMatchIds();
+  let remaining = plan.remaining;
+  let deleted = 0;
+  let stopped = null;
+  try {
+    for (let i = 0; i < ids.length && remaining > 0 && !stopped; i += IDS_PER_QUERY) {
+      const chunk = ids.slice(i, i + IDS_PER_QUERY);
+      while (remaining > 0) {
+        if (Date.now() - started > TIME_BUDGET_MS) {
+          stopped = "time";
+          break;
+        }
+        const limit = Math.min(BATCH, remaining);
+        const result = await db.deleteRows({
+          databaseId: DB_ID,
+          tableId: COMMENTARY_COL,
+          queries: [
+            Query.equal("match_id", chunk),
+            Query.lessThan("$createdAt", plan.cutoff),
+            Query.orderAsc("$createdAt"),
+            Query.limit(limit),
+          ],
+        });
+        const n = result?.total ?? result?.rows?.length ?? 0;
+        deleted += n;
+        remaining -= n;
+        if (n < limit) break;
+      }
     }
   } catch (e) {
-    if (isBudget402(e)) {
-      error(`[READ-BUDGET-402] read budget exhausted — pruned ${deleted} before aborting`);
-      return res.json({ error: "read_budget_exceeded", deleted }, 402);
-    }
-    error(`Prune failed after ${deleted} deletions: ${e?.message}`);
-    return res.json({ error: e?.message, deleted }, 500);
+    stopped = isWriteBudget402(e) ? "write_budget" : "error";
+    error(`Prune stopped after ${deleted} deletions: ${e?.message}`);
   }
 
-  log(`Pruned ${deleted} match-commentary rows older than ${RETENTION_DAYS}d (${passes} passes)`);
-  return res.json({ deleted, retentionDays: RETENTION_DAYS, passes });
+  // Saved whatever happened: an uncounted delete is a write the next run would spend again.
+  state = { ...plan.state, pruned: plan.state.pruned + deleted, updatedAt: new Date().toISOString() };
+  try {
+    await storage.deleteFile(BUCKET_ID, STATE_FILE).catch(() => {});
+    await storage.createFile(BUCKET_ID, STATE_FILE, InputFile.fromBuffer(Buffer.from(JSON.stringify(state)), "prune-state.json"));
+  } catch (e) {
+    error(`Prune state not saved (pruned ${state.pruned} of ${state.budget}): ${e?.message}`);
+  }
+
+  log(`Pruned ${deleted} archived match-commentary rows; ${state.pruned} of ${state.budget} this cycle${stopped ? ` (stopped: ${stopped})` : ""}`);
+  return res.json({ deleted, state, stopped }, stopped === "error" ? 500 : 200);
 };

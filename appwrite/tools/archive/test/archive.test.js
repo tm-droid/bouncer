@@ -7,6 +7,8 @@ import {
   SETTLE_MS,
   STALE_MS,
   archivedRow,
+  countSince,
+  cycleOf,
   indexRow,
   isSettled,
   mergeIndex,
@@ -124,4 +126,16 @@ test("the vendored match-state classifier is match-sync's, byte for byte", (t) =
   const original = path.resolve(here, "../../../functions/match-sync/src/matchstate.js");
   if (!fs.existsSync(original)) return t.skip("match-sync is not beside this copy (the public repo)");
   assert.equal(fs.readFileSync(path.resolve(here, "../src/matchstate.js"), "utf8"), fs.readFileSync(original, "utf8"));
+});
+
+test("the billing cycle is the Console's 30-day period from 2026-10-14", () => {
+  assert.deepEqual(cycleOf(Date.parse("2026-10-15T01:00:00Z")), { start: "2026-10-14T00:00:00.000Z", end: "2026-11-13T00:00:00.000Z" });
+  // The instant the Console's next invoice date arrives belongs to the next cycle.
+  assert.equal(cycleOf(Date.parse("2026-11-13T00:00:00Z")).start, "2026-11-13T00:00:00.000Z");
+  assert.equal(cycleOf(Date.parse("2026-11-12T23:59:59Z")).start, "2026-10-14T00:00:00.000Z");
+});
+
+test("a cycle counts only rows created inside it", () => {
+  const rows = [{ created_at: "2026-10-13T23:59:59.999Z" }, { created_at: "2026-10-14T00:00:00.000Z" }, { created_at: "2026-10-20T10:00:00Z" }, {}];
+  assert.equal(countSince(rows, "2026-10-14T00:00:00.000Z"), 2);
 });

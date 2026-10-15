@@ -18,19 +18,18 @@ test("each quarter-hour slot runs at most one job", () => {
 
 test("highlights runs on the first tick of every hour and on no other", () => {
   assert.deepEqual(at("2026-10-13T09:00:20Z"), ["highlights"]);
-  assert.deepEqual(at("2026-10-13T09:15:20Z"), []);
-  assert.deepEqual(at("2026-10-13T09:30:20Z"), []);
-  assert.deepEqual(at("2026-10-13T09:45:20Z"), []);
+  for (const t of ["09:15:20", "09:30:20", "09:45:20"]) assert.ok(!at(`2026-10-13T${t}Z`).includes("highlights"), t);
 });
 
-test("the prune runs once a day", () => {
+test("the prune is offered the third tick of every hour; its own window decides", () => {
   const runs = [];
   for (let hour = 0; hour < 24; hour++) {
     for (const minute of [0, 15, 30, 45]) {
-      if (scheduledJobs(new Date(Date.UTC(2026, 9, 13, hour, minute))).includes("prune")) runs.push(`${hour}:${minute}`);
+      if (scheduledJobs(new Date(Date.UTC(2026, 9, 13, hour, minute))).includes("prune")) runs.push(minute);
     }
   }
-  assert.deepEqual(runs, ["3:15"]);
+  assert.equal(runs.length, 24);
+  assert.ok(runs.every((m) => m === 30));
 });
 
 test("the player index is rebuilt every third day of the month", () => {

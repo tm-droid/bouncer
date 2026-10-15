@@ -14,7 +14,7 @@ Functions live in `appwrite/functions/` (Node.js). `appwrite/appwrite.config.jso
 Appwrite's Education plan ends for this org in November 2026 and Free allows **two functions per project**, 512 MB each. So:
 
 - `bouncer-match-sync` — the per-minute job, unchanged.
-- `bouncer-api` (`functions/api`) — five former functions, each still a self-contained handler in its own directory under `src/` with its tests under `test/<name>/`. `src/main.js` only routes: an on-demand execution by its **path** (`/news`, `/player-search`, `/presence`; anything else is a 404, never a default handler), a scheduled one by the clock (`scheduledJobs`: highlights on the first tick of each hour, the prune at 03:15, the player-index rebuild at 04:15 every third day — **one job per `*/15` slot**, pinned by `router.test.js`, because together they do not fit the 300 s timeout).
+- `bouncer-api` (`functions/api`) — five former functions, each still a self-contained handler in its own directory under `src/` with its tests under `test/<name>/`. `src/main.js` only routes: an on-demand execution by its **path** (`/news`, `/player-search`, `/presence`; anything else is a 404, never a default handler), a scheduled one by the clock (`scheduledJobs`: highlights on the first tick of each hour, the prune on the third tick of every hour, the player-index rebuild at 04:15 every third day — **one job per `*/15` slot**, pinned by `router.test.js`, because together they do not fit the 300 s timeout).
 - **Each public route carries its own timeout** (`ROUTES[...].timeoutMs`: news 30 s, player-search 90 s, presence 15 s — what each had as a function). The function's timeout is 300 s for the prune and the routes are `execute("any")`; a route added without a cap inherits 300 s for any caller.
 - **Two node-appwrite majors are installed in `api`**: `node-appwrite` (15) for news, player-search and presence, `node-appwrite-26` (an npm alias) for highlights and the prune, which needs bulk deletes. Moving a handler across is a migration of that handler.
 - The device calls a route as `bouncer-api/<route>`; `AppwriteClient` splits it into function id and path and keeps the whole string as the guard, usage and Sentry key.
@@ -77,10 +77,16 @@ On-demand; the server half of the viewer gate. Env: `APPWRITE_API_KEY`, `MATCH_C
 - Concurrent pings race on the read-modify-write (last write wins) — accepted; the next heartbeat heals it.
 - A ping that finds its match stamped under 60s ago returns without writing (`FRESH_SKIP_MS`): N viewers cost ~1 write a minute, and staleness is unchanged.
 
-## `match-commentary-prune`
+## `prune` (match-commentary, end of each billing cycle)
 
-Daily at 03:15; deletes `match-commentary` rows older than `COMMENTARY_RETENTION_DAYS` (14). Nothing else deletes them and the table had reached ~500k rows.
+Deletes `match-commentary` rows only with writes that would otherwise go unused. Until 2026-10-15 it deleted every row older than 14 days at 03:15 daily, and those deletes were 28% of the project's writes: a bulk delete bills **one write per row** (1,676 rows, 1,676 writes, measured 2026-10-14).
 
-- Each pass is one **bulk** `deleteRows` filtered server-side by `lessThan("$createdAt", cutoff)` (built-in, no user index). It used to list 100 rows and delete each: ~6,700 billed reads a day, the project's largest read cost.
-- Bounded to `BATCH` 100 (the Free-plan bulk cap; more fails the request) × `COMMENTARY_PRUNE_MAX_PASSES` 100 per run, to stay inside the 300s timeout; raise the passes temporarily to drain a backlog. A short batch ends the run.
-- Needs node-appwrite ≥ 26 (bulk ops). A 402 aborts and returns 402 with the partial `deleted` count.
+- **It deletes only what the archive holds.** That means rows of a match the archive has finalised, created before the archive's `watermark` (`archive-data.md`). Final ids come from the archive's month indexes, oldest first. Nothing else is deleted, however old.
+- **When it acts.** Every hour's third tick runs it. It skips (one GitHub Pages request) unless the time is inside the last 12 hours of the billing cycle named in the archive's `manifest.json`, stopping 15 minutes before the end.
+- **The budget.** No API key can read usage, so `budget.js` estimates writes used from the archive's count of this cycle's commentary rows (`cycle.commentaryRows`, which matched Appwrite's own total exactly: 4,775 of 4,775).
+  - Estimated writes used = rows × 1.15. Creates were 66% of writes and PATCHes ~6%; the 15% covers those and unmeasured writes.
+  - Budget = 90% × (250k − estimated − 5k reserved for the window).
+  - The budget is fixed once per cycle in the bucket file `prune-state` (`{cycleStart, budget, pruned}`). Recomputing it every run would creep to the limit.
+- **It skips** when the manifest is over 4 hours old or has no watermark.
+- **Limits.** 100 rows per bulk call (the Free cap); 100 match ids per `equal`; 200 s per run, then the state is saved even after an error, because an uncounted delete would be spent twice. A write-budget 402 stops it.
+- **The cycle** is a 30-day period anchored 2026-10-14T00:00Z (`cycleOf` in the archiver; the Console's `billingNextInvoiceDate` was 2026-11-13). **After each cycle, compare the Console's write total with the estimate** (`organizations_get_usage`) and the next invoice date with `cycleOf`, and correct `OTHER_WRITES_FACTOR` or the anchor.

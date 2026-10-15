@@ -28,7 +28,8 @@ It is a different thing from the Cricsheet site (`history-data.md`): that one is
   - **Ended:** the recent list (20 rows, about a day) calls it finished, or, once its rows have been quiet for 6 h, its detail row's status does. It is final after 6 h of quiet and 6 h since it was seen ended, which leaves room for the rewrite backlog and the finalising run's summary and `wpe-` log.
   - **Stale:** a match nothing calls finished is final after 4 days with no rows.
   - Rows that arrive after finalising are still merged in.
-  - **The 4-day rule must stay well inside the 14-day prune.** Once a prune deletes a match's rows before the archive has them, those rows are lost.
+  - **The prune deletes only rows of final matches created before the archive's watermark** (`bouncer-api`'s end-of-cycle prune, `appwrite-functions.md`), so a slow archive leaves rows in Appwrite rather than losing them. `mc-` files are still pruned after 14 days by match-sync and are copied only at finalisation, so the 4-day stale rule must stay well under that.
+- **The manifest feeds the prune.** It carries `watermark` and `cycle` (`start`, `end`, `commentaryRows`). The count is this billing cycle's commentary rows: counted from the site's own files when a cycle starts, then incremented by each row a run adds (re-read rows merge into their own id). It matched Appwrite's total exactly on 2026-10-15 (4,775). The anchor is `CYCLE_ANCHOR_MS`/`CYCLE_DAYS` in `src/archive.js`.
 - **The API key is read-only** (`rows.read`, `files.read`), stored as the archive repo's `APPWRITE_API_KEY` secret. The workflow has no `pull_request` trigger, so a fork can never run it with the secret.
 - **Size.** Pages refuses a site over 1 GB, and the run fails over 900 MB.
   - Measured on the backfill: about 285 B a row, and about 4,000 rows a day (60k in 15 days), so roughly 35 MB a month and 2 years per site. The largest match file is a Ranji game, 1,570 rows and 600 KB raw; Pages serves it gzipped. Replace this with a measured month.
@@ -39,8 +40,8 @@ It is a different thing from the Cricsheet site (`history-data.md`): that one is
 
 | Path | Contents |
 |---|---|
-| `manifest.json` | `v`, `updated`, `matches`, `files`, `bytes` |
-| `state.json` | the watermark; per pending match `lastRowMs`, `endedSeenMs` and its list entry; `seen`, every match-list entry (upcoming, live, recent) for 30 days, so a match that leaves the 20-row recent list before it is final still has its series and teams |
+| `manifest.json` | `v`, `updated`, `matches`, `files`, `bytes`, `watermark`, `cycle` |
+| `state.json` | the watermark; `cycle` (`start`, `rows`); per pending match `lastRowMs`, `endedSeenMs` and its list entry; `seen`, every match-list entry (upcoming, live, recent) for 30 days, so a match that leaves the 20-row recent list before it is final still has its series and teams |
 | `idx/years.json` | `{year: {month: count}}` |
 | `idx/m/YYYY-MM.json` | `[id, date, format, gender, team1, team2, result, series, venue]`, newest first; `unknown.json` for a match with no date at all |
 | `m/<cricbuzzId>.json` | `v`, `id`, `final`, `finalisedAt`, `rows` (the `match-commentary` columns under their own names plus `id`, in `sort_key` order), `meta` (its match-list entry), `detail`, `scorecard`, `context` (`mc-`), `evalLog` (`wpe-`), `partial: 1` when neither a list entry nor a context was available |

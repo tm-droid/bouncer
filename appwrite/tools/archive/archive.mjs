@@ -22,6 +22,8 @@ import {
   SETTLE_MS,
   SIZE_LIMIT_BYTES,
   archivedRow,
+  countSince,
+  cycleOf,
   indexRow,
   isSettled,
   isTerminal,
@@ -123,10 +125,25 @@ for await (const row of db.rows("match-commentary", queries, { max: MAX_ROWS }))
 // A run that stopped at its ceiling has not seen every match's newest rows, so nothing is quiet yet.
 const drained = read < MAX_ROWS;
 
+// This billing cycle's commentary rows, which the end-of-cycle prune turns into a write estimate.
+// Counted from the site itself when a cycle starts (or the count is new), then from each row a run
+// adds. Rows the site already holds are not counted twice: a re-read row merges into its own id.
+const cycle = cycleOf(now);
+if (state.cycle?.start !== cycle.start) {
+  let rows = 0;
+  const dir = fileFor("m/x").replace(/x$/, "");
+  for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) {
+    if (f.endsWith(".json")) rows += countSince(readJson(`m/${f}`, { rows: [] }).rows, cycle.start);
+  }
+  state.cycle = { start: cycle.start, rows };
+}
+
 let added = 0;
 for (const [id, { rows, lastMs }] of incoming) {
   const file = readJson(matchPath(id), { v: SCHEMA_VERSION, id, final: false, rows: [] });
   const before = file.rows.length;
+  const known = new Set(file.rows.map((r) => r.id));
+  state.cycle.rows += countSince(rows.filter((r) => !known.has(r.id)), cycle.start);
   file.rows = mergeRows(file.rows, rows);
   added += file.rows.length - before;
   writeJson(matchPath(id), file);
@@ -208,7 +225,17 @@ let files = 0;
   }
 })(root);
 const matches = Object.values(allMonths).reduce((n, rows) => n + rows.length, 0);
-writeJson("manifest.json", { v: SCHEMA_VERSION, updated: new Date(now).toISOString(), matches, files, bytes });
+// `watermark` and `cycle` are read by bouncer-api's end-of-cycle prune: it deletes only rows the
+// archive has (created before the watermark, of a final match) and sizes itself from the count.
+writeJson("manifest.json", {
+  v: SCHEMA_VERSION,
+  updated: new Date(now).toISOString(),
+  matches,
+  files,
+  bytes,
+  watermark,
+  cycle: { start: cycle.start, end: cycle.end, commentaryRows: state.cycle.rows },
+});
 fs.writeFileSync(fileFor(".nojekyll"), "");
 fs.writeFileSync(
   fileFor("README.md"),
@@ -228,7 +255,8 @@ left its live database. Updated every three hours.
 console.log(
   `read ${read} rows (${skipped} not archived), ${added} new across ${incoming.size} matches; ` +
     `finalised ${finalised}${drained ? "" : " (backlog not drained: finalising waits)"}; ${Object.keys(state.pending).length} pending; ` +
-    `${matches} archived, ${files} files, ${(bytes / 1048576).toFixed(1)} MB`
+    `${matches} archived, ${files} files, ${(bytes / 1048576).toFixed(1)} MB; ` +
+    `${state.cycle.rows} commentary rows this cycle (from ${cycle.start})`
 );
 if (bytes > SIZE_LIMIT_BYTES) {
   // GitHub Pages refuses a site over 1 GB. Publishing stops here; the next site is a new repo.

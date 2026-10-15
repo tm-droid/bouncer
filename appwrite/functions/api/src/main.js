@@ -55,7 +55,9 @@ export async function withTimeout(work, ms, onTimeout) {
  * one: together they would not fit the 300 s timeout (the prune alone is budgeted most of it).
  *  - highlights: the first tick of every hour. The handler also gates itself on `minute < 15`,
  *    so a tick this function sends it outside that window would be a no-op anyway.
- *  - prune: 03:15 daily (was 03:00 on its own function).
+ *  - prune: the third tick of every hour. The handler does nothing outside the last twelve hours
+ *    of a billing cycle (`prune/budget.js`), which only the archive's manifest names; an hourly
+ *    tick that skips costs one GitHub Pages request.
  *  - player index rebuild: 04:15 on every third day of the month (was 03:00 on those days).
  */
 export function scheduledJobs(now) {
@@ -63,9 +65,10 @@ export function scheduledJobs(now) {
   const hour = now.getUTCHours();
   const firstQuarter = minute < 15;
   const secondQuarter = minute >= 15 && minute < 30;
+  const thirdQuarter = minute >= 30 && minute < 45;
   const jobs = [];
   if (firstQuarter) jobs.push("highlights");
-  if (secondQuarter && hour === 3) jobs.push("prune");
+  if (thirdQuarter) jobs.push("prune");
   if (secondQuarter && hour === 4 && (now.getUTCDate() - 1) % 3 === 0) jobs.push("player-index");
   return jobs;
 }
