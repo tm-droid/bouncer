@@ -20,6 +20,17 @@ class SentryOptionsConfigTest {
         return event
     }
 
+    // ── Transactions ─────────────────────────────────────────────────────────
+
+    @Test
+    fun `ui load transactions end at a 15 s deadline, not the SDK's 30 s`() {
+        // At 30 s the activity transaction gathered up to 1000 spans and Sentry rejected it as
+        // too_large:transaction.
+        val options = io.sentry.android.core.SentryAndroidOptions()
+        config.configure(options)
+        assertEquals(15_000L, options.deadlineTimeout)
+    }
+
     // ── Cancellation filters ─────────────────────────────────────────────────
 
     @Test

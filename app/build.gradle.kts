@@ -484,10 +484,12 @@ sentry {
         // COMPOSE instrumentation is excluded: it causes androidx.activity.compose.R to be
         // included in both Sentry ASM transform outputs, producing a duplicate-class DEX
         // error at merge time (AGP 9 + activity-compose 1.12.x).
+        // FILE_IO is excluded too. It traced OkHttp/Coil disk-cache entries and Session Replay's
+        // own segment files: over half of all spans, enough to push the activity transaction past
+        // Sentry's size limit, and not one performance issue in 90 days (measured 2026-10-15).
         features.set(
             setOf(
                 io.sentry.android.gradle.extensions.InstrumentationFeature.DATABASE,
-                io.sentry.android.gradle.extensions.InstrumentationFeature.FILE_IO,
                 io.sentry.android.gradle.extensions.InstrumentationFeature.OKHTTP
             )
         )

@@ -20,6 +20,7 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
     companion object {
         private const val TAG = "SentryOptionsConfig"
         private const val CAUSE_DEPTH = 6
+        internal const val UI_LOAD_DEADLINE_MS = 15_000L
 
         /** Exception messages that indicate benign cancellations, not real errors. */
         private val IGNORED_EXCEPTION_MESSAGES = setOf(
@@ -56,6 +57,13 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
 
         // Keep traces enabled so AI/LLM and performance spans are retained.
         options.setTracesSampleRate(if (isDebugBuild) 1.0 else 0.2)
+
+        // The activity's `ui.load` transaction ends when it goes idle, but every new child span
+        // resets the idle timer, and polling, image loads and Room writes never pause. So it ran
+        // to the SDK's 30 s deadline (averaging 27.3 s), collected up to 1000 spans of unrelated
+        // work, and Sentry rejected it as `too_large:transaction`. Time to initial display
+        // averages 7.6 s, so 15 s still covers what the transaction is for.
+        options.deadlineTimeout = UI_LOAD_DEADLINE_MS
 
         // Session Replay: capture all debug sessions, sample production sessions. The on-error rate
         // decides which sessions keep the rolling screenshot buffer running in the background, so

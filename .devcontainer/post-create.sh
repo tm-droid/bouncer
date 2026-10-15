@@ -16,9 +16,15 @@ if [ ! -x "$SDK/cmdline-tools/latest/bin/sdkmanager" ]; then
   rm -rf "$tmp"
 fi
 
-# With the licences accepted, AGP downloads the build-tools it wants on the first build.
-yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
-"$SDK/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-37"
+# `yes` dies of SIGPIPE when sdkmanager exits, and under pipefail that 141 would end the script
+# whether or not the licences were written, so check for the licence file instead.
+yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+if [ ! -f "$SDK/licenses/android-sdk-license" ]; then
+  echo "post-create: Android SDK licences were not accepted" >&2
+  exit 1
+fi
+# The ids Gradle asks for by name: compileSdk 37 is `android-37.0`, and AGP 9.3's default build-tools.
+"$SDK/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-37.0" "build-tools;36.0.0"
 
 # The template's sdk.dir is a macOS path. Take only its public Appwrite ids and Sentry DSN, as the CI
 # release job does, plus signing placeholders so the release variant configures.
