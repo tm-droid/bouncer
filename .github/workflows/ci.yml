@@ -66,9 +66,12 @@ jobs:
     name: Check, build and publish
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    # contents: write is for the dependency graph submission (setup-gradle below).
+    # Read-only, the repository default: this job runs npm installs and the whole Gradle build.
+    # Only the dependency-graph job below can write.
     permissions:
-      contents: write
+      contents: read
+    outputs:
+      bundle: ${{ steps.changes.outputs.bundle }}
     # Job-level so a step's `if` can see it; a step `if` cannot read `secrets`.
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -158,14 +161,15 @@ jobs:
       # repositories in preview; `cache-provider: basic` is the always-free fallback, and is
       # setup-java's behaviour again.
       #
-      # The dependency graph is submitted from the release build, which resolves
-      # releaseRuntimeClasspath — the graph Dependabot alerts read. It replaces the repository's
-      # "Automatic dependency submission", a second Gradle run on every push (~280 minutes in the
-      # first half of October 2026). GitHub keeps the last snapshot between submissions.
+      # The dependency graph is recorded from the release build, which resolves
+      # releaseRuntimeClasspath — the graph Dependabot alerts read — and saved as an artifact for
+      # the dependency-graph job to submit. It replaces the repository's "Automatic dependency
+      # submission", a second Gradle run on every push (~280 minutes in the first half of October
+      # 2026). GitHub keeps the last snapshot between submissions.
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         if: steps.changes.outputs.gradle == 'yes'
         with:
-          dependency-graph: ${{ steps.changes.outputs.bundle == 'yes' && github.event_name == 'push' && 'generate-and-submit' || 'disabled' }}
+          dependency-graph: ${{ steps.changes.outputs.bundle == 'yes' && github.ref == 'refs/heads/main' && 'generate-and-upload' || 'disabled' }}
 
       - name: Decode keystore
         if: steps.changes.outputs.bundle == 'yes'
@@ -302,3 +306,18 @@ jobs:
           # Without this every release shipped with blank release notes.
           # distribution/whatsnew/README.md says who edits it and when.
           whatsNewDirectory: distribution/whatsnew
+
+  # Submits the graph the ci job saved. Separate so that only this job, which runs no repository
+  # code, holds a token that can write. A few seconds, on bundling runs only.
+  dependency-graph:
+    name: Submit dependency graph
+    needs: ci
+    if: needs.ci.outputs.bundle == 'yes' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: gradle/actions/dependency-submission@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          dependency-graph: download-and-submit
