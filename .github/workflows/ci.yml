@@ -11,22 +11,48 @@
 #                               bouncer-ci@golden-object-498303-q9.iam.gserviceaccount.com
 #
 # No API key and no Appwrite id is a secret here. The app holds no credentials, and the Appwrite
-# ids plus the Sentry DSN are read from local.properties.template by the release job.
+# ids plus the Sentry DSN are read from local.properties.template.
 #
 # Error tracking:
 #   SENTRY_AUTH_TOKEN         — Sentry auth token (ProGuard mapping upload on release)
 #
 # Coverage (optional; the upload is skipped while unset):
 #   CODECOV_TOKEN             — repository upload token from app.codecov.io (Student Pack account)
+#
+# Minutes. This repo is private, so every minute is billed, and in the first half of October 2026
+# it spent ~2,170 of them: six jobs per push, each paying its own checkout, JDK, cache restore and
+# Gradle configuration, and each rounded up to a whole minute — plus a release build on every push,
+# including the 4 in 10 that changed only the functions and so had nothing to upload. Now there is
+# one job, it does only what the push's changes call for, and pushes that change nothing it checks
+# start no run at all (paths-ignore). The checks still gate the upload: they run first in the same
+# Gradle invocation, and any failure ends the job before the publish steps.
 
 name: CI
 
 on:
   push:
     branches: [main]
+    paths-ignore: &ignored
+      - '**/*.md'
+      - '.claude/**'
+      - '.devcontainer/**'
+      - 'my-video/**'
+      - 'android-dev-mcp-server/**'
+      - '.github/dependabot.yml'
+  # The same list. Dependabot's my-video and MCP-server PRs start no run.
   pull_request:
+    paths-ignore: *ignored
+  # Every check plus the release bundle, whatever changed. `publish` uploads it to Play as well:
+  # the way to re-ship after an app push whose run failed, since a later push that changes no app
+  # path does not bundle.
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Upload the bundle to Play (internal + closed testing)
+        type: boolean
+        default: false
 
-# A newer push cancels an older run on a pull request, never on main. On main every run ends in an
+# A newer push cancels an older run on a pull request, never on main. On main a run can end in an
 # upload to Play, and cancelling one part-way through that upload leaves a release half made.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -36,112 +62,74 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
-  test:
-    name: Unit Tests
+  ci:
+    name: Check, build and publish
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # Job-level so the upload step's `if` can see it; a step `if` cannot read `secrets`.
+    timeout-minutes: 60
+    # contents: write is for the dependency graph submission (setup-gradle below).
+    permissions:
+      contents: write
+    # Job-level so a step's `if` can see it; a step `if` cannot read `secrets`.
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     steps:
       - uses: actions/checkout@v7
-
-      - uses: actions/setup-java@v6
         with:
-          java-version: '21'
-          distribution: temurin
-          cache: gradle
+          fetch-depth: 0
 
-      # Signing placeholders only. The list that used to be here named provider keys the build
-      # stopped reading long ago, and blank Appwrite ids, which the build treats as absent.
-      - name: Create local.properties
-        run: printf 'KEYSTORE_PASSWORD=placeholder\nKEY_ALIAS=placeholder\nKEY_PASSWORD=placeholder\n' > local.properties
+      # What this push (or pull request) changed, and therefore what has to run:
+      #   android   — lint, detekt and the unit tests. Includes tools/ (update_logos.py is a parity
+      #               test input) and this file, so a workflow edit is checked before it is trusted.
+      #   functions — every function's `node --test`, plus the unit tests: the parity tests read
+      #               appwrite/functions/**, and their compile and untouched tests come from the
+      #               build cache, so this costs little.
+      #   bundle    — the release bundle: an app path changed on a push to main, or a dispatch.
+      #   ship      — the Play upload: `bundle` on a push, or a dispatch with `publish`.
+      # A range that cannot be read (the first push of a branch, a rewritten history) counts as
+      # everything changed, as the publish job did before.
+      - name: What changed?
+        id: changes
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+          app='^(app/|baselineprofile/|gradle/|distribution/|[^/]*\.gradle\.kts$|gradle\.properties$|local\.properties\.template$)'
+          base="${BEFORE}"
+          if [ "${EVENT}" = pull_request ]; then base="${PR_BASE}"; fi
+          files=ALL
+          if [ "${EVENT}" != workflow_dispatch ] && git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            files=$(git diff --name-only "${base}" "${GITHUB_SHA}")
+          fi
+          changed() { [ "${files}" = ALL ] || grep -qE "$1" <<< "${files}"; }
 
-      # The coverage task depends on testDebugUnitTest, so this still fails on a failing test.
-      - name: Run unit tests
-        run: ./gradlew createDebugUnitTestCoverageReport --no-daemon --stacktrace
+          android=no; functions=no; bundle=no; ship=no
+          if changed "${app}|^tools/|^\.github/workflows/ci\.yml$"; then android=yes; fi
+          if changed '^appwrite/|^\.github/workflows/ci\.yml$'; then functions=yes; fi
+          if [ "${EVENT}" = workflow_dispatch ]; then
+            bundle=yes
+            if [ "${PUBLISH}" = true ]; then ship=yes; fi
+          elif [ "${EVENT}" = push ] && [ "${REF}" = refs/heads/main ] && changed "${app}"; then
+            bundle=yes; ship=yes
+          fi
+          gradle=no
+          if [ "${android}" = yes ] || [ "${functions}" = yes ]; then gradle=yes; fi
+          printf 'android=%s\nfunctions=%s\ngradle=%s\nbundle=%s\nship=%s\n' \
+            "${android}" "${functions}" "${gradle}" "${bundle}" "${ship}" | tee -a "$GITHUB_OUTPUT"
 
-      - uses: actions/upload-artifact@v7
-        if: failure()
-        with:
-          name: test-results
-          path: app/build/reports/tests/
-
-      # Coverage is reported, not gated: an upload failure never blocks the Play build. The step is
-      # skipped until CODECOV_TOKEN exists, and on Dependabot runs, which see no secrets.
-      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        if: env.CODECOV_TOKEN != ''
-        with:
-          token: ${{ env.CODECOV_TOKEN }}
-          files: app/build/reports/coverage/test/debug/report.xml
-          disable_search: true
-          flags: unit
-
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-java@v6
-        with:
-          java-version: '21'
-          distribution: temurin
-          cache: gradle
-
-      # Signing placeholders only. The list that used to be here named provider keys the build
-      # stopped reading long ago, and blank Appwrite ids, which the build treats as absent.
-      - name: Create local.properties
-        run: printf 'KEYSTORE_PASSWORD=placeholder\nKEY_ALIAS=placeholder\nKEY_PASSWORD=placeholder\n' > local.properties
-
-      - name: Run lint
-        run: ./gradlew lint --no-daemon
-
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: lint-report
-          path: app/build/reports/lint-results-debug.html
-
-  detekt:
-    name: Detekt
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - uses: actions/checkout@v7
-
-      # detekt 1.23 cannot run on JDK 25; 21 is what this workflow uses throughout.
-      - uses: actions/setup-java@v6
-        with:
-          java-version: '21'
-          distribution: temurin
-          cache: gradle
-
-      - name: Create local.properties
-        run: printf 'KEYSTORE_PASSWORD=placeholder\nKEY_ALIAS=placeholder\nKEY_PASSWORD=placeholder\n' > local.properties
-
-      - name: Run detekt
-        run: ./gradlew detekt --no-daemon
-
-  # The provider ladder, the fact-checker, the rewrite backlog and the win-probability maths exist
-  # only in JavaScript. Their suites ran when someone remembered to run them before a deploy.
-  functions:
-    name: Function Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - uses: actions/checkout@v7
-
+      # The provider ladder, the fact-checker, the rewrite backlog and the win-probability maths
+      # exist only in JavaScript. First, because they take a minute and Gradle takes ten.
       - uses: actions/setup-node@v7
+        if: steps.changes.outputs.functions == 'yes'
         with:
           node-version: '22'
 
       - name: Run every function's tests
+        if: steps.changes.outputs.functions == 'yes'
         run: |
           set -euo pipefail
           # appwrite/tools/history is the history-site builder (build-history.yml), not a function,
@@ -155,60 +143,72 @@ jobs:
             echo "::endgroup::"
           done
 
-  build:
-    name: Build Release AAB
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    # Everything that can say the tree is wrong, before anything is built to ship. Lint ran beside
-    # this job without gating it, so a red lint run still published; detekt and the function
-    # suites did not run here at all.
-    needs: [test, lint, detekt, functions]
-    # Repository secrets are not exposed to workflow runs triggered by dependabot[bot], so
-    # KEYSTORE_BASE64 expands to an empty string, `base64 --decode` writes a zero-byte file and
-    # signing dies with `Failed to read key from store: Tag number over 30 is not supported`.
-    # That failure has nothing to do with the dependency being bumped, and it made every single
-    # Dependabot PR look broken — hiding whatever the bump actually did to the build. Unit Tests
-    # and Lint still run for them, and those are the checks that can say anything useful here.
-    if: github.actor != 'dependabot[bot]'
-
-    steps:
-      - uses: actions/checkout@v7
-
+      # detekt 1.23 cannot run on JDK 25; 21 is what this workflow uses throughout.
       - uses: actions/setup-java@v6
+        if: steps.changes.outputs.gradle == 'yes'
         with:
           java-version: '21'
           distribution: temurin
-          cache: gradle
+
+      # Saves the Gradle home after each main run — dependencies and the local build cache — and
+      # only reads it on pull requests. The build cache is what makes a functions-only push cheap:
+      # its compile and the tests whose inputs did not change come back FROM-CACHE. setup-java's
+      # `cache: gradle` could not do that: it saves only when its key is new, so the build cache
+      # inside froze at the first save. This is the default (enhanced) provider, free for private
+      # repositories in preview; `cache-provider: basic` is the always-free fallback, and is
+      # setup-java's behaviour again.
+      #
+      # The dependency graph is submitted from the release build, which resolves
+      # releaseRuntimeClasspath — the graph Dependabot alerts read. It replaces the repository's
+      # "Automatic dependency submission", a second Gradle run on every push (~280 minutes in the
+      # first half of October 2026). GitHub keeps the last snapshot between submissions.
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        if: steps.changes.outputs.gradle == 'yes'
+        with:
+          dependency-graph: ${{ steps.changes.outputs.bundle == 'yes' && github.event_name == 'push' && 'generate-and-submit' || 'disabled' }}
 
       - name: Decode keystore
+        if: steps.changes.outputs.bundle == 'yes'
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/bouncer-release.keystore
 
       # The Appwrite ids and the Sentry DSN come from the checked-in template, not from secrets:
-      # they are public configuration, and this step used to read them from secrets that were
-      # never created. Every line came out as `KEY=`, so each build published to Play from
+      # they are public configuration, and the release job used to read them from secrets that
+      # were never created. Every line came out as `KEY=`, so each build published to Play from
       # 2026-09-22 had a blank endpoint — no Appwrite call at all — and no DSN to report it, while
-      # this job stayed green. `verifyReleaseConfig` now fails bundleRelease on a blank.
+      # CI stayed green. `verifyReleaseConfig` now fails bundleRelease on a blank.
+      #
+      # The same lines on every run, bundling or not, so the debug compile's inputs match between
+      # runs and its build-cache entry is reused. Signing values are placeholders unless bundling.
       #
       # Not a plain `cp`: the template's sdk.dir is a macOS path, and its SENTRY_USER_AUTH_TOKEN
       # placeholder would outrank the SENTRY_AUTH_TOKEN the build step supplies.
       - name: Create local.properties
+        if: steps.changes.outputs.gradle == 'yes'
+        env:
+          BUNDLE: ${{ steps.changes.outputs.bundle }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           grep -E '^(APPWRITE_[A-Z_]+|SENTRY_DSN)=' local.properties.template > local.properties
-          cat >> local.properties << EOF
-          KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS=${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
-          EOF
+          if [ "${BUNDLE}" = yes ]; then
+            printf 'KEYSTORE_PASSWORD=%s\nKEY_ALIAS=%s\nKEY_PASSWORD=%s\n' \
+              "${KEYSTORE_PASSWORD}" "${KEY_ALIAS}" "${KEY_PASSWORD}" >> local.properties
+          else
+            printf 'KEYSTORE_PASSWORD=placeholder\nKEY_ALIAS=placeholder\nKEY_PASSWORD=placeholder\n' >> local.properties
+          fi
 
       # GitHub's expression language has no arithmetic operators, so the offset cannot live in
       # a ${{ }} — it has to be computed by a shell.
       - name: Derive versionCode
+        if: steps.changes.outputs.bundle == 'yes'
         run: echo "BOUNCER_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
 
       # A named version, checked against its hash. This step runs with the release keystore and
       # its passwords already on disk, and it used to pipe whatever sentry.io/get-cli/ served that
       # minute into bash.
       - name: Install sentry-cli
+        if: steps.changes.outputs.bundle == 'yes'
         env:
           SENTRY_CLI_VERSION: 3.5.0
           SENTRY_CLI_SHA256: 522d469086996996322052b8f46bb679f010c53d884521023e79aa7680627104
@@ -218,79 +218,77 @@ jobs:
           sudo install -m 0755 /tmp/sentry-cli /usr/local/bin/sentry-cli
           printf 'defaults.project=android\ndefaults.org=tanush-4w\ncli.executable=/usr/local/bin/sentry-cli\n' > sentry.properties
 
-      - name: Build release AAB
+      # One invocation, so the debug compile the tests and lint share is done once. The coverage
+      # task depends on testDebugUnitTest, so it still fails on a failing test. `--continue` reports
+      # every failing check at once, as the parallel jobs did; any failure fails this step, and
+      # nothing after it uploads.
+      #
+      # lintVital* is not excluded from bundleRelease. It is the release-blocking subset — the check
+      # that catches a NewApi call, a wrong exported flag or an invalid backup rule before an
+      # upload.
+      - name: Gradle
+        if: steps.changes.outputs.gradle == 'yes'
         env:
+          ANDROID_CHECKS: ${{ steps.changes.outputs.android }}
+          BUNDLE: ${{ steps.changes.outputs.bundle }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dorg.gradle.parallel=true"
-        # lintVital* used to be excluded here. It is the release-blocking subset — the check
-        # that catches a NewApi call, a wrong exported flag or an invalid backup rule before an
-        # upload — so skipping it meant the release path had no lint at all.
-        run: ./gradlew bundleRelease --no-daemon --stacktrace
+        run: |
+          set -euo pipefail
+          tasks=(createDebugUnitTestCoverageReport)
+          if [ "${ANDROID_CHECKS}" = yes ]; then tasks+=(lintDebug detekt); fi
+          if [ "${BUNDLE}" = yes ]; then tasks+=(bundleRelease); fi
+          echo "Tasks: ${tasks[*]}"
+          ./gradlew "${tasks[@]}" --continue --no-daemon --stacktrace
 
       - uses: actions/upload-artifact@v7
+        if: failure() && steps.changes.outputs.gradle == 'yes'
+        with:
+          name: test-results
+          path: app/build/reports/tests/
+
+      - uses: actions/upload-artifact@v7
+        if: always() && steps.changes.outputs.android == 'yes'
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.html
+
+      # Coverage is reported, not gated: an upload failure never blocks the Play build. The step is
+      # skipped until CODECOV_TOKEN exists, and on Dependabot runs, which see no secrets.
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        if: env.CODECOV_TOKEN != '' && steps.changes.outputs.gradle == 'yes'
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: app/build/reports/coverage/test/debug/report.xml
+          disable_search: true
+          flags: unit
+
+      - uses: actions/upload-artifact@v7
+        if: steps.changes.outputs.bundle == 'yes'
         with:
           name: release-aab
           path: app/build/outputs/bundle/release/app-release.aab
 
-  publish:
-    name: Publish to Play Store (Internal + closed testing)
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: build
-    # This used to carry `continue-on-error: true`, with a comment saying the app did not exist
-    # in Play Console yet. It does, and has for a while — the job was failing every run with
-    # "Version code 8 has already been used" while reporting nothing, which is the whole reason
-    # nobody noticed that no build had reached the internal track (now closed testing) in weeks.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      # A push that changed only the functions, the docs or this workflow has no new app to ship,
-      # and each upload starts a closed-testing review. When the range cannot be read (the first
-      # push of a branch, a rewritten history) the build is published, as before.
-      - name: Did this push change the app?
-        id: app
-        env:
-          BEFORE: ${{ github.event.before }}
-        run: |
-          changed=yes
-          if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
-            git diff --name-only "${BEFORE}" "${GITHUB_SHA}" \
-              | grep -qE '^(app/|baselineprofile/|gradle/|distribution/|[^/]*\.gradle\.kts$|gradle\.properties$|local\.properties\.template$)' \
-              || changed=no
-          fi
-          echo "changed=${changed}" >> "$GITHUB_OUTPUT"
-          echo "App changed in this push: ${changed}"
-
       # A push whose commits carry a `Force-Update: yes` trailer uploads at in-app update priority
       # 5, which AppUpdatePolicy turns into Play's immediate update screen on every Play install.
       # Play fixes a release's priority at rollout, so this is the only moment to set it. When the
-      # range cannot be read, only the head commit counts: scanning the whole history would force
-      # every release after the first forced one.
+      # range cannot be read, or on a dispatch, only the head commit counts: scanning the whole
+      # history would force every release after the first forced one.
       - name: Is this a forced update?
         id: priority
-        if: steps.app.outputs.changed == 'yes'
+        if: steps.changes.outputs.ship == 'yes'
         env:
           BEFORE: ${{ github.event.before }}
         run: |
           range=(-1 "${GITHUB_SHA}")
-          if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then range=("${BEFORE}..${GITHUB_SHA}"); fi
+          if [ -n "${BEFORE}" ] && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then range=("${BEFORE}..${GITHUB_SHA}"); fi
           priority=0
           if git log --format=%B "${range[@]}" | grep -qiE '^Force-Update:[[:space:]]*yes[[:space:]]*$'; then priority=5; fi
           echo "value=${priority}" >> "$GITHUB_OUTPUT"
           echo "In-app update priority: ${priority}"
 
-      - uses: actions/download-artifact@v8
-        if: steps.app.outputs.changed == 'yes'
-        with:
-          name: release-aab
-          path: app/build/outputs/bundle/release/
-
       - uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
-        if: steps.app.outputs.changed == 'yes'
+        if: steps.changes.outputs.ship == 'yes'
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.tanush.bouncer

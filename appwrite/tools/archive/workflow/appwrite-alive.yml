@@ -9,6 +9,13 @@
 # fails, open the Console and restore the project. Opening the Console once a week prevents it.
 #
 # No secret: `live-count` is a public file, read the way the app reads it.
+#
+# Published to `.github/workflows/appwrite-alive.yml` of the PUBLIC repo `tm-droid/bouncer-archive`
+# by `publish-archiver.yml` in the app repo, beside the archiver. Edit it there, in
+# `appwrite/tools/archive/workflow/`, never here: the next publish replaces this repo's `main`. It
+# moved here from the app repo in October 2026 because a public repo's Actions minutes are free;
+# every six hours there was ~120 billed minutes a month. Its scheduled runs are attributed to
+# tm-droid, so a failure still emails the owner.
 
 name: Appwrite alive
 

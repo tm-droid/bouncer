@@ -19,7 +19,8 @@ It is a different thing from the Cricsheet site (`history-data.md`): that one is
   - Scorecards and details are structured facts from Cricbuzz pages. Never add page HTML or any other site's prose.
 - **Where it runs.** The archiver runs in the public repo, every 3 hours (`workflow/archive.yml`, published there as `.github/workflows/archive.yml`), because a public repo's Actions minutes are free.
   - This repo's CI used about 1,600 minutes in the first 14 days of October 2026.
-  - The source lives only here, in `appwrite/tools/archive/`. `publish-archiver.yml` force-pushes it to the archive repo's `main` as one orphan commit on every change, with the deploy key in `ARCHIVE_DEPLOY_KEY`. Never edit the archive repo's `main` directly.
+  - The same repo runs the Appwrite pause alarm (`workflow/appwrite-alive.yml`, every 6 h) for the same reason. Its scheduled runs are attributed to tm-droid, so a failure emails the owner.
+  - The source lives only here, in `appwrite/tools/archive/`. `publish-archiver.yml` force-pushes it, with every `workflow/*.yml`, to the archive repo's `main` as one orphan commit on every change, with the deploy key in `ARCHIVE_DEPLOY_KEY`. Never edit the archive repo's `main` directly.
 - **The site is appended to, never rebuilt.** Its source is gone from Appwrite after 14 days, so a lost site cannot be regenerated. Each run is a normal commit on `gh-pages`, never a force-push.
 - **Each commentary row is read once.**
   - Rows are read by a `$createdAt` watermark in `state.json`, with a 5-minute overlap merged by row id. Reads bill per row returned.

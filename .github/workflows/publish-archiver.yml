@@ -53,7 +53,9 @@ jobs:
           mkdir -p "$out/.github/workflows"
           cp -R appwrite/tools/archive/archive.mjs appwrite/tools/archive/package.json \
             appwrite/tools/archive/src appwrite/tools/archive/test "$out/"
-          cp appwrite/tools/archive/workflow/archive.yml "$out/.github/workflows/archive.yml"
+          # archive.yml, and appwrite-alive.yml, the Appwrite pause alarm, which runs there because
+          # that repo's minutes are free.
+          cp appwrite/tools/archive/workflow/*.yml "$out/.github/workflows/"
           cd "$out"
           git init -q -b main
           git add -A

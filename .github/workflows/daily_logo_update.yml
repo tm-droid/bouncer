@@ -1,9 +1,10 @@
-name: Daily Logo Update
+name: Weekly Logo Update
 
 on:
   schedule:
-    # Run at 09:00 UTC every day
-    - cron: '0 9 * * *'
+    # 09:00 UTC on Mondays. It was daily, but the logos rarely change and this repo's Actions minutes
+    # are billed; a week's delay costs nothing.
+    - cron: '0 9 * * 1'
   workflow_dispatch: # Allow manual triggering
 
 jobs:
