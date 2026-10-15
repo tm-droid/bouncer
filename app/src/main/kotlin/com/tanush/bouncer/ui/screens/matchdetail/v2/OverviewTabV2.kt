@@ -143,7 +143,7 @@ fun OverviewTabV2(
     val winProb = match.winProbability
     // The preview or summary, from the match's context file. One small download per match open.
     val context by produceState<MatchContext?>(initialValue = null, match.id) {
-        value = MatchContextStore.get(match.id)
+        value = MatchContextStore.get(match.id, finished = match.isCompleted)
     }
     val surface = matchSurfaceFor(context, isCompleted)
     val hasAnyContent = surface != null || hasAnyOverviewContent(

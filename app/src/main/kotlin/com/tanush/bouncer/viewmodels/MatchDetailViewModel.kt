@@ -17,6 +17,8 @@ import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricBuzzMatchRepository
 import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.data.history.HistoryRepository
+import com.tanush.bouncer.data.history.PastFeedSource
+import com.tanush.bouncer.data.history.PastMatchSource
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
 import com.tanush.bouncer.data.remote.LiveDetailSnapshot
@@ -33,6 +35,7 @@ import com.tanush.bouncer.services.MatchPresenceReporter
 import com.tanush.bouncer.ui.components.BatsmanMilestoneInfo
 import com.tanush.bouncer.ui.components.MilestoneType
 import com.tanush.bouncer.utils.bouncerExceptionHandler
+import com.tanush.bouncer.utils.firstAnswer
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import com.tanush.bouncer.utils.sentryCaptureThrottled
 import io.sentry.Breadcrumb
@@ -54,6 +57,7 @@ class MatchDetailViewModel(
     private var match: CricketMatch,
     private val matchRepository: MatchRepository = CricBuzzMatchRepository(),
     private val liveSource: LiveMatchDetailSource = ProductionLiveDetailSource,
+    private val pastSource: PastMatchSource = HistoryRepository,
 ) : ViewModel() {
 
     data class UiState(
@@ -76,11 +80,12 @@ class MatchDetailViewModel(
          */
         val hasOlderCommentary: Boolean = true,
         /**
-         * True when [commentary] is Cricsheet's ball-by-ball (`HistoryRepository`) rather than the
-         * table: a finished match match-sync never stored, or one past the 14-day prune. The tab
-         * labels it and filters it locally, since the table holds no events for it.
+         * Set when [commentary] is a finished match's whole feed from a site that keeps it
+         * (`HistoryRepository.pastFeed`) rather than the table: a match past the 14-day prune, or
+         * one match-sync never stored. The tab filters it locally, since the table holds no events
+         * for it, and labels Cricsheet's. Null for the table's feed.
          */
-        val commentaryFromCricsheet: Boolean = false,
+        val pastFeedSource: PastFeedSource? = null,
         val liveTeam1Score: String = "",
         val liveTeam2Score: String = "",
         val liveTeam1Overs: String = "",
@@ -358,6 +363,7 @@ class MatchDetailViewModel(
                 liveSource = liveSource,
                 repository = matchRepository,
                 matchIsOver = isMatchOver(match, _uiState.value.liveStatus),
+                archived = { pastSource.scorecard(match.id) },
             ) { e ->
                 sentryBreadcrumb(
                     "match_detail_v2.scorecard_fallback",
@@ -413,10 +419,10 @@ class MatchDetailViewModel(
         }
         if (_uiState.value.commentary.isNotEmpty()) return
         // Before the scrape: the scrape is one page of the match's end and cannot page back, while
-        // Cricsheet has every ball.
-        HistoryRepository.ballByBall(match)?.let { history ->
+        // the archive and Cricsheet have every ball.
+        pastSource.feed(match)?.let { past ->
             _uiState.update {
-                it.copy(commentary = history, commentaryError = null, commentaryFromCricsheet = true, hasOlderCommentary = false)
+                it.copy(commentary = past.entries, commentaryError = null, pastFeedSource = past.source, hasOlderCommentary = false)
             }
             return
         }
@@ -707,6 +713,7 @@ internal suspend fun resolveScorecard(
     liveSource: LiveMatchDetailSource,
     repository: MatchRepository,
     matchIsOver: Boolean,
+    archived: suspend () -> Scorecard? = { null },
     onScrapeFailure: (Throwable) -> Unit,
 ): Scorecard? {
     if (current != null) return null
@@ -719,7 +726,9 @@ internal suspend fun resolveScorecard(
     // the same reason `match-live-detail` does — so for a finished match the stored row is the
     // truncated one and Cricbuzz's own page has the completed card. The scrape goes first there,
     // which also spends no billed read unless it fails.
-    if (matchIsOver) return scraped() ?: stored()?.scorecard
+    // The archive is last: it holds the card as the row froze, and is only reached once the row
+    // itself has been pruned.
+    if (matchIsOver) return firstAnswer({ scraped() }, { stored()?.scorecard }, archived)
     // Live: one billed read, and the row wins while the server is still writing it. A row that has
     // gone quiet is not discarded — it is merely outranked by a scrape, and still serves if that
     // scrape comes back empty. Losing a stale card to no card at all would be a worse answer.

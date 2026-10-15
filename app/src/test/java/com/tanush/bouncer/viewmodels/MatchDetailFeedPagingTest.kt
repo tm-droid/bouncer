@@ -2,6 +2,7 @@ package com.tanush.bouncer.viewmodels
 
 import androidx.lifecycle.ViewModelStore
 import com.tanush.bouncer.data.MatchRepository
+import com.tanush.bouncer.data.history.PastMatchSource
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
 import com.tanush.bouncer.data.remote.LiveDetailSnapshot
@@ -116,6 +117,8 @@ class MatchDetailFeedPagingTest {
             match = liveMatch,
             matchRepository = repository(),
             liveSource = PagingSource(events),
+            // Never GitHub Pages from a unit test; the archive and Cricsheet have their own tests.
+            pastSource = PastMatchSource.None,
         ).also { store.put("match", it) }
         try {
             runCurrent()

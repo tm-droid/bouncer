@@ -134,6 +134,29 @@ class MatchDetailScorecardSourceTest {
     }
 
     @Test
+    fun `a finished match whose row is pruned and scrape empty takes the archive's card`() = runTest {
+        val resolved = resolveScorecard(
+            current = null,
+            matchId = "169380",
+            liveSource = ScorecardSource(null),
+            repository = repository(Scorecard(emptyList())),
+            matchIsOver = true,
+            archived = { complete },
+        ) {}
+        assertEquals(complete, resolved)
+    }
+
+    @Test
+    fun `the archive is never asked while the row or the scrape answers, nor for a live match`() = runTest {
+        var asked = 0
+        val archived: suspend () -> Scorecard? = { asked++; complete }
+        resolveScorecard(null, "1", ScorecardSource(truncated), repository(Scorecard(emptyList())), true, archived) {}
+        resolveScorecard(null, "1", ScorecardSource(null), repository(complete), true, archived) {}
+        resolveScorecard(null, "1", ScorecardSource(null), repository(Scorecard(emptyList())), false, archived) {}
+        assertEquals(0, asked)
+    }
+
+    @Test
     fun `a scrape failure on a finished match still falls back to the row`() = runTest {
         val repo: MatchRepository = mockk(relaxed = true) {
             coEvery { fetchScorecard(any()) } throws java.io.IOException("no network")

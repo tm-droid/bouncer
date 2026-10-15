@@ -1,6 +1,7 @@
 package com.tanush.bouncer.data.remote
 
 import com.tanush.bouncer.data.AppJson
+import com.tanush.bouncer.data.history.ArchiveClient
 import com.tanush.bouncer.models.MatchContext
 import com.tanush.bouncer.utils.BoundedLruCache
 
@@ -26,12 +27,17 @@ object MatchContextStore {
 
     private const val FILE_ID_MATCH_CHARS = 32
 
-    suspend fun get(matchId: String, nowMs: Long = System.currentTimeMillis()): MatchContext? {
+    /**
+     * @param finished whether the match is over. The bucket file is pruned 14 days after its match;
+     *   for a finished match the archive's copy (`ArchiveClient`) answers after that.
+     */
+    suspend fun get(matchId: String, finished: Boolean = false, nowMs: Long = System.currentTimeMillis()): MatchContext? {
         synchronized(cache) { cache[matchId] }?.let { (at, context) ->
             if (nowMs - at < MEMORY_TTL_MS) return context
         }
         val bytes = AppwriteClient.downloadFile(BUCKET_ID, fileId(matchId), MAX_AGE_SECONDS)
             ?: return synchronized(cache) { cache[matchId]?.second }
+                ?: if (finished) ArchiveClient.match(matchId)?.context() else null
         val parsed = parse(String(bytes, Charsets.UTF_8)) ?: return null
         synchronized(cache) { cache[matchId] = nowMs to parsed }
         return parsed

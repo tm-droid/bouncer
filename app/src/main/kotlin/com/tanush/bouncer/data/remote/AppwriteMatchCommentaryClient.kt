@@ -99,6 +99,25 @@ data class CommentaryEvent(
     val innings: Int? = null,
 )
 
+/**
+ * One `match-commentary` row as a feed line, or null for a row with no commentary text.
+ *
+ * Also how an archived row is read (`ArchivedMatch.commentary`): the archive keeps the table's
+ * column names so both go through this one mapping.
+ */
+internal fun commentaryEntryOf(data: Map<String, Any?>): CommentaryEntry? {
+    val text = (data["commentary"] as? String)?.takeIf { it.isNotBlank() } ?: return null
+    return CommentaryEntry(
+        text = text,
+        event = parseCommentaryEvent(data["event"] as? String),
+        ball = (data["ball"] as? String)?.takeIf { it.isNotBlank() },
+        sortKey = (data["sort_key"] as? Number)?.toDouble(),
+        runs = (data["runs"] as? Number)?.toInt(),
+        extra = (data["extra"] as? String)?.takeIf { it.isNotBlank() },
+        innings = (data["innings"] as? Number)?.toInt(),
+    )
+}
+
 /** The same line as a realtime event, or null for a line with no `sort_key` (it has no identity). */
 internal fun CommentaryEntry.toEvent(matchId: String): CommentaryEvent? =
     sortKey?.let { CommentaryEvent(matchId, text, it, event, ball, runs, extra, innings) }
@@ -273,7 +292,7 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
                 val queries = commentaryEventQueries(matchId, events, olderThan)
                 guardedRead("commentary.events") {
                     it.listRows(databaseId = dbId, tableId = tableId, queries = queries)
-                }?.rows?.mapNotNull { row -> entryOf(row.data) }
+                }?.rows?.mapNotNull { row -> commentaryEntryOf(row.data) }
             }.onFailure { logSilentFailure("Commentary event fetch failed", it) }.getOrNull()
         }
     }
@@ -320,21 +339,7 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
         } else {
             rows.sortedByDescending { (it.data["sort_key"] as? Number)?.toDouble() ?: 0.0 }
         }
-        return sorted.mapNotNull { row -> entryOf(row.data) }
-    }
-
-    /** One row as a feed line, or null for a row with no commentary text. */
-    private fun entryOf(data: Map<String, Any>): CommentaryEntry? {
-        val text = (data["commentary"] as? String)?.takeIf { it.isNotBlank() } ?: return null
-        return CommentaryEntry(
-            text = text,
-            event = parseCommentaryEvent(data["event"] as? String),
-            ball = (data["ball"] as? String)?.takeIf { it.isNotBlank() },
-            sortKey = (data["sort_key"] as? Number)?.toDouble(),
-            runs = (data["runs"] as? Number)?.toInt(),
-            extra = (data["extra"] as? String)?.takeIf { it.isNotBlank() },
-            innings = (data["innings"] as? Number)?.toInt(),
-        )
+        return sorted.mapNotNull { row -> commentaryEntryOf(row.data) }
     }
 
     /**

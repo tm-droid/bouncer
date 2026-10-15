@@ -59,7 +59,7 @@ fun InfoTabV2(
     // The ground and the forecast, from the context file match-sync keeps for this match. Also
     // fetched only when this tab is opened.
     val context by produceState<MatchContext?>(initialValue = null, match.id) {
-        value = MatchContextStore.get(match.id)
+        value = MatchContextStore.get(match.id, finished = match.isCompleted)
     }
     val forecast = context?.forecast?.summary(System.currentTimeMillis())
     val ground = context?.venue?.takeIf { it.known && it.matches >= GROUND_MIN_MATCHES }

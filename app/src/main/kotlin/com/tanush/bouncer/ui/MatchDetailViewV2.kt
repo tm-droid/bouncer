@@ -17,6 +17,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import com.tanush.bouncer.data.history.PastFeedSource
 import com.tanush.bouncer.ui.navigation.LocalOpenSeries
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.foundation.clickable
@@ -398,10 +399,14 @@ fun MatchDetailViewV2(
                         onLoadOlder = vm::loadOlderCommentary,
                         // Cricsheet's feed is the whole match, already loaded; the table holds no
                         // events for it, so the chips filter what is here instead of asking.
-                        eventPages = if (uiState.commentaryFromCricsheet) emptyMap() else commentaryEventPages,
-                        onOpenEvents = vm.commentaryEvents::open.takeUnless { uiState.commentaryFromCricsheet },
-                        onLoadOlderEvents = vm.commentaryEvents::loadOlder.takeUnless { uiState.commentaryFromCricsheet },
-                        sourceCaption = if (uiState.commentaryFromCricsheet) stringResource(R.string.commentary_source_cricsheet) else null,
+                        eventPages = if (uiState.pastFeedSource != null) emptyMap() else commentaryEventPages,
+                        onOpenEvents = vm.commentaryEvents::open.takeIf { uiState.pastFeedSource == null },
+                        onLoadOlderEvents = vm.commentaryEvents::loadOlder.takeIf { uiState.pastFeedSource == null },
+                        sourceCaption = if (uiState.pastFeedSource == PastFeedSource.CRICSHEET) {
+                            stringResource(R.string.commentary_source_cricsheet)
+                        } else {
+                            null
+                        },
                     )
                     R.string.tab_highlights -> HighlightsTabV2(highlights = highlights)
                     R.string.tab_info -> InfoTabV2(match = match, preMatchData = uiState.preMatchData)
