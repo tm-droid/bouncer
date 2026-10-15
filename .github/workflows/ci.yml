@@ -15,6 +15,9 @@
 #
 # Error tracking:
 #   SENTRY_AUTH_TOKEN         — Sentry auth token (ProGuard mapping upload on release)
+#
+# Coverage (optional; the upload is skipped while unset):
+#   CODECOV_TOKEN             — repository upload token from app.codecov.io (Student Pack account)
 
 name: CI
 
@@ -37,6 +40,9 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Job-level so the upload step's `if` can see it; a step `if` cannot read `secrets`.
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     steps:
       - uses: actions/checkout@v7
@@ -52,14 +58,25 @@ jobs:
       - name: Create local.properties
         run: printf 'KEYSTORE_PASSWORD=placeholder\nKEY_ALIAS=placeholder\nKEY_PASSWORD=placeholder\n' > local.properties
 
+      # The coverage task depends on testDebugUnitTest, so this still fails on a failing test.
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
+        run: ./gradlew createDebugUnitTestCoverageReport --no-daemon --stacktrace
 
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: test-results
           path: app/build/reports/tests/
+
+      # Coverage is reported, not gated: an upload failure never blocks the Play build. The step is
+      # skipped until CODECOV_TOKEN exists, and on Dependabot runs, which see no secrets.
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        if: env.CODECOV_TOKEN != ''
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: app/build/reports/coverage/test/debug/report.xml
+          disable_search: true
+          flags: unit
 
   lint:
     name: Lint

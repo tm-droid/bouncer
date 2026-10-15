@@ -1,0 +1,25 @@
+// GitHub Codespaces (Student Pack: Pro-level hours). Builds, the unit tests, detekt and the function
+// suites run here instead of on the 8 GB Mac. There is no emulator: Codespaces has no KVM.
+{
+  "name": "Bouncer",
+  // JDK 21 throughout: detekt 1.23 cannot run on JDK 25, and CI builds on 21 as well.
+  "image": "mcr.microsoft.com/devcontainers/java:1-21-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" }
+  },
+  // gradle.properties gives Gradle 6 GB and the Kotlin daemon 5 GB; a 2-core machine has 8 GB.
+  "hostRequirements": { "cpus": 4, "memory": "16gb" },
+  "containerEnv": {
+    "ANDROID_HOME": "/home/vscode/android-sdk",
+    "ANDROID_SDK_ROOT": "/home/vscode/android-sdk"
+  },
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/vscode/android-sdk/cmdline-tools/latest/bin:/home/vscode/android-sdk/platform-tools"
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": ["fwcd.kotlin", "vscjava.vscode-gradle"]
+    }
+  }
+}

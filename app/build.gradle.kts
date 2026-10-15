@@ -149,6 +149,9 @@ android {
         }
         debug {
             isCrunchPngs = false
+            // AGP's own JaCoCo, not Kover: `createDebugUnitTestCoverageReport` writes the XML that
+            // CI uploads to Codecov, with no plugin to keep in step with AGP 9's built-in Kotlin.
+            enableUnitTestCoverage = true
             manifestPlaceholders["sentryEnvironment"] = "debug"
             manifestPlaceholders["sentryDebug"] = "true"
         }
