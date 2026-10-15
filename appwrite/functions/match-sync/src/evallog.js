@@ -39,6 +39,32 @@ export function outcomeOf(result, team1Id, team2Id) {
 }
 
 /**
+ * A log written before Cricbuzz posted its result, which a later run may still resolve.
+ *
+ * The finalising run fires on the status line ("Bahrain won by 8 wkts"); `matchHeader.result` is
+ * still `{}` for some minutes after that. 26 of the first 72 logs (2026-10-06..14) were written in
+ * that gap and stayed `unknown`, though the page carried the structured result a day later. Only
+ * a missing result qualifies: a result that is present but unresolvable is final.
+ */
+export const awaitsResult = (log) => !!log && log.resultType == null && log.outcome === "unknown";
+
+/** Kept in `slow-sync-state` as `<matchId>:wpe` while the log awaits its result. */
+export const EVAL_PENDING_SUFFIX = ":wpe";
+export const EVAL_RESOLVE_MAX_MS = 3 * 24 * 60 * 60 * 1000;
+
+/** [log] with the result a later read of the match header found, or null when there is none yet. */
+export function withResult(log, result, now = Date.now()) {
+  if (!result?.type) return null;
+  return {
+    ...log,
+    resultType: result.type,
+    winnerId: result.winnerId == null ? null : String(result.winnerId),
+    outcome: outcomeOf(result, log.team1Id, log.team2Id),
+    resolvedAt: now,
+  };
+}
+
+/**
  * A rival's published figure as a bounded string, or null when the page carries none.
  *
  * Kept raw on purpose: Cricbuzz's `winProbability` prop was `$undefined` on every match looked at

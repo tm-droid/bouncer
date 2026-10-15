@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildEvalLog, outcomeOf, prematchMoved, rivalSample } from "../src/evallog.js";
+import { awaitsResult, buildEvalLog, outcomeOf, prematchMoved, rivalSample, withResult } from "../src/evallog.js";
 import { parseMatchMeta, resetThrottleState } from "../src/cricbuzz.js";
-import { pruneEvalLogs, syncMatch, writeEvalLog } from "../src/main.js";
+import { nextSlowState, pruneEvalLogs, resolveEvalLogs, syncMatch, writeEvalLog } from "../src/main.js";
 
 /**
  * The evaluation log is the only record of what the model said about a finished match. A wrong
@@ -330,4 +330,67 @@ test("a first innings that is over is scored as the chase it has become", async 
   assert.equal(chaseStart({ ...live, wicketsLost: 10, long: { lead: 0 } }, "TEST"), null);
   assert.equal(chaseStart({ ...live, wicketsLost: 10 }, "UNKNOWN"), null);
   assert.equal(chaseStart(null, "T20"), null);
+});
+
+test("a log written before Cricbuzz posted the result is resolved later, by team id", async () => {
+  // 173750 ended on "Bahrain won by 8 wkts" while its header's result was still `{}`; a day later
+  // the page carried `winningteamId`. 26 of the first 72 logs were left `unknown` that way.
+  const early = buildEvalLog({
+    matchId: "99", title: "Southern Brave vs Birmingham Phoenix", format: "T20", team1Id: "1", otherTeamIds: ["2"],
+    result: null, status: "Southern Brave won by 39 runs", overs: [{ innings: 2, over: 5, p: 0.3 }], now: 1,
+  });
+  assert.equal(early.outcome, "unknown");
+  assert.equal(awaitsResult(early), true);
+  // Present but unresolvable is final: a winner that is neither side is not awaited again.
+  assert.equal(awaitsResult({ ...early, resultType: "win", winnerId: "7" }), false);
+  assert.equal(withResult(early, null), null);
+  const resolved = withResult(early, { type: "win", winnerId: "1" }, 5);
+  assert.equal(resolved.outcome, "team1");
+  assert.equal(resolved.winnerId, "1");
+  assert.equal(resolved.resolvedAt, 5);
+  assert.deepEqual(resolved.points, early.points);
+
+  const bucket = new Map([["wpe-99", early], ["wpe-55", { ...early, matchId: "55", resultType: "win", winnerId: "2", outcome: "team2" }]]);
+  const storage = {
+    getFileDownload: async (_b, id) => {
+      if (!bucket.has(id)) { const e = new Error("nf"); e.code = 404; throw e; }
+      return bucket.get(id);
+    },
+    deleteFile: async (_b, id) => { bucket.delete(id); },
+    createFile: async (_b, id, input) => { bucket.set(id, JSON.parse(Buffer.from(await input.arrayBuffer?.() ?? []).toString("utf8") || "{}")); },
+  };
+  const won = { resultType: "win", winningTeam: "Southern Brave", winningteamId: 1 };
+  const quiet = { log: () => {}, error: (m) => assert.fail(m) };
+  const state = { "99:wpe": 10, "55:wpe": 20, "77:wpe": 30, "99": 40, "99:final": 50 };
+
+  // Still no result: nothing is rewritten and the match stays pending.
+  const notYet = await resolveEvalLogs({ storage, state, ...quiet, limit: 3, fetchPage: async () => page({ result: {} }) });
+  assert.deepEqual(notYet, []);
+  assert.equal(bucket.get("wpe-99").outcome, "unknown");
+
+  // Posted: 99 is rewritten; 55 already had one and 77's log is gone, so neither needs a look again.
+  const done = await resolveEvalLogs({ storage, state, ...quiet, limit: 3, fetchPage: async () => page({ result: won }), now: 9 });
+  assert.deepEqual(done, ["99", "55", "77"]);
+  assert.equal(bucket.get("wpe-99").outcome, "team1");
+  assert.equal(bucket.get("wpe-99").resolvedAt, 9);
+  assert.equal(bucket.get("wpe-55").winnerId, "2");
+
+  // Oldest first, a few a run: one page fetch each.
+  const asked = [];
+  await resolveEvalLogs({ storage, state, ...quiet, fetchPage: async (id) => { asked.push(id); return page({ result: {} }); } });
+  assert.deepEqual(asked, ["99"]);
+});
+
+test("a pending evaluation log rides in the slow-tier file until resolved or three days old", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const now = 10 * DAY;
+  const next = nextSlowState({
+    state: { "1:wpe": now - DAY, "2:wpe": now - 4 * DAY, "3:wpe": now - DAY, "live": now - 60_000 },
+    processed: [],
+    liveIds: new Set(["live"]),
+    now,
+    evalPending: ["4"],
+    evalResolved: ["3"],
+  });
+  assert.deepEqual(next, { "1:wpe": now - DAY, live: now - 60_000, "4:wpe": now });
 });

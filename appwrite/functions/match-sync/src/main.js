@@ -42,7 +42,7 @@ import {
   CRICINFO_MAX_ROWS_PER_POLL, asCricbuzzLine, ballKey, disagreement, fetchCricinfoMatch, fetchCricinfoPredictions, fetchCricinfoStats, joinCricinfoMatch,
   labelsInGap, mergeCricinfo, probeCricinfoMatchPages, storableRow,
 } from "./cricinfo.js";
-import { EVAL_PREFIX, EVAL_RETENTION_MS, PREMATCH_FILE, RIVAL_PREFIX, buildEvalLog, fixtureTeamId, mergeRival, notePrematch, rivalSample } from "./evallog.js";
+import { EVAL_PENDING_SUFFIX, EVAL_PREFIX, EVAL_RESOLVE_MAX_MS, EVAL_RETENTION_MS, PREMATCH_FILE, RIVAL_PREFIX, awaitsResult, buildEvalLog, fixtureTeamId, mergeRival, notePrematch, rivalSample, withResult } from "./evallog.js";
 import { sideContext } from "./contextmath.js";
 import { createContextStore, newBudget } from "./contextstore.js";
 import { parseSquads, squadsUrl } from "./squads.js";
@@ -1216,16 +1216,76 @@ export function isFinalised(state, matchId) {
 }
 
 /** The slow-tier clock, stamped for the matches that just ran and pruned to those still live. */
-export function nextSlowState({ state, processed, liveIds, now, finalised = [] }) {
+export function nextSlowState({ state, processed, liveIds, now, finalised = [], evalPending = [], evalResolved = [] }) {
+  const resolved = new Set([...evalResolved].map((id) => `${id}${EVAL_PENDING_SUFFIX}`));
   const next = {};
   for (const [key, ts] of Object.entries(state ?? {})) {
     if (typeof ts !== "number") continue;
-    const kept = key.endsWith(FINAL_SUFFIX) ? now - ts < FINAL_MARKER_TTL_MS : liveIds.has(key);
+    const kept = key.endsWith(FINAL_SUFFIX)
+      ? now - ts < FINAL_MARKER_TTL_MS
+      : key.endsWith(EVAL_PENDING_SUFFIX)
+        ? now - ts < EVAL_RESOLVE_MAX_MS && !resolved.has(key)
+        : liveIds.has(key);
     if (kept) next[key] = ts;
   }
   for (const id of processed) next[id] = now;
   for (const id of finalised) next[finalKey(id)] = now;
+  for (const id of evalPending) next[`${id}${EVAL_PENDING_SUFFIX}`] = now;
   return next;
+}
+
+/** Evaluation logs re-checked for their result per run: each costs one live page fetch. */
+const EVAL_RESOLVE_PER_RUN = 1;
+
+/**
+ * Give logs written before Cricbuzz posted the result their outcome (see `awaitsResult`).
+ *
+ * Oldest first, [limit] a run. Returns the ids that need no further look: resolved, or with no log
+ * left to fix. One still without a result stays pending until EVAL_RESOLVE_MAX_MS drops it.
+ */
+export async function resolveEvalLogs({ storage, state, log, error, limit = EVAL_RESOLVE_PER_RUN, fetchPage = (id) => fetchHtml(liveScoresUrl(id)), now = Date.now() }) {
+  const due = Object.entries(state ?? {})
+    .filter(([key, ts]) => key.endsWith(EVAL_PENDING_SUFFIX) && typeof ts === "number")
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, limit)
+    .map(([key]) => key.slice(0, -EVAL_PENDING_SUFFIX.length));
+  const done = [];
+  for (const matchId of due) {
+    if (!isFileSafeId(matchId)) {
+      done.push(matchId);
+      continue;
+    }
+    const fileId = `${EVAL_PREFIX}${matchId}`;
+    try {
+      const result = parseMatchMeta(await fetchPage(matchId)).result;
+      if (!result) continue;
+      let current;
+      try {
+        current = parseJsonFile(await storage.getFileDownload(BUCKET_ID, fileId));
+      } catch (e) {
+        if (e?.code === 404) done.push(matchId);
+        else error(`Could not read ${fileId} to resolve it: ${e?.message}`);
+        continue;
+      }
+      if (!awaitsResult(current)) {
+        done.push(matchId);
+        continue;
+      }
+      const body = withResult(current, result, now);
+      await storage.deleteFile(BUCKET_ID, fileId).catch(() => {});
+      await storage.createFile(
+        BUCKET_ID,
+        fileId,
+        InputFile.fromBuffer(Buffer.from(JSON.stringify(body), "utf8"), `${fileId}.json`),
+        READ_ANY
+      );
+      log(`Resolved ${fileId}: outcome ${body.outcome} (${result.type})`);
+      done.push(matchId);
+    } catch (e) {
+      error(`Could not resolve ${fileId}: ${e?.message}`);
+    }
+  }
+  return done;
 }
 
 /** Finished matches given their final run per execution: each costs a live page and a scorecard. */
@@ -1601,6 +1661,16 @@ async function handleRun({ req, res, log, error }) {
   if (allLive.length === 0) {
     log(`No live matches — writing ${Object.keys(prematch).length} pre-match entries only`);
     await writeWinProbFile({ storage, winProb: prematch, log, error });
+    // The day's last match usually ends into a quiet spell, so its log is resolved here too. Every
+    // other key is kept as it is: nothing ran, so no clock moves.
+    const evalResolved = await resolveEvalLogs({ storage, state: slowState, log, error });
+    await writeSlowState({
+      storage,
+      state: nextSlowState({ state: slowState, processed: [], liveIds: new Set(Object.keys(slowState)), now: Date.now(), evalResolved }),
+      previous: slowState,
+      log,
+      error,
+    });
     await settleBacklog();
     runStatus = "ok";
     return res.json({ skipped: true, reason: "no_live_matches", prematch: Object.keys(prematch).length }, 200);
@@ -1673,6 +1743,8 @@ async function handleRun({ req, res, log, error }) {
 
   // Matches whose final rows were written this run — see FINAL_SUFFIX.
   const finalisedNow = new Set();
+  // Evaluation logs written this run without a result — see `awaitsResult`.
+  const evalPendingNow = new Set();
   // Push sends queued by syncMatch, awaited before the run returns (the container freezes on
   // return and an unsent request is lost). Null when the Firebase secrets are unset.
   const alertsOn = fcmConfigured();
@@ -1718,6 +1790,8 @@ async function handleRun({ req, res, log, error }) {
             });
             // The samples are in the log now; kept if the log was not written, and pruned with it.
             if (logged && rival.length > 0 && isFileSafeId(matchId)) await storage.deleteFile(BUCKET_ID, `${RIVAL_PREFIX}${matchId}`).catch(() => {});
+            // Ended on the status line before Cricbuzz posted the result: a later run fills it in.
+            if (logged && meta?.result == null) evalPendingNow.add(matchId);
             await ensureSummary({ contexts, matchId, context, detail, log, error });
           },
           contextFor: async ({ meta, format }) => {
@@ -1825,6 +1899,7 @@ async function handleRun({ req, res, log, error }) {
   }
 
   await writeWinProbFile({ storage, winProb, log, error });
+  const evalResolved = await resolveEvalLogs({ storage, state: slowState, log, error });
   await writeSlowState({
     storage,
     state: nextSlowState({
@@ -1833,6 +1908,8 @@ async function handleRun({ req, res, log, error }) {
       liveIds,
       now: Date.now(),
       finalised: finalisedNow,
+      evalPending: evalPendingNow,
+      evalResolved,
     }),
     previous: slowState,
     log,

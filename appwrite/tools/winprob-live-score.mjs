@@ -16,9 +16,11 @@
 // Tests are not covered: match-sync stamps two-outcome formats only.
 //
 // USAGE
-//   node appwrite/tools/winprob-live-score.mjs [--dir path] [--since 2026-10-05] [--boot 2000]
+//   node appwrite/tools/winprob-live-score.mjs [--dir path] [--since 2026-10-05] [--boot 2000] [--resolve]
 //
-// `--dir` reads `wpe-*.json` from a directory instead of Storage.
+// `--dir` reads `wpe-*.json` from a directory instead of Storage. `--resolve` asks Cricbuzz for the
+// result of each log written before it posted one (match-sync now does this itself; logs from
+// before 2026-10-15 need it).
 
 import fs from "node:fs";
 import os from "node:os";
@@ -177,7 +179,92 @@ export function paired(rows, rivalKey, opts) {
   const both = rows.filter((r) => r[rivalKey] !== null && r[rivalKey] !== undefined);
   if (!both.length) return null;
   const diff = (sample) => metrics(sample, "p").logLoss - metrics(sample, rivalKey).logLoss;
-  return { ours: metrics(both, "p"), theirs: metrics(both, rivalKey), difference: diff(both), interval: matchBootstrap(both, diff, opts) };
+  return { ours: metrics(both, "p"), theirs: metrics(both, rivalKey), difference: diff(both), interval: matchBootstrap(both, diff, opts), needed: matchesNeeded(both, rivalKey) };
+}
+
+/**
+ * Roughly how many paired matches would put zero outside a 95% interval, if the per-match
+ * log-loss differences kept the mean and spread they have now. Null below three matches, where
+ * the spread is not an estimate of anything, or when the mean difference is zero.
+ */
+export function matchesNeeded(both, rivalKey) {
+  const byMatch = new Map();
+  for (const r of both) (byMatch.get(r.matchId) ?? byMatch.set(r.matchId, []).get(r.matchId)).push(r);
+  const d = [...byMatch.values()].map((rows) => metrics(rows, "p").logLoss - metrics(rows, rivalKey).logLoss);
+  if (d.length < 3) return null;
+  const mean = d.reduce((a, v) => a + v, 0) / d.length;
+  const sd = Math.sqrt(d.reduce((a, v) => a + (v - mean) ** 2, 0) / (d.length - 1));
+  if (!mean) return null;
+  return Math.max(d.length, Math.ceil((1.96 * sd / Math.abs(mean)) ** 2));
+}
+
+/**
+ * Why a rival's figures did not reach the comparison: a Cricbuzz-carrying log with no scorable
+ * outcome, or a Cricinfo match whose samples joined no log.
+ */
+export function pairingGaps(logs, cricinfoSamples = []) {
+  const out = [];
+  for (const l of logs) {
+    if ((l.cricbuzz ?? []).length && l.outcome !== "team1" && l.outcome !== "team2") {
+      out.push(`  Cricbuzz ${l.matchId} (${l.title}): ${l.cricbuzz.length} samples, outcome ${l.outcome}`);
+    }
+  }
+  const joined = new Set(logs.flatMap((l) => cricinfoFor(l, cricinfoSamples)));
+  const byMatch = new Map();
+  for (const s of cricinfoSamples) (byMatch.get(String(s.cricinfoId)) ?? byMatch.set(String(s.cricinfoId), []).get(String(s.cricinfoId))).push(s);
+  for (const [id, samples] of byMatch) {
+    const scored = samples.filter((s) => Number.isFinite(s?.predictions?.winProbability)).length;
+    if (samples.some((s) => joined.has(s))) {
+      const log = logs.find((l) => cricinfoFor(l, samples).length);
+      if (log && log.outcome !== "team1" && log.outcome !== "team2") out.push(`  Cricinfo ${id} (${samples[0].slug}): joined ${log.matchId}, outcome ${log.outcome}`);
+      continue;
+    }
+    out.push(`  Cricinfo ${id} (${samples[0].slug}): ${scored} of ${samples.length} samples carry a figure, joined no log`);
+  }
+  return out;
+}
+
+const RESULT_CACHE = path.join(os.homedir(), "Library/Caches/bouncer-winprob-lab/results.json");
+
+/**
+ * Logs written before Cricbuzz posted the result (`awaitsResult`), given the result its page
+ * carries now — the same header parser match-sync uses, by team id, never the status line. In
+ * memory only; nothing is written back. Results are cached, since a posted result does not change.
+ */
+export async function resolveOutcomes(logs, { fetchPage, cacheFile = RESULT_CACHE } = {}) {
+  const { awaitsResult, withResult } = await import("../functions/match-sync/src/evallog.js");
+  const { parseMatchMeta, liveScoresUrl } = await import("../functions/match-sync/src/cricbuzz.js");
+  const { fetchHtml } = await import("../functions/match-sync/src/cricbuzz-http.js");
+  const pageOf = fetchPage ?? ((matchId) => fetchHtml(liveScoresUrl(matchId)));
+  let cache = {};
+  try {
+    cache = JSON.parse(fs.readFileSync(cacheFile, "utf8"));
+  } catch {
+    cache = {};
+  }
+  let fetched = 0;
+  const out = [];
+  for (const l of logs) {
+    if (!awaitsResult(l)) {
+      out.push(l);
+      continue;
+    }
+    if (!cache[l.matchId]) {
+      try {
+        const result = parseMatchMeta(await pageOf(l.matchId)).result;
+        fetched++;
+        if (result) cache[l.matchId] = result;
+      } catch {
+        // Unreachable now: the log stays unknown for this run.
+      }
+    }
+    out.push(withResult(l, cache[l.matchId], l.endedAt) ?? l);
+  }
+  if (fetched && cacheFile) {
+    fs.mkdirSync(path.dirname(cacheFile), { recursive: true });
+    fs.writeFileSync(cacheFile, JSON.stringify(cache));
+  }
+  return out;
 }
 
 const pct = (v) => `${(v * 100).toFixed(1)}%`;
@@ -230,7 +317,12 @@ export function report(rawLogs, { rounds = 2000, cricinfo = [] } = {}) {
     out.push(line(`  ours (vs ${name})`, cmp.ours), line(`  ${name}`, cmp.theirs));
     out.push(`  log-loss difference ${f4(cmp.difference)}${cmp.interval ? `  [${f4(cmp.interval[0])}, ${f4(cmp.interval[1])}]` : "  (one match: no interval)"}`);
     if (cmp.ours.matches === 1) out.push("  One match shows who was most confident about the side that won, not who is better.");
+    if (cmp.needed !== null && cmp.interval && cmp.interval[0] < 0 && cmp.interval[1] > 0) {
+      out.push(`  At this difference and spread, about ${cmp.needed} paired matches would settle it (${cmp.ours.matches} so far)`);
+    }
   }
+  const gaps = pairingGaps(logs, cricinfo);
+  if (gaps.length) out.push("", "Rival figures that did not reach the comparison", ...gaps);
   return out.join("\n");
 }
 
@@ -268,11 +360,18 @@ async function fromStorage(since) {
   }
   // Cricinfo's samples, one file per Cricinfo match.
   const cricinfo = [];
-  const theirs = await storage.listFiles(bucket, [Query.startsWith("$id", "wci-"), Query.limit(100)]);
-  for (const file of theirs.files) {
-    if (!String(file.$id).startsWith("wci-")) continue;
-    const body = await storage.getFileDownload(bucket, file.$id).catch(() => null);
-    if (Array.isArray(body?.samples)) cricinfo.push(...body.samples);
+  cursor = null;
+  for (;;) {
+    const queries = [Query.startsWith("$id", "wci-"), Query.limit(100)];
+    if (cursor) queries.push(Query.cursorAfter(cursor));
+    const page = await storage.listFiles(bucket, queries);
+    for (const file of page.files) {
+      if (!String(file.$id).startsWith("wci-")) continue;
+      const body = await storage.getFileDownload(bucket, file.$id).catch(() => null);
+      if (Array.isArray(body?.samples)) cricinfo.push(...body.samples);
+    }
+    if (page.files.length < 100) break;
+    cursor = page.files[page.files.length - 1].$id;
   }
   return { logs, cricinfo };
 }
@@ -298,11 +397,12 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   };
   const dir = flag("--dir", null);
   const read = (f) => JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
-  const { logs, cricinfo } = dir
+  let { logs, cricinfo } = dir
     ? {
       logs: fs.readdirSync(dir).filter((f) => f.startsWith("wpe-")).map(read),
       cricinfo: fs.readdirSync(dir).filter((f) => f.startsWith("wci-")).flatMap((f) => read(f).samples ?? []),
     }
     : await fromStorage(flag("--since", null));
+  if (argv.includes("--resolve")) logs = await resolveOutcomes(logs);
   console.log(report(logs, { rounds: Number(flag("--boot", "2000")), cricinfo: [...cricinfo, ...laptopCricinfo()] }));
 }

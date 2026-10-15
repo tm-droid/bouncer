@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { cricbuzzForTeam1, cricinfoFor, cricinfoForTeam1, report, withRivals } from "../../../tools/winprob-live-score.mjs";
+import { cricbuzzForTeam1, cricinfoFor, cricinfoForTeam1, matchesNeeded, pairingGaps, report, resolveOutcomes, withRivals } from "../../../tools/winprob-live-score.mjs";
 
 /**
  * The report's rival columns. Both shapes are the ones captured from India v West Indies
@@ -70,4 +70,45 @@ test("the report compares on the points both published, and says when that is on
   assert.match(text, /ours \(vs Cricbuzz\)\s+1 matches\s+2 points/);
   assert.match(text, /ours \(vs Cricinfo\)\s+1 matches\s+2 points/);
   assert.match(text, /One match shows who was most confident/);
+});
+
+test("a log written before the result was posted is scored once the page carries it", async () => {
+  const header = (result) => `<script>self.__next_f.push([1,${JSON.stringify(JSON.stringify({ matchHeader: { matchId: 151565, result } }))}])</script>`;
+  const early = { ...LOG, outcome: "unknown", resultType: null, winnerId: null };
+  const asked = [];
+  const [resolved, untouched] = await resolveOutcomes([early, LOG], {
+    fetchPage: async (id) => { asked.push(id); return header({ resultType: "win", winningteamId: 2 }); },
+    cacheFile: null,
+  });
+  assert.equal(resolved.outcome, "team2");
+  assert.equal(resolved.resultType, "win");
+  assert.equal(untouched, LOG);
+  assert.deepEqual(asked, ["151565"], "a log that already has its result is not fetched");
+
+  const [still] = await resolveOutcomes([early], { fetchPage: async () => header({}), cacheFile: null });
+  assert.equal(still.outcome, "unknown");
+  const [offline] = await resolveOutcomes([early], { fetchPage: async () => { throw new Error("blocked"); }, cacheFile: null });
+  assert.equal(offline.outcome, "unknown");
+});
+
+test("the matches a verdict needs scale with the spread of per-match differences", () => {
+  // Per-match differences of 0.1, 0.3 and 0.2: mean 0.2, sd 0.1 → (1.96 × 0.1 / 0.2)² ≈ 0.96, so
+  // the three already in hand are enough.
+  const rows = (id, p, rival) => [{ matchId: id, y: 1, p, cb: rival }];
+  const at = (diff) => Math.exp(-diff);
+  const both = [...rows("a", 0.5, 0.5 / at(0.1)), ...rows("b", 0.5, 0.5 / at(0.3)), ...rows("c", 0.5, 0.5 / at(0.2))];
+  assert.equal(matchesNeeded(both, "cb"), 3);
+  // Same mean, three times the spread: nine times the matches.
+  const wide = [...rows("a", 0.5, 0.5 / at(-0.1)), ...rows("b", 0.5, 0.5 / at(0.5)), ...rows("c", 0.5, 0.5 / at(0.2))];
+  assert.ok(matchesNeeded(wide, "cb") > 3);
+  assert.equal(matchesNeeded(both.slice(0, 2), "cb"), null, "two matches have no spread to speak of");
+});
+
+test("rival figures that never reached the comparison are named, with the reason", () => {
+  const unscored = { ...LOG, matchId: "9", title: "A vs B", outcome: "unknown", cricbuzz: [{ innings: 1, over: 9, raw: CB(50, 50) }] };
+  const orphan = CI(1, 9.0, 40, { cricinfoId: 777, slug: "x-vs-y", teams: [{ name: "X" }, { name: "Y" }] });
+  const lines = pairingGaps([LOG, unscored], [CI(1, 9.0, 21, { slug: "wi-vs-ind" }), orphan]);
+  assert.equal(lines.length, 2);
+  assert.match(lines[0], /Cricbuzz 9 .*outcome unknown/);
+  assert.match(lines[1], /Cricinfo 777 .*joined no log/);
 });
