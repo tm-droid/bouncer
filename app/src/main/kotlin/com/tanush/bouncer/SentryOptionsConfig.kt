@@ -15,12 +15,19 @@ import io.sentry.android.core.SentryAndroidOptions
  * - Sets reasonable connection / read timeouts so Sentry transport doesn't
  *   block the thread pool on flaky emulator networks
  */
-class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
+class SentryOptionsConfig(
+    private val lowEndDevice: Boolean = false,
+) : Sentry.OptionsConfiguration<SentryAndroidOptions> {
 
     companion object {
         private const val TAG = "SentryOptionsConfig"
         private const val CAUSE_DEPTH = 6
         internal const val UI_LOAD_DEADLINE_MS = 15_000L
+        private const val TRACES_SAMPLE_RATE = 0.2
+        private const val LOW_END_TRACES_SAMPLE_RATE = 0.05
+        private const val REPLAY_SESSION_SAMPLE_RATE = 0.1
+        private const val REPLAY_ON_ERROR_SAMPLE_RATE = 0.25
+        private const val LOW_END_REPLAY_ON_ERROR_SAMPLE_RATE = 0.1
 
         /** Exception messages that indicate benign cancellations, not real errors. */
         private val IGNORED_EXCEPTION_MESSAGES = setOf(
@@ -56,7 +63,16 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
         options.metrics.setEnabled(true)
 
         // Keep traces enabled so AI/LLM and performance spans are retained.
-        options.setTracesSampleRate(if (isDebugBuild) 1.0 else 0.2)
+        // A low-end phone samples less: every traced span and replay frame is work on two cores
+        // that the user waits behind (DeviceClass).
+        val lowEnd = lowEndDevice && !isDebugBuild
+        options.setTracesSampleRate(
+            when {
+                isDebugBuild -> 1.0
+                lowEnd -> LOW_END_TRACES_SAMPLE_RATE
+                else -> TRACES_SAMPLE_RATE
+            }
+        )
 
         // The activity's `ui.load` transaction ends when it goes idle, but every new child span
         // resets the idle timer, and polling, image loads and Room writes never pause. So it ran
@@ -68,8 +84,23 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
         // Session Replay: capture all debug sessions, sample production sessions. The on-error rate
         // decides which sessions keep the rolling screenshot buffer running in the background, so
         // 1.0 meant every production session paid that CPU and battery cost waiting for an error.
-        options.sessionReplay.setOnErrorSampleRate(if (isDebugBuild) 1.0 else 0.25)
-        options.sessionReplay.setSessionSampleRate(if (isDebugBuild) 1.0 else 0.1)
+        options.sessionReplay.setOnErrorSampleRate(
+            when {
+                isDebugBuild -> 1.0
+                lowEnd -> LOW_END_REPLAY_ON_ERROR_SAMPLE_RATE
+                else -> REPLAY_ON_ERROR_SAMPLE_RATE
+            }
+        )
+        // Recording a whole session captures and encodes a frame every second; a low-end phone
+        // records only around an error, at low quality.
+        options.sessionReplay.setSessionSampleRate(
+            when {
+                isDebugBuild -> 1.0
+                lowEnd -> 0.0
+                else -> REPLAY_SESSION_SAMPLE_RATE
+            }
+        )
+        if (lowEnd) options.sessionReplay.quality = io.sentry.SentryReplayOptions.SentryReplayQuality.LOW
         options.sessionReplay.setMaskAllText(true)
         options.sessionReplay.setMaskAllImages(true)
         options.sessionReplay.setDebug(isDebugBuild)
@@ -86,7 +117,7 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
 
         Log.d(
             TAG,
-            "Sentry configured: replay(session=${if (isDebugBuild) 1.0 else 0.1}, error=1.0), logs/metrics enabled"
+            "Sentry configured: lowEnd=$lowEnd, replay(session=${options.sessionReplay.sessionSampleRate}), logs/metrics enabled"
         )
     }
 

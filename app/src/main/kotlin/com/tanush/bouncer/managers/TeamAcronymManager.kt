@@ -9,10 +9,17 @@ import io.sentry.Sentry
 object TeamAcronymManager {
     @Volatile private var acronyms: Map<String, String> = emptyMap()
 
+    // Lower-cased name to code, built once. A miss on the exact key used to scan all ~1,000
+    // entries with equals(ignoreCase), and every match card asks for two codes on every
+    // recomposition.
+    @Volatile private var acronymsByLowerName: Map<String, String> = emptyMap()
+
     fun initialize(context: Context) {
         try {
             val jsonString = context.assets.open("TeamAcronyms.json").bufferedReader().use { it.readText() }
-            acronyms = AppJson.decodeFromString<Map<String, String>>(jsonString)
+            val loaded = AppJson.decodeFromString<Map<String, String>>(jsonString)
+            acronymsByLowerName = loaded.entries.associate { (name, code) -> name.lowercase() to code }
+            acronyms = loaded
         } catch (e: IOException) {
             Sentry.captureException(e)
         }
@@ -27,8 +34,7 @@ object TeamAcronymManager {
             // match, so a scraper returning "royal challengers bengaluru" missed the entry
             // entirely and fell through to the fallback.
             acronyms[teamName]?.let { return it }
-            acronyms.entries.firstOrNull { it.key.equals(teamName, ignoreCase = true) }
-                ?.let { return it.value }
+            acronymsByLowerName[teamName.lowercase()]?.let { return it }
             // Initials of the significant words. The old fallback took the first three letters,
             // which gave "Royal Challengers Bengaluru" -> "ROY", made both Sunrisers franchises
             // "SUN", and threw on any name shorter than three characters.

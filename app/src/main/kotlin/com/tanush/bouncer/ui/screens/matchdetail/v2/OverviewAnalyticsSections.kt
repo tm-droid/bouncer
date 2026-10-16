@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -359,7 +360,7 @@ internal fun CommentaryLineCard(text: String, highlighted: Boolean, muted: Boole
         // Cricbuzz marks its non-delivery bulletins ("<b>12:10 Local Time…</b>") with bold tags. The
         // Commentary tab rendered them; this card printed them literally.
         Text(
-            text = parseBoldTags(text),
+            text = remember(text) { parseBoldTags(text) },
             style = typography.bodySmall,
             color = textColor,
             modifier = Modifier.padding(spacing.md),

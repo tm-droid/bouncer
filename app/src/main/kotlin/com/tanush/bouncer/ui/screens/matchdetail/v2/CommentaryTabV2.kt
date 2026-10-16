@@ -413,7 +413,7 @@ private fun CommentaryLine(ball: ParsedBall, modifier: Modifier = Modifier) {
                 }
 
                 Text(
-                    text = parseBoldTags(ball.ballText),
+                    text = remember(ball.ballText) { parseBoldTags(ball.ballText) },
                     style = BouncerThemeV2.typography.bodySmall,
                     color = colors.onSurface,
                     modifier = Modifier.weight(1f),
@@ -441,7 +441,7 @@ private fun NonBallLine(text: String) {
             .padding(horizontal = spacing.lg, vertical = spacing.sm),
     ) {
         Text(
-            text = parseBoldTags(text),
+            text = remember(text) { parseBoldTags(text) },
             style = typography.bodySmall,
             color = colors.textSecondary,
         )

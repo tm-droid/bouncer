@@ -315,11 +315,12 @@ internal fun buildShareText(ball: ParsedBall): String = when {
     else -> ball.ballText
 }
 
+private val BOLD_TAG = Regex("<b>(.*?)</b>")
+
 internal fun parseBoldTags(text: String): AnnotatedString {
     return buildAnnotatedString {
-        val regex = Regex("<b>(.*?)</b>")
         var lastIndex = 0
-        regex.findAll(text).forEach { match ->
+        BOLD_TAG.findAll(text).forEach { match ->
             append(text.substring(lastIndex, match.range.first))
             withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                 append(match.groupValues[1])

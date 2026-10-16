@@ -21,15 +21,17 @@ import java.time.format.DateTimeFormatter
 internal fun matchStatusText(status: String): String {
     val start = remember(status) { parseMatchStart(status, ZonedDateTime.now()) } ?: return status
     val locale = LocalConfiguration.current.locales[0]
-    val clockPattern = if (DateFormat.is24HourFormat(LocalContext.current)) "HH:mm" else "h:mm a"
-    val time = DateTimeFormatter.ofPattern(clockPattern, locale).format(start)
+    val context = LocalContext.current
+    // Formatted once per status: the clock setting is a Settings lookup and each pattern is
+    // compiled, and every upcoming card on a scrolling list recomposes this.
+    val (time, day) = remember(start, locale) {
+        val clockPattern = if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm a"
+        DateTimeFormatter.ofPattern(clockPattern, locale).format(start) to
+            DateTimeFormatter.ofPattern("EEE d MMM", locale).format(start)
+    }
     return when (calendarDaysUntil(start, LocalDate.now())) {
         0L -> stringResource(R.string.match_starts_today, time)
         1L -> stringResource(R.string.match_starts_tomorrow, time)
-        else -> stringResource(
-            R.string.match_starts_on,
-            DateTimeFormatter.ofPattern("EEE d MMM", locale).format(start),
-            time,
-        )
+        else -> stringResource(R.string.match_starts_on, day, time)
     }
 }

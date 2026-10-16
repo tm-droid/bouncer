@@ -1,6 +1,7 @@
 package com.tanush.bouncer
 
 import android.content.Context
+import com.tanush.bouncer.utils.DeviceClass
 import android.util.Log
 import com.tanush.bouncer.data.prefs.PreferenceStore
 import com.tanush.bouncer.utils.PreferencesHelper
@@ -68,7 +69,12 @@ object Diagnostics {
 
     /** Starts Sentry if diagnostics are on. Every `Sentry.*` call is a no-op when it has not started. */
     fun start(context: Context) {
-        if (isEnabled(context)) SentryAndroid.init(context.applicationContext, SentryOptionsConfig())
+        if (isEnabled(context)) {
+            SentryAndroid.init(
+                context.applicationContext,
+                SentryOptionsConfig(lowEndDevice = DeviceClass.isLowEnd(context)),
+            )
+        }
     }
 
     /**

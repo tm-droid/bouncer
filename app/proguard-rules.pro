@@ -61,8 +61,12 @@
 -keep class io.appwrite.Operator { *; }
 
 # ── Jsoup ─────────────────────────────────────────────────────────────────────
--keep class org.jsoup.** { *; }
+# Jsoup takes no reflection: the one thing it needs is its entity tables, loaded as resources
+# relative to org.jsoup.nodes, so that package keeps its name. A blanket keep of every Jsoup class
+# stopped R8 shrinking or inlining any of it, which is dex that ART 11 verifies at every cold start.
 -keeppackagenames org.jsoup.nodes
+-dontwarn com.google.re2j.**
+-dontwarn org.jspecify.**
 
 # ── OkHttp ────────────────────────────────────────────────────────────────────
 -dontwarn okhttp3.**
@@ -79,7 +83,7 @@
 }
 
 # ── Sentry ────────────────────────────────────────────────────────────────────
--keep class io.sentry.** { *; }
+# The SDK ships its own consumer rules; a keep of the whole of io.sentry blocked shrinking for it.
 -dontwarn io.sentry.**
 
 # ── Kotlin Coroutines ─────────────────────────────────────────────────────────

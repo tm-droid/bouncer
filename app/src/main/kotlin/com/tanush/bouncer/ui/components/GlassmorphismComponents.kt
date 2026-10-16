@@ -60,13 +60,40 @@ private fun pulsingFloat(
     }
 }
 
+/**
+ * A faint dot texture over the content.
+ *
+ * The dots are placed once per size and drawn as three batched point calls. This used to place
+ * them with a fresh RNG walk and one `drawCircle` each on every draw, about 3,000 calls on a full
+ * width card, and a CRITICAL card's shimmer redraws the same layer every frame, so the
+ * win-probability card paid that cost continuously on a 2-core phone.
+ */
 fun Modifier.noiseOverlay(
     tint: Color,
     opacity: Float = 0.04f,
     density: Float = 0.12f,
     seed: Int = 42
-): Modifier = drawWithContent {
-    drawContent()
+): Modifier = drawWithCache {
+    val buckets = noiseDots(size, density, seed)
+    onDrawWithContent {
+        drawContent()
+        buckets.forEachIndexed { i, dots ->
+            if (dots.isNotEmpty()) {
+                drawPoints(
+                    points = dots,
+                    pointMode = PointMode.Points,
+                    color = tint.copy(alpha = opacity * NOISE_BUCKET_ALPHA[i]),
+                    strokeWidth = NOISE_DOT_DIAMETER,
+                    cap = StrokeCap.Round,
+                )
+            }
+        }
+    }
+}
+
+/** Dot centres grouped by brightness bucket, the same scatter the per-dot version drew. */
+private fun noiseDots(size: Size, density: Float, seed: Int): List<List<Offset>> {
+    val buckets = List(NOISE_BUCKET_ALPHA.size) { mutableListOf<Offset>() }
     val stepX = (size.width * density / 10f).coerceAtLeast(3f)
     val stepY = (size.height * density / 10f).coerceAtLeast(3f)
     val rng = Random(seed)
@@ -74,19 +101,20 @@ fun Modifier.noiseOverlay(
     while (y < size.height) {
         var x = 0f
         while (x < size.width) {
-            if (rng.nextFloat() < 0.45f) {
-                val dotAlpha = opacity * (0.3f + rng.nextFloat() * 0.7f)
-                drawCircle(
-                    color = tint.copy(alpha = dotAlpha),
-                    radius = 0.5f + rng.nextFloat() * 0.8f,
-                    center = Offset(x + rng.nextFloat() * stepX, y + rng.nextFloat() * stepY)
-                )
+            if (rng.nextFloat() < NOISE_FILL) {
+                val bucket = (rng.nextFloat() * NOISE_BUCKET_ALPHA.size).toInt().coerceAtMost(NOISE_BUCKET_ALPHA.lastIndex)
+                buckets[bucket] += Offset(x + rng.nextFloat() * stepX, y + rng.nextFloat() * stepY)
             }
             x += stepX
         }
         y += stepY
     }
+    return buckets
 }
+
+private const val NOISE_FILL = 0.45f
+private const val NOISE_DOT_DIAMETER = 1.8f
+private val NOISE_BUCKET_ALPHA = floatArrayOf(0.42f, 0.65f, 0.88f)
 
 fun Modifier.goldGlow(
     glowColor: Color? = null,

@@ -44,6 +44,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import com.tanush.bouncer.data.repository.NewsDiskCache
 import com.tanush.bouncer.utils.RemindersManager
@@ -139,7 +141,7 @@ class BouncerApp : Application() {
             AppwriteReadGuard.initPersistence(AppwriteReadGuard.PrefsBreakerStore(this))
         }
         initializeSafely("AppwriteClient") { AppwriteClient.initialize(this) }
-        probeAppwriteReachability()
+        probeAppwriteReachabilityOnFirstScreen()
         initializeSafely("AppwriteAICache") { AppwriteAICache.initialize() }
         initializeSafely("AppwriteHighlightsClient") { AppwriteHighlightsClient.initialize() }
         initializeSafely("AppwritePlayerProfilesClient") { AppwritePlayerProfilesClient.initialize() }
@@ -195,10 +197,10 @@ class BouncerApp : Application() {
 
         // ── Configure Coil ImageLoader ───────────────────────────────────
         initializeSafely("CoilImageLoader") {
-            val okHttpClient = com.tanush.bouncer.network.HttpClientProvider.sharedClient
-
+            // The lambda overload: the shared client is built on Coil's first request, off the
+            // main thread, instead of here in onCreate.
             val imageLoader = ImageLoader.Builder(this)
-                .okHttpClient(okHttpClient)
+                .okHttpClient { HttpClientProvider.sharedClient }
                 .diskCache {
                     DiskCache.Builder()
                         .directory(File(cacheDir, "image_cache"))
@@ -234,7 +236,19 @@ class BouncerApp : Application() {
                 }
             // Workers after first frame — not needed for launch.
             kotlinx.coroutines.delay(500L)
-            initializeSafely("ScorePollingWorker") { ScorePollingWorker.enqueuePeriodicWork(this@BouncerApp) }
+            applicationScope.launch(Dispatchers.IO) {
+                // initialize() is idempotent; it is called here so the first value is the saved
+                // set, not the empty one before the load, which would cancel a needed schedule.
+                initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this@BouncerApp) }
+                MatchSubscriptionManager.subscriptions
+                    .map { it.isNotEmpty() }
+                    .distinctUntilChanged()
+                    .collect { followed ->
+                        initializeSafely("ScorePollingWorker") {
+                            ScorePollingWorker.syncPeriodicWork(this@BouncerApp, followed)
+                        }
+                    }
+            }
             initializeSafely("SeriesSyncWorker") { SeriesSyncWorker.enqueuePeriodicWork(this@BouncerApp) }
             initializeSafely("DatabaseCleanupWorker") { DatabaseCleanupWorker.enqueueWeekly(this@BouncerApp) }
         }
@@ -262,6 +276,26 @@ class BouncerApp : Application() {
      * The timeout guards against an indefinite hang on a captive-portal network, where the
      * connection is up and nothing resolves.
      */
+    /**
+     * The ping answers "can the screens reach Appwrite", so it runs when the first screen starts.
+     * onCreate also runs for WorkManager and FCM wakes that never show one, and each of those paid
+     * a network round trip for an answer nothing would read.
+     */
+    private fun probeAppwriteReachabilityOnFirstScreen() {
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            override fun onActivityStarted(activity: android.app.Activity) {
+                unregisterActivityLifecycleCallbacks(this)
+                probeAppwriteReachability()
+            }
+            override fun onActivityCreated(activity: android.app.Activity, savedInstanceState: android.os.Bundle?) = Unit
+            override fun onActivityResumed(activity: android.app.Activity) = Unit
+            override fun onActivityPaused(activity: android.app.Activity) = Unit
+            override fun onActivityStopped(activity: android.app.Activity) = Unit
+            override fun onActivitySaveInstanceState(activity: android.app.Activity, outState: android.os.Bundle) = Unit
+            override fun onActivityDestroyed(activity: android.app.Activity) = Unit
+        })
+    }
+
     private fun probeAppwriteReachability() {
         applicationScope.launch(Dispatchers.IO) {
             val reachable = try {

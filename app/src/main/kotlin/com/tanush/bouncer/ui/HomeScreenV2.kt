@@ -247,11 +247,11 @@ private fun HomeMatchList(
             }
             else -> {
                 featured?.let { fm ->
-                    item(key = "hero_${fm.id}") {
+                    item(key = "hero_${fm.id}", contentType = "hero") {
                         HeroMatchCard(match = fm, onClick = { onMatchClick(fm) }, modifier = Modifier.animateItem())
                     }
                 }
-                items(rows, key = { "match_${it.id}" }) { match ->
+                items(rows, key = { "match_${it.id}" }, contentType = { "match" }) { match ->
                     MatchCardV2(
                         match = match,
                         onClick = { onMatchClick(match) },

@@ -172,6 +172,20 @@ class ScorePollingWorker(
         }
 
         /**
+         * Keeps the 30-minute poll scheduled only while a match is followed. With nothing
+         * followed, [doWork] returns at once, but WorkManager has already cold-started the whole
+         * process (BouncerApp.onCreate, Sentry, Appwrite) to run it: every 30 minutes, on every
+         * install, for nothing.
+         */
+        fun syncPeriodicWork(context: Context, anyFollowed: Boolean) {
+            if (anyFollowed) {
+                enqueuePeriodicWork(context)
+            } else {
+                WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK_NAME)
+            }
+        }
+
+        /**
          * Fire a one-time immediate refresh (e.g. pull-to-refresh or app foreground).
          */
         fun enqueueOneTimeWork(context: Context, jitterMs: Long = 0L) {
