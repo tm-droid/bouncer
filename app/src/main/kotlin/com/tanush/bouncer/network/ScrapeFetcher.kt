@@ -100,3 +100,38 @@ internal fun isUpstreamOutage(e: Throwable): Boolean {
 
 private const val MAX_CAUSE_DEPTH = 6
 private const val HTTP_SERVER_ERROR = 500
+
+internal fun classifyHttpException(e: ScrapeHttpException): com.tanush.bouncer.data.AppException.ApiException =
+    com.tanush.bouncer.data.AppException.ApiException(
+        statusCode = e.code,
+        message = "HTTP ${e.code} from ${e.url}",
+        cause = e
+    )
+
+/**
+ * Sentry gets a scrape failure only when the app could do something about it. Offline and a
+ * Cricbuzz 5xx (ANDROID-54/56/5R: 504s) are states the caller already degrades from, by retrying
+ * and then showing what it has cached; reporting them filled the issue list with Cricbuzz's
+ * outages.
+ */
+internal fun isReportableScrapeFailure(e: Throwable): Boolean =
+    !HttpClientProvider.isConnectivityException(e) && !isUpstreamOutage(e)
+
+/**
+ * Ends a scrape's retry loop for what another attempt cannot change: cancellation, and a 4xx on a
+ * URL the app built, which is a defect and is reported. Anything else returns, to be retried.
+ *
+ * The loops used to catch Jsoup's HttpStatusException for this, which ScrapeFetcher never throws,
+ * so a 4xx was retried three times and a 5xx was reported as a defect.
+ */
+internal fun Exception.rethrowIfNotRetryable(context: Map<String, Any?>) {
+    if (this is kotlinx.coroutines.CancellationException) throw this
+    if (this is ScrapeHttpException && code in HTTP_CLIENT_ERRORS) {
+        val classified = classifyHttpException(this)
+        crumb("HTTP $code — no retry", io.sentry.SentryLevel.WARNING, context + ("status" to code))
+        io.sentry.Sentry.captureException(classified)
+        throw classified
+    }
+}
+
+private val HTTP_CLIENT_ERRORS = 400..499

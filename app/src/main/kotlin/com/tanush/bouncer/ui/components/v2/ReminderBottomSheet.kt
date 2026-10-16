@@ -40,12 +40,13 @@ fun ReminderBottomSheet(
 
     data class ReminderOption(val label: String, val minutesBefore: Int)
     val options = listOf(
-        ReminderOption("15 minutes before", 15),
-        ReminderOption("30 minutes before", 30),
-        ReminderOption("1 hour before", 60),
-        ReminderOption("2 hours before", 120),
-        ReminderOption("At match start", 0),
+        ReminderOption(stringResource(R.string.reminder_option_15), 15),
+        ReminderOption(stringResource(R.string.reminder_option_30), 30),
+        ReminderOption(stringResource(R.string.reminder_option_60), 60),
+        ReminderOption(stringResource(R.string.reminder_option_120), 120),
+        ReminderOption(stringResource(R.string.reminder_option_start), 0),
     )
+    val notifications = rememberNotificationAccess()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -65,7 +66,7 @@ fun ReminderBottomSheet(
             ) {
                 Text(stringResource(R.string.common_set_reminder), style = typography.titleMedium, fontWeight = FontWeight.Bold)
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, "Close", tint = colors.textSecondary)
+                    Icon(Icons.Default.Close, stringResource(R.string.common_close), tint = colors.textSecondary)
                 }
             }
 
@@ -75,6 +76,7 @@ fun ReminderBottomSheet(
                 color = colors.textSecondary,
                 modifier = Modifier.padding(bottom = spacing.lg),
             )
+            NotificationsOffNotice(notifications, Modifier.padding(bottom = spacing.md))
 
             options.forEach { option ->
                 Row(
@@ -82,6 +84,8 @@ fun ReminderBottomSheet(
                         .fillMaxWidth()
                         .clickable {
                             scheduleReminder(context, matchId, matchTitle, matchStartTime, option.minutesBefore)
+                            // The reminder is kept either way; it fires once notifications are on.
+                            if (!notifications.enabled) notifications.turnOn()
                             onDismiss()
                         }
                         .padding(vertical = spacing.md),
@@ -119,14 +123,14 @@ private fun scheduleReminder(
     })
 
     if (matchStartTime <= 0L) {
-        Toast.makeText(context, "Reminder saved — we'll notify you when times are confirmed", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, R.string.reminder_saved_unconfirmed, Toast.LENGTH_SHORT).show()
         saveReminderPreference(context, matchId, minutesBefore)
         return
     }
 
     val triggerTime = matchStartTime - (minutesBefore * 60 * 1000L)
     if (triggerTime <= System.currentTimeMillis()) {
-        Toast.makeText(context, "This time has already passed", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, R.string.reminder_time_passed, Toast.LENGTH_SHORT).show()
         return
     }
 
@@ -139,7 +143,6 @@ private fun scheduleReminder(
     // nothing. The extras did not match the receiver's either ("match_title" vs the "title" it
     // reads), so even the right class would have fired a notification with default text.
     try {
-        val label = if (minutesBefore == 0) "at match start" else "$minutesBefore min before"
         val id = matchId.hashCode() + minutesBefore
         val body = if (minutesBefore == 0) "Starting now" else "Starts in $minutesBefore minutes"
         ReminderScheduler.scheduleReminder(
@@ -154,12 +157,17 @@ private fun scheduleReminder(
         // trace a user could find.
         RemindersManager.updateReminder(context, Reminder(id, matchTitle, body, triggerTime, matchId))
         saveReminderPreference(context, matchId, minutesBefore)
-        Toast.makeText(context, "Reminder set: $label", Toast.LENGTH_SHORT).show()
+        val confirmation = if (minutesBefore == 0) {
+            context.getString(R.string.reminder_set_at_start)
+        } else {
+            context.getString(R.string.reminder_set_before, minutesBefore)
+        }
+        Toast.makeText(context, confirmation, Toast.LENGTH_SHORT).show()
     } catch (e: Exception) {
         Sentry.captureException(e)
         // Deliberately not "Reminder saved". Saying a reminder is set when scheduling failed is
         // how this stayed broken: the user has no way to learn it will not fire.
-        Toast.makeText(context, "Couldn't set that reminder — try again", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, R.string.reminder_failed, Toast.LENGTH_SHORT).show()
     }
 }
 

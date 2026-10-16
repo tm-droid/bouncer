@@ -53,7 +53,9 @@ import com.tanush.bouncer.services.MatchCacheService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.tanush.bouncer.ui.components.v2.NotificationsOffNotice
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
+import com.tanush.bouncer.ui.components.v2.rememberNotificationAccess
 import com.tanush.bouncer.ui.components.v2.SettingsItemV2
 import com.tanush.bouncer.ui.components.v2.SettingsTrailing
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -157,6 +159,12 @@ fun SettingsScreenV2(
         ) {
             // Notifications
             item { SectionHeaderV2("Notifications", modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.sm)) }
+            item {
+                NotificationsOffNotice(
+                    rememberNotificationAccess(),
+                    Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
+                )
+            }
             item {
                 Column(Modifier.padding(horizontal = spacing.lg)) {
                     SettingsItemV2(

@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.navigation
 
+import com.tanush.bouncer.R
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -459,9 +460,16 @@ private fun NavGraphBuilder.matchDeepLinkDestination(
             isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-            // Fetch done and the id resolved nowhere — genuinely unknown match.
-            else -> LaunchedEffect(Unit) {
-                navController.navigateToTab(BouncerScreen.Home.route)
+            // Fetch done and the id resolved nowhere — genuinely unknown match. Said, as the
+            // external deep-link path already does, rather than a silent jump to Home.
+            else -> {
+                val context = LocalContext.current
+                LaunchedEffect(Unit) {
+                    android.widget.Toast.makeText(
+                        context, R.string.deep_link_match_unavailable, android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                    navController.navigateToTab(BouncerScreen.Home.route)
+                }
             }
         }
     }

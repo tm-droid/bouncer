@@ -443,4 +443,27 @@
     <string name="widget_use_default">Use Default</string>
     <string name="winprob_key_strategic_moments">KEY STRATEGIC MOMENTS</string>
     <string name="winprob_live_strategic_analytics">LIVE STRATEGIC ANALYTICS</string>
+    <string name="notifications_off_notice">Notifications are off, so alerts and reminders won\'t arrive.</string>
+    <string name="notifications_turn_on">Turn on</string>
+    <string name="reminder_option_15">15 minutes before</string>
+    <string name="reminder_option_30">30 minutes before</string>
+    <string name="reminder_option_60">1 hour before</string>
+    <string name="reminder_option_120">2 hours before</string>
+    <string name="reminder_option_start">At match start</string>
+    <string name="reminder_saved_unconfirmed">Reminder saved. We\'ll notify you when times are confirmed</string>
+    <string name="reminder_time_passed">This time has already passed</string>
+    <string name="reminder_set_at_start">Reminder set for the match start</string>
+    <string name="reminder_set_before">Reminder set: %1$d min before</string>
+    <string name="reminder_failed">Couldn\'t set that reminder. Try again</string>
+    <string name="common_close">Close</string>
+    <string name="player_search_unavailable">Player search isn\'t available right now.</string>
+    <string name="player_search_no_results">No players found for \"%1$s\"</string>
+    <string name="scorecard_innings_first">%1$s 1st inns</string>
+    <string name="scorecard_innings_second">%1$s 2nd inns</string>
+    <plurals name="onboarding_permission_scope">
+        <item quantity="one">You follow %1$d team. We\'ll only ping you about it.</item>
+        <item quantity="other">You follow %1$d teams. We\'ll only ping you about them.</item>
+    </plurals>
+    <string name="onboarding_permission_scope_none">Follow your teams first. We\'ll only ping you about them.</string>
+    <string name="share_failed">Couldn\'t share this match. Try again</string>
 </resources>

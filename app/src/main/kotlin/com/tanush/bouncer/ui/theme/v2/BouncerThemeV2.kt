@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.tanush.bouncer.ui.theme.LocalBouncerColors
+import com.tanush.bouncer.ui.theme.LocalColorHierarchy
+import com.tanush.bouncer.ui.theme.colorHierarchyFor
 import com.tanush.bouncer.ui.theme.legacyColorsFor
 
 /**
@@ -59,6 +61,7 @@ fun BouncerThemeV2(
         LocalBouncerElevationV2 provides elevation,
         LocalThemeModeV2 provides themeMode,
         LocalBouncerColors provides legacyColorsFor(isDark),
+        LocalColorHierarchy provides colorHierarchyFor(colors, isDark),
     ) {
         MaterialTheme(
             colorScheme = materialColorScheme,

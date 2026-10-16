@@ -1,5 +1,9 @@
 package com.tanush.bouncer.ui.screens
 
+import com.tanush.bouncer.network.PlayerSearchOutcome
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
@@ -77,7 +81,7 @@ fun PlayerComparisonScreen(
     val spacing = BouncerThemeV2.spacing
 
     val formats = remember { listOf("Test", "ODI", "T20I", "IPL") }
-    var selectedFormat by remember { mutableStateOf("Test") }
+    var selectedFormat by rememberSaveable { mutableStateOf("Test") }
 
     val player1 by viewModel.player1.collectAsStateWithLifecycle()
     val player2 by viewModel.player2.collectAsStateWithLifecycle()
@@ -207,7 +211,7 @@ private fun LazyListScope.comparisonStatsSection(
                 label = row.label,
                 value1 = row.value1,
                 value2 = row.value2,
-                highlight1 = row.highlight1,
+                leader = row.leader,
             )
         }
     } else {
@@ -317,20 +321,26 @@ private fun PlayerSearchBox(
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<PlayerSearchResult>>(emptyList()) }
+    var query by rememberSaveable { mutableStateOf("") }
+    // Null until a search for the current query has answered.
+    var outcome by remember { mutableStateOf<PlayerSearchOutcome?>(null) }
     var searching by remember { mutableStateOf(false) }
+    var attempt by remember { mutableIntStateOf(0) }
+    val results = (outcome as? PlayerSearchOutcome.Success)?.results.orEmpty()
 
-    // Debounced search
-    LaunchedEffect(query) {
-        if (query.length < 2) {
-            results = emptyList()
-            return@LaunchedEffect
-        }
+    // Debounced search. A query edited during the debounce cancels this effect, so `searching` is
+    // reset in finally: it used to stay true when the next query was too short to search, leaving
+    // a spinner that never stopped.
+    LaunchedEffect(query, attempt) {
+        outcome = null
+        if (query.length < 2) return@LaunchedEffect
         searching = true
-        delay(400) // debounce
-        results = PlayerProfileScraper.searchPlayers(query)
-        searching = false
+        try {
+            delay(400) // debounce
+            outcome = PlayerProfileScraper.searchPlayersDetailed(query)
+        } finally {
+            searching = false
+        }
     }
 
     Column {
@@ -338,7 +348,7 @@ private fun PlayerSearchBox(
             value = query,
             onValueChange = { query = it },
             placeholder = { Text(stringResource(R.string.player_search_player), style = typography.bodyMedium) },
-            leadingIcon = { Icon(Icons.Default.Search, "Search", tint = colors.textSecondary) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = colors.textSecondary) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
@@ -357,6 +367,30 @@ private fun PlayerSearchBox(
             Box(Modifier.fillMaxWidth().padding(spacing.lg), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), color = colors.primaryText, strokeWidth = 2.dp)
             }
+        }
+
+        // A failed lookup and an empty one used to look the same: nothing at all.
+        when {
+            outcome is PlayerSearchOutcome.Unavailable -> Row(
+                modifier = Modifier.fillMaxWidth().padding(top = spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.player_search_unavailable),
+                    style = typography.bodySmall,
+                    color = colors.textSecondary,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = { attempt++ }) {
+                    Text(stringResource(R.string.action_retry), color = colors.primaryText)
+                }
+            }
+            outcome is PlayerSearchOutcome.Success && results.isEmpty() -> Text(
+                stringResource(R.string.player_search_no_results, query.trim()),
+                style = typography.bodySmall,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = spacing.sm),
+            )
         }
 
         if (results.isNotEmpty()) {
@@ -404,7 +438,8 @@ private data class ComparisonData(
     val label: String,
     val value1: String,
     val value2: String,
-    val highlight1: Boolean, // true = player1 is better, false = player2 is better
+    /** 1 or 2 for the player ahead on this stat; null for a tie, which highlights neither. */
+    val leader: Int?,
 )
 
 @Composable
@@ -412,7 +447,7 @@ private fun ComparisonRow(
     label: String,
     value1: String,
     value2: String,
-    highlight1: Boolean,
+    leader: Int?,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -431,7 +466,8 @@ private fun ComparisonRow(
                 text = value1,
                 style = typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = if (highlight1) colors.primary else colors.textSecondary,
+                // primaryText, not primary: the fill gold is 1.74:1 as text on a light surface.
+                color = if (leader == 1) colors.primaryText else colors.textSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
             )
@@ -450,7 +486,7 @@ private fun ComparisonRow(
                 text = value2,
                 style = typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = if (!highlight1) colors.primary else colors.textSecondary,
+                color = if (leader == 2) colors.primaryText else colors.textSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
             )
@@ -460,13 +496,20 @@ private fun ComparisonRow(
 
 // ── Build comparison data ───────────────────────────────────────────────────────
 
+/** Two players level on a stat (both 0 when a format has no data) is not a win for player 1. */
+private fun leaderOf(order: Int): Int? = when {
+    order > 0 -> 1
+    order < 0 -> 2
+    else -> null
+}
+
 private fun buildComparisonRows(s1: FormatStats, s2: FormatStats): List<ComparisonData> {
     fun higherIsBetter(label: String, v1: Number, v2: Number): ComparisonData {
         val d1 = v1.toDouble()
         val d2 = v2.toDouble()
         val str1 = formatStat(v1)
         val str2 = formatStat(v2)
-        return ComparisonData(label, str1, str2, highlight1 = d1 >= d2)
+        return ComparisonData(label, str1, str2, leader = leaderOf(d1.compareTo(d2)))
     }
 
     fun lowerIsBetter(label: String, v1: Number, v2: Number): ComparisonData {
@@ -475,10 +518,12 @@ private fun buildComparisonRows(s1: FormatStats, s2: FormatStats): List<Comparis
         val str1 = formatStat(v1)
         val str2 = formatStat(v2)
         // lower is better, but 0 means no data so treat as worse
-        val better1 = if (d1 == 0.0 && d2 > 0.0) false
-        else if (d2 == 0.0 && d1 > 0.0) true
-        else d1 <= d2
-        return ComparisonData(label, str1, str2, highlight1 = better1)
+        val order = when {
+            d1 == 0.0 && d2 > 0.0 -> -1
+            d2 == 0.0 && d1 > 0.0 -> 1
+            else -> d2.compareTo(d1)
+        }
+        return ComparisonData(label, str1, str2, leader = leaderOf(order))
     }
 
     return listOf(

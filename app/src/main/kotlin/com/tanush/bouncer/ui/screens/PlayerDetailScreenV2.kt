@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -87,7 +88,7 @@ fun PlayerDetailScreenV2(
     val colors = BouncerThemeV2.colors
     val context = LocalContext.current
 
-    var selectedFormat by remember { mutableStateOf("Test") }
+    var selectedFormat by rememberSaveable { mutableStateOf("Test") }
     var profile by remember { mutableStateOf<PlayerProfile?>(null) }
     var loadState by remember { mutableStateOf(LoadState.Loading) }
     var retryCount by remember { mutableIntStateOf(0) }

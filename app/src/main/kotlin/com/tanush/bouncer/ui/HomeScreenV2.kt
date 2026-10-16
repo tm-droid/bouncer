@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui
 
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.CloudOff
+import com.tanush.bouncer.viewmodels.LoadingState
 import androidx.compose.material.icons.outlined.SportsCricket
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -117,7 +120,15 @@ fun HomeScreenV2(
             modifier = Modifier.padding(innerPadding),
         ) {
             val filtered = if (filters.active) FilteredList(filters.label) { onFiltersChanged(HomeFilters()) } else null
-            HomeMatchList(currentMatches, isLoading, filtered, onMatchClick, onMoreMatchesClick)
+            HomeMatchList(
+                matches = currentMatches,
+                isLoading = isLoading,
+                loadError = (loadingState as? LoadingState.Error)?.message,
+                filtered = filtered,
+                onMatchClick = onMatchClick,
+                onMoreMatchesClick = onMoreMatchesClick,
+                onRetry = { viewModel.refreshMatches() },
+            )
         }
     }
 }
@@ -204,9 +215,11 @@ private fun HomeFilterBar(
 private fun HomeMatchList(
     matches: List<CricketMatch>,
     isLoading: Boolean,
+    loadError: String?,
     filtered: FilteredList?,
     onMatchClick: (CricketMatch) -> Unit,
     onMoreMatchesClick: () -> Unit,
+    onRetry: () -> Unit,
 ) {
     val spacing = BouncerThemeV2.spacing
     val subscriptions by MatchSubscriptionManager.subscriptions.collectAsStateWithLifecycle()
@@ -224,27 +237,7 @@ private fun HomeMatchList(
                 // Mirror the real row's geometry so first paint does not jump.
                 ShimmerMatchCard(Modifier.padding(horizontal = spacing.lg, vertical = spacing.rowVertical))
             }
-            // A filter that empties the list says which filter, and offers the way out. It used to
-            // read "No matches found" with no action and no link to the full list.
-            matches.isEmpty() && filtered != null -> {
-                item(key = "empty_filtered") {
-                    EmptyStateV2(
-                        title = stringResource(R.string.home_empty_filtered_title, filtered.label),
-                        subtitle = stringResource(R.string.home_empty_filtered_subtitle),
-                        icon = Icons.Outlined.SportsCricket,
-                        onRetry = filtered.onShowAll,
-                        actionLabel = stringResource(R.string.home_show_all),
-                    )
-                }
-                item(key = "all_matches") { AllMatchesLink(onMoreMatchesClick) }
-            }
-            matches.isEmpty() -> item(key = "empty") {
-                EmptyStateV2(
-                    title = stringResource(R.string.home_empty_title),
-                    subtitle = stringResource(R.string.home_empty_subtitle),
-                    icon = Icons.Outlined.SportsCricket,
-                )
-            }
+            matches.isEmpty() -> homeEmptyItems(loadError, filtered, onRetry, onMoreMatchesClick)
             else -> {
                 featured?.let { fm ->
                     item(key = "hero_${fm.id}", contentType = "hero") {
@@ -263,6 +256,48 @@ private fun HomeMatchList(
                 }
                 item(key = "all_matches") { AllMatchesLink(onMoreMatchesClick) }
             }
+        }
+    }
+}
+
+/** Home with nothing to list: a failed load, a filter that emptied it, or no cricket on. */
+private fun LazyListScope.homeEmptyItems(
+    loadError: String?,
+    filtered: FilteredList?,
+    onRetry: () -> Unit,
+    onMoreMatchesClick: () -> Unit,
+) {
+    when {
+        // A failed load with nothing saved says so. It used to fall through to the filter advice
+        // or "No matches", with no retry and the reason dropped.
+        loadError != null -> item(key = "load_error") {
+            EmptyStateV2(
+                title = stringResource(R.string.matches_couldnt_load),
+                subtitle = loadError,
+                icon = Icons.Outlined.CloudOff,
+                onRetry = onRetry,
+            )
+        }
+        // A filter that empties the list says which filter, and offers the way out. It used to
+        // read "No matches found" with no action and no link to the full list.
+        filtered != null -> {
+            item(key = "empty_filtered") {
+                EmptyStateV2(
+                    title = stringResource(R.string.home_empty_filtered_title, filtered.label),
+                    subtitle = stringResource(R.string.home_empty_filtered_subtitle),
+                    icon = Icons.Outlined.SportsCricket,
+                    onRetry = filtered.onShowAll,
+                    actionLabel = stringResource(R.string.home_show_all),
+                )
+            }
+            item(key = "all_matches") { AllMatchesLink(onMoreMatchesClick) }
+        }
+        else -> item(key = "empty") {
+            EmptyStateV2(
+                title = stringResource(R.string.home_empty_title),
+                subtitle = stringResource(R.string.home_empty_subtitle),
+                icon = Icons.Outlined.SportsCricket,
+            )
         }
     }
 }

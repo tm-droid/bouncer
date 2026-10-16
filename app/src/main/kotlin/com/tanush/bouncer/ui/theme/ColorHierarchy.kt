@@ -119,14 +119,52 @@ data class ColorHierarchy(
 // CompositionLocal
 // =============================================================================
 
-val LocalColorHierarchy = staticCompositionLocalOf {
-    buildColorHierarchy(
-        teamPrimary = GoldDark,
-        teamSecondary = GoldPrimaryDark,
-        teamSurface = Surface1Dark,
-        teamOnPrimary = Color.White,
-        teamOnSurface = TextPrimaryDark,
+private val DarkColorHierarchy = buildColorHierarchy(
+    teamPrimary = GoldDark,
+    teamSecondary = GoldPrimaryDark,
+    teamSurface = Surface1Dark,
+    teamOnPrimary = Color.White,
+    teamOnSurface = TextPrimaryDark,
+    palette = DarkVariantPalette
+)
+
+val LocalColorHierarchy = staticCompositionLocalOf { DarkColorHierarchy }
+
+/**
+ * The hierarchy for the theme in force. `BouncerThemeV2` did not provide one, so the ~110 reads
+ * across match detail (scorecard rates, prediction, fall of wickets, head to head) all got the dark
+ * default in light mode too: `secondary.primary` drew #AF8327 text on white, about 3.4:1. In light
+ * mode gold as ink is [com.tanush.bouncer.ui.theme.v2.BouncerColorsV2.primaryText] (5.3:1), and the
+ * glass tokens are the light surface and divider. Dark mode is unchanged.
+ */
+internal fun colorHierarchyFor(colors: com.tanush.bouncer.ui.theme.v2.BouncerColorsV2, isDark: Boolean): ColorHierarchy {
+    if (isDark) return DarkColorHierarchy
+    val light = buildColorHierarchy(
+        teamPrimary = colors.primaryText,
+        teamSecondary = colors.primaryText,
+        teamSurface = colors.surface,
+        teamOnPrimary = colors.onPrimary,
+        teamOnSurface = colors.onSurface,
         palette = DarkVariantPalette
+    )
+    return light.copy(
+        dominant = light.dominant.copy(
+            background = colors.background,
+            backgroundElevated = colors.surface,
+            backgroundRecessed = colors.surfaceVariant,
+            surface = colors.surface,
+            surfaceElevated = colors.surface,
+            surfaceContainer = colors.surfaceVariant,
+            surfaceBright = colors.surface,
+            textPrimary = colors.onSurface,
+            textSecondary = colors.textSecondary,
+            textTertiary = colors.textSecondary,
+            textMuted = colors.textSecondary,
+            glassBackground = colors.surface,
+            glassBorder = colors.divider,
+            glassBorderHighlight = colors.border,
+        ),
+        accent = light.accent.copy(gold = colors.primaryText),
     )
 }
 

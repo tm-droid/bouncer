@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.components.premium
 
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -61,8 +62,14 @@ fun PremiumScorecardTab(
         return
     }
 
-    var selectedInningsIndex by remember { mutableIntStateOf(0) }
+    // Opens on the innings being played, not the first: during a chase the first is finished.
+    // Keyed on the count, so a new innings starting brings the reader to it. Saveable, so a swipe
+    // to another tab and back does not reset it.
+    var selectedInningsIndex by rememberSaveable(scorecard.innings.size) {
+        mutableIntStateOf(scorecard.innings.lastIndex)
+    }
     val innings = scorecard.innings.getOrNull(selectedInningsIndex)
+    val inningsLabels = inningsLabels(scorecard.innings.map { it.teamName })
 
     Column(modifier = modifier.fillMaxSize()) {
         // Quick Score Summary (matching mockup)
@@ -117,7 +124,7 @@ fun PremiumScorecardTab(
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
                     Text(
-                        text = "${inn.teamName} Inning",
+                        text = inningsLabels[index],
                         fontSize = 13.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                         maxLines = 1,

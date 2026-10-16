@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
@@ -82,11 +84,14 @@ internal fun ResultPill(ball: ParsedBall) {
     }
     val (text, fg, bg) = outcome
 
+    // A minimum, not a fixed size: at a large font scale "Wd3" or "N1" was clipped inside a fixed
+    // 24dp square. At the default scale every chip is still exactly 24dp.
     Box(
         modifier = Modifier
-            .size(24.dp)
+            .defaultMinSize(minWidth = 24.dp, minHeight = 24.dp)
             .clip(RoundedCornerShape(4.dp))
-            .background(bg),
+            .background(bg)
+            .padding(horizontal = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -94,6 +99,8 @@ internal fun ResultPill(ball: ParsedBall) {
             style = BouncerThemeV2.typography.labelSmall,
             color = fg,
             fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            softWrap = false,
         )
     }
 }

@@ -720,14 +720,11 @@ internal suspend fun resolveScorecard(
 ): Scorecard? {
     if (current != null) return null
     suspend fun stored() = liveSource.getScorecardForMatch(matchId)?.takeIf { it.scorecard.innings.isNotEmpty() }
-    suspend fun scraped() = try {
-        repository.fetchScorecard(matchId)
-    } catch (e: kotlinx.coroutines.CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        onScrapeFailure(e)
-        null
-    }?.takeIf { it.innings.isNotEmpty() }
+    // runCatchingSuspend rethrows cancellation, which stdlib runCatching reported as a failed scrape.
+    suspend fun scraped() = AppResult.runCatchingSuspend { repository.fetchScorecard(matchId) }
+        .onError { onScrapeFailure(it.cause ?: it) }
+        .getOrNull()
+        ?.takeIf { it.innings.isNotEmpty() }
     // `match-scorecard` freezes when the match leaves the live list, at the same instant and for
     // the same reason `match-live-detail` does — so for a finished match the stored row is the
     // truncated one and Cricbuzz's own page has the completed card. The scrape goes first there,

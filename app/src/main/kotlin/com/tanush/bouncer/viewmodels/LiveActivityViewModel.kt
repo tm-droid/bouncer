@@ -1,5 +1,8 @@
 package com.tanush.bouncer.viewmodels
 
+import com.tanush.bouncer.network.isUpstreamOutage
+import com.tanush.bouncer.network.isReportableScrapeFailure
+import com.tanush.bouncer.network.HttpClientProvider
 import com.tanush.bouncer.services.backoffDelayMs
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -57,6 +60,16 @@ internal fun matchesForStatus(
     if (status != STATUS_ALL) return cache[status]
     val parts = FETCHABLE_STATUSES.mapNotNull(cache::get)
     return if (parts.isEmpty()) null else parts.flatten().distinctBy { it.id }
+}
+
+/**
+ * What the list says when it could not load. Never the exception's own text: that read
+ * "Unable to resolve host www.cricbuzz.com" or an SSL class name to someone wanting a score.
+ */
+internal fun loadFailureMessage(e: Throwable): String = when {
+    HttpClientProvider.isConnectivityException(e) -> "No internet connection. Check your network and try again."
+    isUpstreamOutage(e) -> "Cricbuzz isn't responding right now. Pull to refresh to try again."
+    else -> "Couldn't load matches. Pull to refresh to try again."
 }
 
 sealed class LoadingState {
@@ -470,7 +483,7 @@ class LiveActivityViewModel(
             filterAndEmitMatches(offline)
             LoadingState.Error(CACHED_DATA_MESSAGE)
         } else {
-            LoadingState.Error(e.localizedMessage ?: "Network error")
+            LoadingState.Error(loadFailureMessage(e))
         }
     }
 
@@ -611,17 +624,16 @@ class LiveActivityViewModel(
                 level = SentryLevel.ERROR,
                 data = mapOf("error_type" to e.javaClass.simpleName),
             )
-            Sentry.captureException(e)
-            _loadingState.value = LoadingState.Error(
-                e.localizedMessage ?: "Failed to load matches. Pull to refresh to try again."
-            )
+            if (isReportableScrapeFailure(e)) Sentry.captureException(e)
+            _loadingState.value = LoadingState.Error(loadFailureMessage(e))
         }
     }
 
     private fun reportRefreshError(e: Exception, logMsg: String, crumb: String, userMsg: String) {
         Log.e(TAG, logMsg, e)
         breadcrumb("network.error", crumb, SentryLevel.ERROR)
-        Sentry.captureException(e)
+        // Offline and a timeout are the network's state; the screen already says so.
+        if (isReportableScrapeFailure(e)) Sentry.captureException(e)
         _loadingState.value = LoadingState.Error(userMsg)
     }
 

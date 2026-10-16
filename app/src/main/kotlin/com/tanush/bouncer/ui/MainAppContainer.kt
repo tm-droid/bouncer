@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui
 
+import com.tanush.bouncer.data.AppJson
+import androidx.compose.runtime.saveable.Saver
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -111,7 +113,9 @@ fun BouncerAppContent(
     externalDeepLinkUri: String? = null,
     onDeepLinkConsumed: () -> Unit = {},
 ) {
-    var currentMatch by remember { mutableStateOf<CricketMatch?>(null) }
+    // Saveable: a dark-mode switch, a font-size change or the system reclaiming the process used
+    // to drop the reader back on Home with the match they had open gone.
+    var currentMatch by rememberSaveable(stateSaver = OpenMatchSaver) { mutableStateOf<CricketMatch?>(null) }
     val context = LocalContext.current
     // The picked theme is persisted. It used to live only in `rememberSaveable`, so it survived a
     // rotation and nothing else: every cold start reset it, and the reset landed on a hard `Dark`
@@ -317,3 +321,9 @@ fun MainAppContainer(
 private fun getBottomNavRouteForCurrentRoute(route: String?): String {
     return BouncerScreen.getParentTab(route)
 }
+
+/** The open match, as JSON. A null match saves nothing and restores to the initial null. */
+private val OpenMatchSaver = Saver<CricketMatch?, String>(
+    save = { match -> match?.let { AppJson.encodeToString(CricketMatch.serializer(), it) } },
+    restore = { json -> runCatching { AppJson.decodeFromString(CricketMatch.serializer(), json) }.getOrNull() },
+)

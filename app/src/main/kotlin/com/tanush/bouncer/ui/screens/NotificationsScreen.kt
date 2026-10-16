@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.ui.platform.LocalContext
+import android.text.format.DateUtils
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,9 +46,6 @@ import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.managers.NotificationItem
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -178,7 +177,7 @@ private fun NotificationRow(item: NotificationItem) {
                     color = colors.onSurface,
                 )
                 Text(
-                    text = formatTimestamp(item.timestamp),
+                    text = formatTimestamp(LocalContext.current, item.timestamp),
                     style = typography.labelSmall,
                     color = colors.textSecondary,
                 )
@@ -200,6 +199,17 @@ private fun NotificationRow(item: NotificationItem) {
     }
 }
 
-private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
-
-private fun formatTimestamp(ts: Long): String = timeFormat.format(Date(ts))
+/**
+ * Today's alerts show the time; older ones add the day. Every alert used to read as a bare
+ * "7:30 PM", whatever day it came, in a 12-hour clock and the locale the file first loaded with.
+ * DateUtils follows the device's 24-hour setting and current locale.
+ */
+private fun formatTimestamp(context: android.content.Context, ts: Long): String {
+    val flags = if (DateUtils.isToday(ts)) {
+        DateUtils.FORMAT_SHOW_TIME
+    } else {
+        DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_ABBREV_MONTH or
+            DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_ABBREV_WEEKDAY
+    }
+    return DateUtils.formatDateTime(context, ts, flags)
+}

@@ -831,27 +831,23 @@ object ShareCardGenerator {
         bitmap: Bitmap,
         fileName: String = "bouncer_match_${System.currentTimeMillis()}.png"
     ): Uri? = withContext(Dispatchers.IO) {
+        // One capture: the nested try reported every failure twice.
         try {
-            try {
-                val cacheDir = File(context.cacheDir, "share_images")
-                if (!cacheDir.exists()) {
-                    cacheDir.mkdirs()
-                }
-            
-                val file = File(cacheDir, fileName)
-                FileOutputStream(file).use { out ->
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                }
-            
-                FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    file
-                )
-            } catch (e: Exception) {
-                Sentry.captureException(e)
-                throw e
+            val cacheDir = File(context.cacheDir, "share_images")
+            if (!cacheDir.exists()) {
+                cacheDir.mkdirs()
             }
+
+            val file = File(cacheDir, fileName)
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
         } catch (e: Exception) {
             Sentry.captureException(e)
             null
@@ -861,19 +857,32 @@ object ShareCardGenerator {
     /**
      * Launches share intent with the generated image
      */
-    fun shareImage(context: Context, imageUri: Uri, text: String? = null) {
-        try {
-            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "image/png"
-                putExtra(Intent.EXTRA_STREAM, imageUri)
-                text?.let { putExtra(Intent.EXTRA_TEXT, it) }
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-        
-            context.startActivity(Intent.createChooser(shareIntent, "Share Match Update"))
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
+    fun shareImage(context: Context, imageUri: Uri, text: String? = null): Boolean = try {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "image/png"
+            putExtra(Intent.EXTRA_STREAM, imageUri)
+            text?.let { putExtra(Intent.EXTRA_TEXT, it) }
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(shareIntent, "Share Match Update"))
+        true
+    } catch (e: Exception) {
+        // Reported, not rethrown: the caller runs in a composition scope, where a rethrow is a
+        // crash, and its spinner was left on.
+        Sentry.captureException(e)
+        false
+    }
+
+    /**
+     * Saves and shares [bitmap], telling the user when it could not. A failed share used to do
+     * nothing at all: the button stopped spinning and no sheet appeared.
+     */
+    suspend fun shareBitmap(context: Context, bitmap: Bitmap) {
+        val shared = saveBitmapForSharing(context, bitmap)?.let { shareImage(context, it) } == true
+        if (!shared) {
+            android.widget.Toast.makeText(
+                context, com.tanush.bouncer.R.string.share_failed, android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
     }
 }
@@ -912,9 +921,7 @@ fun ShareCardButton(
                 )
                 
                 val bitmap = ShareCardGenerator.generateShareBitmap(data)
-                val uri = ShareCardGenerator.saveBitmapForSharing(context, bitmap)
-                
-                uri?.let { ShareCardGenerator.shareImage(context, it) }
+                ShareCardGenerator.shareBitmap(context, bitmap)
                 isGenerating = false
             }
         },

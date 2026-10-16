@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -112,7 +113,7 @@ private fun CommentaryFeedBody(
     sourceCaption: String?,
 ) {
     val spacing = BouncerThemeV2.spacing
-    var selectedFilter by remember { mutableStateOf(CommentaryFilter.ALL) }
+    var selectedFilter by rememberSaveable { mutableStateOf(CommentaryFilter.ALL) }
     // Labels are for display only; the filter itself travels as an enum, so a translated chip
     // cannot silently turn every filter into "All".
     val filterLabels = CommentaryFilter.entries.map { stringResource(it.labelRes) }

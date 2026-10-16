@@ -201,4 +201,22 @@ class LightModeContrastTest {
         assertTrue("LightColors.isDark must be false", !LightColors.isDark)
         assertTrue("DarkColors.isDark must be true", DarkColors.isDark)
     }
+
+    /**
+     * `hierarchy.secondary.primary` is read as text in ~110 places across match detail. The theme
+     * never provided the hierarchy, so light mode drew the dark default's #AF8327 on white.
+     */
+    @Test
+    fun `the color hierarchy's ink clears AA on light surfaces`() {
+        val h = colorHierarchyFor(LightColors, isDark = false)
+        assertContrast(h.secondary.primary, LightColors.surface, AA, "light hierarchy.secondary.primary on surface")
+        assertContrast(h.secondary.primary, LightColors.background, AA, "light hierarchy.secondary.primary on background")
+        assertContrast(h.dominant.textPrimary, h.dominant.surface, AA, "light hierarchy textPrimary on surface")
+        assertContrast(h.dominant.textSecondary, h.dominant.surface, AA, "light hierarchy textSecondary on surface")
+    }
+
+    @Test
+    fun `dark mode keeps the hierarchy it always had`() {
+        assertTrue(colorHierarchyFor(DarkColors, isDark = true) === colorHierarchyFor(LightColors, isDark = true))
+    }
 }

@@ -1,5 +1,9 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import android.Manifest
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
@@ -198,12 +202,16 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         ) {
                             POPULAR_TEAMS.forEach { team ->
                                 val selected = team in selectedTeams
+                                // toggleable, not clickable: a screen reader announces each team
+                                // as a checkbox and says whether it is picked. The 48dp minimum
+                                // is the touch area; the chip draws at its own size inside it.
                                 Box(
                                     modifier = Modifier
+                                        .minimumInteractiveComponentSize()
                                         .clip(RoundedCornerShape(20.dp))
                                         .background(if (selected) colors.primary else colors.surfaceVariant)
                                         .border(1.dp, if (selected) colors.primary else colors.surfaceVariant, RoundedCornerShape(20.dp))
-                                        .clickable {
+                                        .toggleable(value = selected, role = Role.Checkbox) {
                                             if (hapticEnabled) haptics.toggle(turningOn = !selected)
                                             selectedTeams = if (selected) selectedTeams - team else selectedTeams + team
                                         }
@@ -225,17 +233,19 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                             color = colors.textSecondary,
                         )
                         Spacer(Modifier.height(spacing.sm))
-                        Row(
+                        // Wraps rather than running off a narrow screen.
+                        FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             CATEGORY_OPTIONS.forEach { category ->
                                 val selected = category == selectedCategory
                                 Box(
                                     modifier = Modifier
+                                        .minimumInteractiveComponentSize()
                                         .clip(RoundedCornerShape(16.dp))
                                         .background(if (selected) colors.primary else colors.surfaceVariant)
                                         .border(1.dp, if (selected) colors.primary else colors.surfaceVariant, RoundedCornerShape(16.dp))
-                                        .clickable {
+                                        .selectable(selected = selected, role = Role.RadioButton) {
                                             if (hapticEnabled) haptics.click()
                                             selectedCategory = category
                                         }
@@ -280,9 +290,13 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                             // Reciprocity priming: the value (followed teams) came first,
                             // so the permission ask is scoped to it, not open-ended.
                             if (selectedTeams.isNotEmpty()) {
-                                "You follow ${selectedTeams.size} team${if (selectedTeams.size > 1) "s" else ""} — we'll only ping you about them."
+                                pluralStringResource(
+                                    R.plurals.onboarding_permission_scope,
+                                    selectedTeams.size,
+                                    selectedTeams.size,
+                                )
                             } else {
-                                "Follow your teams first — we'll only ping you about them."
+                                stringResource(R.string.onboarding_permission_scope_none)
                             },
                             style = typography.labelMedium,
                             color = colors.primaryText,

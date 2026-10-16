@@ -112,28 +112,6 @@ internal fun unwrapNextFlightPayload(scriptContent: String): String? {
     return normalizeNextFlightPayload(array[1].asString)
 }
 
-internal fun classifyHttpException(e: ScrapeHttpException): AppException.ApiException =
-    AppException.ApiException(
-        statusCode = e.code,
-        message = "HTTP ${e.code} from ${e.url}",
-        cause = e
-    )
-
-/**
- * Sentry gets a scrape failure only when the app could do something about it. Offline and a
- * Cricbuzz 5xx (ANDROID-54/56/5R: 504s) are states the caller already degrades from, by retrying
- * and then showing what it has cached; reporting them filled the issue list with Cricbuzz's
- * outages.
- */
-internal fun isReportableScrapeFailure(e: Throwable): Boolean =
-    !HttpClientProvider.isConnectivityException(e) && !isUpstreamOutage(e)
-
-/** A 4xx on a URL the app built: retrying cannot change it, and it is a defect worth a report. */
-private fun Throwable.isClientError(): Boolean =
-    this is ScrapeHttpException && code in HTTP_CLIENT_ERROR_RANGE
-
-private val HTTP_CLIENT_ERROR_RANGE = 400..499
-
 private fun parseLenientJson(payload: String): JsonElement? = try {
     val reader = com.google.gson.stream.JsonReader(java.io.StringReader(payload))
     reader.isLenient = true
@@ -243,31 +221,17 @@ class CricBuzzScraper {
                 crumb("Successfully fetched live matches",
                     data = mapOf("totalMatches" to matches.size, "filteredMatches" to filteredMatches.size))
                 return@withContext filteredMatches
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
             } catch (e: UnknownHostException) {
                 Log.e(TAG, "No internet connection fetching $url", e)
                 crumb("No internet connection", SentryLevel.WARNING, mapOf("url" to url))
                 throw MatchListUnavailableException("No internet connection", e)
-            } catch (e: ScrapeHttpException) {
-                if (!e.isClientError()) {
-                    lastException = e
-                    Log.w(TAG, "${e.message} (attempt $attempt/$MAX_RETRIES)")
-                    crumb("HTTP ${e.code} fetching matches", SentryLevel.WARNING,
-                        mapOf("url" to url, "attempt" to attempt))
-                } else {
-                    val classified = classifyHttpException(e)
-                    crumb("HTTP ${e.code} — no retry", SentryLevel.WARNING,
-                        mapOf("url" to url, "status" to e.code))
-                    Sentry.captureException(classified)
-                    throw classified
-                }
             } catch (e: SocketTimeoutException) {
                 lastException = e
                 Log.w(TAG, "Timeout fetching $url (attempt $attempt/$MAX_RETRIES)", e)
                 crumb("Socket timeout fetching matches", SentryLevel.WARNING,
                     mapOf("url" to url, "attempt" to attempt))
             } catch (e: Exception) {
+                e.rethrowIfNotRetryable(mapOf("url" to url))
                 lastException = e
                 Log.e(TAG, "Error fetching matches from $url (attempt $attempt/$MAX_RETRIES)", e)
                 crumb("Error fetching matches", SentryLevel.ERROR,
@@ -597,25 +561,13 @@ class CricBuzzScraper {
                     mapOf("matchId" to matchId, "cause" to e.message.orEmpty()),
                 )
                 return@withContext emptyMatchDetails()
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: ScrapeHttpException) {
-                lastException = e
-                if (e.isClientError()) {
-                    crumb("HTTP ${e.code} fetching match details — no retry", SentryLevel.WARNING,
-                        mapOf("matchId" to matchId, "status" to e.code))
-                    Sentry.captureException(classifyHttpException(e))
-                    throw classifyHttpException(e)
-                }
-                Log.w(TAG, "${e.message} (attempt $attempt/$MAX_RETRIES)")
-                crumb("HTTP ${e.code} fetching match details", SentryLevel.WARNING,
-                    mapOf("matchId" to matchId, "attempt" to attempt))
             } catch (e: SocketTimeoutException) {
                 lastException = e
                 Log.w(TAG, "Timeout fetching match details for $matchId (attempt $attempt/$MAX_RETRIES)")
                 crumb("Timeout fetching match details", SentryLevel.WARNING,
                     mapOf("matchId" to matchId, "attempt" to attempt))
             } catch (e: Exception) {
+                e.rethrowIfNotRetryable(mapOf("matchId" to matchId))
                 lastException = e
                 Log.e(TAG, "Error fetching match details for $matchId (attempt $attempt/$MAX_RETRIES)", e)
                 crumb("Error fetching match details", SentryLevel.ERROR,

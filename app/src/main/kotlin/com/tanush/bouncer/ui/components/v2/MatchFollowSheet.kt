@@ -52,7 +52,13 @@ fun MatchFollowSheet(
     val cards by MatchSubscriptionManager.subscriptions.collectAsStateWithLifecycle()
     val allAlerts by MatchSubscriptionManager.alertPrefs.collectAsStateWithLifecycle()
     val alerts = allAlerts[matchId] ?: MatchAlertPrefs.NONE
-    val setAlerts = { next: MatchAlertPrefs -> MatchSubscriptionManager.setAlerts(matchId, next) }
+    val notifications = rememberNotificationAccess()
+    // Every switch here ends in a notification, so switching one on with notifications off asks
+    // for them; the choice is kept either way and takes effect once they are on.
+    val setAlerts = { next: MatchAlertPrefs ->
+        MatchSubscriptionManager.setAlerts(matchId, next)
+        askIfOff(next.anyOn, notifications)
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -67,6 +73,10 @@ fun MatchFollowSheet(
                 color = colors.onSurface,
                 modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.md),
             )
+            NotificationsOffNotice(
+                notifications,
+                Modifier.padding(start = spacing.lg, end = spacing.lg, bottom = spacing.md),
+            )
             HorizontalDivider(color = colors.divider)
 
             if (canShowLiveCard) {
@@ -74,34 +84,50 @@ fun MatchFollowSheet(
                     title = stringResource(R.string.match_follow_live_card),
                     subtitle = stringResource(R.string.match_follow_live_card_subtitle),
                     checked = matchId in cards,
-                ) { on ->
-                    if (on) MatchSubscriptionManager.subscribe(matchId) else MatchSubscriptionManager.unsubscribe(matchId)
-                }
+                ) { on -> setLiveCard(matchId, on, notifications) }
                 HorizontalDivider(color = colors.divider)
             }
 
-            Text(
-                text = stringResource(R.string.match_follow_alerts),
-                style = typography.bodyMedium,
-                color = colors.textSecondary,
-                modifier = Modifier.padding(start = spacing.lg, end = spacing.lg, top = spacing.md),
-            )
-            FollowToggle(stringResource(R.string.match_follow_wickets), null, alerts.wickets) {
-                setAlerts(alerts.copy(wickets = it))
-            }
-            FollowToggle(stringResource(R.string.match_follow_boundaries), null, alerts.boundaries) {
-                setAlerts(alerts.copy(boundaries = it))
-            }
-            FollowToggle(
-                stringResource(R.string.match_follow_milestones),
-                stringResource(R.string.match_follow_milestones_subtitle),
-                alerts.milestones,
-            ) { setAlerts(alerts.copy(milestones = it)) }
-            FollowToggle(stringResource(R.string.match_follow_start_result), null, alerts.startAndResult) {
-                setAlerts(alerts.copy(startAndResult = it))
-            }
+            AlertToggles(alerts, setAlerts)
             Spacer(Modifier.height(spacing.sm))
         }
+    }
+}
+
+private fun setLiveCard(matchId: String, on: Boolean, notifications: NotificationAccess) {
+    if (on) MatchSubscriptionManager.subscribe(matchId) else MatchSubscriptionManager.unsubscribe(matchId)
+    askIfOff(on, notifications)
+}
+
+private fun askIfOff(switchedOn: Boolean, notifications: NotificationAccess) {
+    if (switchedOn && !notifications.enabled) notifications.turnOn()
+}
+
+/** The four per-event alert switches. */
+@Composable
+private fun AlertToggles(alerts: MatchAlertPrefs, setAlerts: (MatchAlertPrefs) -> Unit) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    Text(
+        text = stringResource(R.string.match_follow_alerts),
+        style = typography.bodyMedium,
+        color = colors.textSecondary,
+        modifier = Modifier.padding(start = spacing.lg, end = spacing.lg, top = spacing.md),
+    )
+    FollowToggle(stringResource(R.string.match_follow_wickets), null, alerts.wickets) {
+        setAlerts(alerts.copy(wickets = it))
+    }
+    FollowToggle(stringResource(R.string.match_follow_boundaries), null, alerts.boundaries) {
+        setAlerts(alerts.copy(boundaries = it))
+    }
+    FollowToggle(
+        stringResource(R.string.match_follow_milestones),
+        stringResource(R.string.match_follow_milestones_subtitle),
+        alerts.milestones,
+    ) { setAlerts(alerts.copy(milestones = it)) }
+    FollowToggle(stringResource(R.string.match_follow_start_result), null, alerts.startAndResult) {
+        setAlerts(alerts.copy(startAndResult = it))
     }
 }
 

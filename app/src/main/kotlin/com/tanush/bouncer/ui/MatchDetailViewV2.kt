@@ -253,8 +253,7 @@ fun MatchDetailViewV2(
                                         isLive = liveMatch.isLive,
                                     )
                                     val bitmap = ShareCardGenerator.generateShareBitmap(data)
-                                    val uri = ShareCardGenerator.saveBitmapForSharing(context, bitmap)
-                                    uri?.let { ShareCardGenerator.shareImage(context, it) }
+                                    ShareCardGenerator.shareBitmap(context, bitmap)
                                     isSharingCard = false
                                 }
                             }
@@ -387,6 +386,7 @@ fun MatchDetailViewV2(
                     R.string.tab_scorecard -> ScorecardTab(
                         scorecard = uiState.scorecard,
                         isLoading = uiState.scorecardLoading,
+                        onRetry = vm::retryInitialLoad,
                     )
                     R.string.tab_commentary -> CommentaryTabV2(
                         commentary = uiState.commentary,
