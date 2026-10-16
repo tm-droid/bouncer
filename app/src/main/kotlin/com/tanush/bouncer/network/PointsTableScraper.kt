@@ -50,23 +50,35 @@ class PointsTableScraper {
         for (attempt in 1..MAX_RETRIES) {
             try {
                 return@withContext fetchOnce(seriesId)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: SocketTimeoutException) {
                 lastException = e
             } catch (e: UnknownHostException) {
                 lastException = e
             } catch (e: Exception) {
                 lastException = e
-                break
+                // A Cricbuzz 5xx (ANDROID-54: a 504) is worth another attempt; anything else
+                // answers the same way again.
+                if (!isUpstreamOutage(e)) break
             }
 
-            delay(backoffDelayMs(attempt))
+            if (attempt < MAX_RETRIES) delay(backoffDelayMs(attempt))
         }
 
-        Sentry.captureException(lastException ?: Exception("Points table fetch failed"))
-        emptyList()
+        // Thrown, not an empty list: "could not fetch" read as "this series has no standings",
+        // and the caller, which reports only what the app can act on, never saw the failure.
+        throw lastException ?: java.io.IOException("Points table fetch failed")
     }
 
     private fun fetchOnce(seriesId: String): List<PointsTableEntry> {
+        SeriesSlugs[seriesId]?.let { slug ->
+            return parsePointsTableFlight(
+                ScrapeFetcher.getString(
+                    "${CricBuzzUrls.BASE}/cricket-series/$seriesId/$slug/points-table", randomUserAgent(), TIMEOUT_MS
+                )
+            )
+        }
         val landingUrl = "${CricBuzzUrls.BASE}/cricket-series/$seriesId/points-table"
         val landing = ScrapeFetcher.getString(landingUrl, randomUserAgent(), TIMEOUT_MS)
 
@@ -96,6 +108,7 @@ class PointsTableScraper {
  */
 internal fun sluggedPointsTableUrl(html: String, seriesId: String): String? {
     val slug = seriesSlugOf(html, seriesId) ?: return null
+    SeriesSlugs[seriesId] = slug
     return "${CricBuzzUrls.BASE}/cricket-series/$seriesId/$slug/points-table"
 }
 

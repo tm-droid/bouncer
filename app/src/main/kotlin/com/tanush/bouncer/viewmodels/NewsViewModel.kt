@@ -70,7 +70,7 @@ class NewsViewModel(
         private fun messageFor(e: Throwable): String = when {
             e is NewsUnavailableException && e.statusCode != null -> newsFetchMessageFor(e.statusCode)
             e is NewsUnavailableException -> e.message ?: "Failed to load news"
-            else -> e.localizedMessage ?: "Failed to load news"
+            else -> "Failed to load news"
         }
     }
 
@@ -310,7 +310,9 @@ class NewsViewModel(
                     level = SentryLevel.ERROR,
                     data = mapOf("story_id" to storyId, "error_type" to e.javaClass.simpleName),
                 )
-                Sentry.captureException(e)
+                // Same rule as the headlines: a call that never reached either source is the
+                // device's state, not a defect.
+                if ((e as? NewsUnavailableException)?.transportFailure != true) Sentry.captureException(e)
                 Sentry.metrics().count("news.article.body.error", 1.0)
                 Sentry.logger().error("Article body load failed: %s", e.message ?: "unknown")
                 _articleBodyError.value = "Rain delay — couldn't load this article. Check your connection and retry."

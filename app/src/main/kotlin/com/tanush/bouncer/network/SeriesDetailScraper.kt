@@ -68,26 +68,41 @@ class SeriesDetailScraper(
             last ?: AppResult.Error(AppException.UnknownException(message = "Series $tab fetch failed"))
         }
 
-    private fun slugFor(seriesId: String): String = slugs[seriesId] ?: run {
-        val landing = fetch("${CricBuzzUrls.BASE}/cricket-series/$seriesId/matches")
-        // With what came back: the page for series 13180 answered 200 with no slugged link twice
-        // on 2026-10-04 and has carried them ever since, and the report said nothing about the
-        // body it was given (ANDROID-59).
-        val slug = seriesSlugOf(landing, seriesId) ?: throw AppException.ParseException(
-            message = "No slugged link on series $seriesId landing page " +
+    private fun slugFor(seriesId: String): String = SeriesSlugs[seriesId] ?: run {
+        var landing = ""
+        // A landing page has twice answered 200 with no slugged link and carried them again later
+        // (series 13180, 2026-10-04, ANDROID-59). A second unslugged tab is a different URL, so it
+        // is a fresh answer rather than the same cached body.
+        for (tab in LANDING_TABS) {
+            landing = fetch("${CricBuzzUrls.BASE}/cricket-series/$seriesId/$tab")
+            seriesSlugOf(landing, seriesId)?.let { slug ->
+                SeriesSlugs[seriesId] = slug
+                return slug
+            }
+        }
+        throw AppException.ParseException(
+            message = "No slugged link on series $seriesId landing pages " +
                 "(${landing.length} chars, title \"${TITLE.find(landing)?.groupValues?.get(1)?.take(TITLE_MAX).orEmpty()}\")"
         )
-        slugs[seriesId] = slug
-        slug
     }
 
     companion object {
         private const val TIMEOUT_MS = 10_000
         private const val TITLE_MAX = 80
         private val TITLE = Regex("<title>([^<]*)", RegexOption.IGNORE_CASE)
+        private val LANDING_TABS = listOf("matches", "squads")
+    }
+}
 
-        // A slug never changes for a series id; remembering it saves one page fetch per tab.
-        private val slugs = ConcurrentHashMap<String, String>()
+/**
+ * Series id to URL slug. A slug never changes for a series id, and every series tab (schedule,
+ * stats, points table) needs it, so each series pays for one landing fetch, not one per tab.
+ */
+internal object SeriesSlugs {
+    private val slugs = ConcurrentHashMap<String, String>()
+    operator fun get(seriesId: String): String? = slugs[seriesId]
+    operator fun set(seriesId: String, slug: String) {
+        slugs[seriesId] = slug
     }
 }
 

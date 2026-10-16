@@ -80,7 +80,7 @@ object ScrapeFetcher {
  * one carried, so every existing catch block and message check behaves as before; the status is a
  * field so a reporting site can tell the site's own outage from a page that changed.
  */
-class ScrapeHttpException(val code: Int, url: String) : IOException("HTTP $code fetching $url")
+class ScrapeHttpException(val code: Int, val url: String) : IOException("HTTP $code fetching $url")
 
 /**
  * True when [e] is, or wraps, a 5xx from a scraped site. That is the site's outage: every caller

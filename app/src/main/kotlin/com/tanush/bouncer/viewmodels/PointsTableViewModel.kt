@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.models.PointsTableEntry
 import com.tanush.bouncer.network.PointsTableScraper
-import com.tanush.bouncer.network.isUpstreamOutage
+import com.tanush.bouncer.network.isReportableScrapeFailure
 import io.sentry.Sentry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +36,7 @@ class PointsTableViewModel : ViewModel() {
                 if (result.isEmpty()) _error.value = "No points table available for this series"
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                if (!isUpstreamOutage(e)) Sentry.captureException(e)
+                if (isReportableScrapeFailure(e)) Sentry.captureException(e)
                 _error.value = "Rain delay — couldn't reach the scorers. Check your connection and retry."
             } finally {
                 _isLoading.value = false

@@ -91,7 +91,7 @@ class CricInfoScraper {
      * returns 200, and nothing in the app said so.
      */
     private fun reportIfBlocked(e: Exception, url: String): Boolean {
-        val status = (e as? org.jsoup.HttpStatusException)?.statusCode ?: return false
+        val status = (e as? ScrapeHttpException)?.code ?: return false
         if (status != HTTP_FORBIDDEN && status != HTTP_UNAVAILABLE_LEGAL) return false
         sentryCaptureThrottled(
             key = "cricinfo.blocked",

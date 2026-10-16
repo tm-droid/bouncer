@@ -173,7 +173,10 @@ export function dedupeById(items) {
 
 export default async ({ req, res, log, error }) => {
   initObservability({ log });
-  const HIGHLIGHTLY_API_KEY = process.env.HIGHLIGHTLY_API_KEY ?? "";
+  // Highlightly is a RapidAPI host, so its key is the RapidAPI key; HIGHLIGHTLY_API_KEY only
+  // overrides it. Reading the override alone lost every sync from 2026-10-13 to 10-14 (ANDROID-5N)
+  // while bouncer-api already held RAPIDAPI_KEY for /news.
+  const HIGHLIGHTLY_API_KEY = process.env.HIGHLIGHTLY_API_KEY || process.env.RAPIDAPI_KEY || "";
   const HIGHLIGHTS_DB_ID = process.env.APPWRITE_HIGHLIGHTS_DB_ID ?? "";
   const HIGHLIGHTS_COL_ID = process.env.APPWRITE_HIGHLIGHTS_COL_ID ?? "";
   const META_COL_ID = process.env.APPWRITE_HIGHLIGHTS_META_COL_ID ?? "";
@@ -216,7 +219,7 @@ export default async ({ req, res, log, error }) => {
   const sweep = isSweep(dates);
 
   if (!HIGHLIGHTLY_API_KEY) {
-    error("HIGHLIGHTLY_API_KEY not set — cannot fetch highlights");
+    error("Neither HIGHLIGHTLY_API_KEY nor RAPIDAPI_KEY is set — cannot fetch highlights");
     report("highlights-sync has no Highlightly API key", { dates: dates.join(",") }, "error");
     return await finish({ skipped: true, reason: "missing_api_key" });
   }

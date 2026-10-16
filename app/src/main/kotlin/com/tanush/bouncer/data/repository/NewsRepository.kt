@@ -1,6 +1,8 @@
 package com.tanush.bouncer.data.repository
 
+import com.tanush.bouncer.network.HttpClientProvider
 import com.tanush.bouncer.network.ScrapeFetcher
+import com.tanush.bouncer.network.isUpstreamOutage
 import com.tanush.bouncer.data.AppJson
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -111,14 +113,35 @@ class CricbuzzNewsRepository : NewsRepository {
      * outage; it is no longer the thing the feature depends on.
      */
     override suspend fun fetchArticleBody(storyId: Long, articleUrl: String): List<String> {
-        val fromServer = runCatching { fetchBodyFromFunction(storyId) }.getOrNull()
+        val failures = mutableListOf<Throwable>()
+        val fromServer = attempt(failures) { fetchBodyFromFunction(storyId) }
         if (!fromServer.isNullOrEmpty()) return fromServer
 
-        val scraped = runCatching { scrapeArticleBody(articleUrl) }.getOrNull()
+        val scraped = attempt(failures) { scrapeArticleBody(articleUrl) }
         if (!scraped.isNullOrEmpty()) return scraped
 
-        throw NewsUnavailableException(message = "Article body could not be loaded.")
+        // Both sources failing because the device is offline (or Cricbuzz and the function are
+        // both down) is a state, not a defect; both answering with no text is drift. The report
+        // used to carry neither the cause nor the distinction (ANDROID-5J).
+        throw NewsUnavailableException(
+            message = "Article body could not be loaded.",
+            cause = failures.firstOrNull(),
+            transportFailure = failures.size == 2 && failures.all(::isUnreachable),
+        )
     }
+
+    private suspend fun <T> attempt(failures: MutableList<Throwable>, block: suspend () -> T): T? = try {
+        block()
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        failures += e
+        null
+    }
+
+    private fun isUnreachable(e: Throwable): Boolean =
+        (e is NewsUnavailableException && (e.transportFailure || e.statusCode != null)) ||
+            HttpClientProvider.isConnectivityException(e) || isUpstreamOutage(e)
 
     private suspend fun fetchBodyFromFunction(storyId: Long): List<String> {
         val body = when (

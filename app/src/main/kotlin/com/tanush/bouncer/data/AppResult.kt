@@ -79,6 +79,8 @@ sealed class AppResult<out T> {
                 } else {
                     Error(AppException.NetworkException(cause = e))
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Error(AppException.UnknownException(cause = e))
             }

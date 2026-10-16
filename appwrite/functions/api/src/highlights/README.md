@@ -17,7 +17,7 @@ Appwrite cloud function that syncs cricket highlights from the Highlightly API e
    - `APPWRITE_HIGHLIGHTS_DB_ID` — Database ID for highlights cache
    - `APPWRITE_HIGHLIGHTS_COL_ID` — Table ID for highlights
    - `RAPIDAPI_KEY` — RapidAPI key (Cricbuzz + Highlightly hosts)
-   - `HIGHLIGHTLY_API_KEY` — Highlightly API key (if separate)
+   - `HIGHLIGHTLY_API_KEY` — optional override; unset, the sync uses `RAPIDAPI_KEY`
 
 2. Deploy:
    ```bash

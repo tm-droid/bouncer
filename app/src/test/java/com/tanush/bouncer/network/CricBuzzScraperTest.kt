@@ -2,7 +2,6 @@ package com.tanush.bouncer.network
 
 import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.data.AppException
-import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -17,7 +16,7 @@ class CricBuzzScraperTest {
 
     @Test
     fun `classifyHttpException maps 429 to ApiException`() {
-        val ex = HttpStatusException("Too Many Requests", 429, "https://cricbuzz.com")
+        val ex = ScrapeHttpException(429, "https://cricbuzz.com")
         val result = classifyHttpException(ex)
         assertTrue(result is AppException.ApiException)
         assertEquals(429, (result as AppException.ApiException).statusCode)
@@ -25,7 +24,7 @@ class CricBuzzScraperTest {
 
     @Test
     fun `classifyHttpException maps 403 to ApiException`() {
-        val ex = HttpStatusException("Forbidden", 403, "https://cricbuzz.com")
+        val ex = ScrapeHttpException(403, "https://cricbuzz.com")
         val result = classifyHttpException(ex)
         assertTrue(result is AppException.ApiException)
         assertEquals(403, (result as AppException.ApiException).statusCode)
@@ -33,10 +32,27 @@ class CricBuzzScraperTest {
 
     @Test
     fun `classifyHttpException maps 503 to ApiException`() {
-        val ex = HttpStatusException("Service Unavailable", 503, "https://cricbuzz.com")
+        val ex = ScrapeHttpException(503, "https://cricbuzz.com")
         val result = classifyHttpException(ex)
         assertTrue(result is AppException.ApiException)
         assertEquals(503, (result as AppException.ApiException).statusCode)
+    }
+
+    @Test
+    fun `a Cricbuzz 5xx is not a reportable scrape failure`() {
+        assertFalse(isReportableScrapeFailure(ScrapeHttpException(504, "https://www.cricbuzz.com/x")))
+        assertFalse(isReportableScrapeFailure(MatchListUnavailableException("x", ScrapeHttpException(502, "u"))))
+    }
+
+    @Test
+    fun `offline is not a reportable scrape failure`() {
+        assertFalse(isReportableScrapeFailure(java.net.UnknownHostException("www.cricbuzz.com")))
+    }
+
+    @Test
+    fun `a 4xx and a parse failure are reportable`() {
+        assertTrue(isReportableScrapeFailure(ScrapeHttpException(404, "https://www.cricbuzz.com/x")))
+        assertTrue(isReportableScrapeFailure(IllegalStateException("drift")))
     }
 
     @Test

@@ -31,6 +31,7 @@ import com.tanush.bouncer.data.remote.RealtimeLifecycleController
 import com.tanush.bouncer.data.remote.WinProbabilityStore
 import com.tanush.bouncer.data.remote.toEvent
 import com.tanush.bouncer.network.CricBuzzUrls
+import com.tanush.bouncer.network.isReportableScrapeFailure
 import com.tanush.bouncer.services.MatchPresenceReporter
 import com.tanush.bouncer.ui.components.BatsmanMilestoneInfo
 import com.tanush.bouncer.ui.components.MilestoneType
@@ -370,7 +371,8 @@ class MatchDetailViewModel(
                     "On-device scorecard fetch failed: ${e.message}",
                     SentryLevel.WARNING,
                 )
-                Sentry.captureException(e)
+                // Offline and a Cricbuzz 5xx (ANDROID-5R: a 504) fall through to the stored card.
+                if (isReportableScrapeFailure(e)) Sentry.captureException(e)
             }?.let { sc -> _uiState.update { it.copy(scorecard = sc) } }
             loadCommentaryFeed()
         } finally {
@@ -718,10 +720,14 @@ internal suspend fun resolveScorecard(
 ): Scorecard? {
     if (current != null) return null
     suspend fun stored() = liveSource.getScorecardForMatch(matchId)?.takeIf { it.scorecard.innings.isNotEmpty() }
-    suspend fun scraped() = runCatching { repository.fetchScorecard(matchId) }
-        .onFailure(onScrapeFailure)
-        .getOrNull()
-        ?.takeIf { it.innings.isNotEmpty() }
+    suspend fun scraped() = try {
+        repository.fetchScorecard(matchId)
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        onScrapeFailure(e)
+        null
+    }?.takeIf { it.innings.isNotEmpty() }
     // `match-scorecard` freezes when the match leaves the live list, at the same instant and for
     // the same reason `match-live-detail` does — so for a finished match the stored row is the
     // truncated one and Cricbuzz's own page has the completed card. The scrape goes first there,
@@ -828,11 +834,14 @@ internal fun insertBySortKey(
 }
 
 private suspend fun scrapeCommentary(repository: MatchRepository, matchId: String): List<String> =
-    runCatching {
+    try {
         withTimeoutOrNull(COMMENTARY_FETCH_TIMEOUT_MS) {
             repository.fetchLiveCommentary(CricBuzzUrls.liveScoresUrl(matchId))
-        }
-    }.onFailure { e ->
+        }.orEmpty()
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        // Leaving the screen cancels the fetch; that is not a failed fetch (ANDROID-53).
+        throw e
+    } catch (e: Exception) {
         Sentry.addBreadcrumb(
             Breadcrumb().apply {
                 category = "commentary_fallback"
@@ -840,7 +849,8 @@ private suspend fun scrapeCommentary(repository: MatchRepository, matchId: Strin
                 level = SentryLevel.WARNING
             }
         )
-        Sentry.captureException(e)
-    }.getOrNull().orEmpty()
+        if (isReportableScrapeFailure(e)) Sentry.captureException(e)
+        emptyList()
+    }
 
 private const val COMMENTARY_FETCH_TIMEOUT_MS = 10_000L

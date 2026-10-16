@@ -20,7 +20,6 @@ import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -113,12 +112,27 @@ internal fun unwrapNextFlightPayload(scriptContent: String): String? {
     return normalizeNextFlightPayload(array[1].asString)
 }
 
-internal fun classifyHttpException(e: HttpStatusException): AppException.ApiException =
+internal fun classifyHttpException(e: ScrapeHttpException): AppException.ApiException =
     AppException.ApiException(
-        statusCode = e.statusCode,
-        message = "HTTP ${e.statusCode} from ${e.url}",
+        statusCode = e.code,
+        message = "HTTP ${e.code} from ${e.url}",
         cause = e
     )
+
+/**
+ * Sentry gets a scrape failure only when the app could do something about it. Offline and a
+ * Cricbuzz 5xx (ANDROID-54/56/5R: 504s) are states the caller already degrades from, by retrying
+ * and then showing what it has cached; reporting them filled the issue list with Cricbuzz's
+ * outages.
+ */
+internal fun isReportableScrapeFailure(e: Throwable): Boolean =
+    !HttpClientProvider.isConnectivityException(e) && !isUpstreamOutage(e)
+
+/** A 4xx on a URL the app built: retrying cannot change it, and it is a defect worth a report. */
+private fun Throwable.isClientError(): Boolean =
+    this is ScrapeHttpException && code in HTTP_CLIENT_ERROR_RANGE
+
+private val HTTP_CLIENT_ERROR_RANGE = 400..499
 
 private fun parseLenientJson(payload: String): JsonElement? = try {
     val reader = com.google.gson.stream.JsonReader(java.io.StringReader(payload))
@@ -235,12 +249,19 @@ class CricBuzzScraper {
                 Log.e(TAG, "No internet connection fetching $url", e)
                 crumb("No internet connection", SentryLevel.WARNING, mapOf("url" to url))
                 throw MatchListUnavailableException("No internet connection", e)
-            } catch (e: HttpStatusException) {
-                val classified = classifyHttpException(e)
-                crumb("HTTP ${e.statusCode} — no retry", SentryLevel.WARNING,
-                    mapOf("url" to url, "status" to e.statusCode))
-                Sentry.captureException(classified)
-                throw classified
+            } catch (e: ScrapeHttpException) {
+                if (!e.isClientError()) {
+                    lastException = e
+                    Log.w(TAG, "${e.message} (attempt $attempt/$MAX_RETRIES)")
+                    crumb("HTTP ${e.code} fetching matches", SentryLevel.WARNING,
+                        mapOf("url" to url, "attempt" to attempt))
+                } else {
+                    val classified = classifyHttpException(e)
+                    crumb("HTTP ${e.code} — no retry", SentryLevel.WARNING,
+                        mapOf("url" to url, "status" to e.code))
+                    Sentry.captureException(classified)
+                    throw classified
+                }
             } catch (e: SocketTimeoutException) {
                 lastException = e
                 Log.w(TAG, "Timeout fetching $url (attempt $attempt/$MAX_RETRIES)", e)
@@ -257,7 +278,7 @@ class CricBuzzScraper {
         }
 
         Log.e(TAG, "All $MAX_RETRIES attempts failed for $url", lastException)
-        lastException?.let { Sentry.captureException(it) }
+        lastException?.takeIf(::isReportableScrapeFailure)?.let { Sentry.captureException(it) }
         // Not an empty list. "Could not fetch" used to be returned as "no matches", which the
         // caller stored: offline showed the empty state and overwrote the saved list with [].
         throw MatchListUnavailableException("Could not load matches", lastException)
@@ -576,12 +597,19 @@ class CricBuzzScraper {
                     mapOf("matchId" to matchId, "cause" to e.message.orEmpty()),
                 )
                 return@withContext emptyMatchDetails()
-            } catch (e: HttpStatusException) {
-                val classified = classifyHttpException(e)
-                crumb("HTTP ${e.statusCode} fetching match details — no retry", SentryLevel.WARNING,
-                    mapOf("matchId" to matchId, "status" to e.statusCode))
-                Sentry.captureException(classified)
-                throw classified
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: ScrapeHttpException) {
+                lastException = e
+                if (e.isClientError()) {
+                    crumb("HTTP ${e.code} fetching match details — no retry", SentryLevel.WARNING,
+                        mapOf("matchId" to matchId, "status" to e.code))
+                    Sentry.captureException(classifyHttpException(e))
+                    throw classifyHttpException(e)
+                }
+                Log.w(TAG, "${e.message} (attempt $attempt/$MAX_RETRIES)")
+                crumb("HTTP ${e.code} fetching match details", SentryLevel.WARNING,
+                    mapOf("matchId" to matchId, "attempt" to attempt))
             } catch (e: SocketTimeoutException) {
                 lastException = e
                 Log.w(TAG, "Timeout fetching match details for $matchId (attempt $attempt/$MAX_RETRIES)")
@@ -598,7 +626,7 @@ class CricBuzzScraper {
         }
 
         Log.e(TAG, "All $MAX_RETRIES attempts failed for match details $matchId", lastException)
-        lastException?.let { Sentry.captureException(it) }
+        lastException?.takeIf(::isReportableScrapeFailure)?.let { Sentry.captureException(it) }
         emptyMatchDetails()
     }
 
@@ -676,11 +704,13 @@ class CricBuzzScraper {
                     mapOf("url" to matchUrl, "cause" to e.message.orEmpty()),
                 )
                 emptyList()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Error fetching Cricbuzz commentary", e)
                 crumb("Error fetching commentary", SentryLevel.ERROR,
                     mapOf("url" to matchUrl, "error" to (e.message ?: "Unknown error")))
-                Sentry.captureException(e)
+                if (isReportableScrapeFailure(e)) Sentry.captureException(e)
                 emptyList()
             }
         }
@@ -783,20 +813,15 @@ class CricBuzzScraper {
                 data = mapOf("matchId" to matchId, "inningsCount" to inningsList.size))
 
             Scorecard(inningsList)
-        } catch (e: HttpStatusException) {
-            val classified = classifyHttpException(e)
-            crumb("HTTP ${e.statusCode} fetching scorecard — no retry", SentryLevel.WARNING,
-                mapOf("matchId" to matchId, "status" to e.statusCode))
-            Sentry.captureException(classified)
-            throw classified
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             if (HttpClientProvider.isConnectivityException(e)) {
                 Log.w(TAG, "No internet fetching scorecard for $matchId")
                 crumb("No internet fetching scorecard", SentryLevel.WARNING, mapOf("matchId" to matchId))
             } else if (isUpstreamOutage(e)) {
-                // Cricbuzz's own outage (ANDROID-48: a 504). ScrapeFetcher throws a plain
-                // IOException, so the HttpStatusException branch above never sees it; the caller
-                // already degrades to the stored scorecard, and nothing on this side can fix it.
+                // Cricbuzz's own outage (ANDROID-48: a 504). The caller already degrades to the
+                // stored scorecard, and nothing on this side can fix it.
                 Log.w(TAG, "Cricbuzz ${e.message}")
                 crumb("Cricbuzz 5xx fetching scorecard", SentryLevel.WARNING,
                     mapOf("matchId" to matchId, "error" to e.message.orEmpty()))

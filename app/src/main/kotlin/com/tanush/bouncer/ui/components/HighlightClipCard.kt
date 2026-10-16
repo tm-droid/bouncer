@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -56,12 +57,14 @@ fun HighlightClipCard(
             ) {
                 when (val state = painter.state) {
                     is AsyncImagePainter.State.Error -> {
-                        if (!errorLogged.value) {
-                            errorLogged.value = true
-                            io.sentry.Sentry.captureMessage(
-                                "Highlight image URL failed: ${highlight.imgUrl}",
-                                io.sentry.SentryLevel.WARNING
-                            )
+                        LaunchedEffect(highlight.imgUrl) {
+                            if (!errorLogged.value && isReportableThumbnailFailure(state.result.throwable)) {
+                                errorLogged.value = true
+                                io.sentry.Sentry.captureMessage(
+                                    "Highlight image URL failed: ${highlight.imgUrl}",
+                                    io.sentry.SentryLevel.WARNING
+                                )
+                            }
                         }
                         Box(
                             modifier = Modifier
@@ -101,3 +104,11 @@ fun HighlightClipCard(
         )
     }
 }
+
+/**
+ * Offline, and a thumbnail its host has taken down (a 404 on `i.ytimg.com`), are both expected: the
+ * card shows its placeholder and nothing in the app can bring the image back (ANDROID-5Q). Anything
+ * else, such as a body Coil could not decode, is a fault worth a report.
+ */
+internal fun isReportableThumbnailFailure(t: Throwable): Boolean =
+    t !is java.io.IOException && t !is coil.network.HttpException
