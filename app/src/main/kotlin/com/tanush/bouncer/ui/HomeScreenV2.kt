@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui
 
+import com.tanush.bouncer.services.MatchCacheService
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -128,6 +129,8 @@ fun HomeScreenV2(
                 onMatchClick = onMatchClick,
                 onMoreMatchesClick = onMoreMatchesClick,
                 onRetry = { viewModel.refreshMatches() },
+                onSeeUpcoming = { viewModel.setAndFetchMatches(MatchCacheService.UPCOMING) }
+                    .takeIf { selectedStatus == MatchCacheService.LIVE },
             )
         }
     }
@@ -220,6 +223,7 @@ private fun HomeMatchList(
     onMatchClick: (CricketMatch) -> Unit,
     onMoreMatchesClick: () -> Unit,
     onRetry: () -> Unit,
+    onSeeUpcoming: (() -> Unit)?,
 ) {
     val spacing = BouncerThemeV2.spacing
     val subscriptions by MatchSubscriptionManager.subscriptions.collectAsStateWithLifecycle()
@@ -237,7 +241,7 @@ private fun HomeMatchList(
                 // Mirror the real row's geometry so first paint does not jump.
                 ShimmerMatchCard(Modifier.padding(horizontal = spacing.lg, vertical = spacing.rowVertical))
             }
-            matches.isEmpty() -> homeEmptyItems(loadError, filtered, onRetry, onMoreMatchesClick)
+            matches.isEmpty() -> homeEmptyItems(loadError, filtered, onRetry, onMoreMatchesClick, onSeeUpcoming)
             else -> {
                 featured?.let { fm ->
                     item(key = "hero_${fm.id}", contentType = "hero") {
@@ -266,6 +270,7 @@ private fun LazyListScope.homeEmptyItems(
     filtered: FilteredList?,
     onRetry: () -> Unit,
     onMoreMatchesClick: () -> Unit,
+    onSeeUpcoming: (() -> Unit)?,
 ) {
     when {
         // A failed load with nothing saved says so. It used to fall through to the filter advice
@@ -291,6 +296,17 @@ private fun LazyListScope.homeEmptyItems(
                 )
             }
             item(key = "all_matches") { AllMatchesLink(onMoreMatchesClick) }
+        }
+        // Nothing live is the usual state between matches, not a filter problem; the old copy said
+        // "Try changing your filters" on an unfiltered Live tab.
+        onSeeUpcoming != null -> item(key = "empty_live") {
+            EmptyStateV2(
+                title = stringResource(R.string.home_empty_live_title),
+                subtitle = stringResource(R.string.home_empty_live_subtitle),
+                icon = Icons.Outlined.SportsCricket,
+                onRetry = onSeeUpcoming,
+                actionLabel = stringResource(R.string.home_see_upcoming),
+            )
         }
         else -> item(key = "empty") {
             EmptyStateV2(

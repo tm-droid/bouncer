@@ -37,6 +37,7 @@ class BaselineProfileGenerator {
         startActivityAndWait()
         device.waitForIdle(SETTLE_MS)
         dismissFirstRun()
+        showRecentMatches()
         scrollHome()
         openFirstMatchAndSwipeTabs()
     }
@@ -74,6 +75,15 @@ internal fun MacrobenchmarkScope.dismissFirstRun() {
             device.waitForIdle()
         }
     }
+}
+
+/**
+ * Home opens on Live, which is empty whenever nothing is being played, and the profile then had no
+ * match row and no match detail in it at all. Recent always lists matches.
+ */
+internal fun MacrobenchmarkScope.showRecentMatches() {
+    device.wait(Until.findObject(By.text("Recent")), SETTLE_MS)?.click() ?: return
+    device.wait(Until.hasObject(By.textContains(" · ")), HOME_LOAD_MS)
 }
 
 internal fun MacrobenchmarkScope.scrollHome() {

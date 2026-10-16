@@ -387,6 +387,7 @@ fun MatchDetailViewV2(
                         scorecard = uiState.scorecard,
                         isLoading = uiState.scorecardLoading,
                         onRetry = vm::retryInitialLoad,
+                        isLive = liveMatch.isLive,
                     )
                     R.string.tab_commentary -> CommentaryTabV2(
                         commentary = uiState.commentary,

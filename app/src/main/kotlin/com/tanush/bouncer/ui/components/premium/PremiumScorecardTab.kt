@@ -48,6 +48,8 @@ fun PremiumScorecardTab(
     scorecard: Scorecard?,
     modifier: Modifier = Modifier
 ) {
+    // Whether the match is in play; a finished one has no required rate and nothing live.
+    val isLive = LocalScorecardIsLive.current
     val hierarchy = BouncerDesignSystem.hierarchy
     if (scorecard == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -86,7 +88,8 @@ fun PremiumScorecardTab(
             )
             // Calculate CRR from actual innings data
             val currentRunRate = calculateCurrentRunRate(innings)
-            val requiredRunRate = calculateRequiredRunRate(scorecard, selectedInningsIndex)
+            // A finished chase read "REQ: 50.00" (248 needed off the last half-over).
+            val requiredRunRate = if (isLive) calculateRequiredRunRate(scorecard, selectedInningsIndex) else null
             Text(
                 text = if (requiredRunRate != null) {
                     "CRR: $currentRunRate • REQ: $requiredRunRate"
@@ -146,14 +149,18 @@ fun PremiumScorecardTab(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(stringResource(R.string.premium_batting), color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
-                    Surface(color = BouncerThemeV2.colors.surfaceVariant, shape = RoundedCornerShape(4.dp), border = BorderStroke(1.dp, GlassSurface)) {
-                        Text(
-                            stringResource(R.string.premium_live),
-                            color = TextSecondary,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
+                    // Only on the innings being played: it was drawn on every innings of every
+                    // match, finished ones included.
+                    if (isLive && selectedInningsIndex == scorecard.innings.lastIndex) {
+                        Surface(color = BouncerThemeV2.colors.surfaceVariant, shape = RoundedCornerShape(4.dp), border = BorderStroke(1.dp, GlassSurface)) {
+                            Text(
+                                stringResource(R.string.premium_live),
+                                color = TextSecondary,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                 }
             }

@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.selectable
@@ -113,6 +114,10 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(colors.background)
+            // Edge to edge, the screen drew under the system bars: Skip sat inside the status bar
+            // (y 79-132 of a 128px bar on the test emulator), where the system takes the touch, so
+            // a tap on it did nothing.
+            .safeDrawingPadding()
             .padding(spacing.lg),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {

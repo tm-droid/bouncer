@@ -466,4 +466,7 @@
     </plurals>
     <string name="onboarding_permission_scope_none">Follow your teams first. We\'ll only ping you about them.</string>
     <string name="share_failed">Couldn\'t share this match. Try again</string>
+    <string name="home_empty_live_title">No live matches right now</string>
+    <string name="home_empty_live_subtitle">Upcoming fixtures and recent results are a tab away.</string>
+    <string name="home_see_upcoming">See upcoming</string>
 </resources>
