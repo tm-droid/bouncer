@@ -28,7 +28,7 @@ The sections below describe the handlers; the names are their directories under 
 
 ## `highlights-sync`
 
-15-min schedule; syncs highlight clips to Appwrite. Requires `HIGHLIGHTLY_API_KEY`, optional `SENTRY_DSN`.
+15-min schedule; syncs highlight clips to Appwrite. Reads `HIGHLIGHTLY_API_KEY`, falling back to `RAPIDAPI_KEY` (the same value; reading the override alone lost every sync 2026-10-13..14, ANDROID-5N); optional `SENTRY_DSN`.
 
 - **Only one run per hour does anything** (`minute < 15`), and only every 4th hour sweeps the 3-day back-window. Highlightly allows 100 requests per rolling window and `*/15` alone would spend 96 on today. Never make it fetch on every run without raising that plan.
 - The back-window exists because Highlightly publishes a clip hours-to-days after its match; a same-day-only query permanently loses whatever the lag exceeds.
