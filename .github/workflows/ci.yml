@@ -151,11 +151,17 @@ jobs:
             "${android}" "${functions}" "${gradle}" "${bundle}" "${ship}" "${reuse}" | tee -a "$GITHUB_OUTPUT"
 
       # The provider ladder, the fact-checker, the rewrite backlog and the win-probability maths
-      # exist only in JavaScript. First, because they take a minute and Gradle takes ten.
+      # exist only in JavaScript. First, because they take seconds and Gradle takes minutes.
+      # npm's download cache is kept between runs, keyed on every lockfile below.
       - uses: actions/setup-node@v7
         if: steps.changes.outputs.functions == 'yes'
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            appwrite/functions/*/package-lock.json
+            appwrite/tools/history/package-lock.json
+            appwrite/tools/archive/package-lock.json
 
       - name: Run every function's tests
         if: steps.changes.outputs.functions == 'yes'
@@ -165,12 +171,30 @@ jobs:
           # but its output is published publicly and its suite guards the scorecard arithmetic.
           # appwrite/tools/archive is the match archiver (publish-archiver.yml); its suite keeps raw
           # Cricbuzz text out of a public site and its classifier identical to match-sync's.
+          #
+          # The suites are independent, so they run side by side; each one's output is printed in its
+          # own group once all have finished, and any failure fails the step.
+          logs=$(mktemp -d)
+          pids=()
+          dirs=()
           for dir in appwrite/functions/*/ appwrite/tools/history/ appwrite/tools/archive/; do
             grep -q '"test"' "$dir/package.json" 2>/dev/null || continue
-            echo "::group::${dir}"
-            (cd "$dir" && npm ci --ignore-scripts --no-audit --no-fund && npm test)
-            echo "::endgroup::"
+            log="${logs}/$(echo "$dir" | tr '/' '_').log"
+            (cd "$dir" && npm ci --ignore-scripts --no-audit --no-fund && npm test) > "$log" 2>&1 &
+            pids+=($!)
+            dirs+=("$dir")
           done
+          failed=0
+          for i in "${!pids[@]}"; do
+            status=0
+            wait "${pids[$i]}" || status=$?
+            dir="${dirs[$i]}"
+            echo "::group::${dir} (exit ${status})"
+            cat "${logs}/$(echo "$dir" | tr '/' '_').log"
+            echo "::endgroup::"
+            if [ "$status" -ne 0 ]; then echo "::error::${dir} failed"; failed=1; fi
+          done
+          exit "$failed"
 
       # detekt 1.23 cannot run on JDK 25; 21 is what this workflow uses throughout.
       - uses: actions/setup-java@v6
@@ -266,10 +290,21 @@ jobs:
         run: |
           set -euo pipefail
           tasks=(createDebugUnitTestCoverageReport)
-          if [ "${ANDROID_CHECKS}" = yes ]; then tasks+=(lintDebug detekt); fi
+          skip=()
+          # One lint analysis, not two. A bundling run used to analyse the debug variant (lintDebug)
+          # and then the release variant again for bundleRelease's lintVitalRelease, ~4 minutes
+          # each. Full lint on the release variant checks everything lintVital does and everything
+          # lintDebug did, so it replaces both; a run that does not bundle still lints debug and
+          # never compiles release.
+          if [ "${ANDROID_CHECKS}" = yes ] && [ "${BUNDLE}" = yes ]; then
+            tasks+=(lintRelease detekt)
+            skip=(-x lintVitalRelease)
+          elif [ "${ANDROID_CHECKS}" = yes ]; then
+            tasks+=(lintDebug detekt)
+          fi
           if [ "${BUNDLE}" = yes ]; then tasks+=(bundleRelease); fi
-          echo "Tasks: ${tasks[*]}"
-          ./gradlew "${tasks[@]}" --continue --no-daemon --stacktrace
+          echo "Tasks: ${tasks[*]} ${skip[*]:-}"
+          ./gradlew "${tasks[@]}" "${skip[@]}" --continue --no-daemon --stacktrace
 
       - uses: actions/upload-artifact@v7
         if: failure() && steps.changes.outputs.gradle == 'yes'
@@ -281,7 +316,7 @@ jobs:
         if: always() && steps.changes.outputs.android == 'yes'
         with:
           name: lint-report
-          path: app/build/reports/lint-results-debug.html
+          path: app/build/reports/lint-results-*.html
 
       # Coverage is reported, not gated: an upload failure never blocks the Play build. The step is
       # skipped until CODECOV_TOKEN exists, and on Dependabot runs, which see no secrets.

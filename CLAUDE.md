@@ -22,6 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - To re-ship after a failed app run, run CI by `workflow_dispatch` with `publish` ticked.
   - A push to main whose exact commit already passed CI (typically a branch checked by dispatch, then fast-forwarded onto main) ships that run's kept `release-aab` artifact instead of rebuilding: no Gradle, no tests, just the Play upload. Fast-forward, don't merge-commit, or the SHA differs and it builds again.
   - A push to main never cancels an earlier run.
+  - A bundling run lints once: `lintRelease` with `-x lintVitalRelease` (full lint on the release variant is a superset of lintVital). A run that does not bundle lints debug. Function suites run in parallel, with npm's cache kept between runs.
 - The Gradle dependency graph is submitted by CI's release build (setup-gradle). The repository's "Automatic dependency submission" setting stays off: it was a second Gradle run on every push.
 - Codespaces is the dev box. Leave **prebuilds off**: they bill Actions minutes.
 - Every push to main uploads to Play with `distribution/whatsnew/whatsnew-en-US` as "What's new". A commit touching `app/src/main/` must update that file (user-facing wording, ≤500 chars — see `distribution/whatsnew/README.md`). `.claude/hooks/release-notes-check.sh` blocks the commit otherwise; prefix `SKIP_RELEASE_NOTES=1` only when nothing user-visible changed.
