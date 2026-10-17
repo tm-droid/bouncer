@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.TableChart
 import androidx.compose.material3.Scaffold
@@ -22,10 +23,7 @@ import com.tanush.bouncer.viewmodels.PointsTableViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.PointsTableEntry
-import com.tanush.bouncer.ui.components.premium.SeriesStandingsCard
-import com.tanush.bouncer.ui.components.premium.SeriesTeam
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
@@ -34,23 +32,8 @@ import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
- * Points table screen showing tournament standings with team stats.
+ * A series' standings: the series name as the title, the table full-bleed beneath it.
  */
-private fun PointsTableEntry.toSeriesTeam() = SeriesTeam(
-    name = teamName,
-    shortName = teamAcronym,
-    // The scraped row carries Cricbuzz's own crest; the bundled map is only the fallback.
-    logo = logoUrl ?: TeamLogoManager.getLogoUrl(teamName) ?: "",
-    played = matches,
-    won = won,
-    lost = lost,
-    tied = tied,
-    noResult = noResult,
-    netRunRate = netRunRate.toFloat(),
-    points = points,
-    recentForm = recentForm,
-)
-
 @Composable
 fun PointsTableScreen(
     seriesId: String,
@@ -69,7 +52,12 @@ fun PointsTableScreen(
 
     Scaffold(
         topBar = {
-            BouncerTopBarV2(title = stringResource(R.string.points_points_table), showBack = true, onBack = onBackClick)
+            // The series is the title — it was "Points table" over a card that named the series.
+            BouncerTopBarV2(
+                title = seriesName.ifBlank { stringResource(R.string.points_points_table) },
+                showBack = true,
+                onBack = onBackClick,
+            )
         },
         containerColor = colors.background,
     ) { innerPadding ->
@@ -108,7 +96,6 @@ fun PointsTableScreen(
                 }
                 PointsTableState.Content -> StandingsList(
                     innerPadding = innerPadding,
-                    seriesName = seriesName,
                     entries = entries,
                 )
             }
@@ -120,20 +107,18 @@ fun PointsTableScreen(
 @Composable
 private fun StandingsList(
     innerPadding: PaddingValues,
-    seriesName: String,
     entries: List<PointsTableEntry>,
 ) {
-    val spacing = BouncerThemeV2.spacing
+    val cutoff = qualificationCutoff(entries)
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(innerPadding),
-        contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.md),
+        contentPadding = PaddingValues(vertical = BouncerThemeV2.spacing.sm),
     ) {
-        item(key = "standings_card") {
-            SeriesStandingsCard(
-                seriesName = seriesName,
-                teams = entries.map { it.toSeriesTeam() },
-            )
+        item(key = "header") { StandingsHeader() }
+        itemsIndexed(entries, key = { index, e -> "row_${index}_${e.teamName}" }) { index, entry ->
+            StandingsRow(entry = entry, rank = entry.position.takeIf { it > 0 } ?: (index + 1), cutoffBelow = index == cutoff)
         }
+        if (cutoff >= 0) item(key = "note") { QualificationNote() }
         item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
     }
 }

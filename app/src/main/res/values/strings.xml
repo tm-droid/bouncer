@@ -281,7 +281,6 @@
     <string name="favorites_quick_access_to_your_teams">Quick access to your teams</string>
     <string name="favorites_remove_team">Remove Team</string>
     <string name="favorites_search_teams">Search teams...</string>
-    <string name="favorites_tap_to_open_team_details">Tap to open team details</string>
     <string name="h2h_draws">Draws</string>
     <string name="h2h_no_result">No Result</string>
     <string name="h2h_total">Total</string>
@@ -340,7 +339,7 @@
     <string name="player_tap_to_search">Tap to search</string>
     <string name="player_the_profile_isn_t_available_right">The profile isn\'t available right now. Check your connection and try again.</string>
     <string name="points_no_standings_available">No standings available</string>
-    <string name="points_points_table">Points Table</string>
+    <string name="points_points_table">Points table</string>
     <string name="powerplay_analysis">POWERPLAY ANALYSIS</string>
     <string name="powerplay_score">Score</string>
     <string name="premium_a_win_probability_appears_once_the">A win probability appears once the model has enough of the innings to</string>
@@ -364,7 +363,6 @@
     <string name="series_active_cricket_series_will_appear_here">Active cricket series will appear here</string>
     <string name="series_check_your_connection_and_try_again">Check your connection and try again</string>
     <string name="series_couldn_t_load_series">Couldn\'t load series</string>
-    <string name="series_eliminated">Eliminated</string>
     <string name="series_current">Current</string>
     <string name="series_past">Past</string>
     <string name="series_no_archived_series_for_year">Cricbuzz has no series archived for %1$d</string>
@@ -378,12 +376,9 @@
     <string name="series_stats_appear_once_played">Stats appear once matches in this series have been played.</string>
     <string name="series_couldn_t_load_stats">Couldn\'t load stats</string>
     <string name="series_no_players_for_stat">No players qualify for this stat yet.</string>
-    <string name="series_in_contention">In Contention</string>
     <string name="series_no_series_found">No series found</string>
-    <string name="series_qualified">Qualified</string>
     <string name="series_series">Series</string>
     <string name="series_series_detail">Series Detail</string>
-    <string name="series_standings">STANDINGS</string>
     <string name="settings_about_bouncer">About Bouncer</string>
     <string name="settings_ai_generated_insights_in_commentary">AI-generated insights in commentary</string>
     <string name="settings_ai_insights">AI Insights</string>
@@ -484,4 +479,16 @@
         <item quantity="other">%d runs</item>
     </plurals>
     <string name="overview_starts_at">Starts at %1$s</string>
+    <string name="points_team">Team</string>
+    <string name="points_qualification_note">Teams above the line have qualified.</string>
+    <string name="series_state_running">Live now</string>
+    <string name="series_state_tomorrow">Starts tomorrow</string>
+    <plurals name="series_state_starts_in">
+        <item quantity="one">Starts in %d day</item>
+        <item quantity="other">Starts in %d days</item>
+    </plurals>
+    <string name="series_state_ended">Ended %1$s</string>
+    <string name="teams_matches_will_appear">Live, upcoming and recent %1$s matches will appear here</string>
+    <string name="teams_live_and_upcoming">Live and upcoming</string>
+    <string name="teams_results">Results</string>
 </resources>

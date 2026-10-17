@@ -1,5 +1,9 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.width
+import com.tanush.bouncer.ui.theme.rememberTeamInk
+import com.tanush.bouncer.ui.components.v2.TeamCrest
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +22,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -59,10 +62,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -70,51 +71,29 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.request.ImageRequest
 import com.tanush.bouncer.R
 import com.tanush.bouncer.managers.FavouriteTeamsManager
-import com.tanush.bouncer.managers.TeamLogoManager
-import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.PreferencesHelper
 import kotlinx.coroutines.launch
 
-private fun teamLogoRequest(context: Context, teamName: String, size: Int): ImageRequest? {
-    val url = TeamLogoManager.getBestLogoUrl(teamName, null, size, size) ?: return null
-    return ImageRequest.Builder(context).data(url).crossfade(true).size(size).build()
-}
-
+/** The side's place in the saved order, as a quiet tabular figure — it was a gold badge. */
 @Composable
 private fun PositionBadge(position: Int) {
-    val colors = BouncerThemeV2.colors
-    Box(
-        modifier = Modifier
-            .size(28.dp)
-            .background(colors.primary.copy(alpha = 0.15f), CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = position.toString(),
-            style = BouncerThemeV2.typography.labelSmall,
-            color = colors.primaryDark,
-        )
-    }
+    Text(
+        text = position.toString(),
+        style = BouncerThemeV2.typography.numeric,
+        color = BouncerThemeV2.colors.textSecondary,
+        modifier = Modifier.width(20.dp),
+    )
 }
 
+/** The crest, or the team's code when there is none — unknown sides were a bare grey circle. */
 @Composable
-private fun TeamLogoCircle(teamName: String, size: Int, requestSize: Int) {
-    val colors = BouncerThemeV2.colors
-    CoilImage(
-        model = teamLogoRequest(LocalContext.current, teamName, requestSize),
-        contentDescription = teamName,
-        modifier = Modifier
-            .size(size.dp)
-            .clip(CircleShape)
-            .background(colors.surfaceVariant, CircleShape),
-        contentScale = ContentScale.Fit,
-    )
+private fun TeamLogoCircle(teamName: String, size: Int) {
+    TeamCrest(teamName = teamName, size = size.dp, ring = true)
 }
 
 @Composable
@@ -234,13 +213,13 @@ fun FavoritesScreen(
                             Icon(
                                 imageVector = if (isEditMode) Icons.Default.DragHandle else Icons.Default.Favorite,
                                 contentDescription = null,
-                                tint = if (isEditMode) colors.primary else colors.live,
+                                tint = if (isEditMode) colors.primaryText else colors.textSecondary,
                                 modifier = Modifier.size(18.dp),
                             )
                             Text(
                                 text = if (isEditMode) "Drag to reorder" else "Saved teams",
                                 style = typography.labelMedium,
-                                color = if (isEditMode) colors.primary else colors.textSecondary,
+                                color = if (isEditMode) colors.primaryText else colors.textSecondary,
                             )
                             HorizontalDivider(
                                 modifier = Modifier.weight(1f),
@@ -396,14 +375,7 @@ private fun FavoritesHeader(count: Int) {
                     color = colors.textSecondary
                 )
             }
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(colors.primary.copy(alpha = 0.12f), CircleShape),
-            ) {
-                Text(text = count.toString(), style = typography.scoreLarge, color = colors.primaryDark)
-            }
+            Text(text = count.toString(), style = typography.scoreLarge, color = colors.onSurface)
         }
     }
 }
@@ -421,7 +393,6 @@ private fun ReorderableTeamCard(
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
-    val context = LocalContext.current
 
     BouncerCard(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -432,19 +403,12 @@ private fun ReorderableTeamCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PositionBadge(position = position)
-            CoilImage(
-                model = teamLogoRequest(context, teamName, 80),
-                contentDescription = teamName,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(colors.surfaceVariant, CircleShape),
-                contentScale = ContentScale.Fit,
-            )
+            TeamLogoCircle(teamName = teamName, size = 40)
             Text(
                 text = teamName,
                 style = typography.titleMedium,
-                color = colors.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                color = rememberTeamInk(teamName),
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -518,7 +482,7 @@ private fun FavoriteTeamListRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PositionBadge(position = position)
-            TeamLogoCircle(teamName = teamName, size = 40, requestSize = 96)
+            TeamLogoCircle(teamName = teamName, size = 40)
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(spacing.xxs),
@@ -526,14 +490,10 @@ private fun FavoriteTeamListRow(
                 Text(
                     text = teamName,
                     style = typography.titleMedium,
-                    color = colors.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                    color = rememberTeamInk(teamName),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = stringResource(R.string.favorites_tap_to_open_team_details),
-                    style = typography.bodySmall,
-                    color = colors.textSecondary,
                 )
             }
             IconButton(onClick = { showRemoveDialog = true }) {
@@ -674,11 +634,12 @@ private fun TeamSelectionRow(teamName: String, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(spacing.md),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TeamLogoCircle(teamName = teamName, size = 40, requestSize = 64)
+            TeamLogoCircle(teamName = teamName, size = 40)
             Text(
                 text = teamName,
                 style = typography.titleMedium,
-                color = colors.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                color = rememberTeamInk(teamName),
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

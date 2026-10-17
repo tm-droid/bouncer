@@ -1,5 +1,12 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.foundation.layout.fillMaxHeight
+import com.tanush.bouncer.ui.theme.rememberTeamInk
+import com.tanush.bouncer.ui.theme.rememberTeamColors
+import com.tanush.bouncer.ui.theme.TeamColorRegistry
+import com.tanush.bouncer.ui.components.v2.TeamCrest
+import com.tanush.bouncer.ui.components.v2.FormStrip
+import com.tanush.bouncer.managers.TeamAcronymManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.SportsCricket
@@ -33,13 +39,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
 import com.tanush.bouncer.R
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
@@ -77,9 +81,8 @@ fun TeamDetailScreen(
         }.distinctBy { it.id }.sortedBy { it.startDateMs ?: Long.MAX_VALUE }
     }
     val results = remember(allMatches, teamName) { resultsFor(allMatches, teamName).take(MAX_RESULTS) }
-    val acronym = remember(teamName) {
-        teamName.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
-    }
+    // The curated code ("IND"), not the name's initials, which made "India" "I".
+    val acronym = remember(teamName) { TeamAcronymManager.getAcronym(teamName) }
     val logoUrl = remember(teamName) { TeamLogoManager.getLogoUrl(teamName) }
 
     Scaffold(
@@ -140,8 +143,9 @@ private fun TeamDetailContent(
         contentPadding = PaddingValues(vertical = spacing.md),
     ) {
         item(key = "team_header") {
-            TeamHeaderRow(logoUrl = logoUrl, teamName = teamName, acronym = acronym)
-            HorizontalDivider(color = colors.divider)
+            val form = results.mapNotNull { formResult(it, teamName) }.take(FORM_LENGTH)
+            TeamHeaderRow(logoUrl = logoUrl, teamName = teamName, acronym = acronym, form = form)
+            TeamBand(teamName)
         }
 
         if (isLoading && teamMatches.isEmpty() && results.isEmpty()) {
@@ -155,11 +159,11 @@ private fun TeamDetailContent(
                 EmptyStateV2(
                     icon = Icons.Outlined.SportsCricket,
                     title = stringResource(R.string.teams_no_current_matches),
-                    subtitle = "Live, upcoming and recent $teamName matches will appear here",
+                    subtitle = stringResource(R.string.teams_matches_will_appear, teamName),
                 )
             }
         } else {
-            teamMatchSections(teamMatches, results, teamName, onMatchClick)
+            teamMatchSections(teamMatches, results, onMatchClick)
         }
 
         item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
@@ -170,30 +174,33 @@ private fun TeamDetailContent(
 private fun LazyListScope.teamMatchSections(
     teamMatches: List<CricketMatch>,
     results: List<CricketMatch>,
-    teamName: String,
     onMatchClick: (CricketMatch) -> Unit,
 ) {
     if (teamMatches.isNotEmpty()) {
-        item(key = "matches_header") { SectionHeaderV2(title = "Live and upcoming") }
+        item(key = "matches_header") { SectionHeaderV2(title = stringResource(R.string.teams_live_and_upcoming)) }
         items(teamMatches, key = { "m_${it.id}" }) { match ->
             MatchCardV2(match = match, onClick = { onMatchClick(match) }, modifier = Modifier.fillMaxWidth())
         }
     }
     if (results.isEmpty()) return
-    val form = results.mapNotNull { formResult(it, teamName) }.take(FORM_LENGTH)
-    item(key = "results_header") {
-        SectionHeaderV2(title = if (form.isEmpty()) "Results" else "Results · Form ${form.joinToString(" ") { it.letter }}")
-    }
+    // The form guide is drawn under the team's name in the header now, not spelled out here.
+    item(key = "results_header") { SectionHeaderV2(title = stringResource(R.string.teams_results)) }
     items(results, key = { "r_${it.id}" }) { match ->
         MatchCardV2(match = match, onClick = { onMatchClick(match) }, modifier = Modifier.fillMaxWidth())
     }
 }
 
+/**
+ * The team: crest on a plate with a ring in its colour, its name in that colour, the code, and the
+ * last five results as squares. The crest was circle-cropped, which cut the edges off shield crests
+ * and flags.
+ */
 @Composable
 private fun TeamHeaderRow(
     logoUrl: String?,
     teamName: String,
     acronym: String,
+    form: List<FormResult>,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -201,46 +208,39 @@ private fun TeamHeaderRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = spacing.lg, vertical = spacing.md),
+            .padding(horizontal = spacing.lg, vertical = spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (logoUrl != null) {
-            AsyncImage(
-                model = logoUrl,
-                contentDescription = teamName,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape),
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(colors.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    acronym.take(2),
-                    style = typography.titleMedium,
-                    color = colors.textSecondary,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-        Spacer(Modifier.width(spacing.md))
+        TeamCrest(teamName = teamName, logoUrl = logoUrl, size = 64.dp, ring = true, acronym = acronym)
+        Spacer(Modifier.width(spacing.lg))
         Column {
             Text(
                 teamName,
-                style = typography.titleLarge,
-                color = colors.onSurface,
+                style = typography.headlineMedium,
+                color = rememberTeamInk(teamName),
                 fontWeight = FontWeight.Bold,
             )
-            Text(
-                acronym,
-                style = typography.bodyMedium,
-                color = colors.textSecondary,
-            )
+            if (!acronym.equals(teamName, ignoreCase = true)) {
+                Text(acronym, style = typography.labelLarge, color = colors.textSecondary)
+            }
+            if (form.isNotEmpty()) {
+                Spacer(Modifier.height(spacing.sm))
+                FormStrip(results = form)
+            }
         }
+    }
+}
+
+/** A band of the team's colour under the header, for a side the registry knows; a hairline otherwise. */
+@Composable
+private fun TeamBand(teamName: String) {
+    if (TeamColorRegistry.isKnown(teamName)) {
+        val teamColors = rememberTeamColors(teamName)
+        Row(Modifier.fillMaxWidth().height(4.dp)) {
+            Box(Modifier.weight(2f).fillMaxHeight().background(teamColors.primary))
+            Box(Modifier.weight(1f).fillMaxHeight().background(teamColors.secondary))
+        }
+    } else {
+        HorizontalDivider(color = BouncerThemeV2.colors.divider)
     }
 }

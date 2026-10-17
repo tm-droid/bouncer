@@ -1,5 +1,13 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
+import java.time.ZoneId
+import java.time.LocalDate
+import java.time.Instant
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -151,12 +159,14 @@ private fun ScheduleList(days: List<SeriesMatchDay>, onMatchClick: (CricketMatch
         days.forEachIndexed { dayIndex, day ->
             // Keys carry the index: the heading is scraped text, and two groups can share one.
             item(key = "day_${dayIndex}_${day.label}") {
-                Text(
-                    day.label,
-                    style = BouncerThemeV2.typography.labelLarge,
-                    color = colors.textSecondary,
-                    modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.sm),
-                )
+                // "Today" / "Sat 18 Oct", as All Matches heads its days, from the first match's
+                // start; Cricbuzz's own label when the day has no timed match.
+                val first = day.matches.firstNotNullOfOrNull { it.startDateMs }
+                val label = first?.let {
+                    val zone = ZoneId.systemDefault()
+                    dayLabel(Instant.ofEpochMilli(it).atZone(zone).toLocalDate(), LocalDate.now(zone))
+                } ?: day.label
+                SectionHeaderV2(title = pluralStringResource(R.plurals.day_match_count, day.matches.size, label, day.matches.size))
             }
             itemsIndexed(day.matches, key = { i, match -> "match_${dayIndex}_${i}_${match.id}" }) { _, match ->
                 MatchCardV2(match = match, onClick = { onMatchClick(match) }, modifier = Modifier.fillMaxWidth())
@@ -275,8 +285,6 @@ private fun StatsContent(
     }
 }
 
-private val NAME_COLUMN = 148.dp
-private val CELL_COLUMN = 60.dp
 
 /**
  * Name column fixed, figures scrolling sideways together: a Most Wickets table is nine figures wide,
@@ -291,68 +299,18 @@ private fun StatsTable(table: SeriesStatsTable, onPlayerClick: (String) -> Unit)
 
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 80.dp)) {
         item(key = "header") {
-            StatsRow(
-                name = table.headers.firstOrNull().orEmpty(),
-                cells = figureHeaders,
-                scroll = scroll,
-                isHeader = true,
-            )
+            StatsHeaderRow(name = table.headers.firstOrNull().orEmpty(), cells = figureHeaders, scroll = scroll)
             HorizontalDivider(color = colors.divider)
         }
-        itemsIndexed(table.rows, key = { i, row -> "row_${i}_${row.playerId}" }) { _, row ->
+        itemsIndexed(table.rows, key = { i, row -> "row_${i}_${row.playerId}" }) { i, row ->
             StatsRow(
+                rank = i + 1,
                 name = row.playerName,
                 cells = row.cells,
                 scroll = scroll,
-                isHeader = false,
                 modifier = Modifier.clickable { onPlayerClick(row.playerName) },
             )
             HorizontalDivider(color = colors.divider, modifier = Modifier.padding(start = spacing.lg))
-        }
-    }
-}
-
-@Composable
-private fun StatsRow(
-    name: String,
-    cells: List<String>,
-    scroll: ScrollState,
-    isHeader: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-    val textColor = if (isHeader) colors.textSecondary else colors.onSurface
-    val cellStyle = if (isHeader) typography.labelSmall else typography.numeric
-
-    Row(
-        modifier = modifier.fillMaxWidth().padding(vertical = if (isHeader) spacing.sm else spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            name,
-            style = if (isHeader) typography.labelSmall else typography.bodyMedium,
-            color = textColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = spacing.lg).width(NAME_COLUMN),
-        )
-        Row(
-            modifier = Modifier.weight(1f).horizontalScroll(scroll),
-            horizontalArrangement = Arrangement.End,
-        ) {
-            cells.forEach { cell ->
-                Text(
-                    cell,
-                    style = cellStyle,
-                    color = textColor,
-                    textAlign = TextAlign.End,
-                    maxLines = 1,
-                    modifier = Modifier.width(CELL_COLUMN),
-                )
-            }
-            Spacer(Modifier.width(spacing.lg))
         }
     }
 }
@@ -379,3 +337,4 @@ private fun CenteredEmpty(
         EmptyStateV2(icon = icon, title = title, subtitle = subtitle, onRetry = onRetry)
     }
 }
+

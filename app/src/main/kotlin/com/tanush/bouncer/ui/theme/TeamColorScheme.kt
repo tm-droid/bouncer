@@ -121,10 +121,7 @@ object TeamColorRegistry {
         }
         val onSurface = ground.ink.ensureContrast(surface, minimumRatio = 4.5f)
         val onPrimary = primary.contrastingTextColor().ensureContrast(primary, minimumRatio = 4.5f)
-        // Text in team colour has to clear AA on both grounds it is drawn on: the card and the page.
-        val ink = primaryRaw
-            .ensureContrast(background = ground.surface, minimumRatio = INK_RATIO)
-            .ensureContrast(background = ground.background, minimumRatio = INK_RATIO)
+        val ink = inkOn(primaryRaw, ground)
 
         return TeamColors(
             primary = primary,
@@ -138,6 +135,25 @@ object TeamColorRegistry {
         )
     }
 
+    /**
+     * [raw] as text: stepped away from the ground — darker on a light one, lighter on a dark one —
+     * until it clears [INK_RATIO] on both the card and the page.
+     *
+     * Not `ensureContrast`, which picks its direction by comparing the colour with the background:
+     * New Zealand's #111111 is darker than the dark theme's card, so it was walked toward black and
+     * never became readable.
+     */
+    private fun inkOn(raw: Color, ground: Ground): Color {
+        var ink = raw
+        repeat(INK_MAX_STEPS) {
+            if (ink.contrastRatio(ground.surface) >= INK_RATIO && ink.contrastRatio(ground.background) >= INK_RATIO) return ink
+            ink = if (ground.isLight) ink.darken(INK_STEP) else ink.lighten(INK_STEP)
+        }
+        return ground.ink
+    }
+
+    private const val INK_MAX_STEPS = 80
+    private const val INK_STEP = 0.06f
     private const val LIGHT_GROUND_LUMINANCE = 0.5f
     private const val MIN_FUZZY_KEY = 4
     private const val LIGHT_SURFACE_TINT = 0.88f

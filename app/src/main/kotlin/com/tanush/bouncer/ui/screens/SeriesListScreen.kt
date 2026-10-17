@@ -1,5 +1,14 @@
 package com.tanush.bouncer.ui.screens
 
+import java.time.temporal.ChronoUnit
+import java.time.format.DateTimeFormatter
+import java.time.LocalDate
+import java.time.Instant
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -26,10 +35,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -52,7 +58,7 @@ import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.Series
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
-import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
+import com.tanush.bouncer.ui.components.v2.TextTabBarV2
 import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.ShimmerListItem
 import com.tanush.bouncer.ui.components.v2.TextMenuV2
@@ -242,10 +248,11 @@ private fun SeriesListContent(
         contentPadding = PaddingValues(vertical = spacing.sm),
     ) {
         item(key = "filters") {
-            FilterChipRowV2(
-                items = filterOptions,
-                selectedItem = selectedFilter,
-                onItemSelected = onFilterSelected,
+            // Text tabs, as Home filters: a chip row here read as a different app.
+            TextTabBarV2(
+                tabs = filterOptions,
+                selectedIndex = filterOptions.indexOf(selectedFilter).coerceAtLeast(0),
+                onSelect = { onFilterSelected(filterOptions[it]) },
             )
             Spacer(Modifier.height(spacing.sm))
         }
@@ -301,75 +308,3 @@ internal fun seriesLabelOf(series: Series): String {
 internal fun seriesDatesOf(series: Series, zone: ZoneId = ZoneId.systemDefault()): String =
     formatEpochDateRange(series.startDate, series.endDate, zone)
 
-@Composable
-private fun SeriesCard(series: Series, onClick: () -> Unit) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-
-    Card(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = spacing.lg, vertical = spacing.xs),
-        colors = CardDefaults.cardColors(containerColor = colors.surface),
-        shape = BouncerThemeV2.shapes.medium,
-        elevation = CardDefaults.cardElevation(defaultElevation = BouncerThemeV2.elevation.card),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(spacing.lg),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Series icon
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(colors.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Default.DateRange,
-                    contentDescription = null,
-                    tint = colors.primaryText,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-
-            Spacer(Modifier.width(spacing.md))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    series.name,
-                    style = typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = colors.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val dates = seriesDatesOf(series)
-                if (dates.isNotEmpty()) {
-                    Text(
-                        dates,
-                        style = typography.bodySmall,
-                        color = colors.textSecondary,
-                    )
-                }
-                val categoryLabel = seriesLabelOf(series)
-                Text(
-                    categoryLabel,
-                    style = typography.labelSmall,
-                    color = colors.primaryText,
-                )
-            }
-
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = colors.textSecondary,
-                modifier = Modifier.size(24.dp),
-            )
-        }
-    }
-}
