@@ -69,7 +69,7 @@ internal fun SearchResultsTabRow(
         // here grow as results land, so the index outran a two-tab layout (ANDROID-52, ANDROID-5D).
         indicator = { tabPositions ->
             tabPositions.getOrNull(selectedIndex)?.let { position ->
-                TabRowDefaults.SecondaryIndicator(Modifier.tabIndicatorOffset(position))
+                TabRowDefaults.SecondaryIndicator(Modifier.tabIndicatorOffset(position), color = colors.primary)
             }
         },
     ) {
@@ -77,6 +77,10 @@ internal fun SearchResultsTabRow(
             Tab(
                 selected = selectedTab == tab,
                 onClick = { onTabSelected(tab) },
+                // Gold only on the selected tab. M3 defaults the unselected colour to the selected
+                // one, so every tab label was gold.
+                selectedContentColor = colors.primaryText,
+                unselectedContentColor = colors.textSecondary,
                 text = {
                     val count = tabCount(tab, results)
                     val label = stringResource(tabLabel(tab))

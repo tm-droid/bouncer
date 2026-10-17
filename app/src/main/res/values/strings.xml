@@ -491,4 +491,27 @@
     <string name="teams_matches_will_appear">Live, upcoming and recent %1$s matches will appear here</string>
     <string name="teams_live_and_upcoming">Live and upcoming</string>
     <string name="teams_results">Results</string>
+    <string name="player_captain">Captain</string>
+    <string name="player_wicket_keeper">Wicket-keeper</string>
+    <string name="player_profile">Profile</string>
+    <string name="player_born">Born</string>
+    <string name="player_batting">Batting</string>
+    <string name="player_bowling">Bowling</string>
+    <string name="player_teams">Teams</string>
+    <string name="player_no_format_stats">No %1$s figures for this player yet</string>
+    <string name="player_batting_in">Batting in %1$s</string>
+    <string name="player_bowling_in">Bowling in %1$s</string>
+    <string name="player_runs">Runs</string>
+    <string name="player_average">Average</string>
+    <string name="player_strike_rate">Strike rate</string>
+    <string name="player_matches">Matches</string>
+    <string name="player_innings">Innings</string>
+    <string name="player_highest_score">Highest score</string>
+    <string name="player_hundreds_fifties">Hundreds / fifties</string>
+    <string name="player_fours_sixes">Fours / sixes</string>
+    <string name="player_catches">Catches</string>
+    <string name="player_wickets">Wickets</string>
+    <string name="player_economy">Economy</string>
+    <string name="player_best_bowling">Best bowling</string>
+    <string name="player_five_wickets">Five-wicket hauls</string>
 </resources>

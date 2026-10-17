@@ -1,5 +1,12 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.material.icons.outlined.SearchOff
+import com.tanush.bouncer.ui.components.v2.EmptyStateV2
+import androidx.compose.material.icons.outlined.EmojiEvents
+import com.tanush.bouncer.utils.formatEpochDateRange
+import com.tanush.bouncer.ui.theme.rememberTeamInk
+import com.tanush.bouncer.ui.components.v2.PersonAvatar
+import com.tanush.bouncer.ui.components.v2.TeamCrest
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -15,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -46,7 +52,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.matchRanges
@@ -78,16 +83,12 @@ internal fun NoResultsMessage(suggestion: String?, onSuggestion: (String) -> Uni
             .padding(spacing.xxl),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            stringResource(R.string.search_no_results_title),
-            style = typography.titleMedium,
-            color = colors.onSurface,
-        )
-        Spacer(Modifier.height(spacing.xs))
-        Text(
-            stringResource(R.string.search_no_results_hint),
-            style = typography.bodyMedium,
-            color = colors.textSecondary,
+        // The same empty state the rest of the app uses, rather than two bare lines of text.
+        EmptyStateV2(
+            title = stringResource(R.string.search_no_results_title),
+            subtitle = stringResource(R.string.search_no_results_hint),
+            icon = Icons.Outlined.SearchOff,
+            modifier = Modifier.padding(0.dp),
         )
         if (suggestion != null) {
             Spacer(Modifier.height(spacing.md))
@@ -289,28 +290,25 @@ internal fun TeamSearchRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = spacing.lg, vertical = spacing.sm),
+            .padding(horizontal = spacing.lg, vertical = spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (logoUrl != null) {
-            AsyncImage(model = logoUrl, contentDescription = teamName, modifier = Modifier.size(32.dp).clip(CircleShape))
-        } else {
-            Box(
-                modifier = Modifier.size(32.dp).clip(CircleShape).background(colors.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(acronym.take(2), style = typography.labelSmall, color = colors.textSecondary, fontWeight = FontWeight.Bold)
-            }
-        }
+        TeamCrest(teamName = teamName, logoUrl = logoUrl, size = AVATAR, acronym = acronym.ifBlank { null })
         Spacer(Modifier.width(spacing.md))
         Column {
-            Text(rememberHighlighted(teamName, query), style = typography.bodyMedium, color = colors.onSurface)
+            Text(
+                rememberHighlighted(teamName, query),
+                style = typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = rememberTeamInk(teamName),
+            )
             val subtitle = if (fixtureCount > 0) {
                 pluralStringResource(R.plurals.search_team_fixtures, fixtureCount, acronym, fixtureCount)
             } else acronym
             Text(rememberHighlighted(subtitle, query), style = typography.bodySmall, color = colors.textSecondary)
         }
     }
+    HorizontalDivider(color = colors.divider, modifier = Modifier.padding(start = INSET_DIVIDER_START))
 }
 
 @Composable
@@ -330,32 +328,31 @@ internal fun PlayerSearchRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = spacing.lg, vertical = spacing.sm),
+            .padding(horizontal = spacing.lg, vertical = spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (imageUrl != null) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = playerName,
-                modifier = Modifier.size(32.dp).clip(CircleShape),
-            )
-        } else {
-            Box(
-                modifier = Modifier.size(32.dp).clip(CircleShape).background(colors.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Default.Person, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(18.dp))
-            }
-        }
+        PersonAvatar(name = playerName, imageUrl = imageUrl, size = AVATAR)
         Spacer(Modifier.width(spacing.md))
         Column {
-            Text(rememberHighlighted(playerName, query), style = typography.bodyMedium, color = colors.onSurface)
+            Text(
+                rememberHighlighted(playerName, query),
+                style = typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.onSurface,
+            )
             val subtitle = listOf(teamName, role).filter { it.isNotEmpty() }.joinToString(" · ")
             if (subtitle.isNotEmpty()) {
-                Text(subtitle, style = typography.bodySmall, color = colors.textSecondary)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (teamName.isNotEmpty()) {
+                        TeamCrest(teamName = teamName, size = 14.dp)
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(subtitle, style = typography.bodySmall, color = colors.textSecondary)
+                }
             }
         }
     }
+    HorizontalDivider(color = colors.divider, modifier = Modifier.padding(start = INSET_DIVIDER_START))
 }
 
 @Composable
@@ -405,22 +402,17 @@ internal fun SeriesSearchRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = spacing.lg, vertical = spacing.sm),
+            .padding(horizontal = spacing.lg, vertical = spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(32.dp)
+                .size(AVATAR)
                 .clip(RoundedCornerShape(8.dp))
                 .background(colors.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                category.take(1),
-                style = typography.labelSmall,
-                color = colors.textSecondary,
-                fontWeight = FontWeight.Bold,
-            )
+            Icon(Icons.Outlined.EmojiEvents, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.width(spacing.md))
         Column {
@@ -431,8 +423,16 @@ internal fun SeriesSearchRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            val subtitle = if (startDate.isNotEmpty() && endDate.isNotEmpty()) "$startDate – $endDate" else category
+            // Cricbuzz's dates are epoch-millisecond strings, which this printed as they came.
+            val dates = remember(startDate, endDate) { formatEpochDateRange(startDate, endDate) }
+            val subtitle = listOf(category, dates).filter { it.isNotEmpty() }.joinToString(" · ")
             Text(subtitle, style = typography.bodySmall, color = colors.textSecondary)
         }
     }
+    HorizontalDivider(color = colors.divider, modifier = Modifier.padding(start = INSET_DIVIDER_START))
 }
+
+/** A hairline starting at the text, not the avatar, so the avatars read as a column. */
+private val INSET_DIVIDER_START = 16.dp + 40.dp + 12.dp
+
+private val AVATAR = 40.dp

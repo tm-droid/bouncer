@@ -1,5 +1,12 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import com.tanush.bouncer.ui.components.v2.TeamCrest
+import com.tanush.bouncer.ui.components.v2.PersonAvatar
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.graphics.Color
+import com.tanush.bouncer.ui.theme.rememberSegmentColors
+import com.tanush.bouncer.ui.components.v2.TextTabBarV2
 import com.tanush.bouncer.network.PlayerSearchOutcome
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableIntStateOf
@@ -64,7 +71,6 @@ import com.tanush.bouncer.models.FormatStats
 import com.tanush.bouncer.models.PlayerProfile
 import com.tanush.bouncer.network.PlayerSearchResult
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
-import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import kotlinx.coroutines.delay
@@ -121,7 +127,7 @@ fun PlayerComparisonScreen(
                         slot = slot,
                         stub = PlayerProfile(
                             id = result.id, name = result.name,
-                            country = result.country, role = "",
+                            country = result.country, role = "", imageUrl = result.imageUrl,
                         ),
                     )
                 },
@@ -189,10 +195,10 @@ private fun LazyListScope.comparisonStatsSection(
     onFormatSelected: (String) -> Unit,
 ) {
     item(key = "format") {
-        FilterChipRowV2(
-            items = formats,
-            selectedItem = selectedFormat,
-            onItemSelected = onFormatSelected,
+        TextTabBarV2(
+            tabs = formats,
+            selectedIndex = formats.indexOf(selectedFormat).coerceAtLeast(0),
+            onSelect = { onFormatSelected(formats[it]) },
         )
     }
 
@@ -201,18 +207,20 @@ private fun LazyListScope.comparisonStatsSection(
 
     if (stats1 != null && stats2 != null) {
         item(key = "comparison_header") {
-            SectionHeaderV2("$selectedFormat Comparison")
+            SectionHeaderV2("$selectedFormat comparison")
         }
 
         val comparisonRows = buildComparisonRows(stats1, stats2)
 
-        items(comparisonRows, key = { it.label }) { row ->
-            ComparisonRow(
-                label = row.label,
-                value1 = row.value1,
-                value2 = row.value2,
-                leader = row.leader,
+        // One item: the list spaces its items 16dp apart, and these rows read as one table.
+        item(key = "comparison_rows") {
+            val (color1, color2) = rememberSegmentColors(
+                player1.country,
+                player2.country,
+                BouncerThemeV2.colors.surface,
+                COMPARISON_BAR_CONTRAST,
             )
+            Column { comparisonRows.forEach { row -> ComparisonRow(row, color1, color2) } }
         }
     } else {
         item(key = "no_stats") {
@@ -247,12 +255,12 @@ private fun PlayerPickerCard(
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
+    // The slot being filled is outlined in the interactive gold; neither slot is raised.
     Card(
         modifier = modifier.clickable { onTap() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (isActive) colors.primaryContainer else colors.surface,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = BouncerThemeV2.elevation.card),
+        colors = CardDefaults.cardColors(containerColor = colors.surface),
+        border = BorderStroke(1.dp, if (isActive) colors.primaryText else colors.border),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(spacing.lg),
@@ -264,27 +272,18 @@ private fun PlayerPickerCard(
                 ShimmerBox(modifier = Modifier.fillMaxWidth(0.6f), height = 12.dp)
             } else if (player != null && player.stats.isNotEmpty()) {
                 // Player loaded with stats
-                val imgUrl = player.imageUrl
-                if (imgUrl != null) {
-                    AsyncImage(
-                        model = imgUrl, contentDescription = player.name,
-                        modifier = Modifier.size(40.dp).clip(CircleShape),
-                    )
-                } else {
-                    Box(
-                        Modifier.size(40.dp).clip(CircleShape).background(colors.surfaceVariant),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Default.Person, label, Modifier.size(20.dp), tint = colors.textSecondary)
-                    }
-                }
-                Spacer(Modifier.height(spacing.xs))
+                PersonAvatar(name = player.name, imageUrl = player.imageUrl, size = 56.dp)
+                Spacer(Modifier.height(spacing.sm))
                 Text(
-                    player.name, style = typography.labelMedium,
+                    player.name, style = typography.titleSmall,
                     fontWeight = FontWeight.Bold, color = colors.onSurface,
-                    textAlign = TextAlign.Center, maxLines = 1,
+                    textAlign = TextAlign.Center, maxLines = 2,
                 )
-                Text(player.country, style = typography.labelSmall, color = colors.textSecondary)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TeamCrest(teamName = player.country, size = 16.dp)
+                    Spacer(Modifier.width(4.dp))
+                    Text(player.country, style = typography.bodySmall, color = colors.textSecondary, maxLines = 1)
+                }
                 // Clear button
                 Spacer(Modifier.height(spacing.xs))
                 // 48dp touch target overflowing the 24dp layout slot.
@@ -408,17 +407,13 @@ private fun PlayerSearchBox(
                                 .padding(horizontal = spacing.lg, vertical = spacing.md),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Box(
-                                Modifier.size(32.dp).clip(CircleShape).background(colors.surfaceVariant),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(Icons.Default.Person, result.name, Modifier.size(16.dp), tint = colors.textSecondary)
-                            }
+                            // The result's own photo, which the row had and drew a person glyph instead of.
+                            PersonAvatar(name = result.name, imageUrl = result.imageUrl, size = 36.dp)
                             Spacer(Modifier.width(spacing.md))
                             Column(Modifier.weight(1f)) {
                                 Text(result.name, style = typography.bodyMedium, fontWeight = FontWeight.Medium, color = colors.onSurface)
                                 if (result.country.isNotBlank()) {
-                                    Text(result.country, style = typography.labelSmall, color = colors.textSecondary)
+                                    Text(result.country, style = typography.bodySmall, color = colors.textSecondary)
                                 }
                             }
                         }
@@ -434,116 +429,56 @@ private fun PlayerSearchBox(
 
 // ── Comparison Row ──────────────────────────────────────────────────────────────
 
-private data class ComparisonData(
-    val label: String,
-    val value1: String,
-    val value2: String,
-    /** 1 or 2 for the player ahead on this stat; null for a tie, which highlights neither. */
-    val leader: Int?,
-)
 
+/**
+ * One stat: both values, the label between them, and under it a bar split by each player's share in
+ * their countries' colours — longer is better on every row, lower-is-better stats included. The
+ * leader's value is bold ink, the other secondary. Rows on one surface; each was its own card.
+ */
 @Composable
-private fun ComparisonRow(
-    label: String,
-    value1: String,
-    value2: String,
-    leader: Int?,
-) {
+private fun ComparisonRow(row: ComparisonData, color1: Color, color2: Color) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = BouncerThemeV2.elevation.card),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.md),
-            verticalAlignment = Alignment.CenterVertically,
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = spacing.md)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ComparisonValue(row.value1, leads = row.leader == 1, TextAlign.Start, Modifier.weight(1f))
+            Text(
+                text = row.label,
+                style = typography.labelLarge,
+                color = colors.textSecondary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
+            )
+            ComparisonValue(row.value2, leads = row.leader == 2, TextAlign.End, Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(spacing.xs))
+        // Fractions, not weights: a share of exactly 0 or 1 is legitimate and a zero weight throws.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(color2),
         ) {
-            // Player 1 value
-            Text(
-                text = value1,
-                style = typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                // primaryText, not primary: the fill gold is 1.74:1 as text on a light surface.
-                color = if (leader == 1) colors.primaryText else colors.textSecondary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f),
-            )
-
-            // Stat label
-            Text(
-                text = label,
-                style = typography.labelMedium,
-                color = colors.onSurface,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f),
-            )
-
-            // Player 2 value
-            Text(
-                text = value2,
-                style = typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (leader == 2) colors.primaryText else colors.textSecondary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f),
-            )
+            Box(Modifier.fillMaxWidth(row.share1.coerceIn(0f, 1f)).fillMaxHeight().background(color1))
         }
     }
+    HorizontalDivider(color = colors.divider)
 }
 
-// ── Build comparison data ───────────────────────────────────────────────────────
-
-/** Two players level on a stat (both 0 when a format has no data) is not a win for player 1. */
-private fun leaderOf(order: Int): Int? = when {
-    order > 0 -> 1
-    order < 0 -> 2
-    else -> null
-}
-
-private fun buildComparisonRows(s1: FormatStats, s2: FormatStats): List<ComparisonData> {
-    fun higherIsBetter(label: String, v1: Number, v2: Number): ComparisonData {
-        val d1 = v1.toDouble()
-        val d2 = v2.toDouble()
-        val str1 = formatStat(v1)
-        val str2 = formatStat(v2)
-        return ComparisonData(label, str1, str2, leader = leaderOf(d1.compareTo(d2)))
-    }
-
-    fun lowerIsBetter(label: String, v1: Number, v2: Number): ComparisonData {
-        val d1 = v1.toDouble()
-        val d2 = v2.toDouble()
-        val str1 = formatStat(v1)
-        val str2 = formatStat(v2)
-        // lower is better, but 0 means no data so treat as worse
-        val order = when {
-            d1 == 0.0 && d2 > 0.0 -> -1
-            d2 == 0.0 && d1 > 0.0 -> 1
-            else -> d2.compareTo(d1)
-        }
-        return ComparisonData(label, str1, str2, leader = leaderOf(order))
-    }
-
-    return listOf(
-        higherIsBetter("Matches", s1.matches, s2.matches),
-        higherIsBetter("Innings", s1.innings, s2.innings),
-        higherIsBetter("Runs", s1.runs, s2.runs),
-        higherIsBetter("Average", s1.average, s2.average),
-        higherIsBetter("Strike Rate", s1.strikeRate, s2.strikeRate),
-        higherIsBetter("100s", s1.hundreds, s2.hundreds),
-        higherIsBetter("50s", s1.fifties, s2.fifties),
-        higherIsBetter("Wickets", s1.wickets, s2.wickets),
-        lowerIsBetter("Bowl Avg", s1.bowlingAverage, s2.bowlingAverage),
-        lowerIsBetter("Economy", s1.economy, s2.economy),
+@Composable
+private fun ComparisonValue(value: String, leads: Boolean, align: TextAlign, modifier: Modifier) {
+    val colors = BouncerThemeV2.colors
+    Text(
+        text = value,
+        style = BouncerThemeV2.typography.scoreMedium,
+        fontWeight = if (leads) FontWeight.Bold else FontWeight.Normal,
+        color = if (leads) colors.onSurface else colors.textSecondary,
+        textAlign = align,
+        modifier = modifier,
     )
 }
 
-private fun formatStat(value: Number): String {
-    return when (value) {
-        is Int -> value.toString()
-        is Double -> if (value == 0.0) "0" else String.format(Locale.US, "%.1f", value)
-        else -> value.toString()
-    }
-}
+private const val COMPARISON_BAR_CONTRAST = 2.2f
+

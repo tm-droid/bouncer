@@ -1,12 +1,16 @@
 package com.tanush.bouncer.ui.screens
 
+import com.tanush.bouncer.ui.components.v2.TextTabBarV2
+import com.tanush.bouncer.ui.screens.player.formatsWithStats
+import com.tanush.bouncer.ui.screens.player.formatStatItems
+import com.tanush.bouncer.ui.screens.player.playerFactItems
+import com.tanush.bouncer.ui.screens.player.PlayerHeader
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -59,7 +63,6 @@ import com.tanush.bouncer.ui.components.premium.PlayerFormCard
 import com.tanush.bouncer.ui.screens.player.buildBatterForm
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
-import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.ShimmerPlayerHeader
 import com.tanush.bouncer.ui.components.v2.ShimmerStatGrid
@@ -236,193 +239,43 @@ private fun PlayerProfileList(
     onFormatSelected: (String) -> Unit,
 ) {
     val spacing = BouncerThemeV2.spacing
+    val formats = formatsWithStats(profile, PROFILE_FORMATS)
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(padding),
-        contentPadding = PaddingValues(spacing.lg),
-        verticalArrangement = Arrangement.spacedBy(spacing.lg),
+        contentPadding = PaddingValues(bottom = spacing.xl),
     ) {
-        item(key = "header") { PlayerHeaderCard(profile, header) }
-
-        item(key = "quick_info") {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-                verticalArrangement = Arrangement.spacedBy(spacing.sm),
-            ) {
-                if (profile.dateOfBirth.isNotBlank()) InfoPill("DOB: ${profile.dateOfBirth}")
-                if (profile.battingStyle.isNotBlank()) InfoPill(profile.battingStyle)
-                if (profile.bowlingStyle.isNotBlank()) InfoPill(profile.bowlingStyle)
+        item(key = "header") {
+            Column(Modifier.padding(spacing.lg)) {
+                PlayerHeader(
+                    name = profile.name,
+                    country = profile.country,
+                    role = profile.role.ifEmpty { header.role },
+                    imageUrl = profile.imageUrl ?: header.imageUrl,
+                    isCaptain = header.isCaptain,
+                    isKeeper = header.isWicketKeeper,
+                )
             }
         }
-
-        item(key = "format_selector") {
-            FilterChipRowV2(
-                items = PROFILE_FORMATS,
-                selectedItem = selectedFormat,
-                onItemSelected = onFormatSelected,
-            )
+        playerFactItems(profile)
+        // Only the formats this player has figures for; a tab that leads to "no stats" is a dead end.
+        if (formats.size > 1) {
+            item(key = "format_selector") {
+                TextTabBarV2(
+                    tabs = formats,
+                    selectedIndex = formats.indexOf(selectedFormat).coerceAtLeast(0),
+                    onSelect = { onFormatSelected(formats[it]) },
+                )
+            }
         }
-
-        formatStatsItems(profile.stats[selectedFormat], selectedFormat)
+        formatStatItems(profile.stats[selectedFormat], selectedFormat)
 
         // Recent form card — only shown when batting form data was scraped
         buildBatterForm(profile)?.let { batterForm ->
             item(key = "form_card") {
-                PlayerFormCard(batters = listOf(batterForm), bowlers = emptyList())
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlayerHeaderCard(p: PlayerProfile, header: PlayerHeaderInfo) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-    Card(
-        colors = CardDefaults.cardColors(containerColor = colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = BouncerThemeV2.elevation.card),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(spacing.xl),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            val imgUrl = p.imageUrl ?: header.imageUrl
-            if (imgUrl != null) {
-                AsyncImage(
-                    model = imgUrl, contentDescription = p.name,
-                    modifier = Modifier.size(72.dp).clip(CircleShape),
-                )
-            } else {
-                Box(
-                    modifier = Modifier.size(72.dp).clip(CircleShape).background(colors.surfaceVariant),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Default.Person, "Player", Modifier.size(36.dp), tint = colors.textSecondary)
-                }
-            }
-            Spacer(Modifier.height(spacing.md))
-            Text(p.name, style = typography.headlineMedium, fontWeight = FontWeight.Bold, color = colors.onSurface)
-            Text(p.role.ifEmpty { header.role }, style = typography.bodyMedium, color = colors.textSecondary)
-            Spacer(Modifier.height(spacing.sm))
-            Row(horizontalArrangement = Arrangement.Center) {
-                Text(p.country, style = typography.bodySmall, color = colors.textSecondary)
-                if (header.isCaptain) {
-                    Spacer(Modifier.width(spacing.sm))
-                    PillBadge("C")
-                }
-                if (header.isWicketKeeper) {
-                    Spacer(Modifier.width(spacing.sm))
-                    PillBadge("WK")
+                Column(Modifier.padding(spacing.lg)) {
+                    PlayerFormCard(batters = listOf(batterForm), bowlers = emptyList())
                 }
             }
         }
     }
-}
-
-private fun LazyListScope.formatStatsItems(stats: FormatStats?, format: String) {
-    if (stats == null) {
-        item(key = "no_stats") {
-            Box(
-                modifier = Modifier.fillMaxWidth().padding(BouncerThemeV2.spacing.xl),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    "No $format stats available",
-                    style = BouncerThemeV2.typography.bodyMedium,
-                    color = BouncerThemeV2.colors.textSecondary,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-        return
-    }
-    item(key = "batting") {
-        StatsCard(
-            "Batting — $format",
-            listOf(
-                "Matches" to "${stats.matches}",
-                "Innings" to "${stats.innings}",
-                "Runs" to "${stats.runs}",
-                "HS" to stats.highScore,
-                "Avg" to String.format(Locale.US, "%.1f", stats.average),
-                "SR" to String.format(Locale.US, "%.1f", stats.strikeRate),
-                "100s" to "${stats.hundreds}",
-                "50s" to "${stats.fifties}",
-                "4s" to "${stats.fours}",
-                "6s" to "${stats.sixes}",
-            ),
-        )
-    }
-    if (stats.wickets > 0 || stats.bowlingAverage > 0) {
-        item(key = "bowling") {
-            StatsCard(
-                "Bowling — $format",
-                listOf(
-                    "Wickets" to "${stats.wickets}",
-                    "Best" to stats.bestBowling,
-                    "Avg" to String.format(Locale.US, "%.1f", stats.bowlingAverage),
-                    "Econ" to String.format(Locale.US, "%.1f", stats.economy),
-                    "5W" to "${stats.fiveWickets}",
-                    "Ct" to "${stats.catches}",
-                ),
-            )
-        }
-    }
-}
-
-@Composable
-private fun StatsCard(title: String, items: List<Pair<String, String>>) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-    SectionHeaderV2(title)
-    Spacer(Modifier.height(spacing.sm))
-    Card(
-        colors = CardDefaults.cardColors(containerColor = colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = BouncerThemeV2.elevation.card),
-    ) {
-        Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.md)) {
-            items.chunked(4).forEach { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    row.forEach { (label, value) ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                            Text(value, style = typography.titleMedium, fontWeight = FontWeight.Bold, color = colors.onSurface)
-                            Text(label, style = typography.labelSmall, color = colors.textSecondary)
-                        }
-                    }
-                    repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
-                }
-            }
-        }
-    }
-}
-
-// ── Shared composables ──────────────────────────────────────────────────────────
-
-@Composable
-private fun PillBadge(text: String) {
-    val colors = BouncerThemeV2.colors
-    Text(
-        text = text,
-        style = BouncerThemeV2.typography.labelSmall,
-        color = colors.onPrimary,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier
-            .background(colors.primary, RoundedCornerShape(4.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-    )
-}
-
-@Composable
-private fun InfoPill(text: String) {
-    val colors = BouncerThemeV2.colors
-    Text(
-        text = text,
-        style = BouncerThemeV2.typography.labelMedium,
-        color = colors.onSurface,
-        modifier = Modifier
-            .background(colors.surfaceVariant, RoundedCornerShape(8.dp))
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-    )
 }
