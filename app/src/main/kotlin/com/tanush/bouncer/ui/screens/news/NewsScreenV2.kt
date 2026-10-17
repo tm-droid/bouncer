@@ -172,8 +172,9 @@ private fun LazyListScope.newsItems(
         NewsRowV2(
             headline = article.headline,
             byline = article.byline,
-            imageUrl = article.imageUrlAt(THUMBNAIL_PX, THUMBNAIL_PX),
+            imageUrl = article.imageUrlAt(THUMBNAIL_W_PX, THUMBNAIL_H_PX),
             onClick = { onArticleClick(article) },
+            kicker = listOfNotNull(article.storyType.takeIf { it.isNotBlank() }, article.context).joinToString(" · "),
         )
         NewsDivider()
     }
@@ -273,7 +274,8 @@ private fun LeadStory(article: NewsArticleData, onClick: () -> Unit) {
 }
 
 // A 72dp thumbnail at 4x density. The stored URL asks for 2048x1152.
-private const val THUMBNAIL_PX = 288
+private const val THUMBNAIL_W_PX = 384
+private const val THUMBNAIL_H_PX = 288
 internal const val HERO_PX_WIDTH = 1080
 internal const val HERO_PX_HEIGHT = 608
 internal const val HERO_ASPECT = 16f / 9f

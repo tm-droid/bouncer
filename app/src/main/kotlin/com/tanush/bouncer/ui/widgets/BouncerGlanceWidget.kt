@@ -245,7 +245,8 @@ class BouncerGlanceWidget : GlanceAppWidget() {
                 Text(
                     text = matchStatus,
                     style = TextStyle(
-                        color = if (isLive) WidgetColorScheme.primary else WidgetColorScheme.textSecondary,
+                        // Live is red everywhere else in the app; gold is for what can be tapped.
+                        color = if (isLive) WidgetColorScheme.live else WidgetColorScheme.textSecondary,
                         fontSize = 11.sp,
                         fontWeight = if (isLive) FontWeight.Medium else FontWeight.Normal
                     )
@@ -265,10 +266,10 @@ class BouncerGlanceWidget : GlanceAppWidget() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "VS",
+                    text = "v",
                     style = TextStyle(
                         color = WidgetColorScheme.textSecondary,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -319,7 +320,8 @@ class BouncerGlanceWidget : GlanceAppWidget() {
         Row(
             modifier = GlanceModifier
                 .fillMaxWidth()
-                .background(if (isLeading) WidgetColorScheme.primaryContainer else WidgetColorScheme.surfaceElevated)
+                // The side ahead is marked by weight; the gold container read as a selected control.
+                .background(WidgetColorScheme.surfaceElevated)
                 .cornerRadius(WidgetTheme.radiusMedium)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -328,8 +330,8 @@ class BouncerGlanceWidget : GlanceAppWidget() {
             Text(
                 text = teamName,
                 style = TextStyle(
-                    color = if (isLeading) WidgetColorScheme.primary else WidgetColorScheme.textPrimary,
-                    fontSize = 14.sp,
+                    color = widgetTeamInk(teamName),
+                    fontSize = 15.sp,
                     fontWeight = if (isLeading) FontWeight.Bold else FontWeight.Medium
                 ),
                 modifier = GlanceModifier.defaultWeight()
@@ -338,8 +340,8 @@ class BouncerGlanceWidget : GlanceAppWidget() {
             Text(
                 text = score,
                 style = TextStyle(
-                    color = if (isLeading) WidgetColorScheme.primary else WidgetColorScheme.textPrimary,
-                    fontSize = 16.sp,
+                    color = WidgetColorScheme.textPrimary,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
             )

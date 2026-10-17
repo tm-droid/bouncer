@@ -1,5 +1,13 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.tanush.bouncer.ui.theme.v2.BouncerColorsV2
+import com.tanush.bouncer.ui.components.v2.ballChipInk
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.ui.platform.LocalContext
 import android.text.format.DateUtils
@@ -99,11 +107,11 @@ fun NotificationsScreen(onBack: () -> Unit, onRemindersClick: () -> Unit = {}) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
-                contentPadding = PaddingValues(vertical = spacing.md),
-                verticalArrangement = Arrangement.spacedBy(spacing.xs),
+                contentPadding = PaddingValues(vertical = spacing.sm),
             ) {
                 items(items, key = { it.id }) { item ->
                     NotificationRow(item = item)
+                    HorizontalDivider(color = colors.divider, modifier = Modifier.padding(start = spacing.lg + CHIP + spacing.md))
                 }
                 item { Spacer(Modifier.height(80.dp)) }
             }
@@ -122,84 +130,88 @@ private fun RemindersAction(onClick: () -> Unit) {
     }
 }
 
+/**
+ * One alert: an event chip (the over strip's treatment — solid event fill, legible glyph), the
+ * title and time, then the body. Unread is weight and a trailing dot. The event colour used to be a
+ * small dot plus the type word written in that colour, and unread rows were tinted pills.
+ */
 @Composable
 private fun NotificationRow(item: NotificationItem) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    val accentColor = when (item.type) {
-        "wicket" -> colors.cricket.wicket
-        "six" -> colors.cricket.six
-        "four" -> colors.cricket.four
-        "milestone" -> colors.cricket.milestone
-        "match_start" -> colors.cricket.matchStart
-        "match_end" -> colors.cricket.matchEnd
-        else -> colors.primary
-    }
-
-    val typeLabel = when (item.type) {
-        "wicket" -> "Wicket"
-        "six" -> "Six"
-        "four" -> "Four"
-        "milestone" -> "Milestone"
-        "match_start" -> "Match Start"
-        "match_end" -> "Match End"
-        else -> "Update"
-    }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                color = if (!item.isRead) colors.surfaceVariant.copy(alpha = 0.4f) else Color.Transparent,
-                shape = RoundedCornerShape(spacing.sm),
-            )
-            .padding(horizontal = spacing.lg, vertical = spacing.sm),
+            .padding(horizontal = spacing.lg, vertical = spacing.md),
         verticalAlignment = Alignment.Top,
     ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(accentColor)
-                .align(Alignment.CenterVertically),
-        )
+        EventChip(item.type)
         Spacer(Modifier.width(spacing.md))
         Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = item.title,
-                    style = typography.bodyMedium,
-                    fontWeight = if (!item.isRead) FontWeight.SemiBold else FontWeight.Normal,
+                    style = typography.titleSmall,
+                    fontWeight = if (!item.isRead) FontWeight.Bold else FontWeight.Medium,
                     color = colors.onSurface,
+                    modifier = Modifier.weight(1f),
                 )
+                Spacer(Modifier.width(spacing.sm))
                 Text(
                     text = formatTimestamp(LocalContext.current, item.timestamp),
-                    style = typography.labelSmall,
+                    style = typography.numericSmall,
                     color = colors.textSecondary,
                 )
+                if (!item.isRead) {
+                    Spacer(Modifier.width(spacing.sm))
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(colors.onSurface))
+                }
             }
             Spacer(Modifier.height(2.dp))
             Text(
                 text = item.body,
-                style = typography.bodySmall,
+                style = typography.bodyMedium,
                 color = colors.textSecondary,
                 maxLines = 2,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = typeLabel,
-                style = typography.labelSmall,
-                color = accentColor,
             )
         }
     }
 }
+
+/** The alert's kind as a chip: the ball's glyph for wickets and boundaries, an icon otherwise. */
+@Composable
+private fun EventChip(type: String) {
+    val colors = BouncerThemeV2.colors
+    val (fill, glyph, icon) = eventChipSpec(type, colors)
+    val ink = if (fill == colors.surfaceVariant) colors.textSecondary else ballChipInk(fill)
+    Box(
+        modifier = Modifier.size(CHIP).clip(RoundedCornerShape(8.dp)).background(fill),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (glyph != null) {
+            Text(glyph, style = BouncerThemeV2.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink)
+        } else if (icon != null) {
+            Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+private fun eventChipSpec(type: String, colors: BouncerColorsV2): Triple<Color, String?, ImageVector?> {
+    val cricket = colors.cricket
+    return when (type) {
+        "wicket" -> Triple(cricket.wicket, "W", null)
+        "six" -> Triple(cricket.six, "6", null)
+        "four" -> Triple(cricket.four, "4", null)
+        "milestone" -> Triple(cricket.milestone, null, Icons.Outlined.Star)
+        "match_start" -> Triple(cricket.matchStart, null, Icons.Outlined.PlayArrow)
+        "match_end" -> Triple(cricket.matchEnd, null, Icons.Outlined.Flag)
+        else -> Triple(colors.surfaceVariant, null, Icons.Outlined.Notifications)
+    }
+}
+
+private val CHIP = 32.dp
 
 /**
  * Today's alerts show the time; older ones add the day. Every alert used to read as a bare

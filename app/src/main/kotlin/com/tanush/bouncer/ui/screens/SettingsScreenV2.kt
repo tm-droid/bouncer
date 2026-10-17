@@ -1,5 +1,13 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.MotionPhotosOff
+import androidx.compose.material.icons.filled.Percent
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.Sports
+import androidx.compose.material.icons.filled.SportsCricket
+import androidx.compose.material.icons.filled.NotificationsActive
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -21,8 +29,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -168,7 +174,7 @@ fun SettingsScreenV2(
             item {
                 Column(Modifier.padding(horizontal = spacing.lg)) {
                     SettingsItemV2(
-                        icon = Icons.Default.Notifications,
+                        icon = Icons.Default.NotificationsActive,
                         title = stringResource(R.string.live_update_settings_title),
                         subtitle = stringResource(liveUpdateSubtitle),
                         trailing = SettingsTrailing.Navigation,
@@ -181,13 +187,13 @@ fun SettingsScreenV2(
                         onClick = { togglePref(PreferencesHelper.KEY_LIVE_NOTIFICATIONS, liveNotifications) { liveNotifications = it } },
                     )
                     SettingsItemV2(
-                        icon = Icons.Default.Star, title = stringResource(R.string.settings_boundary_alerts),
+                        icon = Icons.Default.SportsCricket, title = stringResource(R.string.settings_boundary_alerts),
                         subtitle = stringResource(R.string.settings_celebrate_every_four_and_six),
                         trailing = SettingsTrailing.Toggle(boundaryAlerts),
                         onClick = { togglePref(PreferencesHelper.KEY_BOUNDARY_ALERTS, boundaryAlerts) { boundaryAlerts = it } },
                     )
                     SettingsItemV2(
-                        icon = Icons.Default.Star, title = stringResource(R.string.settings_wicket_alerts),
+                        icon = Icons.Default.Sports, title = stringResource(R.string.settings_wicket_alerts),
                         subtitle = stringResource(R.string.settings_never_miss_a_crucial_wicket),
                         trailing = SettingsTrailing.Toggle(wicketAlerts),
                         onClick = { togglePref(PreferencesHelper.KEY_WICKET_ALERTS, wicketAlerts) { wicketAlerts = it } },
@@ -227,13 +233,13 @@ fun SettingsScreenV2(
                         onClick = { togglePref(PreferencesHelper.KEY_HAPTIC_FEEDBACK, hapticFeedback) { hapticFeedback = it } },
                     )
                     SettingsItemV2(
-                        icon = Icons.Default.Speed, title = stringResource(R.string.settings_auto_refresh),
+                        icon = Icons.Default.Autorenew, title = stringResource(R.string.settings_auto_refresh),
                         subtitle = stringResource(R.string.settings_automatically_update_scores_every_10_seconds),
                         trailing = SettingsTrailing.Toggle(autoRefresh),
                         onClick = { togglePref(PreferencesHelper.KEY_AUTO_REFRESH, autoRefresh) { autoRefresh = it } },
                     )
                     SettingsItemV2(
-                        icon = Icons.Default.Speed,
+                        icon = Icons.Default.Timer,
                         title = stringResource(R.string.settings_refresh_interval),
                         subtitle = "Fallback poll when push is unavailable: every ${refreshIntervalMinutes}m",
                         trailing = SettingsTrailing.Value("${refreshIntervalMinutes}m"),
@@ -254,18 +260,21 @@ fun SettingsScreenV2(
                         },
                     )
                     SettingsItemV2(
+                        icon = Icons.Default.Percent,
                         title = stringResource(R.string.settings_win_probability),
                         subtitle = stringResource(R.string.settings_show_live_win_probability_predictions),
                         trailing = SettingsTrailing.Toggle(showProbability),
                         onClick = { togglePref(PreferencesHelper.KEY_SHOW_WIN_PROBABILITY, showProbability) { showProbability = it } },
                     )
                     SettingsItemV2(
+                        icon = Icons.Default.MotionPhotosOff,
                         title = stringResource(R.string.settings_reduced_motion),
                         subtitle = stringResource(R.string.settings_use_simpler_transitions),
                         trailing = SettingsTrailing.Toggle(reducedMotion),
                         onClick = { togglePref(PreferencesHelper.KEY_REDUCED_MOTION, reducedMotion) { reducedMotion = it } },
                     )
                     SettingsItemV2(
+                        icon = Icons.Default.BugReport,
                         title = stringResource(R.string.settings_share_diagnostics),
                         subtitle = stringResource(R.string.settings_share_diagnostics_detail),
                         trailing = SettingsTrailing.Toggle(shareDiagnostics),

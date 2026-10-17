@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.components.v2
 
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -24,7 +25,9 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
-private val THUMBNAIL_SIZE = 72.dp
+// 4:3, not square: Cricbuzz's photos are 16:9 and a square crop cut most of the frame away.
+private val THUMBNAIL_WIDTH = 96.dp
+private val THUMBNAIL_HEIGHT = 72.dp
 private val IMAGE_CORNER = 8.dp
 
 /**
@@ -61,6 +64,8 @@ fun NewsRowV2(
     imageUrl: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    /** What kind of story and what it is about ("Report · India tour of England"), as detail shows it. */
+    kicker: String = "",
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -74,9 +79,20 @@ fun NewsRowV2(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
+            if (kicker.isNotBlank()) {
+                Text(
+                    text = kicker,
+                    style = typography.labelMedium,
+                    color = colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(spacing.xxs))
+            }
             Text(
                 text = headline,
-                style = typography.titleSmall,
+                style = typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
                 color = colors.onSurface,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
@@ -88,7 +104,7 @@ fun NewsRowV2(
         }
         if (imageUrl != null) {
             Spacer(Modifier.width(spacing.md))
-            NewsImage(imageUrl, Modifier.size(THUMBNAIL_SIZE))
+            NewsImage(imageUrl, Modifier.size(THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT))
         }
     }
 }
@@ -112,6 +128,6 @@ fun NewsRowSkeleton(modifier: Modifier = Modifier) {
             Box(bar.width(96.dp).height(10.dp))
         }
         Spacer(Modifier.width(spacing.md))
-        Box(Modifier.size(THUMBNAIL_SIZE).clip(RoundedCornerShape(IMAGE_CORNER)).background(colors.surfaceVariant))
+        Box(Modifier.size(THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT).clip(RoundedCornerShape(IMAGE_CORNER)).background(colors.surfaceVariant))
     }
 }

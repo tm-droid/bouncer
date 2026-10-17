@@ -77,7 +77,10 @@ data class ShareCardData(
     val winProbability: Float? = null,
     val keyPlayer: String? = null,
     val keyPlayerStat: String? = null,
-    val isLive: Boolean = false
+    val isLive: Boolean = false,
+    /** Full team names: printed when they fit, and the key for the teams' colours. */
+    val team1FullName: String? = null,
+    val team2FullName: String? = null,
 )
 
 /**
@@ -554,154 +557,126 @@ object ShareCardGenerator {
      */
     fun generateShareBitmap(
         data: ShareCardData,
-        format: ShareCardFormat = ShareCardFormat.INSTAGRAM_STORY
+        format: ShareCardFormat = ShareCardFormat.INSTAGRAM_STORY,
+        /** The app's face (IBM Plex Sans Bold); the platform default bold when not supplied. */
+        typeface: Typeface? = null,
     ): Bitmap {
         val width = format.width
         val height = format.height
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        
-        // Background gradient
-        paint.shader = LinearGradient(
-            0f, 0f, 0f, height.toFloat(),
-            intArrayOf(0xFF050505.toInt(), 0xFF141414.toInt(), 0xFF050505.toInt()),
-            null,
-            Shader.TileMode.CLAMP
-        )
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
-        paint.shader = null
-        
-        // Gold border
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 4f
-        paint.color = 0xFFFFD700.toInt()
-        val borderRadius = 40f
-        canvas.drawRoundRect(
-            RectF(8f, 8f, width - 8f, height - 8f),
-            borderRadius, borderRadius, paint
-        )
-        paint.style = Paint.Style.FILL
-        
-        // Content positioning
-        val centerX = width / 2f
-        var currentY = 100f
-        
-        // Match Type
-        paint.color = 0xFF64748B.toInt()
-        paint.textSize = 36f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        val bold = typeface ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        paint.typeface = bold
         paint.textAlign = Paint.Align.CENTER
-        canvas.drawText(data.matchType.uppercase(), centerX, currentY, paint)
-        
-        currentY += 100f
-        
-        // Live Indicator
+
+        // Background: the app's dark ground, flat. The gold frame went — gold marks what can be tapped.
+        paint.color = SHARE_BACKGROUND
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+
+        val centerX = width / 2f
+        val name1 = data.team1FullName?.takeIf { it.length <= MAX_NAME_CHARS } ?: data.team1Name
+        val name2 = data.team2FullName?.takeIf { it.length <= MAX_NAME_CHARS } ?: data.team2Name
+        val key1 = data.team1FullName ?: data.team1Name
+        val key2 = data.team2FullName ?: data.team2Name
+        // The score block is centred in the canvas rather than starting at the top, which left the
+        // lower half of a story card empty above the wordmark.
+        var currentY = height * TOP_FRACTION
+
+        paint.color = SHARE_MUTED
+        paint.textSize = 36f
+        canvas.drawText(data.matchType, centerX, currentY, paint)
+        currentY += 70f
         if (data.isLive) {
-            paint.color = 0xFFEF4444.toInt()
-            canvas.drawRoundRect(
-                RectF(centerX - 60, currentY - 30, centerX + 60, currentY + 10),
-                20f, 20f, paint
-            )
-            paint.color = 0xFFFFFFFF.toInt()
-            paint.textSize = 28f
-            canvas.drawText("LIVE", centerX, currentY, paint)
+            paint.color = SHARE_LIVE
+            canvas.drawCircle(centerX - 70f, currentY - 12f, 10f, paint)
+            paint.textSize = 32f
+            canvas.drawText("LIVE", centerX + 10f, currentY, paint)
             currentY += 60f
         }
-        
         currentY += 80f
-        
-        // Team 1
-        paint.color = 0xFFFFD700.toInt()
-        paint.textSize = 48f
-        canvas.drawText(data.team1Name.uppercase(), centerX, currentY, paint)
-        
-        currentY += 80f
-        
-        // Team 1 Score
-        paint.textSize = 96f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText(data.team1Score, centerX, currentY, paint)
-        
-        currentY += 100f
-        
-        // VS
-        paint.color = 0xFF64748B.toInt()
-        paint.textSize = 48f
-        canvas.drawText("VS", centerX, currentY, paint)
-        
-        currentY += 100f
-        
-        // Team 2
-        paint.color = 0xFF94A3B8.toInt()
-        paint.textSize = 48f
-        canvas.drawText(data.team2Name.uppercase(), centerX, currentY, paint)
-        
-        currentY += 80f
-        
-        // Team 2 Score
-        paint.textSize = 72f
-        canvas.drawText(data.team2Score ?: "-", centerX, currentY, paint)
-        
-        currentY += 120f
-        
-        // Status
-        paint.color = 0xFF94A3B8.toInt()
+
+        currentY = drawSide(canvas, paint, name1, data.team1Score, inkFor(key1), centerX, currentY)
+        paint.color = SHARE_MUTED
         paint.textSize = 40f
-        canvas.drawText(data.matchStatus, centerX, currentY, paint)
-        
-        currentY += 120f
-        
-        // Win Probability Bar — omitted entirely when the server supplied no probability.
+        canvas.drawText("v", centerX, currentY, paint)
+        currentY += 90f
+        currentY = drawSide(canvas, paint, name2, data.team2Score ?: "–", inkFor(key2), centerX, currentY)
+
+        paint.color = SHARE_TEXT_SECONDARY
+        paint.textSize = 40f
+        canvas.drawText(data.matchStatus, centerX, currentY + 20f, paint)
+        currentY += 140f
+
+        // Win probability — omitted entirely when the server supplied no probability.
         data.winProbability?.let { probability ->
-            val barWidth = width * 0.8f
-            val barHeight = 24f
-            val barLeft = (width - barWidth) / 2
-
-            // Background
-            paint.color = 0xFF0F0F0F.toInt()
-            canvas.drawRoundRect(
-                RectF(barLeft, currentY, barLeft + barWidth, currentY + barHeight),
-                barHeight / 2, barHeight / 2, paint
-            )
-
-            // Team 1 Progress
-            val team1Width = barWidth * probability
-            paint.shader = LinearGradient(
-                barLeft, 0f, barLeft + team1Width, 0f,
-                intArrayOf(0xFFB39800.toInt(), 0xFFFFD700.toInt()),
-                null,
-                Shader.TileMode.CLAMP
-            )
-            canvas.drawRoundRect(
-                RectF(barLeft, currentY, barLeft + team1Width, currentY + barHeight),
-                barHeight / 2, barHeight / 2, paint
-            )
-            paint.shader = null
-
-            currentY += barHeight + 40f
-
-            // Probability Labels
-            paint.textSize = 32f
-            paint.textAlign = Paint.Align.LEFT
-            paint.color = 0xFF22C55E.toInt()
-            canvas.drawText("${(probability * 100).toInt()}%", barLeft, currentY, paint)
-
-            paint.textAlign = Paint.Align.RIGHT
-            paint.color = 0xFFEF4444.toInt()
-            canvas.drawText("${((1 - probability) * 100).toInt()}%", barLeft + barWidth, currentY, paint)
+            drawProbability(canvas, paint, probability, key1, key2, data.team1Name, data.team2Name, width, currentY)
         }
 
-        // Bouncer Branding at bottom
-        paint.color = 0xFFFFD700.toInt()
+        // The wordmark: the one place gold is not an affordance.
+        paint.color = SHARE_GOLD
         paint.textSize = 48f
         paint.textAlign = Paint.Align.CENTER
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("BOUNCER", centerX, height - 80f, paint)
-        
+        paint.typeface = bold
+        canvas.drawText("Bouncer", centerX, height - 80f, paint)
+
         return bitmap
     }
+
+    /** A side: its name in its colour (white for a side the registry does not know), then the score. */
+    private fun drawSide(canvas: Canvas, paint: Paint, name: String, score: String, ink: Int, x: Float, y: Float): Float {
+        paint.color = ink
+        paint.textSize = 52f
+        canvas.drawText(name, x, y, paint)
+        paint.color = SHARE_TEXT
+        paint.textSize = 104f
+        canvas.drawText(score, x, y + 120f, paint)
+        return y + 210f
+    }
+
+    private fun inkFor(team: String): Int =
+        if (TeamColorRegistry.isKnown(team)) TeamColorRegistry.forTeam(team).ink.toArgb() else SHARE_TEXT
+
+    /** Team colours on the bar only when both sides are known; two neutrals otherwise. */
+    private fun drawProbability(
+        canvas: Canvas,
+        paint: Paint,
+        probability: Float,
+        key1: String,
+        key2: String,
+        code1: String,
+        code2: String,
+        width: Int,
+        top: Float,
+    ) {
+        val bothKnown = TeamColorRegistry.isKnown(key1) && TeamColorRegistry.isKnown(key2)
+        val left = width * (1 - BAR_FRACTION) / 2
+        val right = left + width * BAR_FRACTION
+        val split = left + (right - left) * probability.coerceIn(0f, 1f)
+        val barHeight = 24f
+        paint.color = if (bothKnown) TeamColorRegistry.forTeam(key2).primary.toArgb() else SHARE_MUTED
+        canvas.drawRoundRect(RectF(left, top, right, top + barHeight), barHeight / 2, barHeight / 2, paint)
+        paint.color = if (bothKnown) TeamColorRegistry.forTeam(key1).primary.toArgb() else SHARE_TEXT
+        canvas.drawRoundRect(RectF(left, top, split, top + barHeight), barHeight / 2, barHeight / 2, paint)
+        paint.color = SHARE_TEXT_SECONDARY
+        paint.textSize = 32f
+        paint.textAlign = Paint.Align.LEFT
+        canvas.drawText("$code1 ${(probability * PERCENT).toInt()}%", left, top + barHeight + 44f, paint)
+        paint.textAlign = Paint.Align.RIGHT
+        canvas.drawText("${((1 - probability) * PERCENT).toInt()}% $code2", right, top + barHeight + 44f, paint)
+        paint.textAlign = Paint.Align.CENTER
+    }
+
+    private const val SHARE_BACKGROUND = 0xFF0C1015.toInt()
+    private const val SHARE_TEXT = 0xFFFFFFFF.toInt()
+    private const val SHARE_TEXT_SECONDARY = 0xFF94A3B8.toInt()
+    private const val SHARE_MUTED = 0xFF64748B.toInt()
+    private const val SHARE_LIVE = 0xFFEF4444.toInt()
+    private const val SHARE_GOLD = 0xFFE0B74F.toInt()
+    private const val MAX_NAME_CHARS = 22
+    private const val TOP_FRACTION = 0.22f
+    private const val BAR_FRACTION = 0.8f
+    private const val PERCENT = 100
     
     fun generatePlayerInningsCard(
         playerName: String,

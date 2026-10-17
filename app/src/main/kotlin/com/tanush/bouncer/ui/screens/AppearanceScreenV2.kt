@@ -128,9 +128,10 @@ private fun ThemeOptionCard(
         onClick = onClick,
         modifier = modifier.height(110.dp),
         shape = BouncerThemeV2.shapes.medium,
-        border = if (isSelected) BorderStroke(2.dp, colors.primaryText) else null,
+        // Selection is the gold outline; the rest have the plain hairline every card here has.
+        border = if (isSelected) BorderStroke(2.dp, colors.primaryText) else BorderStroke(1.dp, colors.border),
         colors = CardDefaults.cardColors(containerColor = colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = BouncerThemeV2.elevation.card),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Box(modifier = Modifier.fillMaxSize().padding(spacing.md)) {
             Column(
@@ -138,7 +139,13 @@ private fun ThemeOptionCard(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                Icon(icon, contentDescription = label, tint = if (isSelected) colors.primary else colors.textSecondary, modifier = Modifier.size(32.dp))
+                Icon(
+                    icon,
+                    contentDescription = label,
+                    // onSurface, not the fill gold, which was 1.74:1 on a light card.
+                    tint = if (isSelected) colors.onSurface else colors.textSecondary,
+                    modifier = Modifier.size(32.dp),
+                )
                 Spacer(Modifier.height(spacing.sm))
                 Text(label, style = typography.labelMedium, color = colors.onSurface, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
             }

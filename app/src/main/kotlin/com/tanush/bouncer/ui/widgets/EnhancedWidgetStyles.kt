@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.widgets
 
+import com.tanush.bouncer.ui.theme.TeamColorRegistry
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -811,4 +812,16 @@ fun WidgetEmptyLayout(
             )
         }
     }
+}
+
+/**
+ * A team's name colour on a widget: its team ink on each of the two widget grounds when the registry
+ * knows the side, the plain text colour otherwise. Day and night are resolved separately because a
+ * Glance colour cannot be read at composition time — the launcher picks the mode.
+ */
+internal fun widgetTeamInk(teamName: String): GlanceColorProvider {
+    if (!TeamColorRegistry.isKnown(teamName)) return WidgetColorScheme.textPrimary
+    val day = TeamColorRegistry.Ground(WidgetLightPalette.background, WidgetLightPalette.surfaceElevated, WidgetLightPalette.textPrimary)
+    val night = TeamColorRegistry.Ground(WidgetBrandPalette.background, WidgetBrandPalette.surfaceElevated, WidgetBrandPalette.textPrimary)
+    return cp(TeamColorRegistry.forTeam(teamName, day).ink, TeamColorRegistry.forTeam(teamName, night).ink)
 }

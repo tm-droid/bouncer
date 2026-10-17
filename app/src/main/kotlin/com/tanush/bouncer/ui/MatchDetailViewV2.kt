@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui
 
+import androidx.core.content.res.ResourcesCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -248,8 +249,13 @@ fun MatchDetailViewV2(
                                         venue = liveMatch.venue,
                                         winProbability = liveMatch.winProbabilityFraction,
                                         isLive = liveMatch.isLive,
+                                        team1FullName = t1?.name,
+                                        team2FullName = t2?.name,
                                     )
-                                    val bitmap = ShareCardGenerator.generateShareBitmap(data)
+                                    val bitmap = ShareCardGenerator.generateShareBitmap(
+                                        data,
+                                        typeface = ResourcesCompat.getFont(context, R.font.ibm_plex_sans_bold),
+                                    )
                                     ShareCardGenerator.shareBitmap(context, bitmap)
                                     isSharingCard = false
                                 }

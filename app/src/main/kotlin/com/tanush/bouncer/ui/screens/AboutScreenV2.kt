@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import com.tanush.bouncer.ui.components.v2.AppMark
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.BuildConfig
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NewReleases
-import androidx.compose.material.icons.filled.SportsCricket
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -76,23 +76,19 @@ fun AboutScreenV2(onBackClick: () -> Unit) {
             // App icon + name + version
             item(key = "header") {
                 Spacer(Modifier.height(spacing.xxl))
-                Icon(
-                    imageVector = Icons.Default.SportsCricket,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = colors.primaryText,
-                )
+                AppMark(size = 80.dp)
                 Spacer(Modifier.height(spacing.md))
+                // The wordmark is the one place gold is not an affordance.
                 Text(
-                    text = "BOUNCER",
+                    text = "Bouncer",
                     style = typography.headlineLarge,
-                    color = colors.onSurface,
-                    fontWeight = FontWeight.ExtraBold,
+                    color = colors.primaryText,
+                    fontWeight = FontWeight.Bold,
                 )
                 Spacer(Modifier.height(spacing.xs))
                 Text(
                     text = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-                    style = typography.bodyMedium,
+                    style = typography.numericSmall,
                     color = colors.textSecondary,
                 )
                 Spacer(Modifier.height(spacing.xxl))

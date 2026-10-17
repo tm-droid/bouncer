@@ -247,8 +247,9 @@ class LiveUpdateNotifier(private val context: Context) {
  * look like and what the platform can pick a readable text colour against.
  *
  * [TeamColorRegistry] rather than the retired `getTeamNotificationColor`: it is a plain object (so
- * it is safe from a Service), it knows short codes through its acronym table, and unknown teams get
- * a deterministic hash colour instead of everything collapsing onto one default.
+ * it is safe from a Service), and it knows short codes through its alias table. A side it does not
+ * know — neither a kit colour nor a crest-derived one — gets the plain card surface: the registry's
+ * neutral is grey, and a grey-tinted card reads as a disabled one.
  *
  * The ground is read from [context] on every call, never cached: `RemoteViews`-style colours are
  * plain ARGB ints resolved per `Context`, and the notifier outlives a theme change.
@@ -260,6 +261,7 @@ private fun accentColor(context: Context, teamName: String): Int {
         surface = Color(colors.surface),
         ink = Color(colors.textPrimary),
     )
+    if (!TeamColorRegistry.isKnown(teamName)) return colors.surface
     return TeamColorRegistry.forTeam(teamName, ground).surface.toArgb()
 }
 

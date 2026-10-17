@@ -1,5 +1,8 @@
 package com.tanush.bouncer.ui.components.v2
 
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -80,13 +83,22 @@ fun SettingsItemV2(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (icon != null) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = colors.primaryText,
-                )
-                Spacer(Modifier.width(spacing.lg))
+                // A neutral plate, not a gold glyph: the row is what can be tapped, not the icon.
+                Box(
+                    modifier = Modifier
+                        .size(ICON_PLATE)
+                        .clip(BouncerThemeV2.shapes.small)
+                        .background(colors.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = colors.onSurface,
+                    )
+                }
+                Spacer(Modifier.width(spacing.md))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -132,9 +144,12 @@ fun SettingsItemV2(
         }
         if (showDivider) {
             HorizontalDivider(
-                modifier = Modifier.padding(start = if (icon != null) (56.dp + spacing.lg) else spacing.lg),
+                // Starts under the title, so the plates read as a column.
+                modifier = Modifier.padding(start = if (icon != null) (spacing.lg + ICON_PLATE + spacing.md) else spacing.lg),
                 color = colors.divider,
             )
         }
     }
 }
+
+private val ICON_PLATE = 36.dp

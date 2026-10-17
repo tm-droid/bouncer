@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.components
 
+import com.tanush.bouncer.managers.TeamAcronymManager
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -100,7 +101,7 @@ fun HistoricalStatsCard(
             .shadow(
                 elevation = 0.dp,
                 shape = RoundedCornerShape(12.dp),
-                spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f)
+                spotColor = Color.Transparent
             ),
         shape = RoundedCornerShape(12.dp),
         color = BouncerThemeV2.colors.highlight.copy(alpha = 0.05f)
@@ -117,12 +118,12 @@ fun HistoricalStatsCard(
                     text = stringResource(R.string.common_head_to_head),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp,
-                    color = hierarchy.secondary.primary
+                    letterSpacing = 0.sp,
+                    color = BouncerThemeV2.colors.onSurface
                 )
                 Text(
                     text = stringResource(R.string.historical_historical_statistics),
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     color = colors.textSecondary
                 )
             }
@@ -152,7 +153,7 @@ fun HistoricalStatsCard(
                     )
                     Text(
                         text = "${data.totalMatches} matches",
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         color = colors.textSecondary
                     )
                 }
@@ -233,7 +234,7 @@ private fun TeamHistoryInfo(
                         .background(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    hierarchy.secondary.primary.copy(alpha = 0.3f),
+                                    Color.Transparent,
                                     Color.Transparent
                                 )
                             ),
@@ -255,7 +256,7 @@ private fun TeamHistoryInfo(
                         .background(colors.glassBorder.copy(alpha = 0.1f))
                         .border(
                             width = if (isLeading) 2.dp else 1.dp,
-                            color = if (isLeading) hierarchy.secondary.primary else colors.glassBorder.copy(alpha = 0.3f),
+                            color = if (isLeading) BouncerThemeV2.colors.onSurface else colors.glassBorder.copy(alpha = 0.3f),
                             shape = CircleShape
                         )
                         .padding(4.dp),
@@ -266,12 +267,12 @@ private fun TeamHistoryInfo(
                     modifier = Modifier
                         .size(48.dp)
                         .background(
-                            color = if (isLeading) hierarchy.secondary.primary.copy(alpha = 0.1f) else colors.glassBorder.copy(alpha = 0.1f),
+                            color = if (isLeading) BouncerThemeV2.colors.surfaceVariant else colors.glassBorder.copy(alpha = 0.1f),
                             shape = CircleShape
                         )
                         .border(
                             width = if (isLeading) 2.dp else 1.dp,
-                            color = if (isLeading) hierarchy.secondary.primary else colors.glassBorder.copy(alpha = 0.3f),
+                            color = if (isLeading) BouncerThemeV2.colors.onSurface else colors.glassBorder.copy(alpha = 0.3f),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -280,7 +281,7 @@ private fun TeamHistoryInfo(
                         text = name.take(2).uppercase(),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isLeading) hierarchy.secondary.primary else colors.textSecondary
+                        color = if (isLeading) BouncerThemeV2.colors.onSurface else colors.textSecondary
                     )
                 }
             }
@@ -302,11 +303,11 @@ private fun TeamHistoryInfo(
                 text = "$wins",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isLeading) hierarchy.secondary.primary else colors.textPrimary
+                color = if (isLeading) BouncerThemeV2.colors.onSurface else colors.textPrimary
             )
             Text(
                 text = "wins (${winRate.toInt()}%)",
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 color = colors.textSecondary
             )
         }
@@ -359,7 +360,7 @@ private fun WinRatioBar(
                         .fillMaxWidth(animatedTeam1)
                         .background(
                             brush = Brush.horizontalGradient(
-                                colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
+                                colors = listOf(BouncerThemeV2.colors.onSurface, BouncerThemeV2.colors.onSurface)
                             )
                         )
                 )
@@ -383,23 +384,23 @@ private fun WinRatioBar(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "${team1Name.take(3)} $team1Wins",
-                fontSize = 10.sp,
+                text = "${TeamAcronymManager.getAcronym(team1Name)} $team1Wins",
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                color = hierarchy.secondary.primary
+                color = BouncerThemeV2.colors.onSurface
             )
             if (noResults > 0) {
                 Text(
                     text = "NR $noResults",
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     color = colors.textSecondary
                 )
             }
             Text(
-                text = "$team2Wins ${team2Name.take(3)}",
-                fontSize = 10.sp,
+                text = "$team2Wins ${TeamAcronymManager.getAcronym(team2Name)}",
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                color = colors.statusInfo
+                color = BouncerThemeV2.colors.onSurface
             )
         }
     }
@@ -419,9 +420,9 @@ private fun RecentFormSection(
     ) {
         Text(
             text = stringResource(R.string.historical_recent_meetings),
-            fontSize = 10.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp,
+            letterSpacing = 0.sp,
             color = colors.textSecondary
         )
         
@@ -457,8 +458,8 @@ private fun RecentMatchChip(
     
     val chipColor = when {
         isNoResult -> colors.glassBorder
-        isTeam1Win -> hierarchy.secondary.primary
-        isTeam2Win -> colors.statusInfo
+        isTeam1Win -> BouncerThemeV2.colors.onSurface
+        isTeam2Win -> BouncerThemeV2.colors.onSurface
         else -> colors.glassBorder
     }
     
@@ -480,15 +481,15 @@ private fun RecentMatchChip(
         ) {
             Text(
                 text = match.date,
-                fontSize = 9.sp,
+                fontSize = 11.sp,
                 color = colors.textSecondary
             )
             
             Text(
                 text = when {
                     isNoResult -> "NR"
-                    isTeam1Win -> team1Name.take(3).uppercase()
-                    else -> team2Name.take(3).uppercase()
+                    isTeam1Win -> TeamAcronymManager.getAcronym(team1Name)
+                    else -> TeamAcronymManager.getAcronym(team2Name)
                 },
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
@@ -498,7 +499,7 @@ private fun RecentMatchChip(
             if (match.margin != null && !isNoResult) {
                 Text(
                     text = match.margin,
-                    fontSize = 8.sp,
+                    fontSize = 11.sp,
                     color = colors.textSecondary,
                     maxLines = 1
                 )
@@ -506,7 +507,7 @@ private fun RecentMatchChip(
             
             Text(
                 text = match.format,
-                fontSize = 8.sp,
+                fontSize = 11.sp,
                 color = colors.textSecondary.copy(alpha = 0.7f)
             )
         }
@@ -527,9 +528,9 @@ private fun FormatBreakdownSection(
     ) {
         Text(
             text = stringResource(R.string.historical_by_format),
-            fontSize = 10.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp,
+            letterSpacing = 0.sp,
             color = colors.textSecondary
         )
         
@@ -587,7 +588,7 @@ private fun FormatStatItem(
                     text = "${stats.team1Wins}",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (team1Leading) hierarchy.secondary.primary else colors.textSecondary
+                    color = if (team1Leading) BouncerThemeV2.colors.onSurface else colors.textSecondary
                 )
                 Text(
                     text = "-",
@@ -598,13 +599,17 @@ private fun FormatStatItem(
                     text = "${stats.team2Wins}",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (!team1Leading && stats.team2Wins > stats.team1Wins) colors.statusInfo else colors.textSecondary
+                    color = if (!team1Leading && stats.team2Wins > stats.team1Wins) {
+                        BouncerThemeV2.colors.onSurface
+                    } else {
+                        colors.textSecondary
+                    }
                 )
             }
             
             Text(
                 text = "${stats.totalMatches} matches",
-                fontSize = 9.sp,
+                fontSize = 11.sp,
                 color = colors.textSecondary
             )
         }
@@ -623,14 +628,14 @@ private fun VenueHistorySection(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = hierarchy.secondary.primary.copy(alpha = 0.05f)
+        color = BouncerThemeV2.colors.onSurface.copy(alpha = 0.05f)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .border(
                     width = 1.dp,
-                    color = hierarchy.secondary.primary.copy(alpha = 0.2f),
+                    color = Color.Transparent,
                     shape = RoundedCornerShape(12.dp)
                 )
                 .padding(12.dp),
@@ -640,9 +645,9 @@ private fun VenueHistorySection(
             Column {
                 Text(
                     text = stringResource(R.string.historical_at_this_venue),
-                    fontSize = 9.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp,
+                    letterSpacing = 0.sp,
                     color = colors.textSecondary
                 )
                 Text(
@@ -664,11 +669,11 @@ private fun VenueHistorySection(
                         text = "${venueStats.team1Wins}",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = hierarchy.secondary.primary
+                        color = BouncerThemeV2.colors.onSurface
                     )
                     Text(
-                        text = team1Name.take(3),
-                        fontSize = 9.sp,
+                        text = TeamAcronymManager.getAcronym(team1Name),
+                        fontSize = 11.sp,
                         color = colors.textSecondary
                     )
                 }
@@ -684,11 +689,11 @@ private fun VenueHistorySection(
                         text = "${venueStats.team2Wins}",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = colors.statusInfo
+                        color = BouncerThemeV2.colors.onSurface
                     )
                     Text(
-                        text = team2Name.take(3),
-                        fontSize = 9.sp,
+                        text = TeamAcronymManager.getAcronym(team2Name),
+                        fontSize = 11.sp,
                         color = colors.textSecondary
                     )
                 }

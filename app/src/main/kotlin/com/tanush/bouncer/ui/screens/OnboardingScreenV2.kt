@@ -1,5 +1,8 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.foundation.layout.width
+import com.tanush.bouncer.ui.components.v2.TeamCrest
+import com.tanush.bouncer.ui.components.v2.AppMark
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.semantics.Role
@@ -36,7 +39,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.RocketLaunch
-import androidx.compose.material.icons.filled.SportsCricket
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -140,7 +142,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Icon(Icons.Default.SportsCricket, null, Modifier.size(72.dp), tint = colors.primaryText)
+                        AppMark(size = 88.dp)
                         Spacer(Modifier.height(spacing.xl))
                         Text(
                             stringResource(R.string.onboarding_title),
@@ -166,7 +168,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(vertical = 4.dp),
                             ) {
-                                Icon(Icons.Default.Check, null, Modifier.size(16.dp), tint = colors.primaryText)
+                                Icon(Icons.Default.Check, null, Modifier.size(16.dp), tint = colors.onSurface)
                                 Spacer(Modifier.padding(start = spacing.sm))
                                 Text(
                                     stringResource(highlight),
@@ -184,7 +186,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Icon(Icons.Default.Groups, null, Modifier.size(56.dp), tint = colors.primaryText)
+                        Icon(Icons.Default.Groups, null, Modifier.size(56.dp), tint = colors.textSecondary)
                         Spacer(Modifier.height(spacing.lg))
                         Text(
                             stringResource(R.string.onboarding_teams_title),
@@ -220,14 +222,20 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                                             if (hapticEnabled) haptics.toggle(turningOn = !selected)
                                             selectedTeams = if (selected) selectedTeams - team else selectedTeams + team
                                         }
-                                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                                        .padding(start = 6.dp, end = 14.dp, top = 6.dp, bottom = 6.dp)
                                 ) {
-                                    Text(
-                                        text = team,
-                                        style = typography.labelLarge,
-                                        color = if (selected) colors.onPrimary else colors.textSecondary,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                    )
+                                    // The flag beside the name: twelve words in a block read as a
+                                    // wall; twelve flags are found at a glance.
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        TeamCrest(teamName = team, size = 24.dp)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            text = team,
+                                            style = typography.labelLarge,
+                                            color = if (selected) colors.onPrimary else colors.onSurface,
+                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -274,7 +282,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Icon(Icons.Default.Notifications, null, Modifier.size(56.dp), tint = colors.primaryText)
+                        Icon(Icons.Default.Notifications, null, Modifier.size(56.dp), tint = colors.textSecondary)
                         Spacer(Modifier.height(spacing.lg))
                         Text(
                             stringResource(R.string.onboarding_notifications_title),
@@ -303,8 +311,8 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                             } else {
                                 stringResource(R.string.onboarding_permission_scope_none)
                             },
-                            style = typography.labelMedium,
-                            color = colors.primaryText,
+                            style = typography.bodyMedium,
+                            color = colors.onSurface,
                             textAlign = TextAlign.Center,
                         )
                         Spacer(Modifier.height(spacing.xl))
@@ -344,7 +352,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Icon(Icons.Default.RocketLaunch, null, Modifier.size(72.dp), tint = colors.primaryText)
+                        Icon(Icons.Default.RocketLaunch, null, Modifier.size(72.dp), tint = colors.textSecondary)
                         Spacer(Modifier.height(spacing.xl))
                         Text(
                             stringResource(R.string.onboarding_complete_title),
