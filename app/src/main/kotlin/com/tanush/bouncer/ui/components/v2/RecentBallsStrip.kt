@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.contrastRatio
@@ -55,7 +56,8 @@ fun RecentBallsStripV2(
             ) {
                 Text(
                     text = ball.trim(),
-                    style = typography.labelSmall,
+                    style = typography.numericSmall,
+                    fontWeight = FontWeight.SemiBold,
                     color = text,
                 )
             }
@@ -71,7 +73,8 @@ private fun ballStyle(ball: String, colors: BouncerColorsToken): Pair<Color, Col
         BallGlyphKind.SIX -> cricket.six to ballChipInk(cricket.six)
         BallGlyphKind.EXTRA -> cricket.wide to ballChipInk(cricket.wide)
         BallGlyphKind.DOT -> colors.textSecondary.copy(alpha = 0.3f) to colors.onSurface
-        BallGlyphKind.RUNS -> colors.primary.copy(alpha = 0.2f) to colors.onSurface
+        // Gold is the interactive colour; an ordinary run is not a control.
+        BallGlyphKind.RUNS -> colors.surfaceVariant to colors.onSurface
     }
 }
 

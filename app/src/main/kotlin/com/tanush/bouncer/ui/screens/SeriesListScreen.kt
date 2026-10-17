@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.runtime.saveable.rememberSaveable
 import java.time.ZoneId
 import androidx.compose.ui.res.stringResource
@@ -198,6 +200,7 @@ private fun SeriesListBody(
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 EmptyStateV2(
                     title = stringResource(R.string.series_couldn_t_load_series),
+                    icon = Icons.Outlined.CloudOff,
                     subtitle = stringResource(R.string.series_check_your_connection_and_try_again),
                     onRetry = onRetry,
                 )
@@ -207,6 +210,7 @@ private fun SeriesListBody(
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 EmptyStateV2(
                     title = stringResource(R.string.series_no_series_found),
+                    icon = Icons.Outlined.EmojiEvents,
                     subtitle = emptySubtitle,
                 )
             }

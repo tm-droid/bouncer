@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -82,6 +84,7 @@ fun CommentaryTabV2(
     if (error != null && commentary.isEmpty()) {
         EmptyStateV2(
             title = stringResource(R.string.commentary_error_title),
+            icon = Icons.Outlined.CloudOff,
             subtitle = error,
             onRetry = onRetry,
         )

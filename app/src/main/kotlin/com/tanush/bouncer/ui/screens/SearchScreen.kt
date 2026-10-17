@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
@@ -227,6 +228,7 @@ private fun LazyListScope.searchBody(state: SearchListState, viewModel: SearchVi
         state.error != null && displayResults.isEmpty -> item(key = "search_error") {
             EmptyStateV2(
                 title = stringResource(R.string.search_error_title),
+                icon = Icons.Outlined.CloudOff,
                 subtitle = state.error,
                 onRetry = { viewModel.onQueryChange(state.query) },
             )

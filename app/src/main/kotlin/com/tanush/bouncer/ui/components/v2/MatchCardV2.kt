@@ -34,9 +34,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.screens.FormResult
+import com.tanush.bouncer.ui.screens.formResult
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.PreferencesHelper
 import com.tanush.bouncer.utils.rememberHapticFeedback
@@ -229,41 +232,81 @@ private fun SubscribeBellButton(isSubscribed: Boolean, onToggle: () -> Unit) {
 
 /**
  * Both team rows. "Yet to bat" is only said once a match is under way and the other side has a score;
- * before the first ball both scores are simply empty.
+ * before the first ball both scores are simply empty, and the start time takes the score column
+ * instead, so an upcoming row is not two names and dead space.
+ *
+ * In a finished match the winner is read from the status line ([rowResultFor]); a line that names
+ * neither side marks neither.
  */
 @Composable
-internal fun MatchTeamRows(match: CricketMatch, isLive: Boolean) {
+internal fun MatchTeamRows(
+    match: CricketMatch,
+    isLive: Boolean,
+    crestSize: Dp = 24.dp,
+    inkScores: Boolean = false,
+) {
     if (match.teams.size < 2) return
     val spacing = BouncerThemeV2.spacing
-    val reserveLogoSlot = match.teams.any { it.logoUrl != null }
     val yetToBat = isLive && match.teams.any { it.score.isNotBlank() }
-    match.teams.take(2).forEachIndexed { index, team ->
-        if (index > 0) Spacer(Modifier.height(spacing.sm))
-        TeamRowV2(
-            teamName = team.name,
-            teamAcronym = team.acronym,
-            score = team.score,
-            overs = team.overs,
-            isBatting = team.isBatting,
-            logoUrl = team.logoUrl,
-            reserveLogoSlot = reserveLogoSlot,
-            yetToBat = yetToBat,
-        )
+    val start = if (!isLive && match.teams.all { it.score.isBlank() }) rememberMatchStartParts(match) else null
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
+            match.teams.take(2).forEachIndexed { index, team ->
+                if (index > 0) Spacer(Modifier.height(spacing.sm))
+                TeamRowV2(
+                    teamName = team.name,
+                    teamAcronym = team.acronym,
+                    score = team.score,
+                    overs = team.overs,
+                    isBatting = team.isBatting,
+                    logoUrl = team.logoUrl,
+                    yetToBat = yetToBat,
+                    result = rowResultFor(match, team.name),
+                    crestSize = crestSize,
+                    inkScore = inkScores,
+                )
+            }
+        }
+        if (start != null) {
+            Spacer(Modifier.width(spacing.md))
+            MatchStartBlock(start)
+        }
     }
+}
+
+@Composable
+private fun MatchStartBlock(start: MatchStartParts) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    Column(horizontalAlignment = Alignment.End) {
+        Text(text = start.time, style = typography.scoreMedium, color = colors.onSurface, maxLines = 1)
+        Text(text = start.day, style = typography.numericSmall, color = colors.textSecondary, maxLines = 1)
+    }
+}
+
+/** Won or Lost for [team] in a finished [match]; Undecided otherwise, or when the line names neither side. */
+internal fun rowResultFor(match: CricketMatch, team: String): RowResult = when (formResult(match, team)) {
+    FormResult.WON -> RowResult.Won
+    FormResult.LOST -> RowResult.Lost
+    else -> RowResult.Undecided
 }
 
 @Composable
 private fun MatchCardStatusLine(match: CricketMatch) {
     if (match.currentStatus.isBlank()) return
+    // An upcoming row already shows its start time in the score column; the line would repeat it.
+    if (match.teams.all { it.score.isBlank() } && rememberMatchStartParts(match) != null) return
     val colors = BouncerThemeV2.colors
     val spacing = BouncerThemeV2.spacing
+    val decided = match.isCompleted
     Spacer(Modifier.height(spacing.sm))
     Text(
         text = matchStatusText(match.currentStatus),
-        style = BouncerThemeV2.typography.bodySmall,
+        // A result is the row's headline once the match is over; a live line is detail under scores.
+        style = if (decided) BouncerThemeV2.typography.bodyMedium else BouncerThemeV2.typography.bodySmall,
         // Neutral for every state. A result used to be win green, which on the Recent tab made every
         // row the same green and so said nothing; the words carry the result.
-        color = colors.textSecondary,
+        color = if (decided) colors.onSurface else colors.textSecondary,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
     )

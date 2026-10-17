@@ -4,31 +4,36 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.R
-import com.tanush.bouncer.ui.components.CoilImage
+import com.tanush.bouncer.ui.theme.rememberTeamInk
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.displayOvers
 
+/** How a finished match marks a side. Live and upcoming rows are [Undecided]. */
+enum class RowResult { Undecided, Won, Lost }
+
 /**
- * A single team row: logo (20dp) + name + score right-aligned.
+ * A single team row: crest + code + score right-aligned.
  *
- * Ink is neutral for both teams. The batting side is marked by weight and by a larger score, never by
- * colour — painting each team's score in its brand colour turned every list into a different hue per
- * row and made the numbers, which are the content, compete with each other.
+ * The code is drawn in the team's colour when the registry knows the side (`rememberTeamInk`), so a
+ * list reads by team at a glance. Scores stay neutral: a column of numbers in a different hue per
+ * row competes with itself. The batting side is marked by weight and a larger score. In a finished
+ * match the loser's code and score step back to the secondary text colour — Cricinfo's treatment —
+ * so the winner reads without reading the result line.
  *
- * [reserveLogoSlot] keeps a logo-less team's name in line with its opponent's when only one side has a
- * crest. A blank score shows nothing — the `—` placeholder it used to print put two dashes on every
- * upcoming row — except [yetToBat], where the absence is itself the news.
+ * A blank score shows nothing — the `—` placeholder it used to print put two dashes on every upcoming
+ * row — except [yetToBat], where the absence is itself the news.
  */
 @Composable
 fun TeamRowV2(
@@ -39,46 +44,49 @@ fun TeamRowV2(
     isBatting: Boolean,
     logoUrl: String?,
     modifier: Modifier = Modifier,
-    reserveLogoSlot: Boolean = false,
     yetToBat: Boolean = false,
+    result: RowResult = RowResult.Undecided,
+    crestSize: Dp = CREST_SIZE,
+    inkScore: Boolean = false,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
+    val teamInk = rememberTeamInk(teamName)
+    val nameInk = if (result == RowResult.Lost) colors.textSecondary else teamInk
+    val scoreInk = when {
+        result == RowResult.Lost -> colors.textSecondary
+        inkScore && isBatting -> teamInk
+        else -> colors.onSurface
+    }
 
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TeamLogoSlot(logoUrl = logoUrl, teamName = teamName, reserve = reserveLogoSlot)
+        TeamCrest(teamName = teamName, logoUrl = logoUrl, size = crestSize, acronym = teamAcronym.ifBlank { null })
+        Spacer(Modifier.width(CREST_GAP))
         Text(
             text = teamAcronym.ifBlank { teamName },
             style = typography.titleMedium,
-            color = colors.onSurface,
+            fontWeight = if (isBatting || result == RowResult.Won) FontWeight.Bold else FontWeight.SemiBold,
+            color = nameInk,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        TeamScoreCell(score = score, overs = overs, isBatting = isBatting, yetToBat = yetToBat)
-    }
-}
-
-@Composable
-private fun TeamLogoSlot(logoUrl: String?, teamName: String, reserve: Boolean) {
-    if (logoUrl != null) {
-        CoilImage(
-            model = logoUrl,
-            contentDescription = teamName,
-            modifier = Modifier.size(LOGO_SIZE),
+        TeamScoreCell(
+            score = score,
+            overs = overs,
+            emphasised = isBatting || result == RowResult.Won,
+            yetToBat = yetToBat,
+            ink = scoreInk,
         )
-        Spacer(Modifier.width(LOGO_GAP))
-    } else if (reserve) {
-        Spacer(Modifier.width(LOGO_SIZE + LOGO_GAP))
     }
 }
 
 /** Score plus overs, right-aligned. Split out to keep [TeamRowV2] under the complexity budget. */
 @Composable
-private fun TeamScoreCell(score: String, overs: String, isBatting: Boolean, yetToBat: Boolean) {
+private fun TeamScoreCell(score: String, overs: String, emphasised: Boolean, yetToBat: Boolean, ink: Color) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     if (score.isBlank()) {
@@ -98,9 +106,9 @@ private fun TeamScoreCell(score: String, overs: String, isBatting: Boolean, yetT
     ) {
         AnimatedScoreText(
             text = score,
-            style = if (isBatting) typography.scoreLarge else typography.scoreMedium,
-            fontWeight = if (isBatting) FontWeight.Bold else FontWeight.SemiBold,
-            color = colors.onSurface,
+            style = if (emphasised) typography.scoreLarge else typography.scoreMedium,
+            fontWeight = if (emphasised) FontWeight.Bold else FontWeight.SemiBold,
+            color = ink,
         )
         // "0.0" is the scraper's not-started sentinel, not a real over count.
         if (overs.isNotBlank() && overs != NOT_STARTED_OVERS) {
@@ -114,6 +122,6 @@ private fun TeamScoreCell(score: String, overs: String, isBatting: Boolean, yetT
     }
 }
 
-private val LOGO_SIZE = 20.dp
-private val LOGO_GAP = 8.dp
+private val CREST_SIZE = 24.dp
+private val CREST_GAP = 10.dp
 private const val NOT_STARTED_OVERS = "0.0"

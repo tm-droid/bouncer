@@ -1,5 +1,8 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FilterAlt
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
@@ -27,7 +30,7 @@ internal fun CommentaryEmptyState(matchStatus: String) {
             R.string.commentary_empty_complete_title to R.string.commentary_empty_complete_subtitle
         else -> R.string.commentary_empty_none_title to R.string.commentary_empty_none_subtitle
     }
-    EmptyStateV2(title = stringResource(title), subtitle = stringResource(subtitle))
+    EmptyStateV2(title = stringResource(title), subtitle = stringResource(subtitle), icon = Icons.Outlined.ChatBubbleOutline)
 }
 
 /**
@@ -45,6 +48,7 @@ internal fun FilterEmptyState(hasOlder: Boolean, isLoadingOlder: Boolean, onLoad
         if (isLoadingOlder) R.string.commentary_loading_older else R.string.commentary_load_older
     EmptyStateV2(
         title = stringResource(R.string.commentary_filter_empty_title),
+        icon = Icons.Outlined.FilterAlt,
         subtitle = stringResource(R.string.commentary_filter_empty_subtitle),
         onRetry = onLoadOlder.takeIf { hasOlder && !isLoadingOlder },
         actionLabel = stringResource(actionLabel),
@@ -98,6 +102,7 @@ internal fun FilteredEmptyState(eventPage: CommentaryEventPage?, feedPaging: Old
 internal fun EventFilterEmptyState(isLoading: Boolean) {
     EmptyStateV2(
         title = stringResource(R.string.commentary_filter_empty_title),
+        icon = Icons.Outlined.FilterAlt,
         subtitle = stringResource(
             if (isLoading) R.string.commentary_loading_older else R.string.commentary_filter_none_subtitle
         ),

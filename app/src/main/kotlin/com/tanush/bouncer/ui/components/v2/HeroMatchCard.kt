@@ -20,10 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.rememberSegmentColors
+import com.tanush.bouncer.ui.theme.rememberTeamInk
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import kotlin.math.roundToInt
 
@@ -35,7 +37,8 @@ import kotlin.math.roundToInt
  * drawn exactly like a live reading.
  *
  * Full-bleed on one tonal step up from the background — no card, no radius, no shadow — and the same
- * row grammar as the list, distinguished by the extra live detail it carries.
+ * row grammar as the list, distinguished by larger crests, the batting side's score in its team
+ * colour, and the extra live detail it carries.
  */
 @Composable
 fun HeroMatchCard(
@@ -56,7 +59,7 @@ fun HeroMatchCard(
         Column(modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.md)) {
             HeroHeaderRow(match)
             Spacer(Modifier.height(spacing.sm))
-            MatchTeamRows(match = match, isLive = match.isLive)
+            MatchTeamRows(match = match, isLive = match.isLive, crestSize = 32.dp, inkScores = true)
             HeroStatusLine(match)
             val balls = match.recentBalls
             if (!balls.isNullOrEmpty()) {
@@ -97,7 +100,8 @@ private fun HeroStatusLine(match: CricketMatch) {
     Spacer(Modifier.height(BouncerThemeV2.spacing.sm))
     Text(
         text = matchStatusText(match.currentStatus),
-        style = BouncerThemeV2.typography.bodyMedium,
+        // The chase line ("India need 42 from 30") is what a live hero is for.
+        style = BouncerThemeV2.typography.titleSmall,
         color = BouncerThemeV2.colors.onSurface,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
@@ -113,8 +117,19 @@ private fun HeroRunRates(match: CricketMatch) {
     val typography = BouncerThemeV2.typography
     Spacer(Modifier.height(BouncerThemeV2.spacing.sm))
     Row(horizontalArrangement = Arrangement.spacedBy(BouncerThemeV2.spacing.lg)) {
-        crr?.let { Text(text = "CRR $it", style = typography.numericSmall, color = colors.textSecondary) }
-        rrr?.let { Text(text = "RRR $it", style = typography.numericSmall, color = colors.textSecondary) }
+        crr?.let { RunRate(label = "CRR", value = it) }
+        rrr?.let { RunRate(label = "RRR", value = it) }
+    }
+}
+
+/** A quiet label and a figure that reads: the label is the same every time, the number is the news. */
+@Composable
+private fun RunRate(label: String, value: String) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(text = label, style = typography.labelMedium, color = colors.textSecondary)
+        Text(text = value, style = typography.numeric, fontWeight = FontWeight.SemiBold, color = colors.onSurface)
     }
 }
 
@@ -140,16 +155,26 @@ private fun HeroWinProbability(match: CricketMatch) {
 
     Spacer(Modifier.height(BouncerThemeV2.spacing.md))
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("$homeLabel ${(home * WIN_PROB_PERCENT).roundToInt()}%", style = typography.numericSmall, color = colors.textSecondary)
+        Text(
+            "$homeLabel ${(home * WIN_PROB_PERCENT).roundToInt()}%",
+            style = typography.numeric,
+            fontWeight = FontWeight.SemiBold,
+            color = rememberTeamInk(match.teams[0].name),
+        )
         Spacer(Modifier.weight(1f))
-        Text("${(away * WIN_PROB_PERCENT).roundToInt()}% $awayLabel", style = typography.numericSmall, color = colors.textSecondary)
+        Text(
+            "${(away * WIN_PROB_PERCENT).roundToInt()}% $awayLabel",
+            style = typography.numeric,
+            fontWeight = FontWeight.SemiBold,
+            color = rememberTeamInk(match.teams[1].name),
+        )
     }
     Spacer(Modifier.height(4.dp))
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(4.dp)
-            .clip(RoundedCornerShape(2.dp))
+            .height(6.dp)
+            .clip(RoundedCornerShape(3.dp))
             .background(
                 Brush.horizontalGradient(
                     home to homeColor,

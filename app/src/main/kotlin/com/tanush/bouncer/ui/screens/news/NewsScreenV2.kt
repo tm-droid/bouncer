@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.screens.news
 
+import androidx.compose.material.icons.outlined.Newspaper
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
@@ -144,7 +146,12 @@ private fun LazyListScope.newsItems(
     // this bug's most visible symptom.
     if (articles.isEmpty()) {
         item(key = "empty") {
-            EmptyStateV2(title = state.error ?: "No news yet", subtitle = emptySubtitle, onRetry = onRetry)
+            EmptyStateV2(
+                title = state.error ?: stringResource(R.string.news_none_yet),
+                subtitle = emptySubtitle,
+                icon = if (state.error != null) Icons.Outlined.CloudOff else Icons.Outlined.Newspaper,
+                onRetry = onRetry,
+            )
         }
         return
     }

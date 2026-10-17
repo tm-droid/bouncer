@@ -420,6 +420,7 @@ fun MatchDetailViewV2(
                     // to tabTitles without a branch here rendered a silently blank page.
                     else -> EmptyStateV2(
                         title = stringResource(R.string.tab_unavailable_title),
+                        icon = Icons.Outlined.CloudOff,
                         subtitle = stringResource(R.string.tab_unavailable_subtitle),
                     )
                 }

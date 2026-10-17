@@ -469,4 +469,12 @@
     <string name="home_empty_live_title">No live matches right now</string>
     <string name="home_empty_live_subtitle">Upcoming fixtures and recent results are a tab away.</string>
     <string name="home_see_upcoming">See upcoming</string>
+    <plurals name="day_match_count">
+        <item quantity="one">%1$s · %2$d match</item>
+        <item quantity="other">%1$s · %2$d matches</item>
+    </plurals>
+    <string name="matches_filter_format">Format</string>
+    <string name="matches_none_in_format">Nothing in %1$s for this filter</string>
+    <string name="matches_none_for_filter">Nothing for this filter yet</string>
+    <string name="news_none_yet">No news yet</string>
 </resources>

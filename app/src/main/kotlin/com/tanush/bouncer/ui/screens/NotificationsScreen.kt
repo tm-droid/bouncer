@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.ui.platform.LocalContext
 import android.text.format.DateUtils
 import androidx.compose.foundation.background
@@ -89,6 +90,7 @@ fun NotificationsScreen(onBack: () -> Unit, onRemindersClick: () -> Unit = {}) {
         if (items.isEmpty()) {
             EmptyStateV2(
                 title = stringResource(R.string.notifications_no_notifications_yet),
+                icon = Icons.Outlined.NotificationsNone,
                 subtitle = stringResource(R.string.notifications_subscribe_to_matches_with_the_bell),
                 modifier = Modifier.padding(innerPadding),
             )

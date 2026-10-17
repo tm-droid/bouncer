@@ -26,6 +26,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -38,7 +39,8 @@ import com.tanush.bouncer.ui.components.NetworkStatusBanner
 import com.tanush.bouncer.ui.components.rememberIsOffline
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
-import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
+import com.tanush.bouncer.ui.components.v2.TextMenuV2
+import com.tanush.bouncer.ui.components.v2.TextTabBarV2
 import com.tanush.bouncer.ui.components.v2.MatchCardV2
 import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
@@ -131,7 +133,7 @@ private fun List<CricketMatch>.withFormat(format: String): List<CricketMatch> =
 private const val BY_DATE = "By date"
 
 /** The status and format chip rows above the list. */
-private const val FILTER_ROWS = 2
+private const val FILTER_ROWS = 1
 private val STATUS_OPTIONS = listOf("Live", "Upcoming", "Recent", BY_DATE)
 private val FORMAT_OPTIONS = listOf("All", "T20", "ODI", "Test", "First Class")
 
@@ -165,26 +167,20 @@ private fun AllMatchesList(
         modifier = Modifier.fillMaxSize().bouncerScreenBackground(),
         contentPadding = PaddingValues(vertical = spacing.md),
     ) {
-        item(key = "status_filter") {
-            FilterChipRowV2(
-                items = STATUS_OPTIONS,
-                selectedItem = if (state.selectedStatus == BY_DATE) BY_DATE else mapStatusToChip(state.selectedStatus),
-                onItemSelected = onStatusSelected,
+        item(key = "filters") {
+            AllMatchesFilters(
+                selectedStatus = if (state.selectedStatus == BY_DATE) BY_DATE else mapStatusToChip(state.selectedStatus),
+                selectedFormat = state.selectedFormat,
+                onStatusSelected = onStatusSelected,
+                onFormatSelected = onFormatSelected,
             )
-            Spacer(Modifier.height(spacing.xs))
-        }
-        item(key = "format_filter") {
-            FilterChipRowV2(
-                items = FORMAT_OPTIONS,
-                selectedItem = state.selectedFormat,
-                onItemSelected = onFormatSelected,
-            )
-            Spacer(Modifier.height(spacing.md))
+            Spacer(Modifier.height(spacing.sm))
         }
 
         when {
             state.showSkeleton -> items(4, key = { "shimmer_$it" }) {
-                ShimmerMatchCard(modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs))
+                // The same row padding the real list uses, so first paint does not jump.
+                ShimmerMatchCard(modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.rowVertical))
             }
             state.showEmpty -> item(key = "empty") {
                 AllMatchesEmptyState(error = state.error, selectedFormat = state.selectedFormat, onRetry = onRetry)
@@ -205,6 +201,33 @@ private fun AllMatchesList(
     }
 }
 
+/**
+ * Status as text tabs and format as one menu, the way Home filters. Two chip rows here read as a
+ * different app from the screen that links to it.
+ */
+@Composable
+private fun AllMatchesFilters(
+    selectedStatus: String,
+    selectedFormat: String,
+    onStatusSelected: (String) -> Unit,
+    onFormatSelected: (String) -> Unit,
+) {
+    TextTabBarV2(
+        tabs = STATUS_OPTIONS,
+        selectedIndex = STATUS_OPTIONS.indexOf(selectedStatus).coerceAtLeast(0),
+        onSelect = { onStatusSelected(STATUS_OPTIONS[it]) },
+        trailing = {
+            TextMenuV2(
+                label = if (selectedFormat == "All") stringResource(R.string.matches_filter_format) else selectedFormat,
+                options = FORMAT_OPTIONS,
+                selected = selectedFormat,
+                optionLabel = { it },
+                onSelect = onFormatSelected,
+            )
+        },
+    )
+}
+
 @Composable
 private fun AllMatchesEmptyState(error: LoadingState.Error?, selectedFormat: String, onRetry: () -> Unit) {
     if (error != null) {
@@ -217,7 +240,11 @@ private fun AllMatchesEmptyState(error: LoadingState.Error?, selectedFormat: Str
     } else {
         EmptyStateV2(
             title = stringResource(R.string.matches_none),
-            subtitle = if (selectedFormat == "All") "No matches found" else "No $selectedFormat matches found",
+            subtitle = if (selectedFormat == "All") {
+                stringResource(R.string.matches_none_for_filter)
+            } else {
+                stringResource(R.string.matches_none_in_format, selectedFormat)
+            },
             icon = Icons.Outlined.SportsCricket,
         )
     }
@@ -251,7 +278,9 @@ private fun LazyListScope.matchesByDayItems(matches: List<CricketMatch>, onMatch
     val today = LocalDate.now(zone)
     groupByDay(matches, zone).forEach { (day, dayMatches) ->
         item(key = "day_$day") {
-            SectionHeaderV2(title = dayLabel(day, today))
+            SectionHeaderV2(
+                title = pluralStringResource(R.plurals.day_match_count, dayMatches.size, dayLabel(day, today), dayMatches.size),
+            )
         }
         items(dayMatches, key = { "day_${day}_match_${it.id}" }) { match ->
             MatchCardV2(match = match, onClick = { onMatchClick(match) }, modifier = Modifier.fillMaxWidth())
