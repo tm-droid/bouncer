@@ -117,7 +117,11 @@ class BouncerPreferencesTest {
     }
 
     private companion object {
-        const val RETRIES = 50
+        // A ten-second ceiling, not one: CI runs this suite beside lint and R8 on the same runner,
+        // and a one-second budget for a write on Dispatchers.IO to reach disk failed there twice
+        // in a row on a branch that never touched preferences. The poll returns as soon as the
+        // value lands, so a healthy run is no slower.
+        const val RETRIES = 500
         const val POLL_MS = 20L
     }
 }
