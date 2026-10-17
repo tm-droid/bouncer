@@ -1,65 +1,70 @@
 package com.tanush.bouncer.ui.components.premium
 
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.R
-import com.tanush.bouncer.models.Scorecard
-import com.tanush.bouncer.models.Innings
-import com.tanush.bouncer.models.BatsmanStats
-import com.tanush.bouncer.models.BowlerStats
-import com.tanush.bouncer.models.FallOfWicket
-import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.analysis.MatchProjections
-import com.tanush.bouncer.ui.components.BowlerPerformance
-import com.tanush.bouncer.ui.components.BowlingPerformanceCard
-import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.models.Innings
+import com.tanush.bouncer.models.Scorecard
+import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
+import com.tanush.bouncer.ui.components.v2.TeamCrest
 import com.tanush.bouncer.ui.screens.matchdetail.v2.WagonWheelRow
 import com.tanush.bouncer.ui.screens.matchdetail.v2.wagonWheelsFor
+import com.tanush.bouncer.ui.theme.rememberTeamInk
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import com.tanush.bouncer.utils.parseRuns
-import java.util.Locale
 
+/**
+ * The full scorecard for one innings at a time, chosen from a row of innings tabs.
+ *
+ * Rows on one surface split by hairlines, figures in tabular digits, and colour only where it
+ * identifies a team. It used to draw each row as its own bordered box, the strike rate and economy
+ * in gold (the interactive colour), a made-up zig-zag "sparkline" under every bowler, and a second
+ * bowling card claiming every bowler had bowled zero dot balls — a figure the app does not have.
+ */
 @Composable
 fun PremiumScorecardTab(
     scorecard: Scorecard?,
     modifier: Modifier = Modifier
 ) {
-    // Whether the match is in play; a finished one has no required rate and nothing live.
-    val isLive = LocalScorecardIsLive.current
-    val hierarchy = BouncerDesignSystem.hierarchy
+    val colors = BouncerThemeV2.colors
     if (scorecard == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = hierarchy.secondary.primary)
+            CircularProgressIndicator(color = colors.primary)
         }
         return
     }
     if (scorecard.innings.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(stringResource(R.string.common_no_scorecard_available), color = TextSecondary)
+            Text(stringResource(R.string.common_no_scorecard_available), color = colors.textSecondary)
         }
         return
     }
@@ -67,438 +72,179 @@ fun PremiumScorecardTab(
     // Opens on the innings being played, not the first: during a chase the first is finished.
     // Keyed on the count, so a new innings starting brings the reader to it. Saveable, so a swipe
     // to another tab and back does not reset it.
-    var selectedInningsIndex by rememberSaveable(scorecard.innings.size) {
-        mutableIntStateOf(scorecard.innings.lastIndex)
-    }
-    val innings = scorecard.innings.getOrNull(selectedInningsIndex)
-    val inningsLabels = inningsLabels(scorecard.innings.map { it.teamName })
+    var selected by rememberSaveable(scorecard.innings.size) { mutableIntStateOf(scorecard.innings.lastIndex) }
+    val innings = scorecard.innings.getOrNull(selected) ?: return
+    val isLive = LocalScorecardIsLive.current
+    val battingNow = isLive && selected == scorecard.innings.lastIndex
 
     Column(modifier = modifier.fillMaxSize()) {
-        // Quick Score Summary (matching mockup)
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "${innings?.teamName ?: ""} ${innings?.score ?: ""} (${innings?.overs ?: ""})",
-                color = TextPrimary,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.5).sp
-            )
-            // Calculate CRR from actual innings data
-            val currentRunRate = calculateCurrentRunRate(innings)
-            // A finished chase read "REQ: 50.00" (248 needed off the last half-over).
-            val requiredRunRate = if (isLive) calculateRequiredRunRate(scorecard, selectedInningsIndex) else null
-            Text(
-                text = if (requiredRunRate != null) {
-                    "CRR: $currentRunRate • REQ: $requiredRunRate"
-                } else {
-                    "CRR: $currentRunRate"
-                },
-                color = hierarchy.secondary.primary,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 1.sp
-            )
+        if (scorecard.innings.size > 1) {
+            InningsTabs(scorecard.innings, selected, onSelect = { selected = it })
         }
-
-        // Innings Switcher (Mockup style)
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(BouncerThemeV2.colors.surfaceVariant)
-                .border(0.5.dp, GlassSurface, RoundedCornerShape(12.dp))
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            scorecard.innings.forEachIndexed { index, inn ->
-                val isSelected = selectedInningsIndex == index
-                Button(
-                    onClick = { selectedInningsIndex = index },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isSelected) GoldPrimary else Color.Transparent,
-                        contentColor = if (isSelected) BouncerThemeV2.colors.onPrimary else TextSecondary
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp)
-                ) {
-                    Text(
-                        text = inningsLabels[index],
-                        fontSize = 13.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 140.dp) // Standardized clearance
+            contentPadding = PaddingValues(bottom = 140.dp),
         ) {
-            // Batting Section
-            item { 
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.width(2.dp).height(16.dp).background(hierarchy.secondary.primary))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.premium_batting), color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    }
-                    // Only on the innings being played: it was drawn on every innings of every
-                    // match, finished ones included.
-                    if (isLive && selectedInningsIndex == scorecard.innings.lastIndex) {
-                        Surface(color = BouncerThemeV2.colors.surfaceVariant, shape = RoundedCornerShape(4.dp), border = BorderStroke(1.dp, GlassSurface)) {
-                            Text(
-                                stringResource(R.string.premium_live),
-                                color = TextSecondary,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-                }
+            item(key = "summary") {
+                InningsSummary(innings, requiredRate = if (battingNow) calculateRequiredRunRate(scorecard, selected) else null)
             }
-            
-            item { BattingTableHeader() }
-            
-            // Indexed keys: a scorecard can legitimately repeat a name (and a scraped row can
-            // duplicate one outright), and a batsman and a bowler in the same LazyColumn collided
-            // on the bare name — a duplicate key is a hard crash, not a rendering glitch.
-            itemsIndexed(
-                innings?.batsmen ?: emptyList(),
-                key = { index, batsman -> "bat_${index}_${batsman.name}" },
-            ) { _, batsman ->
-                BattingRow(batsman)
-            }
-            
-            // Extras
-            item {
-                ExtrasRow(innings?.extras ?: "0 (wd 0, nb 0, lb 0, b 0)", innings)
-            }
-
-            // Fall of Wickets
-            if (innings != null && innings.fallOfWickets.isNotEmpty()) {
-                item { SectionHeader("Fall of Wickets") }
-                item {
-                    FallOfWicketsCarousel(innings.fallOfWickets)
-                }
-            }
-
-            // Where the runs went — only on the matches Cricinfo scores by zone.
-            val wheels = wagonWheelsFor(scorecard.wagon, selectedInningsIndex + 1)
+            battingItems(innings, battingNow)
+            fallOfWicketItems(innings)
+            val wheels = wagonWheelsFor(scorecard.wagon, selected + 1)
             if (wheels.isNotEmpty()) {
-                item(key = "wagon_header") { SectionHeader(stringResource(R.string.scorecard_wagon_title)) }
+                item(key = "wagon_header") { SectionHeaderV2(title = stringResource(R.string.scorecard_wagon_title)) }
                 item(key = "wagon_wheels") { WagonWheelRow(wheels) }
             }
-
-            // Partnerships
-            if (innings != null && innings.partnerships.isNotEmpty()) {
-                item { SectionHeader("Partnerships") }
-                item {
-                    PartnershipBreakdownCard(
-                        teamName = innings.teamName,
-                        // This mapping had never run: partnerships parsed empty until the scraper
-                        // was pointed at scorecard-pship-grid. Run rate and wicket number were
-                        // constants here, and the card renders the first of them ("RR: 0.00") —
-                        // both are derivable from what the row actually carries.
-                        partnerships = innings.partnerships.mapIndexed { index, p ->
-                            val totalRuns = p.runs.toIntOrNull() ?: 0
-                            val totalBalls = p.balls.toIntOrNull() ?: 0
-                            PartnershipEntry(
-                                batter1Name = p.player1,
-                                batter1Runs = p.contribution1.toIntOrNull() ?: 0,
-                                batter1Balls = 0,
-                                batter2Name = p.player2,
-                                batter2Runs = p.contribution2.toIntOrNull() ?: 0,
-                                batter2Balls = 0,
-                                totalRuns = totalRuns,
-                                totalBalls = totalBalls,
-                                runRate = MatchProjections.currentRunRate(totalRuns, totalBalls) ?: 0.0,
-                                wicketNumber = index + 1,
-                            )
-                        }
-                    )
-                }
-            }
-
-            // Bowling Section
-            item { SectionHeader("Bowling") }
-            item { BowlingTableHeader() }
-            itemsIndexed(
-                innings?.bowlers ?: emptyList(),
-                key = { index, bowler -> "bowl_${index}_${bowler.name}" },
-            ) { _, bowler ->
-                BowlingRow(bowler)
-            }
-
-            // Premium bowling analytics card
-            val bowlers = innings?.bowlers
-            if (!bowlers.isNullOrEmpty()) {
-                item(key = "bowling_performance_card") {
-                    BowlingPerformanceCard(
-                        teamName = innings?.teamName ?: "",
-                        bowlers = bowlers.map { b ->
-                            BowlerPerformance(
-                                name = b.name,
-                                imageUrl = b.profileUrl.ifBlank { null },
-                                overs = b.overs.toFloatOrNull() ?: 0f,
-                                maidens = b.maidens.toIntOrNull() ?: 0,
-                                runs = b.runs.toIntOrNull() ?: 0,
-                                wickets = b.wickets.toIntOrNull() ?: 0,
-                                economy = b.economy.toFloatOrNull() ?: 0f,
-                                dots = 0,
-                                wides = b.wides.toIntOrNull() ?: 0,
-                                noBalls = b.noBalls.toIntOrNull() ?: 0,
-                            )
-                        },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                }
-            }
+            partnershipItems(innings)
+            bowlingItems(innings)
         }
     }
 }
 
-@Composable
-private fun SectionHeader(title: String) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(modifier = Modifier.width(2.dp).height(16.dp).background(hierarchy.secondary.primary))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(title, color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun BattingTableHeader() {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    Row(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
-            .background(GlassSurface)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            stringResource(R.string.premium_batter),
-            modifier = Modifier.weight(3f),
-            color = TextMuted,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold
+private fun LazyListScope.battingItems(innings: Innings, battingNow: Boolean) {
+    item(key = "batting_header") { SectionHeaderV2(title = stringResource(R.string.premium_batting)) }
+    item(key = "batting_columns") { BattingColumns() }
+    val topScore = innings.batsmen.maxOfOrNull { it.runs.toIntOrNull() ?: 0 } ?: 0
+    // Indexed keys: a scorecard can legitimately repeat a name (and a scraped row can duplicate one
+    // outright), and a batsman and a bowler in the same LazyColumn collided on the bare name — a
+    // duplicate key is a hard crash, not a rendering glitch.
+    itemsIndexed(innings.batsmen, key = { index, b -> "bat_${index}_${b.name}" }) { _, batsman ->
+        BattingRow(
+            batsman = batsman,
+            battingNow = battingNow,
+            isTopScore = topScore > 0 && batsman.runs.toIntOrNull() == topScore,
+            teamName = innings.teamName,
         )
-        Text("R", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("B", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("4s", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("6s", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("SR", modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = hierarchy.secondary.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    }
+    if (innings.extras.isNotBlank()) item(key = "extras") { ExtrasRow(innings.extras) }
+    item(key = "total") { TotalRow(innings) }
+}
+
+private fun LazyListScope.fallOfWicketItems(innings: Innings) {
+    if (innings.fallOfWickets.isEmpty()) return
+    item(key = "fow_header") { SectionHeaderV2(title = stringResource(R.string.scorecard_fall_of_wickets)) }
+    itemsIndexed(innings.fallOfWickets, key = { index, f -> "fow_${index}_${f.score}_${f.batsman}" }) { index, fow ->
+        FallOfWicketRow(fow = fow, number = if (fow.number > 0) fow.number else index + 1)
     }
 }
 
-@Composable
-private fun BattingRow(batsman: BatsmanStats) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val isNotOut = batsman.dismissal.lowercase().contains("not out") || batsman.dismissal.isEmpty()
-    
-    Box(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .fillMaxWidth()
-            .background(if (isNotOut) GlassSurface else BouncerThemeV2.colors.surfaceVariant)
-            .border(0.5.dp, GlassSurface)
-            .padding(horizontal = 12.dp, vertical = 12.dp)
-    ) {
-        if (isNotOut) {
-            Box(modifier = Modifier.matchParentSize().drawBehind {
-                drawRect(hierarchy.secondary.primary, size = Size(2.dp.toPx(), size.height))
-            })
-        }
-        
-        Row(horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(3f)) {
-                Text(
-                    text = batsman.name + if (isNotOut) " *" else "",
-                    color = TextPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+private fun LazyListScope.partnershipItems(innings: Innings) {
+    if (innings.partnerships.isEmpty()) return
+    item(key = "partnership_header") { SectionHeaderV2(title = stringResource(R.string.scorecard_partnerships)) }
+    item(key = "partnerships") {
+        PartnershipBreakdownCard(
+            teamName = innings.teamName,
+            partnerships = innings.partnerships.mapIndexed { index, p ->
+                val totalRuns = p.runs.toIntOrNull() ?: 0
+                val totalBalls = p.balls.toIntOrNull() ?: 0
+                PartnershipEntry(
+                    batter1Name = p.player1,
+                    batter1Runs = p.contribution1.toIntOrNull() ?: 0,
+                    batter1Balls = 0,
+                    batter2Name = p.player2,
+                    batter2Runs = p.contribution2.toIntOrNull() ?: 0,
+                    batter2Balls = 0,
+                    totalRuns = totalRuns,
+                    totalBalls = totalBalls,
+                    runRate = MatchProjections.currentRunRate(totalRuns, totalBalls) ?: 0.0,
+                    wicketNumber = index + 1,
                 )
-                Text(
-                    text = if (isNotOut) "Batting" else batsman.dismissal,
-                    color = if (isNotOut) BouncerThemeV2.colors.win else TextMuted,
-                    fontSize = 10.sp,
-                    fontStyle = if (!isNotOut) FontStyle.Italic else FontStyle.Normal
-                )
-            }
-            Text(batsman.runs, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text(batsman.balls, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
-            Text(batsman.fours, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
-            Text(batsman.sixes, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
-            Text(batsman.strikeRate, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = hierarchy.secondary.primary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun ExtrasRow(extras: String, innings: Innings?) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val crr = calculateCurrentRunRate(innings)
-    Row(
-        modifier = Modifier
-            .padding(16.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(GlassSurface)
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text("Extras: $extras", color = TextMuted, fontSize = 12.sp)
-        Text("CRR $crr", color = hierarchy.secondary.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-private fun calculateCurrentRunRate(innings: Innings?): String {
-    if (innings == null) return "-"
-    val runs = parseRuns(innings.score)
-    val oversParts = innings.overs.replace("Ov", "").trim().split(".")
-    val completedOvers = oversParts.getOrNull(0)?.toIntOrNull() ?: 0
-    val balls = oversParts.getOrNull(1)?.toIntOrNull() ?: 0
-    val ballsBowled = completedOvers * CricketConstants.BALLS_PER_OVER + balls
-    return MatchProjections.currentRunRate(runs, ballsBowled)
-        ?.let { String.format(Locale.US, "%.2f", it) } ?: "-"
-}
-
-private fun calculateRequiredRunRate(scorecard: Scorecard, currentInningsIndex: Int): String? {
-    if (currentInningsIndex != 1 || scorecard.innings.size < 2) return null
-    val firstInnings = scorecard.innings.getOrNull(0) ?: return null
-    val secondInnings = scorecard.innings.getOrNull(1) ?: return null
-    val targetRuns = parseRuns(firstInnings.score) + 1
-    val currentRuns = parseRuns(secondInnings.score)
-    // Infer format from first innings overs: ≤20 completed overs → T20, else ODI
-    val firstInningsOvers = firstInnings.overs.replace("Ov", "").trim()
-        .split(".").getOrNull(0)?.toIntOrNull() ?: 50
-    val totalBalls = if (firstInningsOvers <= CricketConstants.T20_INNINGS_BALLS / CricketConstants.BALLS_PER_OVER) {
-        CricketConstants.T20_INNINGS_BALLS
-    } else {
-        CricketConstants.ODI_INNINGS_BALLS
-    }
-    val secondOversParts = secondInnings.overs.replace("Ov", "").trim().split(".")
-    val completedOvers = secondOversParts.getOrNull(0)?.toIntOrNull() ?: 0
-    val balls = secondOversParts.getOrNull(1)?.toIntOrNull() ?: 0
-    val ballsBowled = completedOvers * CricketConstants.BALLS_PER_OVER + balls
-    return MatchProjections.requiredRunRate(targetRuns, currentRuns, ballsBowled, totalBalls)
-        ?.let { String.format(Locale.US, "%.2f", it) }
-}
-
-// Takes the model, not a formatted string. The caller used to format "score (batsman, overs)" and
-// this split it back apart on "(" — a format-then-parse round trip whose only possible outcomes are
-// the original data or a worse version of it, and which loses the batsman on any name with a
-// bracket in it.
-@Composable
-private fun FallOfWicketsCarousel(fow: List<FallOfWicket>) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        itemsIndexed(fow, key = { index, entry -> "fow_${index}_${entry.score}_${entry.batsman}" }) { _, entry ->
-            val score = entry.score.ifBlank { "-" }
-            val detail = listOf(entry.batsman, entry.overs).filter { it.isNotBlank() }.joinToString(", ")
-
-            Box(
-                modifier = Modifier
-                    .width(140.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(BouncerThemeV2.colors.surfaceVariant)
-                    .border(0.5.dp, GlassSurface, RoundedCornerShape(12.dp))
-                    .padding(12.dp)
-            ) {
-                Column {
-                    Text(stringResource(R.string.premium_wicket), color = TextMuted, fontSize = 10.sp)
-                    Text(score, color = hierarchy.secondary.primary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text(detail, color = TextSecondary, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BowlingTableHeader() {
-    Row(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
-            .background(GlassSurface)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            stringResource(R.string.premium_bowler),
-            modifier = Modifier.weight(3.5f),
-            color = TextMuted,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold
+            },
         )
-        Text("O", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("M", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("R", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("W", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("ECON", modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+private fun LazyListScope.bowlingItems(innings: Innings) {
+    if (innings.bowlers.isEmpty()) return
+    item(key = "bowling_header") { SectionHeaderV2(title = stringResource(R.string.scorecard_bowling)) }
+    item(key = "bowling_columns") { BowlingColumns() }
+    val best = bestBowlerIndex(innings)
+    itemsIndexed(innings.bowlers, key = { index, b -> "bowl_${index}_${b.name}" }) { index, bowler ->
+        BowlingRow(bowler, isBest = index == best)
+    }
+}
+
+/** One tab per innings with the batting side's crest; the selected tab in the interactive gold. */
+@Composable
+private fun InningsTabs(innings: List<Innings>, selected: Int, onSelect: (Int) -> Unit) {
+    val colors = BouncerThemeV2.colors
+    val labels = inningsLabels(innings.map { it.teamName })
+    Row(modifier = Modifier.fillMaxWidth().background(colors.surface)) {
+        innings.forEachIndexed { index, inn ->
+            InningsTab(
+                teamName = inn.teamName,
+                label = labels[index],
+                isSelected = index == selected,
+                onClick = { onSelect(index) },
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
 @Composable
-private fun BowlingRow(bowler: BowlerStats) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    Row(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .fillMaxWidth()
-            .background(BouncerThemeV2.colors.surfaceVariant)
-            .border(0.5.dp, GlassSurface)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+private fun InningsTab(teamName: String, label: String, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    val colors = BouncerThemeV2.colors
+    Column(
+        modifier = modifier.clickable(role = Role.Tab, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(modifier = Modifier.weight(3.5f)) {
-            Text(bowler.name, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            // Sparkline
-            Canvas(modifier = Modifier.size(64.dp, 16.dp).padding(top = 4.dp)) {
-                val path = Path().apply {
-                    moveTo(0f, size.height * 0.5f)
-                    lineTo(size.width * 0.1f, size.height * 0.8f)
-                    lineTo(size.width * 0.2f, size.height * 0.2f)
-                    lineTo(size.width * 0.3f, size.height * 0.5f)
-                    lineTo(size.width * 0.4f, size.height * 0.4f)
-                    lineTo(size.width * 0.5f, size.height * 0.6f)
-                    lineTo(size.width * 0.6f, size.height * 0.3f)
-                    lineTo(size.width * 0.7f, size.height * 0.5f)
-                    lineTo(size.width * 0.8f, size.height * 0.2f)
-                    lineTo(size.width * 0.9f, size.height * 0.8f)
-                    lineTo(size.width, size.height * 0.5f)
-                }
-                drawPath(path, hierarchy.secondary.primary, style = Stroke(width = 1.5.dp.toPx()))
+        Row(
+            modifier = Modifier.padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            TeamCrest(teamName = teamName, size = 18.dp)
+            Text(
+                text = label,
+                style = BouncerThemeV2.typography.labelLarge,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) colors.primaryText else colors.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .background(if (isSelected) colors.primary else colors.divider),
+        )
+    }
+}
+
+@Composable
+private fun InningsSummary(innings: Innings, requiredRate: String?) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.md)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TeamCrest(teamName = innings.teamName, size = 28.dp)
+            Spacer(Modifier.width(spacing.md))
+            Text(
+                text = innings.teamName,
+                style = typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = rememberTeamInk(innings.teamName),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Text(text = innings.score, style = typography.scoreLarge, fontWeight = FontWeight.Bold, color = colors.onSurface)
+            if (innings.overs.isNotBlank()) {
+                Spacer(Modifier.width(spacing.xs))
+                Text(text = "(${innings.overs.replace("Ov", "").trim()})", style = typography.numericSmall, color = colors.textSecondary)
             }
         }
-        Text(bowler.overs, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextPrimary, fontSize = 13.sp)
-        Text(bowler.maidens, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
-        Text(bowler.runs, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
-        Text(bowler.wickets, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        Text(bowler.economy, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = hierarchy.secondary.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        val rates = listOfNotNull(
+            calculateCurrentRunRate(innings).takeIf { it != "-" }?.let { stringResource(R.string.scorecard_crr, it) },
+            requiredRate?.let { stringResource(R.string.scorecard_req, it) },
+        )
+        if (rates.isNotEmpty()) {
+            Spacer(Modifier.height(spacing.xs))
+            Text(text = rates.joinToString("  ·  "), style = typography.numericSmall, color = colors.textSecondary)
+        }
     }
+    HorizontalDivider(color = colors.divider)
 }

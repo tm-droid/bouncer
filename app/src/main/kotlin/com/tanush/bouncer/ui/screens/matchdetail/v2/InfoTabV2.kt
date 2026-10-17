@@ -1,5 +1,10 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
+import com.tanush.bouncer.ui.theme.rememberTeamInk
+import com.tanush.bouncer.ui.components.v2.TeamCrest
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -70,23 +75,13 @@ fun InfoTabV2(
         contentPadding = PaddingValues(horizontal = spacing.lg, vertical = spacing.md),
         verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
-        // Current status card (prominent)
-        if (match.currentStatus.isNotBlank()) {
-            item(key = "status_card") {
+        // Who is playing, first: crest, full name in the side's colour, and its code. The status card
+        // that used to open this tab restated the fixed header's status line, in live red.
+        if (match.teams.size >= 2) {
+            item(key = "teams_card") {
                 BouncerCard {
-                    Column(modifier = Modifier.padding(spacing.md)) {
-                        Text(
-                            text = stringResource(R.string.info_status),
-                            style = typography.labelMedium,
-                            color = colors.textSecondary,
-                        )
-                        Spacer(Modifier.height(spacing.xs))
-                        Text(
-                            text = match.currentStatus,
-                            style = typography.titleSmall,
-                            color = if (match.isLive) colors.live else colors.onSurface,
-                            fontWeight = FontWeight.Bold,
-                        )
+                    Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.md)) {
+                        match.teams.take(2).forEach { team -> TeamIdentityRow(team.name, team.acronym, team.logoUrl) }
                     }
                 }
             }
@@ -117,7 +112,7 @@ fun InfoTabV2(
         }
         item(key = "info_card") {
             BouncerCard {
-                val pad = Modifier.padding(horizontal = spacing.md)
+                val pad = Modifier
                 Spacer(Modifier.height(spacing.sm))
                 StatRowV2(label = stringResource(R.string.match_info_series), value = match.matchTitle, modifier = pad)
                 StatRowV2(label = stringResource(R.string.match_info_format), value = match.matchType, modifier = pad)
@@ -173,49 +168,9 @@ fun InfoTabV2(
                         StatRowV2(
                             label = stringResource(R.string.match_info_info),
                             value = displayInfo,
-                            modifier = Modifier.padding(horizontal = spacing.md),
                             showDivider = false,
                         )
                         Spacer(Modifier.height(spacing.sm))
-                    }
-                }
-            }
-        }
-
-        // Teams section
-        if (match.teams.size >= 2) {
-            item(key = "teams_header") {
-                SectionHeaderV2(title = stringResource(R.string.match_info_teams))
-            }
-            item(key = "teams_card") {
-                BouncerCard {
-                    Column(modifier = Modifier.padding(spacing.md)) {
-                        match.teams.forEachIndexed { idx, team ->
-                            val displayName = team.name
-                            val score = team.score
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = displayName,
-                                    style = typography.titleSmall,
-                                    color = colors.onSurface,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                if (score.isNotBlank()) {
-                                    Text(
-                                        text = score,
-                                        style = typography.scoreMedium,
-                                        color = colors.onSurface,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                }
-                            }
-                            if (idx < match.teams.size - 1) {
-                                Spacer(Modifier.height(spacing.sm))
-                            }
-                        }
                     }
                 }
             }
@@ -233,7 +188,7 @@ fun InfoTabV2(
                 SectionHeaderV2(title = stringResource(R.string.match_info_meetings, match.matchType))
             }
             item(key = "meetings_card") {
-                val pad = Modifier.padding(horizontal = spacing.md)
+                val pad = Modifier
                 BouncerCard {
                     Spacer(Modifier.height(spacing.sm))
                     StatRowV2(
@@ -312,7 +267,7 @@ private fun ForecastCard(forecast: ForecastSummary) {
     val spacing = BouncerThemeV2.spacing
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
-    val pad = Modifier.padding(horizontal = spacing.md)
+    val pad = Modifier
     val fetched = remember(forecast.fetchedAt) {
         DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(forecast.fetchedAt))
     }
@@ -350,7 +305,7 @@ private fun ForecastCard(forecast: ForecastSummary) {
 @Composable
 private fun GroundCard(ground: MatchContext.Venue) {
     val spacing = BouncerThemeV2.spacing
-    val pad = Modifier.padding(horizontal = spacing.md)
+    val pad = Modifier
     val percent = ground.scoringPercent()
     BouncerCard {
         Spacer(Modifier.height(spacing.sm))
@@ -380,4 +335,27 @@ private fun extractDayInfo(status: String, matchType: String): String {
     if (!matchType.lowercase().contains("test")) return ""
     val dayMatch = Regex("Day\\s+(\\d+)", RegexOption.IGNORE_CASE).find(status)
     return dayMatch?.value ?: ""
+}
+
+@Composable
+private fun TeamIdentityRow(name: String, acronym: String, logoUrl: String?) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TeamCrest(teamName = name, logoUrl = logoUrl, size = 36.dp, acronym = acronym.ifBlank { null })
+        Spacer(Modifier.width(BouncerThemeV2.spacing.md))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = name,
+                style = typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = rememberTeamInk(name),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (acronym.isNotBlank() && !acronym.equals(name, ignoreCase = true)) {
+                Text(text = acronym, style = typography.labelMedium, color = colors.textSecondary)
+            }
+        }
+    }
 }

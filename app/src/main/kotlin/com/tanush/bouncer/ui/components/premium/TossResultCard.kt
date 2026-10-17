@@ -1,37 +1,23 @@
 package com.tanush.bouncer.ui.components.premium
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Autorenew
-import androidx.compose.material.icons.filled.GpsFixed
-import androidx.compose.material.icons.filled.Sports
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.R
-import com.tanush.bouncer.ui.components.BouncerImportance
-import com.tanush.bouncer.ui.components.CoilImage
-import com.tanush.bouncer.ui.components.GlassCard
-import com.tanush.bouncer.ui.theme.*
-import com.tanush.bouncer.ui.theme.BouncerDesignSystem
-
-/**
- * Toss Result Card - Minimalist Technical Readout.
- * Downgraded to MINIMAL importance as it is a one-time meta-event.
- */
+import com.tanush.bouncer.ui.components.v2.BouncerCard
+import com.tanush.bouncer.ui.components.v2.TeamCrest
+import com.tanush.bouncer.ui.theme.rememberTeamInk
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 data class TossDetails(
     val team1Name: String,
@@ -40,96 +26,53 @@ data class TossDetails(
     val team2Logo: String,
     val tossWinner: String,
     val decision: String, // "bat" or "bowl"
-    val team1Color: Color = StatusInfo,
-    val team2Color: Color = StatusLive,
 )
 
+/**
+ * Who won the toss and what they chose: the winner's crest, their name in their colour, and a
+ * sentence. The winner used to be drawn in hardcoded blue or live-red caps beside an icon, with the
+ * crests it was handed never shown, on fills of 2% white that vanished in light mode.
+ */
 @Composable
 fun TossResultCard(
     tossDetails: TossDetails,
     modifier: Modifier = Modifier,
 ) {
-    val colors = BouncerDesignSystem.colors
-    val isTeam1Winner = tossDetails.tossWinner == tossDetails.team1Name
-    val winnerColor = if (isTeam1Winner) tossDetails.team1Color else tossDetails.team2Color
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    val winnerLogo = when (tossDetails.tossWinner) {
+        tossDetails.team1Name -> tossDetails.team1Logo
+        tossDetails.team2Name -> tossDetails.team2Logo
+        else -> ""
+    }
 
-    GlassCard(
-        modifier = modifier.fillMaxWidth(),
-        importance = BouncerImportance.MINIMAL,
-        cornerRadius = 14.dp
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+    BouncerCard(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(spacing.lg),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Header - Subdued
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Autorenew,
-                    contentDescription = null,
-                    tint = TextTertiary,
-                    modifier = Modifier.size(14.dp),
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
+            TeamCrest(teamName = tossDetails.tossWinner, logoUrl = winnerLogo.ifBlank { null }, size = 36.dp)
+            Spacer(Modifier.width(spacing.md))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.toss_toss_result),
-                    color = TextTertiary,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.2.sp,
+                    style = typography.labelMedium,
+                    color = colors.textSecondary,
                 )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Decision Banner - Clean & Focused
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color.White.copy(alpha = 0.02f))
-                    .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(10.dp))
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(winnerColor.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (tossDetails.decision == "bat") Icons.Default.Sports else Icons.Default.GpsFixed,
-                        contentDescription = if (tossDetails.decision == "bat") "Batting" else "Bowling",
-                        tint = winnerColor,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Column {
-                    Text(
-                        text = tossDetails.tossWinner.uppercase(),
-                        color = winnerColor.copy(alpha = 0.9f),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Black,
-                    )
-                    Text(
-                        text = "elected to ${tossDetails.decision.uppercase()} first",
-                        color = TextSecondary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                Text(
+                    text = tossDetails.tossWinner,
+                    style = typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = rememberTeamInk(tossDetails.tossWinner),
+                )
+                Text(
+                    text = stringResource(
+                        if (tossDetails.decision == "bat") R.string.toss_chose_to_bat else R.string.toss_chose_to_bowl,
+                    ),
+                    style = typography.bodyMedium,
+                    color = colors.onSurface,
+                )
             }
         }
     }

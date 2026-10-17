@@ -298,7 +298,7 @@ private fun WicketTimeline(
                 Text(
                     text = "$num",
                     color = if (num <= wickets.size) StatusLive else TextTertiary.copy(alpha = 0.5f),
-                    fontSize = 9.sp,
+                    fontSize = 11.sp,
                     fontWeight = if (num <= wickets.size) FontWeight.Bold else FontWeight.Normal
                 )
             }
@@ -361,7 +361,7 @@ private fun WicketCard(
                     Text(
                         text = "(${wicket.overs} ov)",
                         color = colors.textTertiary,
-                        fontSize = 10.sp
+                        fontSize = 12.sp
                     )
                 }
             }
@@ -398,7 +398,7 @@ private fun WicketCard(
                     Text(
                         text = wicket.dismissalType.shortLabel,
                         color = getDismissalColor(wicket.dismissalType),
-                        fontSize = 8.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                     )
@@ -411,7 +411,7 @@ private fun WicketCard(
             Text(
                 text = wicket.bowlerName,
                 color = colors.textTertiary,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 maxLines = 1
             )
         }
@@ -467,7 +467,7 @@ private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
                     Text(
                         text = stringResource(R.string.common_wickets),
                         color = colors.textTertiary,
-                        fontSize = 9.sp
+                        fontSize = 11.sp
                     )
                 }
                 
@@ -481,7 +481,7 @@ private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
                     Text(
                         text = stringResource(R.string.fow_avg_partnership),
                         color = colors.textTertiary,
-                        fontSize = 9.sp
+                        fontSize = 11.sp
                     )
                 }
                 
@@ -496,7 +496,7 @@ private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
                         Text(
                             text = type.label,
                             color = colors.textTertiary,
-                            fontSize = 9.sp
+                            fontSize = 11.sp
                         )
                     }
                 }
@@ -588,7 +588,7 @@ fun CompactFOWDisplay(
                     Text(
                         text = "${wicket.wicketNumber}",
                         color = colors.statusLive,
-                        fontSize = 9.sp
+                        fontSize = 11.sp
                     )
                 }
             }

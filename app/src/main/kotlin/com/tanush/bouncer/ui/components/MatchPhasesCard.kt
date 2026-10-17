@@ -155,7 +155,7 @@ private fun TeamIndicator(name: String, color: Color) {
         Text(
             text = name.take(6),
             color = colors.textSecondary,
-            fontSize = 10.sp
+            fontSize = 12.sp
         )
     }
 }
@@ -283,7 +283,7 @@ private fun PhaseRow(
                                     Text(
                                         text = "LIVE",
                                         color = colors.statusSuccess,
-                                        fontSize = 8.sp,
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                                     )
@@ -293,7 +293,7 @@ private fun PhaseRow(
                         Text(
                             text = "Overs ${phase.overs}",
                             color = colors.textTertiary,
-                            fontSize = 10.sp
+                            fontSize = 12.sp
                         )
                     }
                     
@@ -322,7 +322,7 @@ private fun PhaseRow(
                     Text(
                         text = "vs",
                         color = colors.textTertiary,
-                        fontSize = 10.sp
+                        fontSize = 12.sp
                     )
                     
                     // Team 2 score
@@ -358,7 +358,7 @@ private fun PhaseRow(
                         Text(
                             text = event,
                             color = hierarchy.secondary.primary,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -378,7 +378,7 @@ private fun ScoreBox(teamName: String, runs: Int, wickets: Int, color: Color) {
         Text(
             text = teamName.take(6),
             color = color,
-            fontSize = 10.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Medium
         )
         Text(
@@ -453,7 +453,7 @@ private fun MomentumSummary(
             Text(
                 text = stringResource(R.string.match_momentum_summary),
                 color = colors.textTertiary,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 letterSpacing = 0.5.sp,
                 modifier = Modifier.padding(bottom = 10.dp)
             )
@@ -507,7 +507,7 @@ private fun MomentumSummary(
                     Text(
                         text = team1Name,
                         color = colors.textTertiary,
-                        fontSize = 10.sp
+                        fontSize = 12.sp
                     )
                 }
                 
@@ -521,7 +521,7 @@ private fun MomentumSummary(
                     Text(
                         text = stringResource(R.string.match_balanced),
                         color = colors.textTertiary,
-                        fontSize = 10.sp
+                        fontSize = 12.sp
                     )
                 }
                 
@@ -535,7 +535,7 @@ private fun MomentumSummary(
                     Text(
                         text = team2Name,
                         color = colors.textTertiary,
-                        fontSize = 10.sp
+                        fontSize = 12.sp
                     )
                 }
             }

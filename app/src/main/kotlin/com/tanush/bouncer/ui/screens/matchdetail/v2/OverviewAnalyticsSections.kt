@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import com.tanush.bouncer.ui.theme.rememberTeamInk
 import com.tanush.bouncer.analysis.MatchProjections
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.DRSReviewData
@@ -88,11 +89,13 @@ internal fun LazyListScope.overviewWinProbability(
     }
     if (probabilityHistory.size >= 2 && match.teams.size >= 2) {
         item(key = "win_prob_chart") {
+            val (team1Color, team2Color) = rememberMatchChartColors(match)
             WinProbabilityChartCard(
+                team1Color = team1Color,
+                team2Color = team2Color,
                 team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
                 team2Name = match.teams[1].acronym.ifBlank { match.teams[1].name.take(3).uppercase() },
                 probabilityHistory = probabilityHistory,
-                currentTeam1Probability = probabilityHistory.last().team1Probability,
             )
         }
         item(key = "prediction_card") {
@@ -143,7 +146,10 @@ internal fun LazyListScope.overviewPhaseCards(
     }
     if (matchPhases.size >= 2 && match.teams.size >= 2) {
         item(key = "match_phases_card") {
+            val (team1Color, team2Color) = rememberMatchChartColors(match)
             MatchPhasesCard(
+                team1Color = team1Color,
+                team2Color = team2Color,
                 phases = matchPhases,
                 team1Name = match.teams[0].name,
                 team2Name = match.teams[1].name,
@@ -181,8 +187,11 @@ internal fun LazyListScope.overviewScoringCharts(
     }
     if (hasOverData) {
         item(key = "scoring_graph") {
+            val (team1Color, team2Color) = rememberMatchChartColors(match)
             LiveScoringGraphCard(
                 scoringData = LiveScoringData(
+                    team1Color = team1Color,
+                    team2Color = team2Color,
                     team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
                     team2Name = match.teams[1].acronym.ifBlank { match.teams[1].name.take(3).uppercase() },
                     team1Scores = cumulativeScores,
@@ -193,8 +202,11 @@ internal fun LazyListScope.overviewScoringCharts(
             )
         }
         item(key = "over_by_over_card") {
+            val (team1Color, team2Color) = rememberMatchChartColors(match)
             OverByOverComparisonCard(
                 comparisonInfo = OverByOverComparisonInfo(
+                    team1Color = team1Color,
+                    team2Color = team2Color,
                     team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
                     team2Name = match.teams[1].acronym.ifBlank { match.teams[1].name.take(3).uppercase() },
                     team1Scores = cumulativeScores,
@@ -207,8 +219,11 @@ internal fun LazyListScope.overviewScoringCharts(
     }
     if (perOverRuns.isNotEmpty() && match.teams.size >= 2) {
         item(key = "run_rate_card") {
+            val (team1Color, team2Color) = rememberMatchChartColors(match)
             RunRateComparisonCard(
                 overData = perOverRuns,
+                team1Color = team1Color,
+                team2Color = team2Color,
                 team1Name = match.teams[0].name,
                 team2Name = match.teams[1].name,
                 requiredRunRate = requiredRunRate?.toDoubleOrNull(),
@@ -238,6 +253,7 @@ internal fun LazyListScope.overviewScorecardSections(
                     FallOfWicketsCard(
                         wickets = uiFow,
                         teamName = innings.teamName,
+                        teamColor = rememberTeamInk(innings.teamName),
                         currentScore = innings.score.split("/").firstOrNull()?.toIntOrNull() ?: 0,
                         currentOvers = innings.overs.toFloatOrNull() ?: 0f,
                     )
@@ -250,7 +266,10 @@ internal fun LazyListScope.overviewScorecardSections(
         item(key = "key_moments_card") { HighlightMomentsCard(moments = keyMoments) }
     }
     headToHead?.let { h2h ->
-        item(key = "h2h_card") { HeadToHeadCard(match = match, stats = h2h.stats) }
+        item(key = "h2h_card") {
+            val (team1Color, team2Color) = rememberMatchChartColors(match)
+            HeadToHeadCard(match = match, stats = h2h.stats, team1Color = team1Color, team2Color = team2Color)
+        }
         item(key = "historical_card") { HistoricalStatsCard(data = h2h.history) }
     }
 }
@@ -301,7 +320,7 @@ internal fun LazyListScope.overviewUpcomingInfo(match: CricketMatch, isUpcoming:
                 Spacer(Modifier.height(spacing.xs))
                 if (match.matchTime.isNotBlank()) {
                     Text(
-                        text = "Starts at ${match.matchTime}",
+                        text = stringResource(R.string.overview_starts_at, match.matchTime),
                         style = typography.titleSmall,
                         color = colors.onSurface,
                         fontWeight = FontWeight.Bold,
@@ -351,17 +370,16 @@ internal fun CommentaryLineCard(text: String, highlighted: Boolean, muted: Boole
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
-    val textColor = when {
-        highlighted -> colors.primary
-        muted -> colors.textSecondary
-        else -> colors.onSurface
-    }
+    // The ball in progress reads first by weight. It was drawn in the fill gold, which is the
+    // interactive colour and, in light mode, 1.7:1 on white.
+    val textColor = if (muted) colors.textSecondary else colors.onSurface
     BouncerCard {
         // Cricbuzz marks its non-delivery bulletins ("<b>12:10 Local Time…</b>") with bold tags. The
         // Commentary tab rendered them; this card printed them literally.
         Text(
             text = remember(text) { parseBoldTags(text) },
-            style = typography.bodySmall,
+            style = typography.bodyMedium,
+            fontWeight = if (highlighted) FontWeight.SemiBold else null,
             color = textColor,
             modifier = Modifier.padding(spacing.md),
         )

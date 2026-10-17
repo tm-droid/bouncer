@@ -34,7 +34,8 @@ internal fun BallLabel(label: String) {
     ) {
         Text(
             text = label,
-            style = BouncerThemeV2.typography.labelSmall,
+            // Tabular, so "19.2" and "19.10" line up down the feed.
+            style = BouncerThemeV2.typography.numericSmall,
             color = colors.onSurface,
             fontWeight = FontWeight.Bold,
         )

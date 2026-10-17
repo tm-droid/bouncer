@@ -77,8 +77,11 @@ internal fun LazyListScope.wormCharts(
     val totalOvers = CricketConstants.inningsBalls(format)?.div(BALLS_PER_OVER) ?: worm.maxOver
     val battingScores = worm.team2Scores.ifEmpty { worm.team1Scores }
     item(key = "scoring_graph") {
+        val (team1Color, team2Color) = rememberChartColorsFor(match, worm.team1Name)
         LiveScoringGraphCard(
             scoringData = LiveScoringData(
+                team1Color = team1Color,
+                team2Color = team2Color,
                 team1Name = worm.team1Name,
                 team2Name = worm.team2Name,
                 team1Scores = worm.team1Scores,
@@ -90,8 +93,11 @@ internal fun LazyListScope.wormCharts(
         )
     }
     item(key = "over_by_over_card") {
+        val (team1Color, team2Color) = rememberChartColorsFor(match, worm.team1Name)
         OverByOverComparisonCard(
             comparisonInfo = OverByOverComparisonInfo(
+                team1Color = team1Color,
+                team2Color = team2Color,
                 team1Name = worm.team1Name,
                 team2Name = worm.team2Name,
                 team1Scores = worm.team1Scores,
@@ -104,8 +110,11 @@ internal fun LazyListScope.wormCharts(
     }
     if (worm.perOver.isNotEmpty()) {
         item(key = "run_rate_card") {
+            val (team1Color, team2Color) = rememberChartColorsFor(match, worm.team1Name)
             RunRateComparisonCard(
                 overData = worm.perOver,
+                team1Color = team1Color,
+                team2Color = team2Color,
                 team1Name = worm.team1Name,
                 team2Name = worm.team2Name,
                 requiredRunRate = requiredRunRate?.toDoubleOrNull(),

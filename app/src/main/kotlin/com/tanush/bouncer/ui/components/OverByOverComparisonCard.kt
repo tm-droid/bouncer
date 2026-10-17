@@ -40,8 +40,9 @@ data class OverByOverComparisonInfo(
     val team2Scores: List<Int>,
     val currentOver: Int = 0,
     val maxOvers: Int = 20,
-    val team1Color: Color = StatusInfo,
-    val team2Color: Color = GoldDark,
+    /** The match's shared chart pair — see `rememberMatchChartColors`. */
+    val team1Color: Color,
+    val team2Color: Color,
     val highlightOvers: List<Int> = emptyList() // Overs with significant events
 )
 

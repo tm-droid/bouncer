@@ -42,7 +42,6 @@ import com.tanush.bouncer.ui.theme.BackgroundBase
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.LiveRed
 import com.tanush.bouncer.ui.theme.TextMuted
-import com.tanush.bouncer.ui.theme.TextPrimary
 import com.tanush.bouncer.ui.theme.TextSecondary
 import kotlin.math.abs
 import kotlin.math.floor
@@ -161,10 +160,8 @@ fun PremiumWinProbabilityHero(
         ) {
             Text(
                 text = stringResource(R.string.common_win_probability),
-                color = TextSecondary,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp,
+                style = BouncerThemeV2.typography.titleMedium,
+                color = BouncerThemeV2.colors.onSurface,
             )
             StateChip(state)
         }
@@ -174,7 +171,7 @@ fun PremiumWinProbabilityHero(
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
             SideLabel(team1Name, percents[0], team1Color, TextAlign.Start, Modifier.weight(1f))
             if (drawProbability != null) {
-                SideLabel("DRAW", percents[1], TextSecondary, TextAlign.Center, Modifier.weight(1f))
+                SideLabel(stringResource(R.string.winprob_draw), percents[1], TextSecondary, TextAlign.Center, Modifier.weight(1f))
             }
             SideLabel(team2Name, percents[2], team2Color, TextAlign.End, Modifier.weight(1f))
         }
@@ -207,20 +204,19 @@ private fun SideLabel(
 ) {
     Column(modifier = modifier) {
         Text(
-            text = name.uppercase(),
+            text = name,
+            style = BouncerThemeV2.typography.titleSmall,
             color = color,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.sp,
+            fontWeight = FontWeight.Bold,
             textAlign = align,
             modifier = Modifier.fillMaxWidth(),
         )
         Text(
             text = "$percent%",
-            color = TextPrimary,
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-0.5).sp,
+            // Tabular: the figure repolls in place, and proportional digits made the row jump.
+            style = BouncerThemeV2.typography.scoreLarge.copy(fontSize = 28.sp),
+            color = BouncerThemeV2.colors.onSurface,
+            fontWeight = FontWeight.Bold,
             textAlign = align,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -307,7 +303,7 @@ private fun StateChip(state: WinProbabilityState) {
             Box(Modifier.size(6.dp).background(color.copy(alpha = pulse), CircleShape))
             Spacer(Modifier.width(6.dp))
         }
-        Text(text = label, color = color, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+        Text(text = label, style = BouncerThemeV2.typography.labelMedium, color = color, fontWeight = FontWeight.Bold)
     }
 }
 

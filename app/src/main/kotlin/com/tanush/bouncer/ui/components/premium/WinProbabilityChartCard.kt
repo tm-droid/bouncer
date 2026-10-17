@@ -5,13 +5,18 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,321 +25,188 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.WinProbabilityPoint
-import com.tanush.bouncer.ui.components.BouncerImportance
-import com.tanush.bouncer.ui.components.GlassCard
-import com.tanush.bouncer.ui.theme.BlackSurface
-import com.tanush.bouncer.ui.theme.GoldHairline
-import com.tanush.bouncer.ui.theme.TextPrimary
-import com.tanush.bouncer.ui.theme.TextTertiary
-import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.utils.displayOvers
 
 /**
- * Premium Sleek Win Probability Chart.
- * High-fidelity financial-grade visualization.
- * Updated to BouncerImportance.CRITICAL as it is a flagship metric.
+ * How the win probability moved over the match.
+ *
+ * The hero directly above already states the current split, so this card is only the history: one
+ * line, the area above 50% washed in the first side's colour and below it in the second's, with the
+ * sides named at the ends of the axis they lead toward. It used to repeat the hero's percentages and
+ * split bar, and wear a glow stroke, a black plate (a grey slab in light mode) and tracked caps.
  */
-
 @Composable
 fun WinProbabilityChartCard(
     team1Name: String,
     team2Name: String,
-    team1Color: Color = BouncerDesignSystem.colors.statusInfo,
-    team2Color: Color = BouncerDesignSystem.colors.statusLive,
-    probabilityHistory: List<WinProbabilityPoint>,
-    currentTeam1Probability: Float,
-    modifier: Modifier = Modifier,
-) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val animatedProgress = remember { Animatable(0f) }
-
-    LaunchedEffect(probabilityHistory) {
-        animatedProgress.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
-        )
-    }
-
-    GlassCard(
-        modifier = modifier.fillMaxWidth(),
-        importance = BouncerImportance.CRITICAL, // CRITICAL: This is the heart of the analytics
-        cornerRadius = 14.dp
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-        ) {
-            ChartHeader(goldPrimary = hierarchy.secondary.primary)
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Current probabilities - Sharp Typography
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                ProbabilityScore(name = team1Name, percent = currentTeam1Probability, color = team1Color, progress = animatedProgress.value)
-                ProbabilityScore(name = team2Name, percent = 100 - currentTeam1Probability, color = team2Color, progress = animatedProgress.value, isRightAligned = true)
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            ProbabilitySplitBar(
-                team1Probability = currentTeam1Probability,
-                team1Color = team1Color,
-                team2Color = team2Color,
-                progress = animatedProgress.value,
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            ProbabilityChartCanvas(
-                probabilityHistory = probabilityHistory,
-                team1Color = team1Color,
-                goldPrimary = hierarchy.secondary.primary,
-                progress = animatedProgress.value,
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            KeyMomentsList(
-                keyEvents = probabilityHistory.filter { it.keyEvent != null }.takeLast(2),
-                goldPrimary = hierarchy.secondary.primary,
-            )
-        }
-    }
-}
-
-// Header - Premium but focused
-@Composable
-private fun ChartHeader(goldPrimary: Color) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .background(goldPrimary.copy(alpha = 0.1f), CircleShape)
-                    .border(0.5.dp, GoldHairline.copy(alpha = 0.3f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.TrendingUp,
-                    contentDescription = null,
-                    tint = goldPrimary,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column {
-                Text(
-                    text = stringResource(R.string.common_win_probability).uppercase(),
-                    color = goldPrimary,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.5.sp,
-                )
-                Text(
-                    text = stringResource(R.string.winprob_live_strategic_analytics),
-                    color = TextTertiary,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
-
-// Probability bar - Precision line
-@Composable
-private fun ProbabilitySplitBar(
-    team1Probability: Float,
     team1Color: Color,
     team2Color: Color,
-    progress: Float,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(4.dp)
-            .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.05f)),
-    ) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight((team1Probability * progress).coerceAtLeast(0.1f))
-                    .background(team1Color),
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(((100 - team1Probability) * progress).coerceAtLeast(0.1f))
-                    .background(team2Color),
-            )
-        }
-    }
-}
-
-// Probability chart - Technical Grid
-@Composable
-private fun ProbabilityChartCanvas(
     probabilityHistory: List<WinProbabilityPoint>,
-    team1Color: Color,
-    goldPrimary: Color,
-    progress: Float,
+    modifier: Modifier = Modifier,
 ) {
-    val gridLift = BouncerThemeV2.colors.highlight
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(180.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.Black.copy(alpha = 0.3f))
-            .border(0.5.dp, gridLift.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
-            .padding(12.dp),
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            drawProbabilityGrid(gridLift)
-            if (probabilityHistory.size >= 2) {
-                drawProbabilityLine(probabilityHistory, team1Color, goldPrimary, progress)
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(probabilityHistory) {
+        progress.animateTo(1f, tween(durationMillis = 900, easing = FastOutSlowInEasing))
+    }
+
+    BouncerCard(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth().padding(spacing.lg)) {
+            Text(
+                text = stringResource(R.string.common_win_probability),
+                style = typography.titleMedium,
+                color = colors.onSurface,
+            )
+            Spacer(Modifier.height(spacing.md))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(CHART_HEIGHT)
+                    .clip(BouncerThemeV2.shapes.small)
+                    .background(colors.surfaceVariant),
+            ) {
+                val midline = colors.textSecondary
+                val line = colors.onSurface
+                Canvas(modifier = Modifier.fillMaxSize().padding(horizontal = spacing.sm, vertical = spacing.md)) {
+                    drawMidline(midline)
+                    if (probabilityHistory.size >= 2) {
+                        drawProbability(probabilityHistory, team1Color, team2Color, line, progress.value)
+                    }
+                }
+                AxisLabel(team1Name, team1Color, Modifier.align(Alignment.TopStart))
+                AxisLabel("50%", colors.textSecondary, Modifier.align(Alignment.CenterEnd))
+                AxisLabel(team2Name, team2Color, Modifier.align(Alignment.BottomStart))
             }
+            OverAxis(probabilityHistory)
+            KeyMomentsList(probabilityHistory.filter { it.keyEvent != null }.takeLast(KEY_MOMENTS))
         }
     }
 }
 
-private fun DrawScope.drawProbabilityGrid(lift: Color) {
-    // Draw subtle technical grid (dashed)
-    val probGridDash = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
-    for (i in 0..4) {
-        val y = size.height * (i / 4f)
-        drawLine(
-            color = lift.copy(alpha = 0.06f),
-            start = Offset(0f, y),
-            end = Offset(size.width, y),
-            strokeWidth = 0.5f,
-            pathEffect = probGridDash,
+@Composable
+private fun AxisLabel(text: String, color: Color, modifier: Modifier) {
+    Text(
+        text = text,
+        style = BouncerThemeV2.typography.labelMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = color,
+        modifier = modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+    )
+}
+
+@Composable
+private fun OverAxis(points: List<WinProbabilityPoint>) {
+    if (points.size < 2) return
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+        Text(
+            text = stringResource(R.string.winprob_over_label, displayOvers(points.first().over.toString())),
+            style = typography.numericSmall,
+            color = colors.textSecondary,
+        )
+        Spacer(Modifier.weight(1f))
+        Text(
+            text = stringResource(R.string.winprob_over_label, displayOvers(points.last().over.toString())),
+            style = typography.numericSmall,
+            color = colors.textSecondary,
         )
     }
+}
 
-    // 50% Baseline - Dotted Technical
+private fun DrawScope.drawMidline(color: Color) {
     drawLine(
-        color = lift.copy(alpha = 0.1f),
+        color = color.copy(alpha = 0.5f),
         start = Offset(0f, size.height / 2),
         end = Offset(size.width, size.height / 2),
-        strokeWidth = 1f,
-        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f),
+        strokeWidth = 1.dp.toPx(),
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f),
     )
 }
 
-private fun DrawScope.drawProbabilityLine(
+private fun DrawScope.drawProbability(
     points: List<WinProbabilityPoint>,
     team1Color: Color,
-    goldPrimary: Color,
+    team2Color: Color,
+    lineColor: Color,
     progress: Float,
 ) {
-    val width = size.width
-    val height = size.height
-    val maxOver = points.maxOfOrNull { it.over } ?: 20f
+    val first = points.first().over
+    val span = (points.last().over - first).coerceAtLeast(0.1f)
+    fun x(over: Float) = ((over - first) / span) * size.width * progress
+    fun y(probability: Float) = size.height - (probability.coerceIn(0f, 100f) / 100f) * size.height
 
-    val team1Path = Path()
-    points.forEachIndexed { index, point ->
-        val x = (point.over / maxOver) * width * progress
-        val y1 = height - (point.team1Probability / 100f) * height
-        if (index == 0) team1Path.moveTo(x, y1) else team1Path.lineTo(x, y1)
+    val line = Path()
+    points.forEachIndexed { index, p ->
+        if (index == 0) line.moveTo(x(p.over), y(p.team1Probability)) else line.lineTo(x(p.over), y(p.team1Probability))
     }
+    // The area between the line and 50%, closed along the midline.
+    val area = Path().apply {
+        addPath(line)
+        lineTo(x(points.last().over), size.height / 2)
+        lineTo(x(first), size.height / 2)
+        close()
+    }
+    clipRect(bottom = size.height / 2) { drawPath(area, team1Color.copy(alpha = FILL_ALPHA)) }
+    clipRect(top = size.height / 2) { drawPath(area, team2Color.copy(alpha = FILL_ALPHA)) }
+    drawPath(line, lineColor, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
 
-    // Glow layer for the line
-    drawPath(
-        path = team1Path,
-        color = team1Color.copy(alpha = 0.2f),
-        style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round),
-    )
-
-    // Sharp Line
-    drawPath(
-        path = team1Path,
-        color = team1Color,
-        style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round),
-    )
-
-    // Key moment markers
-    points.filter { it.keyEvent != null }.forEach { point ->
-        val x = (point.over / maxOver) * width * progress
-        val y = height - (point.team1Probability / 100f) * height
-
-        drawCircle(color = goldPrimary, radius = 4.dp.toPx(), center = Offset(x, y))
-        drawCircle(color = BlackSurface, radius = 2.dp.toPx(), center = Offset(x, y))
+    points.filter { it.keyEvent != null }.forEach { p ->
+        drawCircle(color = lineColor, radius = 4.dp.toPx(), center = Offset(x(p.over), y(p.team1Probability)))
     }
 }
 
-// Key moments - Minimalist Technical List
 @Composable
-private fun KeyMomentsList(keyEvents: List<WinProbabilityPoint>, goldPrimary: Color) {
+private fun KeyMomentsList(keyEvents: List<WinProbabilityPoint>) {
     if (keyEvents.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            text = stringResource(R.string.winprob_key_strategic_moments),
-            color = TextTertiary,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.2.sp
-        )
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    Spacer(Modifier.height(spacing.md))
+    Text(text = stringResource(R.string.overview_key_moments), style = typography.titleSmall, color = colors.onSurface)
+    Spacer(Modifier.height(spacing.xs))
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
         keyEvents.forEach { event ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(goldPrimary))
-                Spacer(modifier = Modifier.width(10.dp))
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(6.dp).clip(CircleShape).background(colors.onSurface))
+                Spacer(Modifier.width(spacing.sm))
                 Text(
-                    text = "OV ${event.over}",
-                    color = TextTertiary,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                    modifier = Modifier.width(50.dp)
+                    text = displayOvers(event.over.toString()),
+                    style = typography.numericSmall,
+                    color = colors.textSecondary,
+                    modifier = Modifier.width(OVER_COLUMN),
                 )
                 Text(
-                    text = event.keyEvent ?: "",
-                    color = TextPrimary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
+                    text = event.keyEvent.orEmpty(),
+                    style = typography.bodyMedium,
+                    color = colors.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
     }
 }
 
-@Composable
-private fun ProbabilityScore(name: String, percent: Float, color: Color, progress: Float, isRightAligned: Boolean = false) {
-    Column(horizontalAlignment = if (isRightAligned) Alignment.End else Alignment.Start) {
-        Text(text = name, color = color.copy(alpha = 0.9f), fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
-        Text(
-            text = "${(percent * progress).toInt()}%",
-            color = TextPrimary,
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-1).sp
-        )
-    }
-}
+private val CHART_HEIGHT = 180.dp
+private val OVER_COLUMN = 44.dp
+private const val FILL_ALPHA = 0.22f
+private const val KEY_MOMENTS = 3

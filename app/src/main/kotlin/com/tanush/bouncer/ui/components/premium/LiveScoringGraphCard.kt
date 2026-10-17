@@ -53,6 +53,9 @@ data class LiveScoringData(
     val currentOver: Int,
     val projectedScore: Int,
     val totalOvers: Int = 20,
+    /** The match's shared chart pair — see `rememberMatchChartColors`. */
+    val team1Color: Color,
+    val team2Color: Color,
 )
 
 @Composable
@@ -75,9 +78,8 @@ fun LiveScoringGraphCard(
     }
 
     val colors = BouncerDesignSystem.colors
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val statusInfoC = colors.statusInfo
-    val goldDarkC = hierarchy.secondary.primary
+    val statusInfoC = scoringData.team1Color
+    val goldDarkC = scoringData.team2Color
     val statusSuccessC = colors.statusSuccess
 
     Card(
@@ -91,71 +93,15 @@ fun LiveScoringGraphCard(
                 .fillMaxWidth()
                 .padding(20.dp),
         ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(colors.statusInfo, colors.statusInfo.copy(alpha = 0.7f)),
-                                ),
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.Default.Timeline,
-                            contentDescription = null,
-                            tint = colors.textPrimary,
-                            modifier = Modifier.size(24.dp),
-                        )
-                    }
+            // Header. A plain title: the gradient icon tile, the tracked caps and a blue "LIVE"
+            // (live is red, and the fixed header already says so) were decoration.
+            Text(
+                text = stringResource(R.string.live_run_progression_by_over),
+                style = BouncerThemeV2.typography.titleMedium,
+                color = BouncerThemeV2.colors.onSurface,
+            )
 
-                    Spacer(modifier = Modifier.width(14.dp))
-
-                    Column {
-                        Text(
-                            text = stringResource(R.string.live_live_scoring_graph),
-                            color = hierarchy.secondary.secondary,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.5.sp,
-                        )
-                        Text(
-                            text = stringResource(R.string.live_run_progression_by_over),
-                            color = colors.textSecondary,
-                            fontSize = 13.sp,
-                        )
-                    }
-                }
-
-                // Live indicator
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp * livePulse)
-                            .clip(CircleShape)
-                            .background(colors.statusInfo),
-                    )
-                    Text(
-                        text = "LIVE",
-                        color = colors.statusInfo,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Legend
             Row(
@@ -163,12 +109,12 @@ fun LiveScoringGraphCard(
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 LegendItem(
-                    color = colors.statusInfo,
+                    color = scoringData.team1Color,
                     label = scoringData.team1Name,
                     score = scoringData.team1Scores.lastOrNull() ?: 0,
                 )
                 LegendItem(
-                    color = hierarchy.secondary.primary,
+                    color = scoringData.team2Color,
                     label = scoringData.team2Name,
                     score = if (scoringData.team2Scores.isNotEmpty()) scoringData.team2Scores.last() else null,
                 )

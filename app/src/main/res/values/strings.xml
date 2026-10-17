@@ -133,8 +133,8 @@
     <string name="commentary_loading_older">Loading…</string>
     <string name="action_retry">Retry</string>
     <!-- Current and required run rate. Standard cricket abbreviations, said the same in Hindi. -->
-    <string name="stat_crr_value" translatable="false">CRR: %1$s</string>
-    <string name="stat_rrr_value" translatable="false">RRR: %1$s</string>
+    <string name="stat_crr" translatable="false">CRR</string>
+    <string name="stat_rrr" translatable="false">RRR</string>
 
     <string name="match_info_title">Match Information</string>
     <string name="match_info_series">Series</string>
@@ -173,10 +173,9 @@
     <string name="match_info_ground_scoring_above">%1$d%% above the format\'s average</string>
     <string name="match_info_ground_scoring_below">%1$d%% below the format\'s average</string>
     <string name="match_info_ground_scoring_level">In line with the format\'s average</string>
-    <string name="match_info_teams">Teams</string>
 
     <string name="overview_innings_summary">Innings Summary</string>
-    <string name="overview_key_moments">Key Moments</string>
+    <string name="overview_key_moments">Key moments</string>
     <string name="overview_recent_commentary">Recent Commentary</string>
     <string name="overview_match_preview">Match Preview</string>
     <string name="overview_at_the_crease">At the Crease</string>
@@ -239,7 +238,6 @@
     <string name="bowling_team_bowling">TEAM BOWLING</string>
     <string name="commentary_maiden">MAIDEN</string>
     <string name="common_about">About</string>
-    <string name="common_ai_prediction">AI PREDICTION</string>
     <string name="common_appearance">Appearance</string>
     <string name="common_back">Back</string>
     <string name="common_cancel">Cancel</string>
@@ -267,7 +265,7 @@
     <string name="common_settings">Settings</string>
     <string name="common_share">Share</string>
     <string name="common_wickets">Wickets</string>
-    <string name="common_win_probability">WIN PROBABILITY</string>
+    <string name="common_win_probability">Win probability</string>
     <string name="drs_review_in_progress">REVIEW IN PROGRESS</string>
     <string name="share_key_performer">KEY PERFORMER</string>
     <string name="share_match_momentum_stream">MATCH MOMENTUM STREAM</string>
@@ -291,29 +289,25 @@
     <string name="historical_by_format">BY FORMAT</string>
     <string name="historical_historical_statistics">Historical Statistics</string>
     <string name="historical_recent_meetings">RECENT MEETINGS</string>
-    <string name="info_status">Status</string>
     <string name="moments_impact">IMPACT</string>
     <string name="moments_title">Key Moments</string>
     <string name="moments_like">Like</string>
     <string name="moments_moment_of_the_match">MOMENT OF THE MATCH</string>
     <string name="moments_overs">overs</string>
     <string name="live_current_score">Current Score</string>
-    <string name="live_live_scoring_graph">LIVE SCORING GRAPH</string>
     <string name="live_required_rr">Required RR</string>
     <string name="live_run_progression_by_over">Run progression by over</string>
     <string name="match_balanced">Balanced</string>
     <string name="match_copy_match_id">Copy Match ID</string>
     <string name="match_following">Following</string>
-    <string name="match_key_factors">KEY FACTORS</string>
+    <string name="match_key_factors">Key factors</string>
     <string name="match_momentum_summary">MOMENTUM SUMMARY</string>
     <string name="prediction_factor_teams">Team strength and form</string>
     <string name="prediction_factor_ground">Ground</string>
     <string name="prediction_factor_elevens">Playing elevens</string>
     <string name="match_preview_title">Preview</string>
     <string name="match_summary_title">Summary</string>
-    <string name="match_predicted_winner">PREDICTED WINNER</string>
     <string name="match_share_score">Share Score</string>
-    <string name="match_tie_draw">TIE/DRAW</string>
     <string name="match_yet_to_bat">Yet to bat</string>
     <string name="more_dev_tools">Dev Tools</string>
     <string name="more_diagnostics_and_debug">Diagnostics and debug</string>
@@ -333,8 +327,6 @@
     <string name="notifications_subscribe_to_matches_with_the_bell">Subscribe to matches with the bell icon to get alerts</string>
     <string name="comparison_over_by_over">Over-by-Over Comparison</string>
     <string name="comparison_phase">PHASE COMPARISON</string>
-    <string name="partnership_best_partnership">BEST PARTNERSHIP</string>
-    <string name="partnership_partnerships">PARTNERSHIPS</string>
     <string name="player_batters">BATTERS</string>
     <string name="player_bowlers">BOWLERS</string>
     <string name="player_compare">Compare</string>
@@ -352,14 +344,12 @@
     <string name="powerplay_analysis">POWERPLAY ANALYSIS</string>
     <string name="powerplay_score">Score</string>
     <string name="premium_a_win_probability_appears_once_the">A win probability appears once the model has enough of the innings to</string>
-    <string name="premium_batter">BATTER</string>
+    <string name="premium_batter">Batter</string>
     <string name="premium_batting">Batting</string>
-    <string name="premium_bowler">BOWLER</string>
+    <string name="premium_bowler">Bowler</string>
     <string name="premium_current_run_rate">CURRENT RUN RATE</string>
-    <string name="premium_live">Live</string>
     <string name="premium_no_forecast_for_this_match_yet">No forecast for this match yet</string>
     <string name="premium_required_run_rate">REQUIRED RUN RATE</string>
-    <string name="premium_wicket">Wicket</string>
     <string name="squads_playing_xi">Playing XI</string>
     <string name="squads_squads">Squads</string>
     <string name="squads_show_bench">Show bench</string>
@@ -424,7 +414,7 @@
     <string name="settings_win_probability">Win Probability</string>
     <string name="stats_full_breakdown_and_charts_demo">Full breakdown and charts (demo)</string>
     <string name="teams_no_current_matches">No current matches</string>
-    <string name="toss_toss_result">TOSS RESULT</string>
+    <string name="toss_toss_result">Toss</string>
     <string name="widget_check_back_soon">Check back soon</string>
     <string name="widget_check_back_when_matches_are_scheduled">Check back when matches are scheduled</string>
     <string name="widget_check_the_app_for_schedule">Check the app for schedule</string>
@@ -441,8 +431,6 @@
     <string name="widget_tap_to_open_app">Tap to open app</string>
     <string name="widget_until_match_starts">until match starts</string>
     <string name="widget_use_default">Use Default</string>
-    <string name="winprob_key_strategic_moments">KEY STRATEGIC MOMENTS</string>
-    <string name="winprob_live_strategic_analytics">LIVE STRATEGIC ANALYTICS</string>
     <string name="notifications_off_notice">Notifications are off, so alerts and reminders won\'t arrive.</string>
     <string name="notifications_turn_on">Turn on</string>
     <string name="reminder_option_15">15 minutes before</string>
@@ -477,4 +465,23 @@
     <string name="matches_none_in_format">Nothing in %1$s for this filter</string>
     <string name="matches_none_for_filter">Nothing for this filter yet</string>
     <string name="news_none_yet">No news yet</string>
+    <string name="winprob_over_label">Over %1$s</string>
+    <string name="winprob_draw">Draw</string>
+    <string name="match_trend_rising">%1$s\'s chances improving</string>
+    <string name="scorecard_fall_of_wickets">Fall of wickets</string>
+    <string name="scorecard_partnerships">Partnerships</string>
+    <string name="scorecard_bowling">Bowling</string>
+    <string name="scorecard_extras">Extras</string>
+    <string name="scorecard_total">Total</string>
+    <string name="scorecard_not_out">not out</string>
+    <string name="scorecard_batting">batting</string>
+    <string name="scorecard_crr">CRR %1$s</string>
+    <string name="scorecard_req">Req %1$s</string>
+    <string name="toss_chose_to_bat">won the toss and chose to bat</string>
+    <string name="toss_chose_to_bowl">won the toss and chose to bowl</string>
+    <plurals name="commentary_over_runs">
+        <item quantity="one">%d run</item>
+        <item quantity="other">%d runs</item>
+    </plurals>
+    <string name="overview_starts_at">Starts at %1$s</string>
 </resources>

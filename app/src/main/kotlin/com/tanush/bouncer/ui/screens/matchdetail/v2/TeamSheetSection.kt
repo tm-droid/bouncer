@@ -1,5 +1,15 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.network.TeamSquad
+import com.tanush.bouncer.ui.components.v2.PersonAvatar
+import com.tanush.bouncer.ui.components.v2.TeamCrest
+import com.tanush.bouncer.ui.theme.rememberTeamInk
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,23 +63,28 @@ internal fun LazyListScope.teamSheetItems(match: CricketMatch, squads: MatchSqua
     item(key = "team_sheet_header") { SectionHeaderV2(title = stringResource(title)) }
     item(key = "team_sheet") {
         BouncerCard {
-            TeamSheetColumns(sheet.team1.shortName, sheet.team2.shortName, left, right)
+            TeamSheetColumns(sheet.team1, sheet.team2, left, right)
             if (sheet.hasPlayingXi && (sheet.team1.bench.isNotEmpty() || sheet.team2.bench.isNotEmpty())) {
-                BenchToggle(sheet.team1.bench, sheet.team2.bench)
+                BenchToggle(sheet.team1, sheet.team2)
             }
         }
     }
 }
 
+/** The two sides side by side. [leftTeam]/[rightTeam] null draws no header row (the bench). */
 @Composable
-private fun TeamSheetColumns(leftName: String, rightName: String, left: List<SquadPlayer>, right: List<SquadPlayer>) {
+private fun TeamSheetColumns(leftTeam: TeamSquad?, rightTeam: TeamSquad?, left: List<SquadPlayer>, right: List<SquadPlayer>) {
     val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
     Column(Modifier.padding(vertical = spacing.xs)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = spacing.md, vertical = spacing.sm)) {
-            Text(leftName, style = typography.labelMedium, color = colors.textSecondary, modifier = Modifier.weight(1f))
-            Text(rightName, style = typography.labelMedium, color = colors.textSecondary, modifier = Modifier.weight(1f))
+        if (leftTeam != null && rightTeam != null) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = spacing.md, vertical = spacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(spacing.md),
+            ) {
+                SideHeader(leftTeam, Modifier.weight(1f))
+                SideHeader(rightTeam, Modifier.weight(1f))
+            }
         }
         for (i in 0 until maxOf(left.size, right.size)) {
             HorizontalDivider(color = colors.divider)
@@ -85,31 +100,72 @@ private fun TeamSheetColumns(leftName: String, rightName: String, left: List<Squ
 }
 
 @Composable
-private fun PlayerCell(player: SquadPlayer?, modifier: Modifier) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    Column(modifier) {
-        if (player == null) return@Column
-        val marks = listOfNotNull(
-            stringResource(R.string.squads_captain_mark).takeIf { player.captain },
-            stringResource(R.string.squads_keeper_mark).takeIf { player.keeper },
-        )
-        val suffix = if (marks.isEmpty()) "" else " (${marks.joinToString(", ")})"
+private fun SideHeader(team: TeamSquad, modifier: Modifier) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        TeamCrest(teamName = team.name, size = 22.dp, acronym = team.shortName.ifBlank { null })
+        Spacer(Modifier.width(BouncerThemeV2.spacing.sm))
         Text(
-            player.name + suffix,
-            style = typography.bodyMedium,
-            color = colors.onSurface,
+            text = team.shortName.ifBlank { team.name },
+            style = BouncerThemeV2.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = rememberTeamInk(team.name),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        if (player.role.isNotBlank()) {
-            Text(player.role, style = typography.labelSmall, color = colors.textSecondary, maxLines = 1)
+    }
+}
+
+/**
+ * A player: initials, name, and the captain and keeper marks as their own tags after it. The marks
+ * used to be appended to the name in brackets, so a long name ellipsized them away.
+ */
+@Composable
+private fun PlayerCell(player: SquadPlayer?, modifier: Modifier) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        if (player == null) return@Row
+        PersonAvatar(name = player.name, size = 28.dp)
+        Spacer(Modifier.width(BouncerThemeV2.spacing.sm))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    player.name,
+                    style = typography.bodyMedium,
+                    color = colors.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (player.captain) RoleTag(stringResource(R.string.squads_captain_mark))
+                if (player.keeper) RoleTag(stringResource(R.string.squads_keeper_mark))
+            }
+            if (player.role.isNotBlank()) {
+                Text(player.role, style = typography.labelMedium, color = colors.textSecondary, maxLines = 1)
+            }
         }
     }
 }
 
 @Composable
-private fun BenchToggle(left: List<SquadPlayer>, right: List<SquadPlayer>) {
+private fun RoleTag(text: String) {
+    val colors = BouncerThemeV2.colors
+    val shape = BouncerThemeV2.shapes.extraSmall
+    Text(
+        text = text.uppercase(),
+        style = BouncerThemeV2.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        color = colors.textSecondary,
+        maxLines = 1,
+        modifier = Modifier
+            .padding(start = 4.dp)
+            .border(1.dp, colors.border, shape)
+            .padding(horizontal = 4.dp, vertical = 1.dp),
+    )
+}
+
+@Composable
+private fun BenchToggle(team1: TeamSquad, team2: TeamSquad) {
     val colors = BouncerThemeV2.colors
     var open by rememberSaveable { mutableStateOf(false) }
     HorizontalDivider(color = colors.divider)
@@ -119,5 +175,5 @@ private fun BenchToggle(left: List<SquadPlayer>, right: List<SquadPlayer>) {
             color = colors.primaryText,
         )
     }
-    if (open) TeamSheetColumns("", "", left, right)
+    if (open) TeamSheetColumns(null, null, team1.bench, team2.bench)
 }

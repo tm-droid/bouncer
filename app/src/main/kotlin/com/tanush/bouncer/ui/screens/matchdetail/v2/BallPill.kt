@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.ui.components.v2.ballChipInk
 import com.tanush.bouncer.ui.theme.v2.BouncerColorsV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.v2.CricketEventColors
@@ -37,9 +38,12 @@ private fun resultPillOf(ball: ParsedBall, colors: BouncerColorsV2): Triple<Stri
 /** The three outcomes the server classifies outright, each in its own event colour. */
 private fun eventPillOf(ball: ParsedBall, cricket: CricketEventColors): Triple<String, Color, Color>? =
     when {
-        ball.isWicket -> Triple("W", cricket.wicket, cricket.wicket.copy(alpha = 0.2f))
-        ball.isSix -> Triple("6", cricket.six, cricket.six.copy(alpha = 0.2f))
-        ball.isFour -> Triple("4", cricket.four, cricket.four.copy(alpha = 0.2f))
+        // Solid, with whichever of black and white reads on the fill — the over strip's treatment.
+        // Event ink on a 20% tint of itself was 3.4–4.2:1, and the three that matter most read
+        // weakest in the feed.
+        ball.isWicket -> Triple("W", ballChipInk(cricket.wicket), cricket.wicket)
+        ball.isSix -> Triple("6", ballChipInk(cricket.six), cricket.six)
+        ball.isFour -> Triple("4", ballChipInk(cricket.four), cricket.four)
         else -> null
     }
 
@@ -96,7 +100,7 @@ internal fun ResultPill(ball: ParsedBall) {
     ) {
         Text(
             text = text,
-            style = BouncerThemeV2.typography.labelSmall,
+            style = BouncerThemeV2.typography.numericSmall,
             color = fg,
             fontWeight = FontWeight.Bold,
             maxLines = 1,

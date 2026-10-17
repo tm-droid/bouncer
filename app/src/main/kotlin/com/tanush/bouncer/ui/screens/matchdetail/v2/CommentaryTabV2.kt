@@ -1,5 +1,8 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -310,23 +313,16 @@ private fun OverSeparatorCard(overNumber: Int, balls: List<ParsedBall>) {
                 horizontalArrangement = Arrangement.spacedBy(spacing.xs),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(colors.primary.copy(alpha = 0.15f))
-                        .padding(horizontal = spacing.sm, vertical = spacing.xs),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        // `overNumber` counts COMPLETED overs, as ball labels do: balls 48.1-48.6
-                        // belong to over 49, which is what Cricbuzz's own overNumber field says and
-                        // what every scorecard prints.
-                        text = stringResource(R.string.over_number, overNumber + 1),
-                        style = typography.labelSmall,
-                        color = colors.primaryText,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
+                // A plain heading, not a gold chip: gold marks what can be tapped, and this cannot.
+                Text(
+                    // `overNumber` counts COMPLETED overs, as ball labels do: balls 48.1-48.6
+                    // belong to over 49, which is what Cricbuzz's own overNumber field says and
+                    // what every scorecard prints.
+                    text = stringResource(R.string.over_number, overNumber + 1),
+                    style = typography.titleSmall,
+                    color = colors.onSurface,
+                    fontWeight = FontWeight.Bold,
+                )
 
                 if (isMaiden) {
                     Box(
@@ -348,8 +344,9 @@ private fun OverSeparatorCard(overNumber: Int, balls: List<ParsedBall>) {
 
             if (totalRuns != null) {
                 Text(
-                    text = "$totalRuns run${if (totalRuns != 1) "s" else ""}",
-                    style = typography.labelSmall,
+                    text = pluralStringResource(R.plurals.commentary_over_runs, totalRuns, totalRuns),
+                    style = typography.numericSmall,
+                    fontWeight = FontWeight.SemiBold,
                     color = colors.textSecondary,
                 )
             }
@@ -369,7 +366,7 @@ private fun OverSeparatorCard(overNumber: Int, balls: List<ParsedBall>) {
         }
 
         HorizontalDivider(
-            color = colors.primary.copy(alpha = 0.12f),
+            color = colors.divider,
             modifier = Modifier.padding(top = spacing.sm),
         )
     }
@@ -385,17 +382,22 @@ private fun CommentaryLine(ball: ParsedBall, modifier: Modifier = Modifier) {
     var showMenu by remember { mutableStateOf(false) }
     val menuLabel = stringResource(R.string.commentary_line_actions)
 
-    val bgColor = when {
-        ball.isWicket -> colors.live.copy(alpha = 0.08f)
-        ball.isSix || ball.isFour -> colors.win.copy(alpha = 0.08f)
-        else -> Color.Transparent
-    }
+    // A wicket gets a bar in the wicket colour down its leading edge. The rows used to be washed in
+    // the live red (wickets) and the result green (boundaries); the ball chip already carries the
+    // event colour, and red and green each have one job elsewhere.
+    val wicketBar = colors.cricket.wicket
 
     Box(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(bgColor)
+                .then(
+                    if (ball.isWicket) {
+                        Modifier.drawBehind { drawRect(wicketBar, size = Size(WICKET_BAR_WIDTH.toPx(), size.height)) }
+                    } else {
+                        Modifier
+                    },
+                )
                 // Long press only. This was a combinedClickable with an empty onClick, so TalkBack
                 // announced every delivery as a button whose double-tap did nothing, and the one
                 // real action had no spoken name.
@@ -418,7 +420,8 @@ private fun CommentaryLine(ball: ParsedBall, modifier: Modifier = Modifier) {
 
                 Text(
                     text = remember(ball.ballText) { parseBoldTags(ball.ballText) },
-                    style = BouncerThemeV2.typography.bodySmall,
+                    style = BouncerThemeV2.typography.bodyMedium,
+                    fontWeight = if (ball.isWicket) FontWeight.SemiBold else null,
                     color = colors.onSurface,
                     modifier = Modifier.weight(1f),
                 )
@@ -446,7 +449,7 @@ private fun NonBallLine(text: String) {
     ) {
         Text(
             text = remember(text) { parseBoldTags(text) },
-            style = typography.bodySmall,
+            style = typography.bodyMedium,
             color = colors.textSecondary,
         )
         HorizontalDivider(color = colors.divider, modifier = Modifier.padding(top = spacing.sm))
@@ -492,3 +495,4 @@ private fun BallBadge(ball: String, size: Dp = 28.dp) {
     }
 }
 
+private val WICKET_BAR_WIDTH = 3.dp

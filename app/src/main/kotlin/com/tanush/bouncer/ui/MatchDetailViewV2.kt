@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,8 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import com.tanush.bouncer.data.history.PastFeedSource
 import com.tanush.bouncer.ui.navigation.LocalOpenSeries
@@ -23,7 +22,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.CloudOff
@@ -52,7 +50,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -61,12 +58,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.managers.MatchSubscriptionManager
-import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.MatchStatus
-import com.tanush.bouncer.ui.components.v2.AnimatedScoreText
 import com.tanush.bouncer.ui.components.v2.MatchFollowSheet
 import com.tanush.bouncer.ui.components.v2.MatchStatusType
 import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
@@ -502,21 +496,25 @@ private fun ScoreHeaderV2(
 
         // Team 1
         TeamScoreRow(
-            teamName = team1?.acronym ?: team1?.name ?: "Team 1",
-            logoUrl = TeamLogoManager.getBestLogoUrl(team1?.name, team1?.logoUrl),
+            teamName = team1?.name ?: "Team 1",
+            acronym = team1?.acronym.orEmpty(),
+            logoUrl = team1?.logoUrl,
             score = score1,
             overs = overs1,
             isBatting = team1?.isBatting == true,
+            anyBatting = match.teams.any { it.isBatting },
         )
         Spacer(Modifier.height(spacing.sm))
 
         // Team 2
         TeamScoreRow(
-            teamName = team2?.acronym ?: team2?.name ?: "Team 2",
-            logoUrl = TeamLogoManager.getBestLogoUrl(team2?.name, team2?.logoUrl),
+            teamName = team2?.name ?: "Team 2",
+            acronym = team2?.acronym.orEmpty(),
+            logoUrl = team2?.logoUrl,
             score = score2,
             overs = overs2,
             isBatting = team2?.isBatting == true,
+            anyBatting = match.teams.any { it.isBatting },
         )
         Spacer(Modifier.height(spacing.sm))
 
@@ -527,22 +525,9 @@ private fun ScoreHeaderV2(
         // Run rates
         if (currentRunRate != null || requiredRunRate != null) {
             Spacer(Modifier.height(spacing.xs))
-            Row {
-                currentRunRate?.let {
-                    Text(
-                        stringResource(R.string.stat_crr_value, it),
-                        style = typography.labelSmall,
-                        color = colors.textSecondary,
-                    )
-                    Spacer(Modifier.width(spacing.lg))
-                }
-                requiredRunRate?.let {
-                    Text(
-                        stringResource(R.string.stat_rrr_value, it),
-                        style = typography.labelSmall,
-                        color = colors.textSecondary,
-                    )
-                }
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.lg)) {
+                currentRunRate?.let { HeaderRunRate(label = stringResource(R.string.stat_crr), value = it) }
+                requiredRunRate?.let { HeaderRunRate(label = stringResource(R.string.stat_rrr), value = it) }
             }
         }
 
@@ -660,102 +645,14 @@ private fun MatchStatusLine(match: CricketMatch) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     if (match.matchStatus == MatchStatus.Completed) {
-        MatchResultBanner(text = match.currentStatus)
+        MatchResultBanner(match = match)
     } else {
         Text(
             text = match.currentStatus,
-            style = typography.bodySmall,
-            color = colors.textSecondary,
+            style = typography.bodyMedium,
+            color = colors.onSurface,
             fontWeight = FontWeight.Medium,
         )
-    }
-}
-
-@Composable
-private fun MatchResultBanner(text: String) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(colors.win.copy(alpha = 0.12f))
-            .padding(horizontal = spacing.md, vertical = spacing.sm),
-    ) {
-        Icon(
-            imageVector = Icons.Default.EmojiEvents,
-            contentDescription = null,
-            tint = colors.win,
-            modifier = Modifier.size(16.dp),
-        )
-        Spacer(Modifier.width(spacing.sm))
-        Text(
-            text = text,
-            style = typography.bodySmall,
-            color = colors.win,
-            fontWeight = FontWeight.Bold,
-        )
-    }
-}
-
-@Composable
-private fun TeamScoreRow(
-    teamName: String,
-    logoUrl: String?,
-    score: String,
-    overs: String,
-    isBatting: Boolean,
-) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-    // Neutral for both sides. Batting is carried by weight, not hue — see TeamRowV2.
-    val activeColor = colors.onSurface
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (logoUrl != null) {
-            CoilImage(
-                model = logoUrl,
-                // Decorative: the team name Text sits directly beside this logo,
-                // so a description here would double-announce in TalkBack.
-                contentDescription = null,
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape),
-            )
-            Spacer(Modifier.width(spacing.sm))
-        }
-        Text(
-            text = teamName,
-            style = typography.titleMedium,
-            color = activeColor,
-            fontWeight = if (isBatting) FontWeight.Bold else FontWeight.Normal,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        if (score.isNotBlank()) {
-            AnimatedScoreText(
-                text = score,
-                style = typography.scoreMedium,
-                color = activeColor,
-                fontWeight = FontWeight.Bold,
-            )
-            if (overs.isNotBlank()) {
-                Spacer(Modifier.width(spacing.xs))
-                Text(
-                    text = "($overs)",
-                    style = typography.numericSmall,
-                    color = colors.textSecondary,
-                    maxLines = 1,
-                )
-            }
-        }
     }
 }
 

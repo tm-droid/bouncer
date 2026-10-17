@@ -546,7 +546,7 @@ private fun ScoreRecords(
             Text(
                 "HIGHEST SCORE",
                 color = colors.textTertiary,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
             )
@@ -584,7 +584,7 @@ private fun ScoreRecords(
             Text(
                 "LOWEST SCORE",
                 color = colors.textTertiary,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
             )
