@@ -45,7 +45,7 @@ class SeriesScheduleParseTest {
     @Test
     fun `the card shows the series dates, not the epoch strings the page sends`() {
         val cpl = series.first { it.id == "12123" }
-        assertEquals("7 Aug 2026 – 20 Sep 2026", seriesDatesOf(cpl, ZoneOffset.UTC))
+        assertEquals("7 Aug – 20 Sep 2026", seriesDatesOf(cpl, ZoneOffset.UTC))
         assertEquals("", seriesDatesOf(Series(id = "x", name = "x"), ZoneOffset.UTC))
         assertEquals("TBC", seriesDatesOf(Series(id = "x", name = "x", startDate = "TBC"), ZoneOffset.UTC))
     }

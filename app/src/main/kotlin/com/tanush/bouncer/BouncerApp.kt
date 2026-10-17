@@ -8,6 +8,7 @@ import coil.memory.MemoryCache
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.NotificationInboxManager
+import com.tanush.bouncer.managers.TeamColorsLoader
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.data.prefs.PreferenceStore
@@ -121,6 +122,7 @@ class BouncerApp : Application() {
         // The manager returns null/emptyMap gracefully until initialized, so callers are safe.
         applicationScope.launch(Dispatchers.IO) {
             initializeSafely("TeamLogoManager") { TeamLogoManager.initialize(applicationContext) }
+            initializeSafely("TeamColorsLoader") { TeamColorsLoader.initialize(applicationContext) }
         }
         initializeSafely("TeamAcronymManager") { TeamAcronymManager.initialize(this) }
         initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }

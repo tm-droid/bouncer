@@ -84,7 +84,8 @@ import com.tanush.bouncer.viewmodels.HighlightsViewModel
 import com.tanush.bouncer.viewmodels.MatchDetailViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.ui.theme.BouncerMotion
-import com.tanush.bouncer.ui.theme.rememberTeamColors
+import com.tanush.bouncer.ui.theme.TeamColorRegistry
+import com.tanush.bouncer.ui.theme.rememberTeamInk
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.v2.CricketEventColors
 import com.tanush.bouncer.utils.PreferencesHelper
@@ -209,9 +210,11 @@ fun MatchDetailViewV2(
     }
 
     val battingTeam = liveMatch.teams.firstOrNull { it.isBatting }
-    val battingTeamColors = rememberTeamColors(battingTeam?.name)
+    // The selected tab takes the batting side's colour when the registry knows it; otherwise the
+    // gold every other selected tab in the app uses, not the neutral an unknown side resolves to.
+    val battingInk = if (TeamColorRegistry.isKnown(battingTeam?.name)) rememberTeamInk(battingTeam?.name) else colors.primaryText
     val tabAccentColor by animateColorAsState(
-        targetValue = battingTeamColors.primary,
+        targetValue = battingInk,
         animationSpec = tween(800),
         label = "tabAccent",
     )

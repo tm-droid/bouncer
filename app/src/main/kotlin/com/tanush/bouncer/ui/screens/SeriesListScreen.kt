@@ -1,10 +1,7 @@
 package com.tanush.bouncer.ui.screens
 
 import androidx.compose.runtime.saveable.rememberSaveable
-import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.Crossfade
@@ -41,6 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tanush.bouncer.utils.formatEpochDateRange
 import com.tanush.bouncer.R
 import com.tanush.bouncer.viewmodels.SeriesListViewModel
 import androidx.compose.ui.Alignment
@@ -291,25 +289,13 @@ internal fun seriesLabelOf(series: Series): String {
 }
 
 /**
- * "7 Aug 2026 – 20 Sep 2026" from the series' start and end.
+ * "7 Aug – 20 Sep 2026" from the series' start and end.
  *
  * Cricbuzz sends both as epoch-millisecond strings, which the card used to print verbatim. A value
  * that is not a number is shown as it came, and a missing end shows the start alone.
  */
-internal fun seriesDatesOf(series: Series, zone: ZoneId = ZoneId.systemDefault()): String {
-    fun format(raw: String): String = raw.toLongOrNull()
-        ?.let { SERIES_DATE.format(Instant.ofEpochMilli(it).atZone(zone)) }
-        ?: raw
-    val start = format(series.startDate)
-    val end = format(series.endDate)
-    return when {
-        start.isEmpty() -> ""
-        end.isEmpty() || end == start -> start
-        else -> "$start – $end"
-    }
-}
-
-private val SERIES_DATE = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
+internal fun seriesDatesOf(series: Series, zone: ZoneId = ZoneId.systemDefault()): String =
+    formatEpochDateRange(series.startDate, series.endDate, zone)
 
 @Composable
 private fun SeriesCard(series: Series, onClick: () -> Unit) {

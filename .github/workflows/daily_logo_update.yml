@@ -28,15 +28,22 @@ jobs:
       - name: Run update_logos.py
         run: python tools/update_logos.py
 
+      # Crest-derived team colours for every side the hand-picked table in TeamPalettes.kt does not
+      # list. Runs after the logo refresh so a new crest gets its colours the same week.
+      - name: Run extract_team_colors.py
+        run: |
+          pip install --quiet pillow
+          python tools/extract_team_colors.py
+
       - name: Commit and push changes
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add app/src/main/assets/TeamLogos.json app/src/main/assets/TeamAcronyms.json
+          git add app/src/main/assets/TeamLogos.json app/src/main/assets/TeamAcronyms.json app/src/main/assets/TeamColors.json
           # Check if there are changes to commit
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Auto-update team logos and acronyms"
+            git commit -m "Auto-update team logos, acronyms and colours"
             git push
           fi
