@@ -70,6 +70,8 @@ jobs:
     # Only the dependency-graph job below can write.
     permissions:
       contents: read
+      # Read-only, for one lookup: whether this exact commit already has a tested bundle (below).
+      actions: read
     outputs:
       bundle: ${{ steps.changes.outputs.bundle }}
     # Job-level so a step's `if` can see it; a step `if` cannot read `secrets`.
@@ -94,6 +96,7 @@ jobs:
       - name: What changed?
         id: changes
         env:
+          GH_TOKEN: ${{ github.token }}
           EVENT: ${{ github.event_name }}
           REF: ${{ github.ref }}
           BEFORE: ${{ github.event.before }}
@@ -119,10 +122,33 @@ jobs:
           elif [ "${EVENT}" = push ] && [ "${REF}" = refs/heads/main ] && changed "${app}"; then
             bundle=yes; ship=yes
           fi
+          # A release whose exact commit already passed this workflow, with its signed bundle kept,
+          # ships that bundle instead of building it again. That is the usual case: a branch is
+          # checked by a dispatch, then main is fast-forwarded to it — the same tree, so the same
+          # tests, lint, detekt and bundle, and ~18 billed minutes spent twice. The bundle's
+          # Sentry mapping was uploaded when it was built. Its versionCode is that run's, which is
+          # lower than this run's; if Play already holds a higher one the upload fails loudly, and
+          # a dispatch with `publish` builds a fresh bundle.
+          reuse=""
+          if [ "${EVENT}" = push ] && [ "${bundle}" = yes ]; then
+            for run in $(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${GITHUB_SHA}&status=success&per_page=20" \
+                --jq '.workflow_runs[].id' 2>/dev/null || true); do
+              if gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run}/artifacts" \
+                  --jq '.artifacts[] | select(.name == "release-aab" and .expired == false) | .id' 2>/dev/null | grep -q .; then
+                reuse="${run}"
+                break
+              fi
+            done
+          fi
+          if [ -n "${reuse}" ]; then
+            echo "Commit ${GITHUB_SHA} passed in run ${reuse}; shipping its bundle without rebuilding."
+            android=no; functions=no; bundle=no
+          fi
+
           gradle=no
           if [ "${android}" = yes ] || [ "${functions}" = yes ]; then gradle=yes; fi
-          printf 'android=%s\nfunctions=%s\ngradle=%s\nbundle=%s\nship=%s\n' \
-            "${android}" "${functions}" "${gradle}" "${bundle}" "${ship}" | tee -a "$GITHUB_OUTPUT"
+          printf 'android=%s\nfunctions=%s\ngradle=%s\nbundle=%s\nship=%s\nreuse=%s\n' \
+            "${android}" "${functions}" "${gradle}" "${bundle}" "${ship}" "${reuse}" | tee -a "$GITHUB_OUTPUT"
 
       # The provider ladder, the fact-checker, the rewrite backlog and the win-probability maths
       # exist only in JavaScript. First, because they take a minute and Gradle takes ten.
@@ -272,6 +298,17 @@ jobs:
         with:
           name: release-aab
           path: app/build/outputs/bundle/release/app-release.aab
+
+      # The tested bundle, to the path the Gradle build would have left it at.
+      - name: Fetch the tested bundle
+        if: steps.changes.outputs.reuse != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.changes.outputs.reuse }}
+        run: |
+          set -euo pipefail
+          gh run download "${RUN_ID}" --repo "${GITHUB_REPOSITORY}" --name release-aab --dir app/build/outputs/bundle/release
+          test -s app/build/outputs/bundle/release/app-release.aab
 
       # A push whose commits carry a `Force-Update: yes` trailer uploads at in-app update priority
       # 5, which AppUpdatePolicy turns into Play's immediate update screen on every Play install.

@@ -20,6 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - A functions-only push runs the function suites and the unit tests (parity), and no lint, detekt or bundle.
   - A push touching only `paths-ignore` (`*.md`, `.claude/`, `.devcontainer/`, `my-video/`, `android-dev-mcp-server/`) starts no run.
   - To re-ship after a failed app run, run CI by `workflow_dispatch` with `publish` ticked.
+  - A push to main whose exact commit already passed CI (typically a branch checked by dispatch, then fast-forwarded onto main) ships that run's kept `release-aab` artifact instead of rebuilding: no Gradle, no tests, just the Play upload. Fast-forward, don't merge-commit, or the SHA differs and it builds again.
   - A push to main never cancels an earlier run.
 - The Gradle dependency graph is submitted by CI's release build (setup-gradle). The repository's "Automatic dependency submission" setting stays off: it was a second Gradle run on every push.
 - Codespaces is the dev box. Leave **prebuilds off**: they bill Actions minutes.
