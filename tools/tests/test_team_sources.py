@@ -162,6 +162,26 @@ class SportsDbIndexTest(unittest.TestCase):
         self.assertNotIn("royals", index)
 
 
+class LogoInkMapTest(unittest.TestCase):
+    def test_measured_reversals_and_overrides_are_keyed_by_crest_url(self):
+        logos = {
+            "England": "https://r2.thesportsdb.com/eng.png/small",
+            "England Women": "https://r2.thesportsdb.com/eng.png/small",
+            "Scotland": "https://r2.thesportsdb.com/sco.png/small",
+            "Scotland Women": "https://r2.thesportsdb.com/sco.png/small",
+            "Kenya": "https://r2.thesportsdb.com/ken.png/small",
+            "Surrey": "https://static.cricbuzz.com/a/img/v1/720x540/i1/c1/i.jpg",
+        }
+        inks = {
+            "https://r2.thesportsdb.com/eng.png/small": "dark",
+            "https://r2.thesportsdb.com/ken.png/small": None,
+        }
+        self.assertEqual(
+            {"https://r2.thesportsdb.com/eng.png/small": "dark", "https://r2.thesportsdb.com/sco.png/small": "dark"},
+            extra.build_logo_ink(logos, inks, {"Scotland": "dark", "Surrey": "dark", "Nowhere": "light"}),
+        )
+
+
 class LogoPrecedenceTest(unittest.TestCase):
     def test_sportsdb_badges_take_the_small_rendition(self):
         self.assertEqual("https://r2.thesportsdb.com/x.png/small", extra.sportsdb_sized("https://r2.thesportsdb.com/x.png"))

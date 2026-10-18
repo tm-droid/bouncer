@@ -72,6 +72,12 @@ SPORTSDB_GAP_S = 2.1
 # National sides (and their variants) take the board's crest from TheSportsDB (BCCI for India) over
 # Cricbuzz's crest, which is their flag. False puts the flags back on the next run.
 NATIONAL_BOARD_CRESTS = True
+# Crests reversed by hand, checked by eye in the preview, where crest_ink's rule cannot reach without
+# also catching crests it must not. Cricket Scotland's is two inks (black text, purple thistle) with
+# ~60% vanishing on the dark plate, under both bars, but it is line art (0.41 of its bounding box) so
+# it reverses cleanly. Loosening the rule to catch it would also reverse Kenya's black, red and green
+# lion into a white silhouette.
+REVERSE_OVERRIDES = {"Scotland": "dark"}
 # Most lookups failing to connect is a block or an outage, not a fact about the teams.
 MAX_ERROR_SHARE = 0.5
 
@@ -214,6 +220,21 @@ def candidates(universe, logos, lookups, today):
     national = [n for n in due if is_national(n)]
     no_logo = [n for n in due if n not in logos and not is_national(n) and ts.flag_code(n) is None]
     return (national + no_logo)[:MAX_LOOKUPS]
+
+
+def build_logo_ink(logos, inks, overrides):
+    """The crests the app draws reversed on one plate, keyed by the URL TeamCrest draws rather than
+    by team: a variant that kept its own Cricbuzz crest must not inherit its parent's reversal. An
+    override names a team; it applies to that team's crest URL, and so to every variant sharing it."""
+    logo_ink = {
+        url: inks[url] for url in sorted(set(logos.values()))
+        if not is_cricbuzz(url) and inks.get(url) in ("dark", "light")
+    }
+    for name, ink in overrides.items():
+        url = logos.get(name)
+        if url and not is_cricbuzz(url):
+            logo_ink[url] = ink
+    return logo_ink
 
 
 def classify_crests(urls):
@@ -359,12 +380,7 @@ def main():
                 added[source].append(name)
                 break
 
-    # The crests the app draws reversed on one plate, keyed by the URL TeamCrest draws rather than by
-    # team: a variant that kept its own Cricbuzz crest must not inherit its parent's reversal.
-    logo_ink = {
-        url: inks[url] for url in sorted(set(logos.values()))
-        if not is_cricbuzz(url) and inks.get(url) in ("dark", "light")
-    }
+    logo_ink = build_logo_ink(logos, inks, REVERSE_OVERRIDES)
 
     save_json(LOGOS_PATH, logos)
     save_json(INK_PATH, logo_ink)
@@ -383,6 +399,7 @@ def main():
         print(f"Logos added from {source}: {len(names)}" + (f" ({shown})" if names else ""))
     reversed_teams = sorted(name for name, url in logos.items() if url in logo_ink)
     print(f"Crests drawn reversed: {len(logo_ink)}, for {', '.join(reversed_teams)}")
+    print(f"Reversed by hand: {REVERSE_OVERRIDES}")
     print(f"Crests not used, unreadable on a plate: {len(unreadable)}")
     return 0
 
