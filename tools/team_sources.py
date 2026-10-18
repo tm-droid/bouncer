@@ -88,17 +88,18 @@ def hex_or_none(value):
     return f"#{match.group(1).upper()}" if match else None
 
 
-def sportsdb_pick(response, name):
-    """The cricket team in a `searchteams.php` response whose name (or alternate) matches, as
-    {"logo": url|None, "colours": [hex, ...]}; None when nothing matches. The search is fuzzy and
-    returns football clubs called "Royals" for a cricket side called "Royals"; neither is accepted."""
-    wanted = normalize(name)
+def sportsdb_pick(response, name, also=()):
+    """The cricket team in a `searchteams.php` response whose name (or alternate) matches `name` or
+    one of `also`, as {"logo": url|None, "colours": [hex, ...]}; None when nothing matches. The search
+    is fuzzy and returns football clubs called "Royals" for a cricket side called "Royals"; neither
+    is accepted."""
+    wanted_names = {normalize(name)} | {normalize(n) for n in also}
     for team in (response or {}).get("teams") or []:
         if (team.get("strSport") or "").lower() != "cricket":
             continue
         alternates = team.get("strTeamAlternate") or team.get("strAlternate") or ""
         names = [team.get("strTeam") or ""] + alternates.split(",")
-        if wanted not in {normalize(n) for n in names if n.strip()}:
+        if not wanted_names & {normalize(n) for n in names if n.strip()}:
             continue
         colours = [c for c in (hex_or_none(team.get(f"strColour{i}")) for i in (1, 2, 3)) if c]
         return {"logo": team.get("strBadge") or team.get("strLogo") or None, "colours": colours}

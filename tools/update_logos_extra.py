@@ -52,6 +52,9 @@ USER_AGENT = "BouncerTeamLogos/1.0 (https://github.com/tm-droid/bouncer; tools/u
 RECHECK_DAYS = 56
 MAX_LOOKUPS = int(os.environ.get("MAX_LOOKUPS", "150"))
 SPORTSDB_GAP_S = 2.1
+# National sides (and their variants) take the board's crest from TheSportsDB (BCCI for India) over
+# Cricbuzz's crest, which is their flag. False puts the flags back on the next run.
+NATIONAL_BOARD_CRESTS = True
 # Most lookups failing to connect is a block or an outage, not a fact about the teams.
 MAX_ERROR_SHARE = 0.5
 
@@ -125,7 +128,19 @@ def archive_team_names():
     return names
 
 
+def is_national(name):
+    """A national side itself ("India"), not a variant of one ("India Women")."""
+    return ts.flag_code(name) is not None and ts.base_side(name) == ts.normalize(name)
+
+
 def lookup_sportsdb(name):
+    # TheSportsDB names national sides "India Cricket"; a bare "India" finds only football.
+    if is_national(name):
+        query = f"{name} Cricket"
+        response = get_json(SPORTSDB.format(name=urllib.parse.quote(query)), "sportsdb", SPORTSDB_GAP_S)
+        hit = ts.sportsdb_pick(response, name, also=(query,))
+        if hit:
+            return hit
     response = get_json(SPORTSDB.format(name=urllib.parse.quote(name)), "sportsdb", SPORTSDB_GAP_S)
     return ts.sportsdb_pick(response, name)
 
@@ -214,20 +229,33 @@ def main():
             lookups[name].pop("wikidata", None)
     print(f"Wikidata: {len(wikidata)} sides with a logo or colour, {sum(1 for n in universe if ts.normalize(n) in wikidata)} of ours")
 
-    logos_by_normalized = {}
-    for logo_name, url in logos.items():
-        logos_by_normalized.setdefault(ts.normalize(logo_name), url)
-
-    # A club's or franchise's TheSportsDB badge beats its Cricbuzz crest: Cricbuzz serves a simplified
-    # mark on a coloured square (Mumbai Indians is the chakra alone), TheSportsDB the real logo as a
-    # transparent PNG. Not for a national side: Cricbuzz's crest for one is its flag, which is what
-    # every scoring app shows, where TheSportsDB's is the board's seal (India's is the BCCI's).
+    # A TheSportsDB badge beats a Cricbuzz crest. For a club or franchise Cricbuzz serves a simplified
+    # mark on a coloured square (Mumbai Indians is the chakra alone) where TheSportsDB has the real
+    # logo as a transparent PNG. For a national side Cricbuzz serves the flag and TheSportsDB the
+    # board's crest (BCCI for India); NATIONAL_BOARD_CRESTS = False puts the flags back.
     replaced = []
     for name in sorted(universe):
         badge = (lookups.get(name, {}).get("sportsdb") or {}).get("logo")
-        if badge and ts.flag_code(name) is None and is_cricbuzz(logos.get(name)):
-            logos[name] = sportsdb_sized(badge)
-            replaced.append(name)
+        if not badge or not is_cricbuzz(logos.get(name)):
+            continue
+        if ts.flag_code(name) is not None and not NATIONAL_BOARD_CRESTS:
+            continue
+        logos[name] = sportsdb_sized(badge)
+        replaced.append(name)
+
+    # A national variant shows its parent's crest when the parent has a board crest, so India Women
+    # and India U19 carry the BCCI crest with India rather than a flag beside it.
+    logos_by_normalized = {}
+    for logo_name, url in logos.items():
+        logos_by_normalized.setdefault(ts.normalize(logo_name), url)
+    if NATIONAL_BOARD_CRESTS:
+        for name in sorted(universe):
+            if ts.flag_code(name) is None or is_national(name) or not is_cricbuzz(logos.get(name)):
+                continue
+            parent = logos_by_normalized.get(ts.base_side(name))
+            if parent and not is_cricbuzz(parent):
+                logos[name] = parent
+                replaced.append(name)
 
     added = {"sportsdb": [], "wikidata": [], "variant": []}
     for name in sorted(universe):
