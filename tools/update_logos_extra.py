@@ -76,8 +76,10 @@ NATIONAL_BOARD_CRESTS = True
 # also catching crests it must not. Cricket Scotland's is two inks (black text, purple thistle) with
 # ~60% vanishing on the dark plate, under both bars, but it is line art (0.41 of its bounding box) so
 # it reverses cleanly. Loosening the rule to catch it would also reverse Kenya's black, red and green
-# lion into a white silhouette.
-REVERSE_OVERRIDES = {"Scotland": "dark"}
+# lion into a white silhouette. "both" reverses on both plates: its white "SCOTLAND" lettering was
+# faint on the light plate too, so it is drawn in one colour everywhere, as Cricket Scotland's own
+# one-colour versions are.
+REVERSE_OVERRIDES = {"Scotland": "both"}
 # Most lookups failing to connect is a block or an outage, not a fact about the teams.
 MAX_ERROR_SHARE = 0.5
 
@@ -169,14 +171,15 @@ def lookup_sportsdb(name):
 
 
 def wikidata_index():
-    """Every cricket side Wikidata has a logo or colour for. Unreachable is an empty index, not a
-    failure: it is the minor source."""
+    """Every cricket side Wikidata has a logo or colour for, or None when it cannot be reached. Not
+    a failure, since it is the minor source, but not an empty answer either: an outage must not
+    erase what an earlier run found."""
     url = WIKIDATA_SPARQL.format(query=urllib.parse.urlencode({"query": ts.WIKIDATA_SPARQL}))
     try:
         result = get_json(url, "wikidata", 0, accept="application/sparql-results+json")
     except FetchError as error:
-        print(f"Wikidata unavailable ({error}); continuing without it")
-        return {}
+        print(f"Wikidata unavailable ({error}); keeping last run's Wikidata entries")
+        return None
     return ts.wikidata_index(((result or {}).get("results") or {}).get("bindings"))
 
 
@@ -225,7 +228,8 @@ def candidates(universe, logos, lookups, today):
 def build_logo_ink(logos, inks, overrides):
     """The crests the app draws reversed on one plate, keyed by the URL TeamCrest draws rather than
     by team: a variant that kept its own Cricbuzz crest must not inherit its parent's reversal. An
-    override names a team; it applies to that team's crest URL, and so to every variant sharing it."""
+    override names a team; it applies to that team's crest URL, and so to every variant sharing it.
+    Its value passes through as given, including "both" (reversed on either plate)."""
     logo_ink = {
         url: inks[url] for url in sorted(set(logos.values()))
         if not is_cricbuzz(url) and inks.get(url) in ("dark", "light")
@@ -319,13 +323,14 @@ def main():
         return 1
 
     wikidata = wikidata_index()
-    for name in universe:
-        found = wikidata.get(ts.normalize(name))
-        if found:
-            lookups[name] = {**lookups.get(name, {}), "wikidata": found}
-        elif name in lookups:
-            lookups[name].pop("wikidata", None)
-    print(f"Wikidata: {len(wikidata)} sides with a logo or colour, {sum(1 for n in universe if ts.normalize(n) in wikidata)} of ours")
+    if wikidata is not None:
+        for name in universe:
+            found = wikidata.get(ts.normalize(name))
+            if found:
+                lookups[name] = {**lookups.get(name, {}), "wikidata": found}
+            elif name in lookups:
+                lookups[name].pop("wikidata", None)
+        print(f"Wikidata: {len(wikidata)} sides with a logo or colour, {sum(1 for n in universe if ts.normalize(n) in wikidata)} of ours")
 
     # A TheSportsDB badge beats a Cricbuzz crest. For a club or franchise Cricbuzz serves a simplified
     # mark on a coloured square (Mumbai Indians is the chakra alone) where TheSportsDB has the real

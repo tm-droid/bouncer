@@ -124,15 +124,17 @@ object TeamLogoManager {
 /**
  * The single ink of a crest that vanishes on one of TeamCrest's plates: [Dark] (England's navy) on
  * the dark plate, [Light] (New Zealand's white fern) on the light one. Drawn there in the theme's text
- * colour — the reversed version a logo kit carries for that background.
+ * colour — the reversed version a logo kit carries for that background. [Both] is a hand-picked crest
+ * (Scotland's) drawn in one colour on every plate.
  */
-enum class LogoInk { Dark, Light }
+enum class LogoInk { Dark, Light, Both }
 
 /** The asset's `"dark"`/`"light"` values; anything else is dropped rather than guessed. */
 internal fun parseLogoInks(raw: Map<String, String>): Map<String, LogoInk> = raw.mapNotNull { (url, ink) ->
     when (ink) {
         "dark" -> url to LogoInk.Dark
         "light" -> url to LogoInk.Light
+        "both" -> url to LogoInk.Both
         else -> null
     }
 }.toMap()

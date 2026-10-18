@@ -94,14 +94,15 @@ fun TeamCrest(
 /**
  * The reversal for the crest at [url] when it would vanish on this theme's plate: a single-ink crest
  * redrawn in `onSurface`, keeping its own shape and cut-outs (`SrcIn`). England's navy crest is white
- * on the dark plate, New Zealand's white fern black on the light one; every other crest is untouched.
+ * on the dark plate, New Zealand's white fern black on the light one, and Scotland's is one colour on
+ * both ([LogoInk.Both]); every other crest is untouched.
  */
 @Composable
 fun rememberCrestTint(url: String?): ColorFilter? {
     val colors = BouncerThemeV2.colors
     val ink = TeamLogoManager.logoInk(url)
     return remember(ink, colors.isDark, colors.onSurface) {
-        val vanishes = ink != null && (ink == LogoInk.Dark) == colors.isDark
+        val vanishes = ink == LogoInk.Both || (ink != null && (ink == LogoInk.Dark) == colors.isDark)
         if (vanishes) ColorFilter.tint(colors.onSurface, BlendMode.SrcIn) else null
     }
 }

@@ -18,10 +18,12 @@ import java.io.File
 class LogoInkTest {
 
     @Test
-    fun `dark and light parse and anything else is dropped`() {
+    fun `dark, light and both parse and anything else is dropped`() {
         assertEquals(
-            mapOf("a.png" to LogoInk.Dark, "b.png" to LogoInk.Light),
-            parseLogoInks(mapOf("a.png" to "dark", "b.png" to "light", "c.png" to "unreadable", "d.png" to "")),
+            mapOf("a.png" to LogoInk.Dark, "b.png" to LogoInk.Light, "e.png" to LogoInk.Both),
+            parseLogoInks(
+                mapOf("a.png" to "dark", "b.png" to "light", "c.png" to "unreadable", "d.png" to "", "e.png" to "both"),
+            ),
         )
     }
 

@@ -177,8 +177,8 @@ class LogoInkMapTest(unittest.TestCase):
             "https://r2.thesportsdb.com/ken.png/small": None,
         }
         self.assertEqual(
-            {"https://r2.thesportsdb.com/eng.png/small": "dark", "https://r2.thesportsdb.com/sco.png/small": "dark"},
-            extra.build_logo_ink(logos, inks, {"Scotland": "dark", "Surrey": "dark", "Nowhere": "light"}),
+            {"https://r2.thesportsdb.com/eng.png/small": "dark", "https://r2.thesportsdb.com/sco.png/small": "both"},
+            extra.build_logo_ink(logos, inks, {"Scotland": "both", "Surrey": "dark", "Nowhere": "light"}),
         )
 
 
