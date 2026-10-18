@@ -57,6 +57,22 @@ class TeamLogoLookupTest {
     }
 
     @Test
+    fun `a variant takes its parent side's crest`() {
+        assertEquals(logos["India"], lookup("India A Women"))
+        assertEquals(logos["India"], lookup("India U-19"))
+    }
+
+    @Test
+    fun `a variant's own crest beats its parent's`() {
+        assertEquals(logos["Namibia  U19"], lookup("Namibia U19"))
+    }
+
+    @Test
+    fun `a variant of an unknown side is still null`() {
+        assertNull(lookup("Not A Team Women"))
+    }
+
+    @Test
     fun `the first key wins a normalized collision`() {
         val collided = mapOf("Cape cobras" to "first", "Cape Cobras" to "second")
         assertEquals("first", lookupLogo(collided, buildNormalizedLogoIndex(collided), "cape COBRAS"))

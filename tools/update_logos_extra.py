@@ -1,0 +1,242 @@
+"""Logos (and source colours) for the sides Cricbuzz's team pages don't give one.
+
+Runs after `update_logos.py` in `.github/workflows/daily_logo_update.yml`. Cricbuzz stays first:
+nothing here replaces one of its entries in `TeamLogos.json`, only fills a gap.
+
+Which names: every key of `TeamLogos.json`, plus both teams of every match the public archive holds
+(`idx/m/YYYY-MM.json` on tm-droid.github.io/bouncer-archive). The archive half is every side Bouncer
+has actually shown, which includes sides Cricbuzz's team pages never list.
+
+Sources, per name, first hit wins for the logo:
+
+1. TheSportsDB `searchteams.php` (free key 3, ~30 requests a minute): `strBadge`, and the
+   hand-entered kit colours `strColour1..3` — the one real team colour database that has cricket.
+2. Wikidata: the cricket-team entity's logo (P154) as a Commons PNG thumbnail, and its official
+   colours (P6364 -> P465).
+3. A variant's parent side: "India Women", "Hong Kong U19" take the Cricbuzz crest of "India" and
+   "Hong Kong", which for a national side is its flag. No network.
+
+What each lookup found is kept in `tools/team_lookups.json` (committed), which `extract_team_colors.py`
+reads for the source colours. A name is looked up again only after RECHECK_DAYS, and at most
+MAX_LOOKUPS names a run, so the backlog clears over a few weeks rather than in one long job.
+
+Merge, never shrink; fail loudly — the rules `update_logos.py` follows. A run whose lookups mostly
+fail to connect writes nothing.
+"""
+
+import datetime
+import json
+import os
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import team_sources as ts  # noqa: E402
+
+LOGOS_PATH = "app/src/main/assets/TeamLogos.json"
+COLORS_PATH = "app/src/main/assets/TeamColors.json"
+LOOKUPS_PATH = "tools/team_lookups.json"
+
+ARCHIVE = "https://tm-droid.github.io/bouncer-archive/"
+SPORTSDB = "https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t={name}"
+WIKIDATA = "https://www.wikidata.org/w/api.php?{query}"
+
+# Wikimedia's policy asks for a User-Agent that names the tool and how to reach its owner.
+USER_AGENT = "BouncerTeamLogos/1.0 (https://github.com/tm-droid/bouncer; tools/update_logos_extra.py)"
+
+RECHECK_DAYS = 56
+MAX_LOOKUPS = 150
+SPORTSDB_GAP_S = 2.1
+WIKIDATA_GAP_S = 1.0
+# Most lookups failing to connect is a block or an outage, not a fact about the teams.
+MAX_ERROR_SHARE = 0.5
+
+_last_call = {}
+
+
+class FetchError(Exception):
+    pass
+
+
+def get_json(url, gap_key, gap_s):
+    wait = _last_call.get(gap_key, 0) + gap_s - time.monotonic()
+    if wait > 0:
+        time.sleep(wait)
+    _last_call[gap_key] = time.monotonic()
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return json.loads(response.read().decode("utf-8", "replace") or "null")
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError) as error:
+        raise FetchError(f"{url}: {error}") from error
+
+
+def load_json(path, default):
+    if not os.path.exists(path):
+        return default
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def save_json(path, data, indent=2):
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=indent, ensure_ascii=False)
+        handle.write("\n")
+
+
+def is_short_code(name):
+    """A partial archive row names its sides by code ("IND"); a code is not a team name."""
+    return len(name) <= 4 and name.isupper()
+
+
+def archive_team_names():
+    """Both teams of every archived match. An unreachable archive is a smaller run, not a failure:
+    the Cricbuzz names still get their lookups."""
+    try:
+        years = get_json(ARCHIVE + "idx/years.json", "archive", 0)
+    except FetchError as error:
+        print(f"Archive index unavailable ({error}); continuing with TeamLogos.json names only")
+        return set()
+    names = set()
+    for year, months in (years or {}).items():
+        for month in months or {}:
+            try:
+                rows = get_json(f"{ARCHIVE}idx/m/{year}-{month}.json", "archive", 0)
+            except FetchError as error:
+                print(f"Skipping archive month {year}-{month}: {error}")
+                continue
+            for row in rows or []:
+                for team in row[4:6] if isinstance(row, list) and len(row) > 5 else []:
+                    if isinstance(team, str) and team.strip() and not is_short_code(team.strip()):
+                        names.add(" ".join(team.split()))
+    return names
+
+
+def lookup_sportsdb(name):
+    response = get_json(SPORTSDB.format(name=urllib.parse.quote(name)), "sportsdb", SPORTSDB_GAP_S)
+    return ts.sportsdb_pick(response, name)
+
+
+def lookup_wikidata(name):
+    search = get_json(
+        WIKIDATA.format(query=urllib.parse.urlencode({
+            "action": "wbsearchentities", "search": name, "language": "en",
+            "type": "item", "limit": "7", "format": "json",
+        })),
+        "wikidata", WIKIDATA_GAP_S,
+    )
+    entity_id = ts.wikidata_pick_entity(search, name)
+    if not entity_id:
+        return None
+    entities = get_json(
+        WIKIDATA.format(query=urllib.parse.urlencode({
+            "action": "wbgetentities", "ids": entity_id, "props": "claims", "format": "json",
+        })),
+        "wikidata", WIKIDATA_GAP_S,
+    )
+    entity = ((entities or {}).get("entities") or {}).get(entity_id) or {}
+    colours = []
+    colour_ids = ts.wikidata_colour_ids(entity)[:3]
+    if colour_ids:
+        colour_entities = get_json(
+            WIKIDATA.format(query=urllib.parse.urlencode({
+                "action": "wbgetentities", "ids": "|".join(colour_ids), "props": "claims", "format": "json",
+            })),
+            "wikidata", WIKIDATA_GAP_S,
+        )
+        found = (colour_entities or {}).get("entities") or {}
+        colours = [c for c in (ts.wikidata_colour_hex(found.get(i) or {}) for i in colour_ids) if c]
+    return {"id": entity_id, "logo": ts.wikidata_logo(entity), "colours": colours}
+
+
+def is_fresh(entry, today):
+    try:
+        checked = datetime.date.fromisoformat(entry.get("checked", ""))
+    except (TypeError, ValueError):
+        return False
+    return (today - checked).days < RECHECK_DAYS
+
+
+def candidates(universe, logos, colours, lookups, today):
+    """Names due a lookup: those with no logo first, then those with no colour; fresh ones skipped."""
+    due = [n for n in sorted(universe) if not is_fresh(lookups.get(n, {}), today)]
+    no_logo = [n for n in due if n not in logos]
+    no_colour = [n for n in due if n in logos and n not in colours]
+    return (no_logo + no_colour)[:MAX_LOOKUPS]
+
+
+def variant_logo(name, logos_by_normalized):
+    base = ts.base_side(name)
+    if base == ts.normalize(name):
+        return None
+    return logos_by_normalized.get(base)
+
+
+def main():
+    today = datetime.date.today()
+    logos = load_json(LOGOS_PATH, {})
+    colours = load_json(COLORS_PATH, {})
+    lookups = load_json(LOOKUPS_PATH, {})
+    if len(logos) < 500:
+        print(f"Error: {LOGOS_PATH} has only {len(logos)} entries; run update_logos.py first")
+        return 1
+
+    universe = set(logos) | archive_team_names()
+    due = candidates(universe, logos, colours, lookups, today)
+    print(f"{len(universe)} names, {len(due)} due a lookup this run")
+
+    errors = 0
+    for name in due:
+        entry = {"checked": today.isoformat()}
+        try:
+            entry["sportsdb"] = lookup_sportsdb(name)
+            entry["wikidata"] = lookup_wikidata(name)
+        except FetchError as error:
+            errors += 1
+            print(f"Lookup failed for {name}: {error}")
+            continue
+        lookups[name] = entry
+
+    if due and errors / len(due) > MAX_ERROR_SHARE:
+        print(f"Error: {errors} of {len(due)} lookups failed to connect; not writing anything")
+        return 1
+
+    logos_by_normalized = {}
+    for logo_name, url in logos.items():
+        logos_by_normalized.setdefault(ts.normalize(logo_name), url)
+
+    added = {"sportsdb": [], "wikidata": [], "variant": []}
+    for name in sorted(universe):
+        if name in logos:
+            continue
+        entry = lookups.get(name) or {}
+        for source, url in (
+            ("sportsdb", (entry.get("sportsdb") or {}).get("logo")),
+            ("wikidata", (entry.get("wikidata") or {}).get("logo")),
+            ("variant", variant_logo(name, logos_by_normalized)),
+        ):
+            if url:
+                logos[name] = url
+                added[source].append(name)
+                break
+
+    save_json(LOGOS_PATH, logos)
+    save_json(LOOKUPS_PATH, dict(sorted(lookups.items())), indent=1)
+
+    hits = {
+        "sportsdb": sum(1 for e in lookups.values() if e.get("sportsdb")),
+        "wikidata": sum(1 for e in lookups.values() if e.get("wikidata")),
+    }
+    print(f"{len(due) - errors} looked up, {errors} failed; cached hits: {hits}")
+    for source, names in added.items():
+        shown = ", ".join(names[:10]) + ("..." if len(names) > 10 else "")
+        print(f"Logos added from {source}: {len(names)}" + (f" ({shown})" if names else ""))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

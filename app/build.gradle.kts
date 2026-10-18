@@ -286,6 +286,12 @@ android {
             .withPropertyName("searchNormalizationParityFixture")
             .withPathSensitivity(PathSensitivity.RELATIVE)
 
+        // TeamVariantParityTest pins TeamLogoManager's variant rule to the fixture the weekly logo
+        // tool reads. Same reasoning: undeclared, an edit to it leaves the task UP-TO-DATE.
+        inputs.files(rootProject.file("tools/team_variants.json"))
+            .withPropertyName("teamVariantParityFixture")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+
         // CommentaryRunsParityTest and MatchRowIdTest both assert on lines of match-sync's main.js.
         // It was the one file a parity test read that was not declared here, so on a warm build an
         // edit to it left the task UP-TO-DATE and neither check ran.

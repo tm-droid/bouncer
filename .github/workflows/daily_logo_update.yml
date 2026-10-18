@@ -10,6 +10,8 @@ on:
 jobs:
   update-logos:
     runs-on: ubuntu-latest
+    # The lookups are throttled to each source's rate limit and capped per run; this is a backstop.
+    timeout-minutes: 20
     permissions:
       contents: write
 
@@ -28,18 +30,29 @@ jobs:
       - name: Run update_logos.py
         run: python tools/update_logos.py
 
-      # Crest-derived team colours for every side the hand-picked table in TeamPalettes.kt does not
-      # list. Runs after the logo refresh so a new crest gets its colours the same week.
+      # Logos for the sides Cricbuzz's pages don't give one (TheSportsDB, Wikidata, a variant's
+      # parent side), and each source's own colours into tools/team_lookups.json. The pure parts are
+      # tested offline first, so a broken parser fails here rather than writing a bad asset.
+      - name: Run update_logos_extra.py
+        run: |
+          python -m unittest discover -s tools/tests
+          python tools/update_logos_extra.py
+
+      # Team colours for every side the hand-picked table in TeamPalettes.kt does not list: the
+      # sources' kit colours, then the crest, then the national flag (flag-icons, MIT, pinned).
       - name: Run extract_team_colors.py
         run: |
-          pip install --quiet pillow
-          python tools/extract_team_colors.py
+          pip install --quiet pillow cairosvg
+          mkdir -p "$RUNNER_TEMP/flag-icons"
+          npm pack flag-icons@7.6.0 --silent --pack-destination "$RUNNER_TEMP/flag-icons"
+          tar xzf "$RUNNER_TEMP/flag-icons/flag-icons-7.6.0.tgz" -C "$RUNNER_TEMP/flag-icons"
+          FLAG_ICONS_DIR="$RUNNER_TEMP/flag-icons/package/flags/4x3" python tools/extract_team_colors.py
 
       - name: Commit and push changes
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add app/src/main/assets/TeamLogos.json app/src/main/assets/TeamAcronyms.json app/src/main/assets/TeamColors.json
+          git add app/src/main/assets/TeamLogos.json app/src/main/assets/TeamAcronyms.json app/src/main/assets/TeamColors.json tools/team_lookups.json
           # Check if there are changes to commit
           if git diff --staged --quiet; then
             echo "No changes to commit"

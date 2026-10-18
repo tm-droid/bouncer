@@ -1,0 +1,29 @@
+{
+  "_comment": "A side's variant words, stripped from the end of a normalized name to reach the parent side whose crest and flag it shares ('India A Women' -> 'india'). Read by tools/team_sources.py and pinned to TeamLogoManager's copy by TeamVariantParityTest. Entries are normalized: lowercase, punctuation as single spaces.",
+  "suffixes": [
+    "women",
+    "xi",
+    "a",
+    "u19",
+    "u 19",
+    "under 19",
+    "under 19s",
+    "u23",
+    "emerging",
+    "legends",
+    "masters",
+    "development",
+    "academy",
+    "select"
+  ],
+  "cases": [
+    ["India Women", "india"],
+    ["India A Women", "india"],
+    ["Hong Kong U19", "hong kong"],
+    ["Namibia  U-19", "namibia"],
+    ["West Indies Select XI", "west indies"],
+    ["Mumbai Indians", "mumbai indians"],
+    ["Women", "women"],
+    ["Team A", "team"]
+  ]
+}

@@ -113,7 +113,8 @@ internal fun buildNormalizedLogoIndex(source: Map<String, String>): Map<String, 
 }
 
 /**
- * The crest for [teamName]: exact key first, normalized name second.
+ * The crest for [teamName]: exact key first, normalized name second, then the parent side's crest
+ * for a variant ("India A Women" takes India's, which for a national side is its flag).
  *
  * Pure and top-level so it can be tested without an asset — in a unit test the manager's map is
  * always empty, which is how an exact-key-only lookup went unnoticed for as long as it did.
@@ -122,4 +123,34 @@ internal fun lookupLogo(
     exact: Map<String, String>,
     normalized: Map<String, String>,
     teamName: String,
-): String? = exact[teamName] ?: normalized[normalizeTeamName(teamName)]
+): String? {
+    exact[teamName]?.let { return it }
+    val key = normalizeTeamName(teamName)
+    return normalized[key] ?: baseSide(teamName).takeIf { it != key }?.let { normalized[it] }
+}
+
+/**
+ * Variant words, normalized, as `tools/team_variants.json` lists them; `TeamVariantParityTest` pins
+ * the two together, since the weekly logo tool fills `TeamLogos.json` by the same rule.
+ */
+internal val TEAM_VARIANT_SUFFIXES = listOf(
+    "women", "xi", "a", "u19", "u 19", "under 19", "under 19s", "u23",
+    "emerging", "legends", "masters", "development", "academy", "select",
+)
+
+private val VARIANT_TAILS = TEAM_VARIANT_SUFFIXES.sortedByDescending { it.length }.map { it.split(" ") }
+
+/**
+ * The parent side of a variant, normalized: variant words stripped from the end until none is
+ * left, but never down to nothing — a side called "Women" stays "women".
+ */
+internal fun baseSide(name: String): String {
+    var words = normalizeTeamName(name).split(" ").filter { it.isNotEmpty() }
+    var stripped = true
+    while (stripped) {
+        val tail = VARIANT_TAILS.firstOrNull { words.size > it.size && words.takeLast(it.size) == it }
+        stripped = tail != null
+        if (tail != null) words = words.dropLast(tail.size)
+    }
+    return words.joinToString(" ")
+}
