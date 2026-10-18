@@ -26,6 +26,13 @@
 # one job, it does only what the push's changes call for, and pushes that change nothing it checks
 # start no run at all (paths-ignore). The checks still gate the upload: they run first in the same
 # Gradle invocation, and any failure ends the job before the publish steps.
+#
+# Second pass, October 2026, after the minutes ran out: a push is measured against the last commit
+# that passed (and, for the bundle, the last one that shipped) rather than against the previous
+# push, so a failed or cancelled run is carried by the next one. A dispatch is measured against
+# main instead of counting as everything. Pushes that change only tests or the detekt and lint
+# baselines, or whose head commit says `Ship: no`, check without bundling. Gradle stops at the
+# first failure, and the dependency graph is submitted only when the dependencies change.
 
 name: CI
 
@@ -42,13 +49,18 @@ on:
   # The same list. Dependabot's my-video and MCP-server PRs start no run.
   pull_request:
     paths-ignore: *ignored
-  # Every check plus the release bundle, whatever changed. `publish` uploads it to Play as well:
-  # the way to re-ship after an app push whose run failed, since a later push that changes no app
-  # path does not bundle.
+  # What the branch changed against main: its checks, and the release bundle if it changed what
+  # ships (kept, so that main fast-forwarded to the same commit ships it without a rebuild).
+  # `everything` runs every check and the bundle whatever changed; `publish` bundles and uploads
+  # to Play as well.
   workflow_dispatch:
     inputs:
       publish:
         description: Upload the bundle to Play (internal + closed testing)
+        type: boolean
+        default: false
+      everything:
+        description: Run every check and build the bundle, whatever changed
         type: boolean
         default: false
 
@@ -70,10 +82,11 @@ jobs:
     # Only the dependency-graph job below can write.
     permissions:
       contents: read
-      # Read-only, for one lookup: whether this exact commit already has a tested bundle (below).
+      # Read-only, for the run lookups below: the last commit that passed, the last that shipped,
+      # and whether this exact commit already has a tested bundle.
       actions: read
     outputs:
-      bundle: ${{ steps.changes.outputs.bundle }}
+      depgraph: ${{ steps.changes.outputs.depgraph }}
     # Job-level so a step's `if` can see it; a step `if` cannot read `secrets`.
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -83,16 +96,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      # What this push (or pull request) changed, and therefore what has to run:
-      #   android   — lint, detekt and the unit tests. Includes tools/ (update_logos.py is a parity
-      #               test input) and this file, so a workflow edit is checked before it is trusted.
-      #   functions — every function's `node --test`, plus the unit tests: the parity tests read
-      #               appwrite/functions/**, and their compile and untouched tests come from the
-      #               build cache, so this costs little.
-      #   bundle    — the release bundle: an app path changed on a push to main, or a dispatch.
-      #   ship      — the Play upload: `bundle` on a push, or a dispatch with `publish`.
-      # A range that cannot be read (the first push of a branch, a rewritten history) counts as
-      # everything changed, as the publish job did before.
+      # What has to run, from what changed since a base:
+      #   pull request — its base.
+      #   push to main, and a dispatch — for the checks, the newest commit (in this one's history)
+      #                  whose push run on main passed; for the bundle, the newest whose push run
+      #                  shipped. Not `before`: GitHub cancels a run still pending when a newer push
+      #                  arrives, and a run can fail, and either way the next push has to carry what
+      #                  that one never checked or shipped. A dispatch uses the same bases, so main
+      #                  fast-forwarded to a dispatched commit can ship its bundle (below) knowing
+      #                  the dispatch checked everything the push would have.
+      # A base that cannot be found (the API down, no passing run in reach) falls back to `before`,
+      # or for a dispatch to where the branch left main; an unreadable one counts as everything.
+      #
+      #   android   — lint, detekt and the unit tests: an app path or this file changed.
+      #   functions — every function's `node --test`: appwrite/ or this file changed.
+      #   parity    — the unit tests alone: a file outside app/ that a unit test reads changed.
+      #               The list is read from the `inputs.files` declarations in app/build.gradle.kts,
+      #               which every such test needs anyway, so it cannot drift.
+      #   bundle    — the release bundle: something that ships changed (tests and the detekt and
+      #               lint baselines do not ship), and the head commit does not carry `Ship: no`.
+      #               A skipped push is carried by the next push that ships.
+      #   ship      — the Play upload: `bundle` on a push to main, or a dispatch with `publish`.
+      #   depgraph  — submit the dependency graph: a bundling run on main whose range touched a
+      #               dependency declaration. Between submissions GitHub keeps the last one.
       - name: What changed?
         id: changes
         env:
@@ -102,26 +128,80 @@ jobs:
           BEFORE: ${{ github.event.before }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PUBLISH: ${{ inputs.publish }}
+          EVERYTHING: ${{ inputs.everything }}
         run: |
           set -euo pipefail
           app='^(app/|baselineprofile/|gradle/|distribution/|[^/]*\.gradle\.kts$|gradle\.properties$|local\.properties\.template$)'
-          base="${BEFORE}"
-          if [ "${EVENT}" = pull_request ]; then base="${PR_BASE}"; fi
-          files=ALL
-          if [ "${EVENT}" != workflow_dispatch ] && git cat-file -e "${base}^{commit}" 2>/dev/null; then
-            files=$(git diff --name-only "${base}" "${GITHUB_SHA}")
-          fi
-          changed() { [ "${files}" = ALL ] || grep -qE "$1" <<< "${files}"; }
+          unshipped='^app/(src/(test|androidTest)/|config/|lint-baseline\.xml$)'
+          deps='(^gradle/|\.gradle\.kts$|^gradle\.properties$)'
+          workflow='^\.github/workflows/ci\.yml$'
+          parity_re=$(grep -oE 'rootProject\.file\("[^"]+"\)' app/build.gradle.kts \
+            | sed -E 's/^rootProject\.file\("(.*)"\)$/\1/; s/\./\\./g; s/^/^/; s/$/$/' | paste -sd'|' -)
 
-          android=no; functions=no; bundle=no; ship=no
-          if changed "${app}|^tools/|^\.github/workflows/ci\.yml$"; then android=yes; fi
-          if changed '^appwrite/|^\.github/workflows/ci\.yml$'; then functions=yes; fi
+          is_commit() { [ -n "$1" ] && git cat-file -e "$1^{commit}" 2>/dev/null; }
+          since() { if is_commit "$1"; then git diff --name-only "$1" "${GITHUB_SHA}"; else echo ALL; fi; }
+          changed() { [ "$1" = ALL ] || grep -qE "$2" <<< "$1"; }
+          # The ids of a run's unexpired artifacts that match a jq condition on `.name`.
+          artifacts() {
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/$1/artifacts" \
+              --jq ".artifacts[] | select(($2) and .expired == false) | .id" 2>/dev/null || true
+          }
+          ships() {
+            [ "$1" = ALL ] && return 0
+            local m
+            m=$(grep -E "${app}" <<< "$1" | grep -vE "${unshipped}" || true)
+            [ -n "${m}" ]
+          }
+
+          check_base="${BEFORE}"; ship_base="${BEFORE}"
+          if [ "${EVENT}" = pull_request ]; then
+            check_base="${PR_BASE}"; ship_base="${PR_BASE}"
+          else
+            if [ "${EVENT}" = workflow_dispatch ]; then
+              check_base=$(git merge-base origin/main "${GITHUB_SHA}" 2>/dev/null || true); ship_base="${check_base}"
+            fi
+            # Newest first. A run that shipped left a `shipped` artifact, or, before that existed, a
+            # `release-aab` one (a push run uploads only what it built to ship).
+            runs=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=30" \
+              --jq '.workflow_runs[] | "\(.id) \(.head_sha)"' 2>/dev/null || true)
+            passed=""
+            while read -r id sha; do
+              if ! { is_commit "${sha:-}" && git merge-base --is-ancestor "${sha}" "${GITHUB_SHA}"; }; then continue; fi
+              if [ -z "${passed}" ]; then passed="${sha}"; fi
+              if [ -n "$(artifacts "${id}" '.name == "shipped" or .name == "release-aab"')" ]; then
+                ship_base="${sha}"
+                break
+              fi
+            done <<< "${runs}"
+            if [ -n "${passed}" ]; then check_base="${passed}"; fi
+          fi
+          echo "Checks since ${check_base:-nothing}; bundle since ${ship_base:-nothing}."
+
+          checked=$(since "${check_base}")
+          to_ship=$(since "${ship_base}")
+          # A dispatch that publishes runs every check: it is how a commit gets shipped by hand.
+          if [ "${EVENT}" = workflow_dispatch ] && { [ "${EVERYTHING}" = true ] || [ "${PUBLISH}" = true ]; }; then
+            checked=ALL; to_ship=ALL
+          fi
+          head_message=$(git log -1 --format=%B "${GITHUB_SHA}")
+          skip_ship=no
+          if grep -qiE '^Ship:[[:space:]]*no[[:space:]]*$' <<< "${head_message}"; then skip_ship=yes; fi
+
+          android=no; functions=no; parity=no; bundle=no; ship=no; depgraph=no
+          if changed "${checked}" "${app}|${workflow}"; then android=yes; fi
+          if changed "${checked}" "^appwrite/|${workflow}"; then functions=yes; fi
+          if [ -n "${parity_re}" ] && changed "${checked}" "${parity_re}"; then parity=yes; fi
           if [ "${EVENT}" = workflow_dispatch ]; then
-            bundle=yes
+            if [ "${PUBLISH}" = true ] || [ "${EVERYTHING}" = true ]; then
+              bundle=yes
+            elif [ "${skip_ship}" = no ] && ships "${to_ship}"; then
+              bundle=yes
+            fi
             if [ "${PUBLISH}" = true ]; then ship=yes; fi
-          elif [ "${EVENT}" = push ] && [ "${REF}" = refs/heads/main ] && changed "${app}"; then
+          elif [ "${EVENT}" = push ] && [ "${REF}" = refs/heads/main ] && [ "${skip_ship}" = no ] && ships "${to_ship}"; then
             bundle=yes; ship=yes
           fi
+          if [ "${skip_ship}" = yes ]; then echo "The head commit says Ship: no; the next push that ships carries this one."; fi
           # A release whose exact commit already passed this workflow, with its signed bundle kept,
           # ships that bundle instead of building it again. That is the usual case: a branch is
           # checked by a dispatch, then main is fast-forwarded to it — the same tree, so the same
@@ -133,8 +213,7 @@ jobs:
           if [ "${EVENT}" = push ] && [ "${bundle}" = yes ]; then
             for run in $(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${GITHUB_SHA}&status=success&per_page=20" \
                 --jq '.workflow_runs[].id' 2>/dev/null || true); do
-              if gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run}/artifacts" \
-                  --jq '.artifacts[] | select(.name == "release-aab" and .expired == false) | .id' 2>/dev/null | grep -q .; then
+              if [ -n "$(artifacts "${run}" '.name == "release-aab"')" ]; then
                 reuse="${run}"
                 break
               fi
@@ -142,13 +221,15 @@ jobs:
           fi
           if [ -n "${reuse}" ]; then
             echo "Commit ${GITHUB_SHA} passed in run ${reuse}; shipping its bundle without rebuilding."
-            android=no; functions=no; bundle=no
+            android=no; functions=no; parity=no; bundle=no
           fi
+          if [ "${bundle}" = yes ] && [ "${REF}" = refs/heads/main ] && changed "${to_ship}" "${deps}"; then depgraph=yes; fi
 
           gradle=no
-          if [ "${android}" = yes ] || [ "${functions}" = yes ]; then gradle=yes; fi
-          printf 'android=%s\nfunctions=%s\ngradle=%s\nbundle=%s\nship=%s\nreuse=%s\n' \
-            "${android}" "${functions}" "${gradle}" "${bundle}" "${ship}" "${reuse}" | tee -a "$GITHUB_OUTPUT"
+          if [ "${android}" = yes ] || [ "${parity}" = yes ] || [ "${bundle}" = yes ]; then gradle=yes; fi
+          printf 'android=%s\nfunctions=%s\nparity=%s\ngradle=%s\nbundle=%s\nship=%s\ndepgraph=%s\nreuse=%s\nship_base=%s\n' \
+            "${android}" "${functions}" "${parity}" "${gradle}" "${bundle}" "${ship}" "${depgraph}" "${reuse}" "${ship_base}" \
+            | tee -a "$GITHUB_OUTPUT"
 
       # The provider ladder, the fact-checker, the rewrite backlog and the win-probability maths
       # exist only in JavaScript. First, because they take seconds and Gradle takes minutes.
@@ -204,7 +285,7 @@ jobs:
           distribution: temurin
 
       # Saves the Gradle home after each main run — dependencies and the local build cache — and
-      # only reads it on pull requests. The build cache is what makes a functions-only push cheap:
+      # only reads it on pull requests. The build cache is what makes a parity-only push cheap:
       # its compile and the tests whose inputs did not change come back FROM-CACHE. setup-java's
       # `cache: gradle` could not do that: it saves only when its key is new, so the build cache
       # inside froze at the first save. This is the default (enhanced) provider, free for private
@@ -213,13 +294,14 @@ jobs:
       #
       # The dependency graph is recorded from the release build, which resolves
       # releaseRuntimeClasspath — the graph Dependabot alerts read — and saved as an artifact for
-      # the dependency-graph job to submit. It replaces the repository's "Automatic dependency
-      # submission", a second Gradle run on every push (~280 minutes in the first half of October
-      # 2026). GitHub keeps the last snapshot between submissions.
+      # the dependency-graph job to submit, only when a dependency declaration changed. It replaces
+      # the repository's "Automatic dependency submission", a second Gradle run on every push (~280
+      # minutes in the first half of October 2026), which must stay off in the repository settings.
+      # GitHub keeps the last snapshot between submissions.
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         if: steps.changes.outputs.gradle == 'yes'
         with:
-          dependency-graph: ${{ steps.changes.outputs.bundle == 'yes' && github.ref == 'refs/heads/main' && 'generate-and-upload' || 'disabled' }}
+          dependency-graph: ${{ steps.changes.outputs.depgraph == 'yes' && 'generate-and-upload' || 'disabled' }}
 
       - name: Decode keystore
         if: steps.changes.outputs.bundle == 'yes'
@@ -273,9 +355,13 @@ jobs:
           printf 'defaults.project=android\ndefaults.org=tanush-4w\ncli.executable=/usr/local/bin/sentry-cli\n' > sentry.properties
 
       # One invocation, so the debug compile the tests and lint share is done once. The coverage
-      # task depends on testDebugUnitTest, so it still fails on a failing test. `--continue` reports
-      # every failing check at once, as the parallel jobs did; any failure fails this step, and
-      # nothing after it uploads.
+      # task depends on testDebugUnitTest, so it still fails on a failing test. No `--continue`: the
+      # first failure ends the build, so a red run stops paying for lint, detekt and the bundle
+      # (a red dispatch with it ran its full ~17 minutes). Any failure fails this step, and nothing
+      # after it uploads.
+      #
+      # The unit tests run whenever Gradle does. A run with only `bundle` (its checks passed at the
+      # commit it is measured from) keeps lintVitalRelease.
       #
       # lintVital* is not excluded from bundleRelease. It is the release-blocking subset — the check
       # that catches a NewApi call, a wrong exported flag or an invalid backup rule before an
@@ -304,7 +390,7 @@ jobs:
           fi
           if [ "${BUNDLE}" = yes ]; then tasks+=(bundleRelease); fi
           echo "Tasks: ${tasks[*]} ${skip[*]:-}"
-          ./gradlew "${tasks[@]}" "${skip[@]}" --continue --no-daemon --stacktrace
+          ./gradlew "${tasks[@]}" "${skip[@]}" --no-daemon --stacktrace
 
       - uses: actions/upload-artifact@v7
         if: failure() && steps.changes.outputs.gradle == 'yes'
@@ -347,19 +433,28 @@ jobs:
 
       # A push whose commits carry a `Force-Update: yes` trailer uploads at in-app update priority
       # 5, which AppUpdatePolicy turns into Play's immediate update screen on every Play install.
-      # Play fixes a release's priority at rollout, so this is the only moment to set it. When the
-      # range cannot be read, or on a dispatch, only the head commit counts: scanning the whole
-      # history would force every release after the first forced one.
+      # Play fixes a release's priority at rollout, so this is the only moment to set it. The range
+      # is everything since the last push that shipped, so a trailer in a `Ship: no` push still
+      # counts when its changes go out. When the range cannot be read, or on a dispatch, only the
+      # head commit counts: scanning the whole history would force every release after the first
+      # forced one.
+      #
+      # The log is read into a variable, not piped: under the step shell's pipefail, `grep -q`
+      # quitting at an early match can end `git log` with SIGPIPE and read as no match.
       - name: Is this a forced update?
         id: priority
         if: steps.changes.outputs.ship == 'yes'
         env:
-          BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
+          SHIP_BASE: ${{ steps.changes.outputs.ship_base }}
         run: |
           range=(-1 "${GITHUB_SHA}")
-          if [ -n "${BEFORE}" ] && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then range=("${BEFORE}..${GITHUB_SHA}"); fi
+          if [ "${EVENT}" = push ] && [ -n "${SHIP_BASE}" ] && git cat-file -e "${SHIP_BASE}^{commit}" 2>/dev/null; then
+            range=("${SHIP_BASE}..${GITHUB_SHA}")
+          fi
+          messages=$(git log --format=%B "${range[@]}")
           priority=0
-          if git log --format=%B "${range[@]}" | grep -qiE '^Force-Update:[[:space:]]*yes[[:space:]]*$'; then priority=5; fi
+          if grep -qiE '^Force-Update:[[:space:]]*yes[[:space:]]*$' <<< "${messages}"; then priority=5; fi
           echo "value=${priority}" >> "$GITHUB_OUTPUT"
           echo "In-app update priority: ${priority}"
 
@@ -379,12 +474,26 @@ jobs:
           # distribution/whatsnew/README.md says who edits it and when.
           whatsNewDirectory: distribution/whatsnew
 
+      # What the next push to main measures its bundle against (the "What changed?" step): a
+      # commit whose push run succeeded with this artifact has shipped.
+      - name: Record the release
+        if: steps.changes.outputs.ship == 'yes'
+        run: printf '%s %s\n' "${GITHUB_SHA}" "${BOUNCER_VERSION_CODE:-reused}" > "${RUNNER_TEMP}/shipped.txt"
+
+      - uses: actions/upload-artifact@v7
+        if: steps.changes.outputs.ship == 'yes'
+        with:
+          name: shipped
+          path: ${{ runner.temp }}/shipped.txt
+          retention-days: 90
+
   # Submits the graph the ci job saved. Separate so that only this job, which runs no repository
-  # code, holds a token that can write. A few seconds, on bundling runs only.
+  # code, holds a token that can write. A few seconds, but a whole billed minute, so only on a
+  # bundling run on main whose range changed a dependency declaration.
   dependency-graph:
     name: Submit dependency graph
     needs: ci
-    if: needs.ci.outputs.bundle == 'yes' && github.ref == 'refs/heads/main'
+    if: needs.ci.outputs.depgraph == 'yes'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
