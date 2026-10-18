@@ -48,6 +48,12 @@ MIN_EXPECTED_TEAMS = 500
 # lives in the path. Keep the two in step: CricbuzzTeamLogoUrlParityTest compares them.
 LOGO_URL = "https://static.cricbuzz.com/a/img/v1/720x540/i1/c{image_id}/i.jpg"
 
+# Cricbuzz's grey placeholder: a team with no crest of its own carries this image id (49 sides in
+# October 2026, Jamaica and Guyana among them). It is no crest, so it is never written, and an entry
+# holding it is removed — which lets update_logos_extra.py fill the gap and the app show a monogram.
+# Mirrors CRICBUZZ_PLACEHOLDER_IMAGE_ID in app/src/main/kotlin/com/tanush/bouncer/network/CricbuzzImages.kt.
+PLACEHOLDER_IMAGE_IDS = {"174284"}
+
 
 def unescape_flight(html):
     """The RSC flight stream as readable JSON text.
@@ -177,8 +183,14 @@ def main():
         sys.exit(1)
 
     logos, logos_added, logos_updated = merge(
-        load_json(LOGOS_PATH), teams, lambda t: LOGO_URL.format(image_id=t["imageId"])
+        load_json(LOGOS_PATH),
+        teams,
+        lambda t: None if t["imageId"] in PLACEHOLDER_IMAGE_IDS else LOGO_URL.format(image_id=t["imageId"]),
     )
+    placeholders = {LOGO_URL.format(image_id=i) for i in PLACEHOLDER_IMAGE_IDS}
+    removed = sorted(name for name, url in logos.items() if url in placeholders)
+    for name in removed:
+        del logos[name]
     acronyms, acronyms_added, acronyms_updated = merge(
         load_json(ACRONYMS_PATH), teams, lambda t: t["shortName"]
     )
@@ -186,7 +198,10 @@ def main():
     save_json(LOGOS_PATH, logos)
     save_json(ACRONYMS_PATH, acronyms)
 
-    print(f"{LOGOS_PATH}: {len(logos)} entries ({len(logos_added)} added, {len(logos_updated)} updated)")
+    print(
+        f"{LOGOS_PATH}: {len(logos)} entries ({len(logos_added)} added, {len(logos_updated)} updated, "
+        f"{len(removed)} placeholders removed)"
+    )
     print(f"{ACRONYMS_PATH}: {len(acronyms)} entries ({len(acronyms_added)} added, {len(acronyms_updated)} updated)")
     if logos_added:
         print("Added: " + ", ".join(logos_added[:10]) + ("..." if len(logos_added) > 10 else ""))

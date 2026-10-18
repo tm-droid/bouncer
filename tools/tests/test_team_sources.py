@@ -44,7 +44,7 @@ class SportsDbTest(unittest.TestCase):
             {"strTeam": "Rajasthan Royals FC", "strSport": "Soccer", "strBadge": "x", "strColour1": "#000000"},
             {
                 "strTeam": "Rajasthan Royals",
-                "strAlternate": "RR, Royals",
+                "strTeamAlternate": "RR, Royals",
                 "strSport": "Cricket",
                 "strBadge": "https://r2.thesportsdb.com/images/media/team/badge/rr.png",
                 "strColour1": "#EA1A85",
@@ -70,37 +70,41 @@ class SportsDbTest(unittest.TestCase):
 
 
 class WikidataTest(unittest.TestCase):
-    SEARCH = {
-        "search": [
-            {"id": "Q1", "label": "Mumbai Indians", "description": "film"},
-            {"id": "Q2", "label": "Mumbai Indians", "description": "Indian cricketer"},
-            {"id": "Q3", "label": "Mumbai Indians", "description": "Indian Premier League cricket franchise"},
-        ]
-    }
+    @staticmethod
+    def row(team, label, logo=None, hex_value=None):
+        row = {"team": {"value": team}, "label": {"value": label}}
+        if logo:
+            row["logo"] = {"value": logo}
+        if hex_value:
+            row["hex"] = {"value": hex_value}
+        return row
 
-    def test_entity_must_be_a_cricket_team(self):
-        self.assertEqual("Q3", ts.wikidata_pick_entity(self.SEARCH, "Mumbai Indians"))
-        self.assertIsNone(ts.wikidata_pick_entity(self.SEARCH, "Mumbai"))
+    def test_labels_become_team_names(self):
+        self.assertEqual("nepal", ts.wikidata_key("Nepal national cricket team"))
+        self.assertEqual("lancashire", ts.wikidata_key("Lancashire County Cricket Club"))
+        self.assertEqual("ireland", ts.wikidata_key("Ireland women's national cricket team"))
+        self.assertEqual("mumbai indians", ts.wikidata_key("Mumbai Indians"))
 
-    def test_national_team_label_suffix_is_ignored(self):
-        search = {"search": [{"id": "Q9", "label": "Nepal national cricket team", "description": "national cricket team"}]}
-        self.assertEqual("Q9", ts.wikidata_pick_entity(search, "Nepal"))
-
-    def test_logo_and_colours(self):
-        entity = {
-            "claims": {
-                "P154": [{"mainsnak": {"datavalue": {"value": "Mumbai Indians Logo.svg"}}}],
-                "P6364": [{"mainsnak": {"datavalue": {"value": {"id": "Q100"}}}}],
-            }
-        }
+    def test_index_keeps_logo_and_colours(self):
+        index = ts.wikidata_index([
+            self.row("Q1", "Mumbai Indians", "http://commons.wikimedia.org/wiki/Special:FilePath/Mumbai%20Indians%20Logo.svg", "004BA0"),
+            self.row("Q1", "Mumbai Indians", None, "D1AB3E"),
+            self.row("Q2", "Kent County Cricket Club"),
+        ])
         self.assertEqual(
-            "https://commons.wikimedia.org/wiki/Special:FilePath/Mumbai_Indians_Logo.svg?width=256",
-            ts.wikidata_logo(entity),
+            {"mumbai indians": {
+                "logo": "https://commons.wikimedia.org/wiki/Special:FilePath/Mumbai_Indians_Logo.svg?width=256",
+                "colours": ["#004BA0", "#D1AB3E"],
+            }},
+            index,
         )
-        self.assertEqual(["Q100"], ts.wikidata_colour_ids(entity))
-        colour = {"claims": {"P465": [{"mainsnak": {"datavalue": {"value": "004BA0"}}}]}}
-        self.assertEqual("#004BA0", ts.wikidata_colour_hex(colour))
-        self.assertIsNone(ts.wikidata_logo({}))
+
+    def test_a_name_two_sides_share_is_dropped(self):
+        index = ts.wikidata_index([
+            self.row("Q1", "Western Province", hex_value="FF0000"),
+            self.row("Q2", "Western Province cricket team", hex_value="0000FF"),
+        ])
+        self.assertEqual({}, index)
 
 
 class ChoiceTest(unittest.TestCase):

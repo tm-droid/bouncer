@@ -75,4 +75,19 @@ class CricbuzzTeamListParityTest {
         assertTrue(script.contains("app/src/main/assets/TeamLogos.json"))
         assertTrue(script.contains("app/src/main/assets/TeamAcronyms.json"))
     }
+
+    @Test
+    fun `the script drops the placeholder the app treats as no crest`() {
+        val ids = checkNotNull(Regex("""PLACEHOLDER_IMAGE_IDS\s*=\s*\{([^}]*)\}""").find(script)) {
+            "PLACEHOLDER_IMAGE_IDS not found in the script"
+        }.groupValues[1]
+        assertTrue(ids.contains("\"$CRICBUZZ_PLACEHOLDER_IMAGE_ID\""))
+    }
+
+    @Test
+    fun `the placeholder url is recognised and a real crest is not`() {
+        assertTrue(isCricbuzzPlaceholderLogo(cricbuzzTeamLogoUrl(CRICBUZZ_PLACEHOLDER_IMAGE_ID)))
+        assertTrue(!isCricbuzzPlaceholderLogo(cricbuzzTeamLogoUrl("776162")))
+        assertTrue(!isCricbuzzPlaceholderLogo("https://r2.thesportsdb.com/images/media/team/badge/c174284/x.png"))
+    }
 }

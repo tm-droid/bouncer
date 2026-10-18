@@ -9,6 +9,7 @@ Wikidata and Commons, and a development sandbox usually reaches none of them.
 import json
 import os
 import re
+import urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 VARIANTS_PATH = os.path.join(HERE, "team_variants.json")
@@ -95,7 +96,8 @@ def sportsdb_pick(response, name):
     for team in (response or {}).get("teams") or []:
         if (team.get("strSport") or "").lower() != "cricket":
             continue
-        names = [team.get("strTeam") or ""] + (team.get("strAlternate") or "").split(",")
+        alternates = team.get("strTeamAlternate") or team.get("strAlternate") or ""
+        names = [team.get("strTeam") or ""] + alternates.split(",")
         if wanted not in {normalize(n) for n in names if n.strip()}:
             continue
         colours = [c for c in (hex_or_none(team.get(f"strColour{i}")) for i in (1, 2, 3)) if c]
@@ -107,60 +109,67 @@ def sportsdb_pick(response, name):
 
 COMMONS_FILE = "https://commons.wikimedia.org/wiki/Special:FilePath/{file}?width=256"
 
+# Every cricket side on Wikidata (sport P641 = cricket Q5375, not a person) with its logo (P154)
+# and official colours (P6364 -> hex P465), in one query. Measured October 2026: ~12,000 entities,
+# 59 with a logo and 5 with a colour, because most club logos are non-free and so not on Commons.
+# Thin, but one request a week; per-name API lookups cost three requests each and hit 429s.
+WIKIDATA_SPARQL = """
+SELECT ?team ?label ?logo ?hex WHERE {
+  ?team wdt:P641 wd:Q5375 .
+  FILTER NOT EXISTS { ?team wdt:P31 wd:Q5 }
+  ?team rdfs:label ?label . FILTER(LANG(?label) = "en")
+  OPTIONAL { ?team wdt:P154 ?logo }
+  OPTIONAL { ?team wdt:P6364 ?colour . ?colour wdt:P465 ?hex }
+}
+"""
 
-def wikidata_pick_entity(search_response, name):
-    """The first `wbsearchentities` hit that is a cricket team called `name`.
+_WIKIDATA_LABEL_TAIL = re.compile(
+    r" (((men s|women s) )?national )?(cricket team|county cricket club|cricket club|cricket)$"
+)
 
-    The description is the filter ("Indian Premier League cricket franchise", "national cricket
-    team"): Wikidata calls a dozen things "Mumbai Indians", and only one of them plays cricket.
+
+def wikidata_key(label):
+    """A Wikidata label as a team name: "Nepal national cricket team" -> "nepal"."""
+    return _WIKIDATA_LABEL_TAIL.sub("", normalize(label))
+
+
+def commons_thumbnail(file_url_or_name):
+    """A Commons PNG thumbnail for a P154 value (a file name, or the SPARQL FilePath URL). Commons
+    serves SVG logos as PNG at `width`, which Coil shows without an SVG decoder."""
+    name = file_url_or_name.rsplit("/Special:FilePath/", 1)[-1]
+    name = urllib.parse.unquote(name).strip().replace(" ", "_")
+    return COMMONS_FILE.format(file=urllib.parse.quote(name, safe="_.-()"))
+
+
+def wikidata_index(bindings):
+    """SPARQL result rows -> {team name key: {"logo": url|None, "colours": [hex]}}.
+
+    Only entities with a logo or a colour are kept. A key two entities share with different data
+    (two clubs called "Western Province") is dropped: neither is known to be the side we mean.
     """
-    wanted = normalize(name)
-    for hit in (search_response or {}).get("search") or []:
-        description = (hit.get("description") or "").lower()
-        if "cricket" not in description or "player" in description or "cricketer" in description:
+    entities = {}
+    for row in bindings or []:
+        entity = entities.setdefault(
+            row["team"]["value"], {"label": row["label"]["value"], "logo": None, "colours": []}
+        )
+        if "logo" in row and not entity["logo"]:
+            entity["logo"] = commons_thumbnail(row["logo"]["value"])
+        hex_value = hex_or_none(row.get("hex", {}).get("value"))
+        if hex_value and hex_value not in entity["colours"]:
+            entity["colours"].append(hex_value)
+    index = {}
+    ambiguous = set()
+    for entity in entities.values():
+        if not entity["logo"] and not entity["colours"]:
             continue
-        labels = {normalize(hit.get("label") or "")}
-        labels |= {normalize(alias) for alias in hit.get("aliases") or []}
-        match = hit.get("match") or {}
-        if match.get("text"):
-            labels.add(normalize(match["text"]))
-        stripped = {re.sub(r" (national )?cricket team$", "", label) for label in labels}
-        if wanted in labels or wanted in stripped:
-            return hit.get("id")
-    return None
-
-
-def _claim_values(entity, prop):
-    values = []
-    for claim in (entity.get("claims") or {}).get(prop) or []:
-        value = ((claim.get("mainsnak") or {}).get("datavalue") or {}).get("value")
-        if value is not None:
-            values.append(value)
-    return values
-
-
-def wikidata_logo(entity):
-    """A Commons thumbnail URL for the entity's logo image (P154), or None. Commons serves SVG
-    logos as PNG at `width`, which Coil shows without an SVG decoder."""
-    for file_name in _claim_values(entity, "P154"):
-        if isinstance(file_name, str) and file_name.strip():
-            return COMMONS_FILE.format(file=file_name.strip().replace(" ", "_"))
-    return None
-
-
-def wikidata_colour_ids(entity):
-    """The colour items (P6364, "official color") the entity names, in order."""
-    return [v.get("id") for v in _claim_values(entity, "P6364") if isinstance(v, dict) and v.get("id")]
-
-
-def wikidata_colour_hex(colour_entity):
-    """A colour item's sRGB hex triplet (P465), or None."""
-    for value in _claim_values(colour_entity, "P465"):
-        if isinstance(value, str):
-            hex_value = hex_or_none(value)
-            if hex_value:
-                return hex_value
-    return None
+        key = wikidata_key(entity["label"])
+        found = {"logo": entity["logo"], "colours": entity["colours"]}
+        if key in index and index[key] != found:
+            ambiguous.add(key)
+        index.setdefault(key, found)
+    for key in ambiguous:
+        index.pop(key, None)
+    return index
 
 
 # --- Choosing --------------------------------------------------------------------------------

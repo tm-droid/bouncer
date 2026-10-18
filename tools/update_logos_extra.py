@@ -9,16 +9,16 @@ has actually shown, which includes sides Cricbuzz's team pages never list.
 
 Sources, per name, first hit wins for the logo:
 
-1. TheSportsDB `searchteams.php` (free key 3, ~30 requests a minute): `strBadge`, and the
+1. TheSportsDB `searchteams.php` (free test key 123, ~30 requests a minute): `strBadge`, and the
    hand-entered kit colours `strColour1..3` — the one real team colour database that has cricket.
-2. Wikidata: the cricket-team entity's logo (P154) as a Commons PNG thumbnail, and its official
-   colours (P6364 -> P465).
+2. Wikidata, in one SPARQL query a run: a cricket side's logo (P154) as a Commons PNG thumbnail,
+   and its official colours (P6364 -> P465). Thin for cricket, but one request.
 3. A variant's parent side: "India Women", "Hong Kong U19" take the Cricbuzz crest of "India" and
    "Hong Kong", which for a national side is its flag. No network.
 
-What each lookup found is kept in `tools/team_lookups.json` (committed), which `extract_team_colors.py`
-reads for the source colours. A name is looked up again only after RECHECK_DAYS, and at most
-MAX_LOOKUPS names a run, so the backlog clears over a few weeks rather than in one long job.
+What each source found is kept in `tools/team_lookups.json` (committed), which `extract_team_colors.py`
+reads for the source colours. A name is looked up on TheSportsDB again only after RECHECK_DAYS, and
+at most MAX_LOOKUPS names a run, so the backlog clears over a few weeks rather than in one long job.
 
 Merge, never shrink; fail loudly — the rules `update_logos.py` follows. A run whose lookups mostly
 fail to connect writes nothing.
@@ -42,16 +42,15 @@ COLORS_PATH = "app/src/main/assets/TeamColors.json"
 LOOKUPS_PATH = "tools/team_lookups.json"
 
 ARCHIVE = "https://tm-droid.github.io/bouncer-archive/"
-SPORTSDB = "https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t={name}"
-WIKIDATA = "https://www.wikidata.org/w/api.php?{query}"
+SPORTSDB = "https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t={name}"
+WIKIDATA_SPARQL = "https://query.wikidata.org/sparql?{query}"
 
 # Wikimedia's policy asks for a User-Agent that names the tool and how to reach its owner.
 USER_AGENT = "BouncerTeamLogos/1.0 (https://github.com/tm-droid/bouncer; tools/update_logos_extra.py)"
 
 RECHECK_DAYS = 56
-MAX_LOOKUPS = 150
+MAX_LOOKUPS = int(os.environ.get("MAX_LOOKUPS", "150"))
 SPORTSDB_GAP_S = 2.1
-WIKIDATA_GAP_S = 1.0
 # Most lookups failing to connect is a block or an outage, not a fact about the teams.
 MAX_ERROR_SHARE = 0.5
 
@@ -62,17 +61,26 @@ class FetchError(Exception):
     pass
 
 
-def get_json(url, gap_key, gap_s):
-    wait = _last_call.get(gap_key, 0) + gap_s - time.monotonic()
-    if wait > 0:
-        time.sleep(wait)
-    _last_call[gap_key] = time.monotonic()
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            return json.loads(response.read().decode("utf-8", "replace") or "null")
-    except (urllib.error.URLError, TimeoutError, OSError, ValueError) as error:
-        raise FetchError(f"{url}: {error}") from error
+def get_json(url, gap_key, gap_s, accept="application/json", retries=3):
+    """GET JSON, spaced gap_s from the last call to the same source. A 429 waits out its
+    Retry-After (or 30 s) and tries again, up to `retries` times."""
+    for attempt in range(retries + 1):
+        wait = _last_call.get(gap_key, 0) + gap_s - time.monotonic()
+        if wait > 0:
+            time.sleep(wait)
+        _last_call[gap_key] = time.monotonic()
+        request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": accept})
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                return json.loads(response.read().decode("utf-8", "replace") or "null")
+        except urllib.error.HTTPError as error:
+            if error.code == 429 and attempt < retries:
+                time.sleep(min(int(error.headers.get("Retry-After") or 30), 120))
+                continue
+            raise FetchError(f"{url}: {error}") from error
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as error:
+            raise FetchError(f"{url}: {error}") from error
+    raise FetchError(f"{url}: still rate-limited")
 
 
 def load_json(path, default):
@@ -121,36 +129,16 @@ def lookup_sportsdb(name):
     return ts.sportsdb_pick(response, name)
 
 
-def lookup_wikidata(name):
-    search = get_json(
-        WIKIDATA.format(query=urllib.parse.urlencode({
-            "action": "wbsearchentities", "search": name, "language": "en",
-            "type": "item", "limit": "7", "format": "json",
-        })),
-        "wikidata", WIKIDATA_GAP_S,
-    )
-    entity_id = ts.wikidata_pick_entity(search, name)
-    if not entity_id:
-        return None
-    entities = get_json(
-        WIKIDATA.format(query=urllib.parse.urlencode({
-            "action": "wbgetentities", "ids": entity_id, "props": "claims", "format": "json",
-        })),
-        "wikidata", WIKIDATA_GAP_S,
-    )
-    entity = ((entities or {}).get("entities") or {}).get(entity_id) or {}
-    colours = []
-    colour_ids = ts.wikidata_colour_ids(entity)[:3]
-    if colour_ids:
-        colour_entities = get_json(
-            WIKIDATA.format(query=urllib.parse.urlencode({
-                "action": "wbgetentities", "ids": "|".join(colour_ids), "props": "claims", "format": "json",
-            })),
-            "wikidata", WIKIDATA_GAP_S,
-        )
-        found = (colour_entities or {}).get("entities") or {}
-        colours = [c for c in (ts.wikidata_colour_hex(found.get(i) or {}) for i in colour_ids) if c]
-    return {"id": entity_id, "logo": ts.wikidata_logo(entity), "colours": colours}
+def wikidata_index():
+    """Every cricket side Wikidata has a logo or colour for. Unreachable is an empty index, not a
+    failure: it is the minor source."""
+    url = WIKIDATA_SPARQL.format(query=urllib.parse.urlencode({"query": ts.WIKIDATA_SPARQL}))
+    try:
+        result = get_json(url, "wikidata", 0, accept="application/sparql-results+json")
+    except FetchError as error:
+        print(f"Wikidata unavailable ({error}); continuing without it")
+        return {}
+    return ts.wikidata_index(((result or {}).get("results") or {}).get("bindings"))
 
 
 def is_fresh(entry, today):
@@ -194,16 +182,24 @@ def main():
         entry = {"checked": today.isoformat()}
         try:
             entry["sportsdb"] = lookup_sportsdb(name)
-            entry["wikidata"] = lookup_wikidata(name)
         except FetchError as error:
             errors += 1
             print(f"Lookup failed for {name}: {error}")
             continue
-        lookups[name] = entry
+        lookups[name] = {**lookups.get(name, {}), **entry}
 
     if due and errors / len(due) > MAX_ERROR_SHARE:
         print(f"Error: {errors} of {len(due)} lookups failed to connect; not writing anything")
         return 1
+
+    wikidata = wikidata_index()
+    for name in universe:
+        found = wikidata.get(ts.normalize(name))
+        if found:
+            lookups[name] = {**lookups.get(name, {}), "wikidata": found}
+        elif name in lookups:
+            lookups[name].pop("wikidata", None)
+    print(f"Wikidata: {len(wikidata)} sides with a logo or colour, {sum(1 for n in universe if ts.normalize(n) in wikidata)} of ours")
 
     logos_by_normalized = {}
     for logo_name, url in logos.items():
@@ -229,6 +225,7 @@ def main():
 
     hits = {
         "sportsdb": sum(1 for e in lookups.values() if e.get("sportsdb")),
+        "sportsdb colours": sum(1 for e in lookups.values() if (e.get("sportsdb") or {}).get("colours")),
         "wikidata": sum(1 for e in lookups.values() if e.get("wikidata")),
     }
     print(f"{len(due) - errors} looked up, {errors} failed; cached hits: {hits}")

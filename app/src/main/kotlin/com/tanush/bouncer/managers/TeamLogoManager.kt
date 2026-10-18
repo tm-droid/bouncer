@@ -1,6 +1,7 @@
 package com.tanush.bouncer.managers
 
 import com.tanush.bouncer.data.AppJson
+import com.tanush.bouncer.network.isCricbuzzPlaceholderLogo
 import com.tanush.bouncer.utils.normalizeTeamName
 import android.content.Context
 import android.util.Log
@@ -84,7 +85,9 @@ object TeamLogoManager {
         width: Int? = null,
         height: Int? = null
     ): String? {
-        val preferred = teamName?.let { lookup(it) } ?: fallbackUrl
+        // The placeholder is no crest: skipping it lets TeamCrest draw the team's monogram.
+        val preferred = teamName?.let { lookup(it) }?.takeUnless(::isCricbuzzPlaceholderLogo)
+            ?: fallbackUrl?.takeUnless(::isCricbuzzPlaceholderLogo)
         return preferred?.let { normalizeCricbuzzUrl(it, width, height) }
     }
 
