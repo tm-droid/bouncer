@@ -215,3 +215,92 @@ def choose_colours(*tiers):
         if colours:
             return [colours[0], colours[1] if len(colours) > 1 else colours[0]]
     return None
+
+
+# --- Crest ink ---------------------------------------------------------------------------------
+
+# TeamCrest's plate, `surfaceVariant` in ColorTokensV2.kt (Gray100 light, DarkSurfaceVariant dark).
+# Pinned to the Kotlin tokens by CrestPlateParityTest.
+LIGHT_PLATE = (0xF5, 0xF5, 0xF5)
+DARK_PLATE = (0x20, 0x28, 0x34)
+# A crest pixel under this contrast with the plate is not seen against it.
+MIN_PIXEL_CONTRAST = 2.0
+# A crest with at least this share of its opaque area unseen on a plate vanishes on it. Measured on
+# the October 2026 board crests: England on the dark plate and New Zealand on the light lose ~100%;
+# every crest that still read (Scotland's thistle, Kenya's lion, India's seal) kept 35% or more.
+VANISHED_SHARE = 0.75
+# One ink: this share of the crest within ONE_INK_RATIO of its median luminance, and its coloured
+# pixels within one hue sector. Kenya's lion is black, red and green at one brightness, so the hue
+# test is what keeps it from being reversed into a white blob.
+ONE_INK_SHARE = 0.85
+ONE_INK_RATIO = 2.5
+# Reversing redraws every opaque pixel in one colour, which only works on line art: it turns a filled
+# shape into a blob. Opaque share of the crest's bounding box, measured: NZ fern 0.21, Victoria 0.40,
+# England 0.44, Warwickshire 0.52 reverse well; Middlesex's disc 0.61 and Hampshire's shield 0.79
+# became a white disc and a black shield, and are left as drawn (their inner marks still show).
+MAX_REVERSIBLE_FILL = 0.57
+
+
+def relative_luminance(r, g, b):
+    def channel(v):
+        v /= 255
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+
+
+def contrast(a, b):
+    high, low = max(a, b), min(a, b)
+    return (high + 0.05) / (low + 0.05)
+
+
+def _is_one_ink(pixels, luminances):
+    import colorsys
+    from collections import Counter
+
+    median = sorted(luminances)[len(luminances) // 2]
+    if sum(1 for l in luminances if contrast(l, median) < ONE_INK_RATIO) / len(luminances) < ONE_INK_SHARE:
+        return False
+    sectors = Counter()
+    for r, g, b in pixels:
+        h, light, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
+        if s > 0.25 and 0.08 < light < 0.92:
+            sectors[int(h * 12) % 12] += 1
+    coloured = sum(sectors.values())
+    if coloured < 0.15 * len(pixels):
+        return True
+    top = sectors.most_common(1)[0][0]
+    near = sum(n for k, n in sectors.items() if min((k - top) % 12, (top - k) % 12) <= 1)
+    return near / coloured >= ONE_INK_SHARE
+
+
+def crest_ink(image):
+    """How a crest (a PIL image) fares on TeamCrest's two plates:
+
+    * "dark": one dark ink that vanishes on the dark plate (England's navy). The app draws it
+      reversed, in the theme's text colour, on that plate: the white version a logo kit carries.
+    * "light": one light ink that vanishes on the light plate (New Zealand's white fern).
+      Both only for line art (MAX_REVERSIBLE_FILL); a filled one-ink shape is left as drawn.
+    * "unreadable": vanishes on a plate but is several colours, so reversing it would lose them.
+      The caller keeps the Cricbuzz crest instead.
+    * None: reads on both.
+    """
+    rgba = image.convert("RGBA")
+    data = rgba.get_flattened_data() if hasattr(rgba, "get_flattened_data") else rgba.getdata()
+    pixels = [p[:3] for p in data if p[3] >= 128]
+    if not pixels:
+        return None
+    luminances = [relative_luminance(*p) for p in pixels]
+    plates = {"dark": relative_luminance(*DARK_PLATE), "light": relative_luminance(*LIGHT_PLATE)}
+    for ink, plate in plates.items():
+        unseen = sum(1 for l in luminances if contrast(l, plate) < MIN_PIXEL_CONTRAST) / len(luminances)
+        if unseen >= VANISHED_SHARE:
+            if not _is_one_ink(pixels, luminances):
+                return "unreadable"
+            return ink if _fill(rgba, len(pixels)) <= MAX_REVERSIBLE_FILL else None
+    return None
+
+
+def _fill(rgba, opaque):
+    left, top, right, bottom = rgba.getchannel("A").point(lambda a: 255 if a >= 128 else 0).getbbox()
+    return opaque / ((right - left) * (bottom - top))

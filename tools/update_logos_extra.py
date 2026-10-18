@@ -46,6 +46,7 @@ import team_sources as ts  # noqa: E402
 LOGOS_PATH = "app/src/main/assets/TeamLogos.json"
 COLORS_PATH = "app/src/main/assets/TeamColors.json"
 LOOKUPS_PATH = "tools/team_lookups.json"
+INK_PATH = "app/src/main/assets/TeamLogoInk.json"
 
 ARCHIVE = "https://tm-droid.github.io/bouncer-archive/"
 SPORTSDB_API = "https://www.thesportsdb.com/api/v1/json/123/"
@@ -215,6 +216,29 @@ def candidates(universe, logos, lookups, today):
     return (national + no_logo)[:MAX_LOOKUPS]
 
 
+def classify_crests(urls):
+    """{url: ts.crest_ink(...)} for each crest that downloads; one that does not is left out, so it is
+    neither reversed nor refused on this run's evidence."""
+    import io
+    from concurrent.futures import ThreadPoolExecutor
+
+    from PIL import Image
+
+    def one(url):
+        request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return url, ts.crest_ink(Image.open(io.BytesIO(response.read())))
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+            return url, "failed"
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = dict(pool.map(one, sorted(urls)))
+    failed = sum(1 for ink in results.values() if ink == "failed")
+    print(f"Crests checked against both plates: {len(results) - failed} ({failed} failed to download)")
+    return {url: ink for url, ink in results.items() if ink != "failed"}
+
+
 def is_cricbuzz(url):
     return bool(url) and "static.cricbuzz.com" in url
 
@@ -286,14 +310,24 @@ def main():
     # mark on a coloured square (Mumbai Indians is the chakra alone) where TheSportsDB has the real
     # logo as a transparent PNG. For a national side Cricbuzz serves the flag and TheSportsDB the
     # board's crest (BCCI for India); NATIONAL_BOARD_CRESTS = False puts the flags back.
+    # Each candidate crest is checked against TeamCrest's two plates first: one that vanishes on a
+    # plate and cannot be drawn reversed (several colours) is not used at all.
+    candidates_urls = set()
+    for name in universe:
+        entry = lookups.get(name) or {}
+        candidates_urls.add(sportsdb_sized((entry.get("sportsdb") or {}).get("logo")))
+        candidates_urls.add((entry.get("wikidata") or {}).get("logo"))
+    inks = classify_crests(url for url in candidates_urls if url)
+    unreadable = {url for url, ink in inks.items() if ink == "unreadable"}
+
     replaced = []
     for name in sorted(universe):
-        badge = (lookups.get(name, {}).get("sportsdb") or {}).get("logo")
-        if not badge or not is_cricbuzz(logos.get(name)):
+        badge = sportsdb_sized((lookups.get(name, {}).get("sportsdb") or {}).get("logo"))
+        if not badge or badge in unreadable or not is_cricbuzz(logos.get(name)):
             continue
         if ts.flag_code(name) is not None and not NATIONAL_BOARD_CRESTS:
             continue
-        logos[name] = sportsdb_sized(badge)
+        logos[name] = badge
         replaced.append(name)
 
     # A national variant shows its parent's crest when the parent has a board crest, so India Women
@@ -320,12 +354,20 @@ def main():
             ("wikidata", (entry.get("wikidata") or {}).get("logo")),
             ("variant", variant_logo(name, logos_by_normalized)),
         ):
-            if url:
+            if url and url not in unreadable:
                 logos[name] = url
                 added[source].append(name)
                 break
 
+    # The crests the app draws reversed on one plate, keyed by the URL TeamCrest draws rather than by
+    # team: a variant that kept its own Cricbuzz crest must not inherit its parent's reversal.
+    logo_ink = {
+        url: inks[url] for url in sorted(set(logos.values()))
+        if not is_cricbuzz(url) and inks.get(url) in ("dark", "light")
+    }
+
     save_json(LOGOS_PATH, logos)
+    save_json(INK_PATH, logo_ink)
     save_json(LOOKUPS_PATH, dict(sorted(lookups.items())), indent=1)
 
     hits = {
@@ -339,6 +381,9 @@ def main():
     for source, names in added.items():
         shown = ", ".join(names[:10]) + ("..." if len(names) > 10 else "")
         print(f"Logos added from {source}: {len(names)}" + (f" ({shown})" if names else ""))
+    reversed_teams = sorted(name for name, url in logos.items() if url in logo_ink)
+    print(f"Crests drawn reversed: {len(logo_ink)}, for {', '.join(reversed_teams)}")
+    print(f"Crests not used, unreadable on a plate: {len(unreadable)}")
     return 0
 
 

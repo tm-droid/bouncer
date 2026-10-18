@@ -292,6 +292,12 @@ android {
             .withPropertyName("teamVariantParityFixture")
             .withPathSensitivity(PathSensitivity.RELATIVE)
 
+        // LogoInkTest pins the plate colours tools/team_sources.py measures crests against to the
+        // app's surfaceVariant tokens. Same reasoning: undeclared, an edit leaves the task UP-TO-DATE.
+        inputs.files(rootProject.file("tools/team_sources.py"))
+            .withPropertyName("crestPlateParitySource")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+
         // CommentaryRunsParityTest and MatchRowIdTest both assert on lines of match-sync's main.js.
         // It was the one file a parity test read that was not declared here, so on a warm build an
         // edit to it left the task UP-TO-DATE and neither check ran.

@@ -181,5 +181,49 @@ class LogoPrecedenceTest(unittest.TestCase):
         self.assertEqual(["Kent"], updated)
 
 
+class CrestInkTest(unittest.TestCase):
+    @staticmethod
+    def crest(*fills):
+        """A 40x40 transparent image with a 20x20 square per fill, side by side."""
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGBA", (40 * len(fills), 40), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(image)
+        for i, fill in enumerate(fills):
+            draw.rectangle((40 * i + 10, 10, 40 * i + 29, 29), fill=fill + (255,))
+        return image
+
+    @staticmethod
+    def line_art(fill):
+        """A 40x40 ring, 4px thick: line art, ~36% of its bounding box opaque."""
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGBA", (40, 40), (0, 0, 0, 0))
+        ImageDraw.Draw(image).ellipse((2, 2, 37, 37), outline=fill + (255,), width=4)
+        return image
+
+    def test_a_navy_mark_vanishes_on_dark_and_is_reversed(self):
+        self.assertEqual("dark", ts.crest_ink(self.line_art((0x1B, 0x2A, 0x5C))))
+
+    def test_a_white_mark_vanishes_on_light_and_is_reversed(self):
+        self.assertEqual("light", ts.crest_ink(self.line_art((0xFF, 0xFF, 0xFF))))
+
+    def test_a_filled_shape_is_never_reversed_into_a_blob(self):
+        # A solid navy square vanishes on dark, but reversed it would be a white square.
+        self.assertIsNone(ts.crest_ink(self.crest((0x1B, 0x2A, 0x5C))))
+
+    def test_a_dark_multicolour_mark_is_unreadable_not_reversed(self):
+        # Black, deep red and deep green: all dark, but reversing would lose the colours.
+        self.assertEqual("unreadable", ts.crest_ink(self.crest((0, 0, 0), (0x60, 0, 0), (0, 0x40, 0))))
+
+    def test_a_mid_tone_mark_reads_on_both(self):
+        self.assertIsNone(ts.crest_ink(self.crest((0xE0, 0x30, 0x30))))
+
+    def test_an_empty_image_is_none(self):
+        from PIL import Image
+
+        self.assertIsNone(ts.crest_ink(Image.new("RGBA", (10, 10), (0, 0, 0, 0))))
+
+
 if __name__ == "__main__":
     unittest.main()

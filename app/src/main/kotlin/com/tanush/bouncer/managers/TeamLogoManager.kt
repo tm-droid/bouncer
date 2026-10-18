@@ -24,6 +24,8 @@ object TeamLogoManager {
      * normalized hit is never worse than the miss it replaces.
      */
     @Volatile private var logosByNormalizedName: Map<String, String> = emptyMap()
+    /** Crest URL -> the ink it was drawn in, for the crests TeamCrest draws reversed on one plate. */
+    @Volatile private var inks: Map<String, LogoInk> = emptyMap()
     @Volatile private var isInitialized = false
     private var initError: String? = null
 
@@ -33,6 +35,7 @@ object TeamLogoManager {
             val jsonString = context.assets.open("TeamLogos.json").bufferedReader().use { it.readText() }
             logos = AppJson.decodeFromString<Map<String, String>>(jsonString)
             logosByNormalizedName = buildNormalizedLogoIndex(logos)
+            inks = loadInks(context)
             isInitialized = true
             initError = null
             Log.d(TAG, "Loaded ${logos.size} team logos")
@@ -50,6 +53,21 @@ object TeamLogoManager {
             logosByNormalizedName = emptyMap()
         }
     }
+
+    /**
+     * `TeamLogoInk.json`, written by `tools/update_logos_extra.py`. Missing or unreadable means no
+     * crest is drawn reversed — every crest still shows, so it is not worth failing the logos for.
+     */
+    private fun loadInks(context: Context): Map<String, LogoInk> = try {
+        val json = context.assets.open("TeamLogoInk.json").bufferedReader().use { it.readText() }
+        parseLogoInks(AppJson.decodeFromString<Map<String, String>>(json))
+    } catch (e: IOException) {
+        Log.w(TAG, "No TeamLogoInk.json; no crest is drawn reversed", e)
+        emptyMap()
+    }
+
+    /** The ink of the crest at [url], when it is one TeamCrest must draw reversed on one plate. */
+    fun logoInk(url: String?): LogoInk? = url?.let { inks[it] }
 
     /** The curated URL for [teamName], by exact key first and normalized name second. */
     private fun lookup(teamName: String): String? =
@@ -102,6 +120,22 @@ object TeamLogoManager {
         }
     }
 }
+
+/**
+ * The single ink of a crest that vanishes on one of TeamCrest's plates: [Dark] (England's navy) on
+ * the dark plate, [Light] (New Zealand's white fern) on the light one. Drawn there in the theme's text
+ * colour — the reversed version a logo kit carries for that background.
+ */
+enum class LogoInk { Dark, Light }
+
+/** The asset's `"dark"`/`"light"` values; anything else is dropped rather than guessed. */
+internal fun parseLogoInks(raw: Map<String, String>): Map<String, LogoInk> = raw.mapNotNull { (url, ink) ->
+    when (ink) {
+        "dark" -> url to LogoInk.Dark
+        "light" -> url to LogoInk.Light
+        else -> null
+    }
+}.toMap()
 
 /**
  * [source] re-keyed by [normalizeTeamName].

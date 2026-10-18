@@ -104,7 +104,7 @@ def to_hex(rgb):
 
 
 def colours_of(image):
-    pixels = list(image.getdata())
+    pixels = list(image.get_flattened_data() if hasattr(image, "get_flattened_data") else image.getdata())
     buckets = Counter()
     sums = {}
     for r, g, b, a in pixels:
@@ -155,7 +155,7 @@ def flag_colours(code):
     if pair is None:
         return None
     if pair[0] == pair[1]:
-        pixels = list(image.getdata())
+        pixels = list(image.get_flattened_data() if hasattr(image, "get_flattened_data") else image.getdata())
         white = sum(1 for r, g, b, a in pixels if a >= 128 and min(r, g, b) >= 235)
         if white / len(pixels) >= MIN_FLAG_WHITE:
             pair = [pair[0], "#FFFFFF"]

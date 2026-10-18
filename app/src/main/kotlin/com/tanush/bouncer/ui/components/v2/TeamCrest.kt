@@ -17,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
+import com.tanush.bouncer.managers.LogoInk
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.ui.theme.TeamColorRegistry
@@ -77,6 +80,7 @@ fun TeamCrest(
                 model = url,
                 contentDescription = teamName,
                 contentScale = ContentScale.Fit,
+                colorFilter = rememberCrestTint(url),
                 onState = { loaded = it is AsyncImagePainter.State.Success },
                 modifier = Modifier
                     .fillMaxSize()
@@ -84,6 +88,21 @@ fun TeamCrest(
                     .alpha(if (loaded) 1f else 0f),
             )
         }
+    }
+}
+
+/**
+ * The reversal for the crest at [url] when it would vanish on this theme's plate: a single-ink crest
+ * redrawn in `onSurface`, keeping its own shape and cut-outs (`SrcIn`). England's navy crest is white
+ * on the dark plate, New Zealand's white fern black on the light one; every other crest is untouched.
+ */
+@Composable
+fun rememberCrestTint(url: String?): ColorFilter? {
+    val colors = BouncerThemeV2.colors
+    val ink = TeamLogoManager.logoInk(url)
+    return remember(ink, colors.isDark, colors.onSurface) {
+        val vanishes = ink != null && (ink == LogoInk.Dark) == colors.isDark
+        if (vanishes) ColorFilter.tint(colors.onSurface, BlendMode.SrcIn) else null
     }
 }
 

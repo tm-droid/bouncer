@@ -3,6 +3,7 @@ package com.tanush.bouncer.ui.components
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
@@ -20,6 +21,7 @@ fun CoilImage(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
+    colorFilter: ColorFilter? = null,
 ) {
     val context = LocalContext.current
 
@@ -40,6 +42,7 @@ fun CoilImage(
         fallback = painterResource(R.drawable.ic_cricket_ball),
         contentDescription = contentDescription,
         modifier = modifier,
-        contentScale = contentScale
+        contentScale = contentScale,
+        colorFilter = colorFilter,
     )
 }

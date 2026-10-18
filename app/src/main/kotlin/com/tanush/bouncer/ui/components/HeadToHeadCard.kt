@@ -33,6 +33,7 @@ import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.GoldPrimary
+import com.tanush.bouncer.ui.components.v2.rememberCrestTint
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
@@ -311,7 +312,8 @@ private fun TeamWinColumn(
                     .build(),
                 contentDescription = team?.name,
                 modifier = Modifier.size(40.dp),
-                contentScale = ContentScale.Fit
+                contentScale = ContentScale.Fit,
+                colorFilter = rememberCrestTint(url),
             )
         }
         
