@@ -1,7 +1,8 @@
 """Logos (and source colours) for the sides Cricbuzz's team pages don't give one.
 
-Runs after `update_logos.py` in `.github/workflows/daily_logo_update.yml`. Cricbuzz stays first:
-nothing here replaces one of its entries in `TeamLogos.json`, only fills a gap.
+Runs after `update_logos.py` in `.github/workflows/daily_logo_update.yml`. It fills gaps, and for a
+club or franchise (not a national side) it replaces the Cricbuzz crest with TheSportsDB's badge, which
+is the real logo where Cricbuzz's is a simplified mark on a coloured square.
 
 Which names: every key of `TeamLogos.json`, plus both teams of every match the public archive holds
 (`idx/m/YYYY-MM.json` on tm-droid.github.io/bouncer-archive). The archive half is every side Bouncer
@@ -157,6 +158,18 @@ def candidates(universe, logos, colours, lookups, today):
     return (no_logo + no_colour)[:MAX_LOOKUPS]
 
 
+def is_cricbuzz(url):
+    return bool(url) and "static.cricbuzz.com" in url
+
+
+def sportsdb_sized(url):
+    """TheSportsDB's 250px rendition (`/small`, ~40 KB): the full badge is 512px and ~100 KB, and the
+    largest crest the app draws is 64dp. Its URLs take no other size, unlike Cricbuzz's."""
+    if not url or "thesportsdb.com" not in url or url.endswith("/small"):
+        return url
+    return url + "/small"
+
+
 def variant_logo(name, logos_by_normalized):
     base = ts.base_side(name)
     if base == ts.normalize(name):
@@ -205,13 +218,24 @@ def main():
     for logo_name, url in logos.items():
         logos_by_normalized.setdefault(ts.normalize(logo_name), url)
 
+    # A club's or franchise's TheSportsDB badge beats its Cricbuzz crest: Cricbuzz serves a simplified
+    # mark on a coloured square (Mumbai Indians is the chakra alone), TheSportsDB the real logo as a
+    # transparent PNG. Not for a national side: Cricbuzz's crest for one is its flag, which is what
+    # every scoring app shows, where TheSportsDB's is the board's seal (India's is the BCCI's).
+    replaced = []
+    for name in sorted(universe):
+        badge = (lookups.get(name, {}).get("sportsdb") or {}).get("logo")
+        if badge and ts.flag_code(name) is None and is_cricbuzz(logos.get(name)):
+            logos[name] = sportsdb_sized(badge)
+            replaced.append(name)
+
     added = {"sportsdb": [], "wikidata": [], "variant": []}
     for name in sorted(universe):
         if name in logos:
             continue
         entry = lookups.get(name) or {}
         for source, url in (
-            ("sportsdb", (entry.get("sportsdb") or {}).get("logo")),
+            ("sportsdb", sportsdb_sized((entry.get("sportsdb") or {}).get("logo"))),
             ("wikidata", (entry.get("wikidata") or {}).get("logo")),
             ("variant", variant_logo(name, logos_by_normalized)),
         ):
@@ -229,6 +253,8 @@ def main():
         "wikidata": sum(1 for e in lookups.values() if e.get("wikidata")),
     }
     print(f"{len(due) - errors} looked up, {errors} failed; cached hits: {hits}")
+    print(f"Cricbuzz crests replaced by TheSportsDB badges: {len(replaced)}" + (
+        f" ({', '.join(replaced[:10])}{'...' if len(replaced) > 10 else ''})" if replaced else ""))
     for source, names in added.items():
         shown = ", ".join(names[:10]) + ("..." if len(names) > 10 else "")
         print(f"Logos added from {source}: {len(names)}" + (f" ({shown})" if names else ""))

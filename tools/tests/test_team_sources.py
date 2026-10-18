@@ -142,5 +142,24 @@ class LookupScheduleTest(unittest.TestCase):
         self.assertIsNone(extra.variant_logo("India", index))
 
 
+class LogoPrecedenceTest(unittest.TestCase):
+    def test_sportsdb_badges_take_the_small_rendition(self):
+        self.assertEqual("https://r2.thesportsdb.com/x.png/small", extra.sportsdb_sized("https://r2.thesportsdb.com/x.png"))
+        self.assertEqual("https://r2.thesportsdb.com/x.png/small", extra.sportsdb_sized("https://r2.thesportsdb.com/x.png/small"))
+        self.assertIsNone(extra.sportsdb_sized(None))
+
+    def test_cricbuzz_refresh_keeps_a_better_crest(self):
+        import update_logos
+
+        existing = {"Mumbai Indians": "https://r2.thesportsdb.com/x.png/small", "Kent": "https://static.cricbuzz.com/old"}
+        incoming = {"Mumbai Indians": {"url": "https://static.cricbuzz.com/mi"}, "Kent": {"url": "https://static.cricbuzz.com/new"}}
+        merged, _, updated = update_logos.merge(
+            existing, incoming, lambda t: t["url"], keep=lambda url: "static.cricbuzz.com" not in url
+        )
+        self.assertEqual("https://r2.thesportsdb.com/x.png/small", merged["Mumbai Indians"])
+        self.assertEqual("https://static.cricbuzz.com/new", merged["Kent"])
+        self.assertEqual(["Kent"], updated)
+
+
 if __name__ == "__main__":
     unittest.main()

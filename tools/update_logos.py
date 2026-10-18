@@ -141,8 +141,9 @@ def save_json(path, data):
         handle.write("\n")
 
 
-def merge(existing, incoming, value_of):
-    """Apply incoming values onto existing, adding and updating but never deleting.
+def merge(existing, incoming, value_of, keep=lambda value: False):
+    """Apply incoming values onto existing, adding and updating but never deleting. An existing
+    value `keep` accepts is left alone.
 
     Returns (merged, added, updated). Existing key order is preserved so a diff shows only what
     actually changed.
@@ -157,7 +158,7 @@ def merge(existing, incoming, value_of):
         if name not in merged:
             merged[name] = value
             added.append(name)
-        elif merged[name] != value:
+        elif merged[name] != value and not keep(merged[name]):
             merged[name] = value
             updated.append(name)
     return merged, added, updated
@@ -186,6 +187,9 @@ def main():
         load_json(LOGOS_PATH),
         teams,
         lambda t: None if t["imageId"] in PLACEHOLDER_IMAGE_IDS else LOGO_URL.format(image_id=t["imageId"]),
+        # A crest update_logos_extra.py put there (TheSportsDB, Wikidata) is a better logo than
+        # Cricbuzz's for that side; this pass must not put Cricbuzz's back each week.
+        keep=lambda url: "static.cricbuzz.com" not in url,
     )
     placeholders = {LOGO_URL.format(image_id=i) for i in PLACEHOLDER_IMAGE_IDS}
     removed = sorted(name for name, url in logos.items() if url in placeholders)
