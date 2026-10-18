@@ -88,6 +88,21 @@ def hex_or_none(value):
     return f"#{match.group(1).upper()}" if match else None
 
 
+def sportsdb_names(team):
+    """A TheSportsDB team's name and alternates, normalized."""
+    alternates = team.get("strTeamAlternate") or team.get("strAlternate") or ""
+    return {normalize(n) for n in [team.get("strTeam") or ""] + alternates.split(",") if n.strip()}
+
+
+def sportsdb_entry(team):
+    colours = [c for c in (hex_or_none(team.get(f"strColour{i}")) for i in (1, 2, 3)) if c]
+    return {"logo": team.get("strBadge") or team.get("strLogo") or None, "colours": colours}
+
+
+def is_cricket(team):
+    return (team.get("strSport") or "").lower() == "cricket"
+
+
 def sportsdb_pick(response, name, also=()):
     """The cricket team in a `searchteams.php` response whose name (or alternate) matches `name` or
     one of `also`, as {"logo": url|None, "colours": [hex, ...]}; None when nothing matches. The search
@@ -95,15 +110,32 @@ def sportsdb_pick(response, name, also=()):
     is accepted."""
     wanted_names = {normalize(name)} | {normalize(n) for n in also}
     for team in (response or {}).get("teams") or []:
-        if (team.get("strSport") or "").lower() != "cricket":
-            continue
-        alternates = team.get("strTeamAlternate") or team.get("strAlternate") or ""
-        names = [team.get("strTeam") or ""] + alternates.split(",")
-        if not wanted_names & {normalize(n) for n in names if n.strip()}:
-            continue
-        colours = [c for c in (hex_or_none(team.get(f"strColour{i}")) for i in (1, 2, 3)) if c]
-        return {"logo": team.get("strBadge") or team.get("strLogo") or None, "colours": colours}
+        if is_cricket(team) and wanted_names & sportsdb_names(team):
+            return sportsdb_entry(team)
     return None
+
+
+_NATIONAL_TAIL = re.compile(r" cricket$")
+
+
+def sportsdb_index(teams):
+    """Teams from the bulk league listings -> {normalized name: entry}. A national side's "India
+    Cricket" is also indexed as "india". A name two teams share with different data is dropped."""
+    index = {}
+    ambiguous = set()
+    for team in teams or []:
+        if not is_cricket(team):
+            continue
+        entry = sportsdb_entry(team)
+        names = sportsdb_names(team)
+        names |= {_NATIONAL_TAIL.sub("", n) for n in names}
+        for key in names:
+            if key in index and index[key] != entry:
+                ambiguous.add(key)
+            index.setdefault(key, entry)
+    for key in ambiguous:
+        index.pop(key, None)
+    return index
 
 
 # --- Wikidata ----------------------------------------------------------------------------------

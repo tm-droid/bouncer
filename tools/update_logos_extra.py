@@ -10,16 +10,21 @@ has actually shown, which includes sides Cricbuzz's team pages never list.
 
 Sources, per name, first hit wins for the logo:
 
-1. TheSportsDB `searchteams.php` (free test key 123, ~30 requests a minute): `strBadge`, and the
-   hand-entered kit colours `strColour1..3` — the one real team colour database that has cricket.
+1. TheSportsDB (free test key 123, ~30 requests a minute): `strBadge`, and the hand-entered kit
+   colours `strColour1..3`, the one real team colour database that has cricket. Fetched in bulk:
+   each cricket country's leagues (`search_all_leagues.php?c=X&s=Cricket`, which is the cricket
+   filter), then each league's teams (`search_all_teams.php`), about 60 requests in all. The free
+   key caps those at 5 leagues and 10 teams a call, so a name the listings miss is then searched
+   one by one (`searchteams.php`), but only where it matters: a national side (listed as "India
+   Cricket") and a side with no crest at all.
 2. Wikidata, in one SPARQL query a run: a cricket side's logo (P154) as a Commons PNG thumbnail,
    and its official colours (P6364 -> P465). Thin for cricket, but one request.
 3. A variant's parent side: "India Women", "Hong Kong U19" take the Cricbuzz crest of "India" and
    "Hong Kong", which for a national side is its flag. No network.
 
-What each source found is kept in `tools/team_lookups.json` (committed), which `extract_team_colors.py`
-reads for the source colours. A name is looked up on TheSportsDB again only after RECHECK_DAYS, and
-at most MAX_LOOKUPS names a run, so the backlog clears over a few weeks rather than in one long job.
+What each source found is kept in `tools/team_lookups.json` (committed, saved as the run goes), which
+`extract_team_colors.py` reads for the source colours. A one-by-one search is repeated only after
+RECHECK_DAYS, and at most MAX_LOOKUPS run, so a big backlog clears over a few weeks.
 
 Merge, never shrink; fail loudly — the rules `update_logos.py` follows. A run whose lookups mostly
 fail to connect writes nothing.
@@ -43,13 +48,24 @@ COLORS_PATH = "app/src/main/assets/TeamColors.json"
 LOOKUPS_PATH = "tools/team_lookups.json"
 
 ARCHIVE = "https://tm-droid.github.io/bouncer-archive/"
-SPORTSDB = "https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t={name}"
+SPORTSDB_API = "https://www.thesportsdb.com/api/v1/json/123/"
+SPORTSDB = SPORTSDB_API + "searchteams.php?t={name}"
 WIKIDATA_SPARQL = "https://query.wikidata.org/sparql?{query}"
 
 # Wikimedia's policy asks for a User-Agent that names the tool and how to reach its owner.
 USER_AGENT = "BouncerTeamLogos/1.0 (https://github.com/tm-droid/bouncer; tools/update_logos_extra.py)"
 
+# TheSportsDB country names to list cricket leagues for. A country with none costs one empty call.
+SPORTSDB_COUNTRIES = [
+    "India", "England", "Australia", "Pakistan", "Bangladesh", "Sri Lanka", "South Africa",
+    "New Zealand", "West Indies", "Trinidad and Tobago", "Jamaica", "Barbados", "Guyana",
+    "United Arab Emirates", "United States", "Canada", "Afghanistan", "Zimbabwe", "Ireland",
+    "Scotland", "Netherlands", "Nepal", "Wales", "World",
+]
+# Listings the country search does not reach (international sides are under these).
+SPORTSDB_LEAGUES = ["One Day International Series", "Twenty20 International", "Test Series"]
 RECHECK_DAYS = 56
+SAVE_EVERY = 20
 MAX_LOOKUPS = int(os.environ.get("MAX_LOOKUPS", "150"))
 SPORTSDB_GAP_S = 2.1
 # National sides (and their variants) take the board's crest from TheSportsDB (BCCI for India) over
@@ -157,6 +173,27 @@ def wikidata_index():
     return ts.wikidata_index(((result or {}).get("results") or {}).get("bindings"))
 
 
+def sportsdb_bulk():
+    """Every cricket team the league listings carry, indexed by name. Unreachable is an empty index:
+    the one-by-one search still runs for the names that matter."""
+    leagues = set(SPORTSDB_LEAGUES)
+    teams = []
+    try:
+        for country in SPORTSDB_COUNTRIES:
+            query = urllib.parse.urlencode({"c": country, "s": "Cricket"})
+            found = get_json(f"{SPORTSDB_API}search_all_leagues.php?{query}", "sportsdb", SPORTSDB_GAP_S)
+            leagues |= {l.get("strLeague") for l in (found or {}).get("countries") or [] if l.get("strLeague")}
+        for league in sorted(leagues):
+            query = urllib.parse.urlencode({"l": league})
+            found = get_json(f"{SPORTSDB_API}search_all_teams.php?{query}", "sportsdb", SPORTSDB_GAP_S)
+            teams += (found or {}).get("teams") or []
+    except FetchError as error:
+        print(f"TheSportsDB listings incomplete ({error}); continuing with what was read")
+    index = ts.sportsdb_index(teams)
+    print(f"TheSportsDB: {len(leagues)} cricket leagues, {len(teams)} teams listed")
+    return index
+
+
 def is_fresh(entry, today):
     try:
         checked = datetime.date.fromisoformat(entry.get("checked", ""))
@@ -165,12 +202,17 @@ def is_fresh(entry, today):
     return (today - checked).days < RECHECK_DAYS
 
 
-def candidates(universe, logos, colours, lookups, today):
-    """Names due a lookup: those with no logo first, then those with no colour; fresh ones skipped."""
-    due = [n for n in sorted(universe) if not is_fresh(lookups.get(n, {}), today)]
-    no_logo = [n for n in due if n not in logos]
-    no_colour = [n for n in due if n in logos and n not in colours]
-    return (no_logo + no_colour)[:MAX_LOOKUPS]
+def candidates(universe, logos, lookups, today):
+    """Names worth a one-by-one search: national sides, then sides with no crest. Anything with a
+    TheSportsDB entry already, or searched within RECHECK_DAYS, is skipped. A variant of a national
+    side follows its parent, and a club the listings missed keeps the Cricbuzz crest it has."""
+    due = [
+        n for n in sorted(universe)
+        if not (lookups.get(n) or {}).get("sportsdb") and not is_fresh(lookups.get(n) or {}, today)
+    ]
+    national = [n for n in due if is_national(n)]
+    no_logo = [n for n in due if n not in logos and not is_national(n) and ts.flag_code(n) is None]
+    return (national + no_logo)[:MAX_LOOKUPS]
 
 
 def is_cricbuzz(url):
@@ -202,22 +244,33 @@ def main():
         return 1
 
     universe = set(logos) | archive_team_names()
-    due = candidates(universe, logos, colours, lookups, today)
-    print(f"{len(universe)} names, {len(due)} due a lookup this run")
+    bulk = sportsdb_bulk()
+    matched = 0
+    for name in universe:
+        hit = bulk.get(ts.normalize(name))
+        if hit:
+            lookups[name] = {**lookups.get(name, {}), "checked": today.isoformat(), "sportsdb": hit}
+            matched += 1
+    print(f"{len(universe)} names, {matched} found in the listings")
 
+    due = candidates(universe, logos, lookups, today)
+    print(f"{len(due)} due a one-by-one search")
     errors = 0
-    for name in due:
-        entry = {"checked": today.isoformat()}
+    for count, name in enumerate(due, 1):
         try:
-            entry["sportsdb"] = lookup_sportsdb(name)
+            hit = lookup_sportsdb(name)
         except FetchError as error:
             errors += 1
             print(f"Lookup failed for {name}: {error}")
             continue
-        lookups[name] = {**lookups.get(name, {}), **entry}
+        lookups[name] = {**lookups.get(name, {}), "checked": today.isoformat(), "sportsdb": hit}
+        if count % SAVE_EVERY == 0:
+            save_json(LOOKUPS_PATH, dict(sorted(lookups.items())), indent=1)
+            print(f"  {count}/{len(due)} searched")
 
     if due and errors / len(due) > MAX_ERROR_SHARE:
-        print(f"Error: {errors} of {len(due)} lookups failed to connect; not writing anything")
+        save_json(LOOKUPS_PATH, dict(sorted(lookups.items())), indent=1)
+        print(f"Error: {errors} of {len(due)} lookups failed to connect; not writing {LOGOS_PATH}")
         return 1
 
     wikidata = wikidata_index()

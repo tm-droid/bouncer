@@ -121,16 +121,16 @@ class ChoiceTest(unittest.TestCase):
 class LookupScheduleTest(unittest.TestCase):
     TODAY = datetime.date(2026, 10, 18)
 
-    def test_no_logo_first_then_no_colour_and_fresh_skipped(self):
-        universe = {"A Side", "B Side", "C Side", "D Side"}
-        logos = {"B Side": "x", "C Side": "x", "D Side": "x"}
-        colours = {"C Side": ["#000000", "#000000"]}
-        lookups = {"D Side": {"checked": "2026-10-01"}}
-        self.assertEqual(["A Side", "B Side"], extra.candidates(universe, logos, colours, lookups, self.TODAY))
+    def test_national_sides_first_then_crestless_ones(self):
+        universe = {"Nepal", "Nepal Women", "Kent", "New Side", "Old Side", "Found Side"}
+        logos = {"Nepal": "x", "Nepal Women": "x", "Kent": "x"}
+        lookups = {"Old Side": {"checked": "2026-10-01"}, "Found Side": {"sportsdb": {"logo": "y"}}}
+        # Nepal Women follows Nepal; Kent has a crest; Old Side is fresh; Found Side was listed.
+        self.assertEqual(["Nepal", "New Side"], extra.candidates(universe, logos, lookups, self.TODAY))
 
     def test_stale_entries_are_due_again(self):
-        lookups = {"A Side": {"checked": "2026-07-01"}}
-        self.assertEqual(["A Side"], extra.candidates({"A Side"}, {}, {}, lookups, self.TODAY))
+        lookups = {"A Side": {"checked": "2026-07-01", "sportsdb": None}}
+        self.assertEqual(["A Side"], extra.candidates({"A Side"}, {}, lookups, self.TODAY))
 
     def test_short_codes_are_not_names(self):
         self.assertTrue(extra.is_short_code("IND"))
@@ -140,6 +140,26 @@ class LookupScheduleTest(unittest.TestCase):
         index = {"india": "india.jpg"}
         self.assertEqual("india.jpg", extra.variant_logo("India A Women", index))
         self.assertIsNone(extra.variant_logo("India", index))
+
+
+class SportsDbIndexTest(unittest.TestCase):
+    def test_listings_are_indexed_by_name_alternate_and_national_short_name(self):
+        index = ts.sportsdb_index([
+            {"strTeam": "India Cricket", "strSport": "Cricket", "strBadge": "bcci.png"},
+            {"strTeam": "Mumbai Indians", "strTeamAlternate": "MI", "strSport": "Cricket", "strBadge": "mi.png"},
+            {"strTeam": "Mumbai City", "strSport": "Soccer", "strBadge": "fc.png"},
+        ])
+        self.assertEqual("bcci.png", index["india"]["logo"])
+        self.assertEqual("bcci.png", index["india cricket"]["logo"])
+        self.assertEqual("mi.png", index["mi"]["logo"])
+        self.assertNotIn("mumbai city", index)
+
+    def test_a_name_two_teams_share_is_dropped(self):
+        index = ts.sportsdb_index([
+            {"strTeam": "Royals", "strSport": "Cricket", "strBadge": "a.png"},
+            {"strTeam": "Royals", "strSport": "Cricket", "strBadge": "b.png"},
+        ])
+        self.assertNotIn("royals", index)
 
 
 class LogoPrecedenceTest(unittest.TestCase):
