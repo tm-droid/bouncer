@@ -8,32 +8,22 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.FallOfWicket as ModelFallOfWicket
 import com.tanush.bouncer.models.Innings
 import com.tanush.bouncer.models.MatchFlowData
-import com.tanush.bouncer.models.PowerplayEvent
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.WinProbabilityPoint
 import com.tanush.bouncer.ui.components.DismissalType
 import com.tanush.bouncer.ui.components.FallOfWicket as UiFallOfWicket
-import com.tanush.bouncer.ui.components.HighlightHighlightMomentType
-import com.tanush.bouncer.ui.components.HighlightMoment
 import com.tanush.bouncer.ui.components.MatchPhaseData
-import com.tanush.bouncer.ui.components.MomentumShift
-import com.tanush.bouncer.ui.components.OverRunRate
-import com.tanush.bouncer.ui.components.premium.PowerPlayPhase
 import com.tanush.bouncer.utils.TimelineEventExtractor
-import kotlin.math.abs
 
 /** Derived collections for OverviewTabV2, memoized so per-ball recompositions don't re-derive them. */
 internal class OverviewDerivedData(
     val cumulativeScores: List<Int>,
     val fallbackBatsmen: List<BatsmanStats>,
     val fallbackHasNotOut: Boolean,
-    val ppPhaseList: List<PowerPlayPhase>,
     val matchPhases: List<MatchPhaseData>,
     val wicketOvers: List<Int>,
-    val perOverRuns: List<OverRunRate>,
     val uniqueInnings: List<Innings>,
     val fallOfWicketsByInnings: List<List<UiFallOfWicket>>,
-    val keyMoments: List<HighlightMoment>,
     val meaningfulCommentary: List<String>,
     /** Both innings from the server's over history; null falls back to the Cricinfo milestones. */
     val worm: OverWorm? = null,
@@ -54,13 +44,13 @@ internal fun rememberOverviewDerivedData(
         val d = it.dismissal.lowercase()
         d.contains("not out") || d.contains("batting")
     }?.take(2).orEmpty()
-    val (cumulativeScores, perOverRuns) = buildOverAggregates(overMilestones)
+    val cumulativeScores = cumulativeScoresByOver(overMilestones)
+    val worm = scorecard?.overs?.let(::overWormOf)
 
     OverviewDerivedData(
         cumulativeScores = cumulativeScores,
         fallbackBatsmen = notOutBatsmen.ifEmpty { latestInnings?.batsmen?.takeLast(2).orEmpty() },
         fallbackHasNotOut = notOutBatsmen.isNotEmpty(),
-        ppPhaseList = matchFlow?.powerplays.orEmpty().map(::toPowerPlayPhase),
         matchPhases = buildMatchPhases(
             overMilestones = overMilestones,
             powerplays = matchFlow?.powerplays ?: emptyList(),
@@ -68,18 +58,20 @@ internal fun rememberOverviewDerivedData(
             isLive = isMatchActive,
             format = CricketConstants.formatFromMatchType(match.matchType, match.matchTitle),
         ),
+        // On the worm these mark the line still batting, so they are kept only when that line is
+        // the latest innings: not a Test's third or fourth, and not a second innings whose overs
+        // have not reached the server yet (the dots would land on the first innings' line).
         wicketOvers = latestInnings?.fallOfWickets
+            ?.takeIf { worm == null || scorecard?.innings?.size == if (worm.team2Scores.isEmpty()) 1 else 2 }
             ?.mapNotNull { it.overs.split(".").firstOrNull()?.toIntOrNull() }
             ?: emptyList(),
-        perOverRuns = perOverRuns,
         uniqueInnings = scorecard?.innings?.distinctBy { "${it.teamName}_${it.score}_${it.overs}" }.orEmpty(),
         fallOfWicketsByInnings = scorecard?.innings.orEmpty().map { innings ->
             if (innings.fallOfWickets.isNotEmpty()) {
                 mapFallOfWickets(innings.fallOfWickets, innings.batsmen)
             } else emptyList()
         },
-        keyMoments = buildKeyMoments(probabilityHistory),
-        worm = scorecard?.overs?.let(::overWormOf),
+        worm = worm,
         meaningfulCommentary = TimelineEventExtractor.deduplicateByBall(
             commentary
                 .map { it.trimEnd('/').trim() }
@@ -88,13 +80,11 @@ internal fun rememberOverviewDerivedData(
     )
 }
 
-/** Per-over cumulative scores and run deltas derived from milestone points in one pass. */
-private fun buildOverAggregates(
-    overMilestones: List<Pair<Int, Int>>,
-): Pair<List<Int>, List<OverRunRate>> {
-    if (overMilestones.isEmpty()) return emptyList<Int>() to emptyList()
+/** Cumulative score after each over, carried forward from the latest milestone reached. */
+private fun cumulativeScoresByOver(overMilestones: List<Pair<Int, Int>>): List<Int> {
+    if (overMilestones.isEmpty()) return emptyList()
     val maxOver = overMilestones.maxOf { it.first }
-    val cumulative = buildList {
+    return buildList {
         var prev = 0
         for (over in 1..maxOver) {
             val cum = overMilestones.lastOrNull { it.first <= over }?.second ?: prev
@@ -102,61 +92,7 @@ private fun buildOverAggregates(
             prev = cum
         }
     }
-    val perOver = buildList {
-        var prev = 0
-        overMilestones.sortedBy { it.first }.forEach { (over, cum) ->
-            add(OverRunRate(over = over, team1Runs = cum - prev, team2Runs = null))
-            prev = cum
-        }
-    }
-    return cumulative to perOver
 }
-
-private fun toPowerPlayPhase(pp: PowerplayEvent): PowerPlayPhase = PowerPlayPhase(
-    name = "PP${pp.phase}",
-    overs = pp.overs,
-    runs = pp.runs,
-    wickets = pp.wickets,
-    runRate = if (pp.overs.contains("-")) {
-        val parts = pp.overs.split(Regex("[–\\-]"))
-        val start = parts.firstOrNull()?.toDoubleOrNull() ?: 0.0
-        val end = parts.lastOrNull()?.toDoubleOrNull() ?: 6.0
-        pp.runs / (end - start).coerceAtLeast(0.1)
-    } else 0.0,
-    boundaries = 0,
-    sixes = 0,
-    dotBalls = 0,
-)
-
-private fun buildKeyMoments(probabilityHistory: List<WinProbabilityPoint>): List<HighlightMoment> =
-    probabilityHistory.mapIndexedNotNull { idx, point ->
-        val event = point.keyEvent ?: return@mapIndexedNotNull null
-        val prevProb = probabilityHistory.getOrNull(idx - 1)
-        val impact = if (prevProb != null) {
-            (abs(point.team1Probability - prevProb.team1Probability) * 2f).coerceIn(0f, 1f)
-        } else 0.5f
-        HighlightMoment(
-            overNumber = point.over,
-            title = event,
-            description = "${(point.team1Probability * 100).toInt()}% win probability",
-            type = momentTypeFor(event),
-            impactScore = impact,
-            timestamp = "Over ${point.over.toInt()}",
-        )
-    }
-
-private val momentKeywordTypes = listOf(
-    listOf("wicket") to HighlightHighlightMomentType.WICKET,
-    listOf("six") to HighlightHighlightMomentType.SIX,
-    listOf("four", "boundary") to HighlightHighlightMomentType.FOUR,
-    listOf("50", "half century") to HighlightHighlightMomentType.FIFTY,
-    listOf("100", "century") to HighlightHighlightMomentType.CENTURY,
-)
-
-private fun momentTypeFor(event: String): HighlightHighlightMomentType =
-    momentKeywordTypes.firstOrNull { (keywords, _) ->
-        keywords.any { event.contains(it, ignoreCase = true) }
-    }?.second ?: HighlightHighlightMomentType.MILESTONE
 
 private fun mapFallOfWickets(
     fowList: List<ModelFallOfWicket>,

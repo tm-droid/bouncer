@@ -2,48 +2,40 @@ package com.tanush.bouncer.ui.components.premium
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Timeline
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.R
-import com.tanush.bouncer.analysis.CricketConstants
-import com.tanush.bouncer.analysis.MatchProjections
-import com.tanush.bouncer.ui.theme.*
-import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import java.util.Locale
-
-/**
- * Live scoring graph card
- */
 
 data class LiveScoringData(
     val team1Name: String,
@@ -56,399 +48,175 @@ data class LiveScoringData(
     /** The match's shared chart pair — see `rememberMatchChartColors`. */
     val team1Color: Color,
     val team2Color: Color,
+    /** Overs in which the side still batting (the second line if there is one) lost a wicket. */
+    val battingWicketOvers: List<Int> = emptyList(),
 )
 
+/**
+ * The worm: cumulative runs by over for each innings, with the batting side's wickets marked.
+ *
+ * Flat lines on the chart plate. It used to fill under each line with a fading gradient, put a
+ * radial glow behind the latest point, label its axis 0/6/10/15/20 whatever the format, and end
+ * with a stats row — current over, current score, required rate — that the score header above
+ * already states (and whose required rate took the first innings as the chase).
+ */
 @Composable
 fun LiveScoringGraphCard(
     scoringData: LiveScoringData,
     modifier: Modifier = Modifier,
 ) {
-    val animatedProgress = remember { Animatable(0f) }
-
-    // No ambient loop. Motion in this app reports a state change (a score tick, a
-    // toggle); a permanent breathing glow reports nothing and is the kind of
-    // decoration this design system spends its budget away from.
-    val livePulse = 1f
-
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    val progress = remember { Animatable(0f) }
     LaunchedEffect(scoringData) {
-        animatedProgress.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
-        )
+        progress.animateTo(1f, tween(durationMillis = 900, easing = FastOutSlowInEasing))
     }
+    val maxOvers = maxOf(scoringData.team1Scores.size, scoringData.team2Scores.size, scoringData.totalOvers, 1)
 
-    val colors = BouncerDesignSystem.colors
-    val statusInfoC = scoringData.team1Color
-    val goldDarkC = scoringData.team2Color
-    val statusSuccessC = colors.statusSuccess
-
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = BouncerThemeV2.colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-        ) {
-            // Header. A plain title: the gradient icon tile, the tracked caps and a blue "LIVE"
-            // (live is red, and the fixed header already says so) were decoration.
+    BouncerCard(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth().padding(spacing.lg)) {
             Text(
                 text = stringResource(R.string.live_run_progression_by_over),
-                style = BouncerThemeV2.typography.titleMedium,
-                color = BouncerThemeV2.colors.onSurface,
+                style = typography.titleMedium,
+                color = colors.onSurface,
             )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Legend
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-            ) {
-                LegendItem(
-                    color = scoringData.team1Color,
-                    label = scoringData.team1Name,
-                    score = scoringData.team1Scores.lastOrNull() ?: 0,
-                )
-                LegendItem(
-                    color = scoringData.team2Color,
-                    label = scoringData.team2Name,
-                    score = if (scoringData.team2Scores.isNotEmpty()) scoringData.team2Scores.last() else null,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Graph
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(BouncerThemeV2.colors.surfaceVariant)
-                    .padding(16.dp),
-            ) {
-                val markerLift = BouncerThemeV2.colors.highlight.copy(alpha = 0.05f)
-                val gridLift = BouncerThemeV2.colors.highlight.copy(alpha = 0.08f)
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val width = size.width
-                    val height = size.height
-
-                    val maxScore = maxOf(
-                        scoringData.team1Scores.maxOrNull() ?: 0,
-                        scoringData.team2Scores.maxOrNull() ?: 0,
-                        scoringData.projectedScore,
-                    ).coerceAtLeast(1)
-
-                    val maxOvers = maxOf(
-                        scoringData.team1Scores.size,
-                        scoringData.team2Scores.size,
-                        20,
-                    )
-
-                    // Draw grid lines (dashed for subtlety)
-                    val gridLines = 4
-                    val gridDash = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
-                    for (i in 0..gridLines) {
-                        val y = height - (height * i / gridLines)
-                        drawLine(
-                            color = gridLift,
-                            start = Offset(0f, y),
-                            end = Offset(width, y),
-                            strokeWidth = 0.5.dp.toPx(),
-                            pathEffect = gridDash,
-                        )
-                    }
-
-                    // Draw vertical over markers
-                    val overMarkers = listOf(0, 6, 10, 15, 20).filter { it <= maxOvers }
-                    overMarkers.forEach { over ->
-                        val x = width * over / maxOvers
-                        drawLine(
-                            color = markerLift,
-                            start = Offset(x, 0f),
-                            end = Offset(x, height),
-                            strokeWidth = 1.dp.toPx(),
-                        )
-                    }
-
-                    // Draw team 2 scores (if available)
-                    if (scoringData.team2Scores.isNotEmpty()) {
-                        val path2 = Path().apply {
-                            scoringData.team2Scores.forEachIndexed { index, score ->
-                                val x = width * index / maxOvers
-                                val y = height - (height * score / maxScore)
-                                if (index == 0) {
-                                    moveTo(x, y)
-                                } else {
-                                    lineTo(x, y)
-                                }
-                            }
-                        }
-
-                        // Fill gradient
-                        val fill2 = Path().apply {
-                            addPath(path2)
-                            lineTo(width * (scoringData.team2Scores.size - 1) / maxOvers, height)
-                            lineTo(0f, height)
-                            close()
-                        }
-
-                        drawPath(
-                            path = fill2,
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    goldDarkC.copy(alpha = 0.3f),
-                                    goldDarkC.copy(alpha = 0f),
-                                ),
-                            ),
-                        )
-
-                        drawPath(
-                            path = path2,
-                            color = goldDarkC,
-                            style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
-                        )
-                    }
-
-                    // Draw team 1 scores
-                    if (scoringData.team1Scores.isNotEmpty()) {
-                        val animatedScores = scoringData.team1Scores.take(
-                            (scoringData.team1Scores.size * animatedProgress.value).toInt().coerceAtLeast(1),
-                        )
-
-                        val path1 = Path().apply {
-                            animatedScores.forEachIndexed { index, score ->
-                                val x = width * index / maxOvers
-                                val y = height - (height * score / maxScore)
-                                if (index == 0) {
-                                    moveTo(x, y)
-                                } else {
-                                    lineTo(x, y)
-                                }
-                            }
-                        }
-
-                        // Fill gradient
-                        val fill1 = Path().apply {
-                            addPath(path1)
-                            lineTo(width * (animatedScores.size - 1) / maxOvers, height)
-                            lineTo(0f, height)
-                            close()
-                        }
-
-                        drawPath(
-                            path = fill1,
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    statusInfoC.copy(alpha = 0.4f),
-                                    statusInfoC.copy(alpha = 0f),
-                                ),
-                            ),
-                        )
-
-                        drawPath(
-                            path = path1,
-                            color = statusInfoC,
-                            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round),
-                        )
-
-                        // Data-point markers at powerplay/milestone overs
-                        val milestoneOvers = setOf(0, 5, 9, 14, 19)
-                        animatedScores.forEachIndexed { index, score ->
-                            if (index in milestoneOvers && index < animatedScores.size - 1) {
-                                val mx = width * index / maxOvers
-                                val my = height - (height * score / maxScore)
-                                drawCircle(
-                                    color = statusInfoC,
-                                    radius = 2.5.dp.toPx(),
-                                    center = Offset(mx, my),
-                                )
-                            }
-                        }
-
-                        // Current point indicator
-                        if (animatedScores.isNotEmpty()) {
-                            val lastIndex = animatedScores.size - 1
-                            val lastX = width * lastIndex / maxOvers
-                            val lastY = height - (height * animatedScores.last() / maxScore)
-
-                            // Glow
-                            drawCircle(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        statusInfoC.copy(alpha = 0.5f * livePulse),
-                                        statusInfoC.copy(alpha = 0f),
-                                    ),
-                                    center = Offset(lastX, lastY),
-                                    radius = 20.dp.toPx() * livePulse,
-                                ),
-                                center = Offset(lastX, lastY),
-                                radius = 20.dp.toPx() * livePulse,
-                            )
-
-                            drawCircle(
-                                color = statusInfoC,
-                                radius = 6.dp.toPx(),
-                                center = Offset(lastX, lastY),
-                            )
-                            drawCircle(
-                                color = Color.White,
-                                radius = 3.dp.toPx(),
-                                center = Offset(lastX, lastY),
-                            )
-                        }
-                    }
-
-                    // Projected score line
-                    if (scoringData.projectedScore > 0 && scoringData.team1Scores.isNotEmpty()) {
-                        val projectedY = height - (height * scoringData.projectedScore / maxScore)
-
-                        drawLine(
-                            color = statusSuccessC.copy(alpha = 0.5f),
-                            start = Offset(0f, projectedY),
-                            end = Offset(width, projectedY),
-                            strokeWidth = 1.dp.toPx(),
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f)),
-                        )
-                    }
-                }
-
-                // Projected score label
-                if (scoringData.projectedScore > 0) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(colors.statusSuccess.copy(alpha = 0.2f))
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                    ) {
-                        Text(
-                            text = "Projected: ${scoringData.projectedScore}",
-                            color = colors.statusSuccess,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Over markers
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                listOf("0", "6", "10", "15", "20").forEach { over ->
-                    Text(
-                        text = over,
-                        color = BouncerThemeV2.colors.textSecondary,
-                        fontSize = 10.sp,
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Current stats
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                ScoringStatItem(
-                    label = stringResource(R.string.common_current_over),
-                    value = "${scoringData.currentOver}",
-                    subtext = "of ${scoringData.totalOvers}",
-                )
-
-                ScoringStatItem(
-                    label = stringResource(R.string.live_current_score),
-                    value = "${scoringData.team1Scores.lastOrNull() ?: 0}",
-                    subtext = scoringData.team1Name,
-                )
-
+            Spacer(Modifier.height(spacing.sm))
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.lg)) {
+                LegendItem(scoringData.team1Color, scoringData.team1Name, scoringData.team1Scores.lastOrNull())
                 if (scoringData.team2Scores.isNotEmpty()) {
-                    val target = scoringData.team2Scores.last()
-                    val current = scoringData.team1Scores.lastOrNull() ?: 0
-                    val required = target - current + 1
-                    val oversRemaining = scoringData.totalOvers - scoringData.currentOver
-                    val totalBalls = scoringData.totalOvers * CricketConstants.BALLS_PER_OVER
-                    val ballsBowled = scoringData.currentOver * CricketConstants.BALLS_PER_OVER
-                    val rrr = MatchProjections.requiredRunRate(target + 1, current, ballsBowled, totalBalls) ?: 0.0
-
-                    ScoringStatItem(
-                        label = stringResource(R.string.live_required_rr),
-                        value = String.format(Locale.US, "%.2f", rrr),
-                        subtext = "$required from $oversRemaining",
-                    )
+                    LegendItem(scoringData.team2Color, scoringData.team2Name, scoringData.team2Scores.last())
                 }
             }
+            Spacer(Modifier.height(spacing.md))
+            WormPlate(scoringData, maxOvers, progress.value)
+            WormAxis(maxOvers, showWicketKey = scoringData.battingWicketOvers.isNotEmpty())
         }
     }
 }
 
 @Composable
-private fun LegendItem(
-    color: Color,
-    label: String,
-    score: Int?,
-) {
-    val colors = BouncerDesignSystem.colors
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(12.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(color),
-        )
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        Text(
-            text = label,
-            color = colors.textPrimary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-        )
-
-        if (score != null) {
-            Spacer(modifier = Modifier.width(6.dp))
+private fun WormPlate(scoringData: LiveScoringData, maxOvers: Int, progress: Float) {
+    val colors = BouncerThemeV2.colors
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(CHART_HEIGHT)
+            .clip(BouncerThemeV2.shapes.small)
+            .background(colors.surfaceVariant),
+    ) {
+        val inks = WormInks(grid = colors.divider, wicket = colors.onSurface, projection = colors.textSecondary)
+        Canvas(modifier = Modifier.fillMaxSize().padding(BouncerThemeV2.spacing.md)) {
+            drawWormChart(scoringData, maxOvers, progress, inks)
+        }
+        if (scoringData.projectedScore > 0) {
             Text(
-                text = "($score)",
-                color = BouncerThemeV2.colors.textSecondary,
-                fontSize = 11.sp,
+                text = stringResource(R.string.live_projected_score, scoringData.projectedScore),
+                style = BouncerThemeV2.typography.labelSmall,
+                color = colors.textSecondary,
+                modifier = Modifier.align(Alignment.TopEnd).padding(horizontal = 6.dp, vertical = 4.dp),
             )
         }
     }
 }
 
 @Composable
-private fun ScoringStatItem(
-    label: String,
-    value: String,
-    subtext: String,
-) {
-    val colors = BouncerDesignSystem.colors
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun WormAxis(maxOvers: Int, showWicketKey: Boolean) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+        Text(text = "0", style = typography.numericSmall, color = colors.textSecondary)
+        Spacer(Modifier.weight(1f))
         Text(
-            text = label,
-            color = BouncerThemeV2.colors.textSecondary,
-            fontSize = 10.sp,
-        )
-        Text(
-            text = value,
-            color = colors.textPrimary,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-        )
-        Text(
-            text = subtext,
-            color = BouncerThemeV2.colors.textSecondary,
-            fontSize = 10.sp,
+            text = stringResource(R.string.winprob_over_label, maxOvers.toString()),
+            style = typography.numericSmall,
+            color = colors.textSecondary,
         )
     }
+    if (showWicketKey) {
+        Spacer(Modifier.height(spacing.xs))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(6.dp).clip(CircleShape).background(colors.onSurface))
+            Spacer(Modifier.width(spacing.xs))
+            Text(
+                text = stringResource(R.string.live_wicket_marker),
+                style = typography.bodySmall,
+                color = colors.textSecondary,
+            )
+        }
+    }
 }
+
+private class WormInks(val grid: Color, val wicket: Color, val projection: Color)
+
+private fun DrawScope.drawWormChart(data: LiveScoringData, maxOvers: Int, progress: Float, inks: WormInks) {
+    val maxScore = maxOf(
+        data.team1Scores.maxOrNull() ?: 0,
+        data.team2Scores.maxOrNull() ?: 0,
+        data.projectedScore,
+    ).coerceAtLeast(1)
+    val x = { index: Int -> size.width * (index + 1) / maxOvers }
+    val y = { score: Int -> size.height - size.height * score / maxScore }
+
+    for (i in 0..GRID_LINES) {
+        val gy = size.height * i / GRID_LINES
+        drawLine(inks.grid, Offset(0f, gy), Offset(size.width, gy), strokeWidth = 1.dp.toPx())
+    }
+    if (data.projectedScore > 0) {
+        val py = y(data.projectedScore)
+        drawLine(
+            color = inks.projection,
+            start = Offset(0f, py),
+            end = Offset(size.width, py),
+            strokeWidth = 1.dp.toPx(),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)),
+        )
+    }
+    drawWorm(data.team1Scores, data.team1Color, progress, x, y)
+    drawWorm(data.team2Scores, data.team2Color, progress, x, y)
+
+    val batting = data.team2Scores.ifEmpty { data.team1Scores }
+    val shown = (batting.size * progress).toInt()
+    data.battingWicketOvers.distinct().forEach { over ->
+        val index = over.coerceAtMost(batting.size - 1)
+        if (index in 0 until shown) {
+            drawCircle(inks.wicket, radius = WICKET_DOT.toPx(), center = Offset(x(index), y(batting[index])))
+        }
+    }
+}
+
+private fun DrawScope.drawWorm(
+    scores: List<Int>,
+    color: Color,
+    progress: Float,
+    x: (Int) -> Float,
+    y: (Int) -> Float,
+) {
+    val shown = scores.take((scores.size * progress).toInt().coerceAtLeast(1))
+    if (shown.size < 2) return
+    val path = Path()
+    shown.forEachIndexed { index, score ->
+        if (index == 0) path.moveTo(x(index), y(score)) else path.lineTo(x(index), y(score))
+    }
+    drawPath(path, color, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
+}
+
+@Composable
+private fun LegendItem(color: Color, label: String, score: Int?) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(width = 12.dp, height = 3.dp).background(color))
+        Spacer(Modifier.width(6.dp))
+        Text(text = label, style = typography.labelMedium, color = colors.onSurface)
+        if (score != null) {
+            Spacer(Modifier.width(4.dp))
+            Text(text = score.toString(), style = typography.numericSmall, color = colors.textSecondary)
+        }
+    }
+}
+
+private val CHART_HEIGHT = 180.dp
+private val WICKET_DOT = 3.dp
+private const val GRID_LINES = 4

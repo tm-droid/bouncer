@@ -189,7 +189,7 @@ fun PremiumWinProbabilityHero(
         val footer = footerText(detail, delta, team1Name, team2Name)
         if (footer != null) {
             Spacer(Modifier.height(12.dp))
-            Text(text = footer, color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            Text(text = footer, style = BouncerThemeV2.typography.numericSmall, color = BouncerThemeV2.colors.textSecondary)
         }
     }
 }
@@ -295,8 +295,8 @@ private fun StateChip(state: WinProbabilityState) {
         // Labelled distinctly on purpose: a pre-match number is a prediction from form alone, and
         // showing it in the same clothes as a number computed from a live position would overstate
         // it.
-        WinProbabilityState.PRE_MATCH -> "PRE-MATCH" to TextSecondary
-        WinProbabilityState.FINAL -> "FINAL" to TextMuted
+        WinProbabilityState.PRE_MATCH -> "Pre-match" to TextSecondary
+        WinProbabilityState.FINAL -> "Final" to TextMuted
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (state == WinProbabilityState.LIVE) {
@@ -317,7 +317,7 @@ private fun StateChip(state: WinProbabilityState) {
 private fun footerText(detail: String?, delta: Float?, team1Name: String, team2Name: String): String? {
     val swing = delta?.takeIf { abs(it) >= DELTA_WORTH_SHOWING }?.let {
         val gained = if (it > 0) team1Name else team2Name
-        "${gained.uppercase()} +${(abs(it) * 100).roundToInt()}%"
+        "$gained +${(abs(it) * 100).roundToInt()}%"
     }
     return listOfNotNull(detail?.takeIf { it.isNotBlank() }, swing).joinToString("  ·  ").ifBlank { null }
 }

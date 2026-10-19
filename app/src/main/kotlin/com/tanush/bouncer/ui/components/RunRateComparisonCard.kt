@@ -1,34 +1,33 @@
 package com.tanush.bouncer.ui.components
 
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ShowChart
-import androidx.compose.material.icons.automirrored.filled.TrendingDown
-import androidx.compose.material.icons.automirrored.filled.TrendingFlat
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.tanush.bouncer.analysis.MatchProjections
-import com.tanush.bouncer.ui.theme.*
-import kotlin.math.max
-import kotlin.math.min
-import com.tanush.bouncer.ui.theme.GoldPrimary
+import com.tanush.bouncer.R
+import com.tanush.bouncer.ui.components.v2.BouncerCard
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import java.util.Locale
 
 /**
@@ -43,319 +42,92 @@ data class OverRunRate(
 )
 
 /**
- * Premium Run Rate Comparison Chart
- * Shows run rate progression for both teams across overs
+ * The manhattan: runs scored in each over, one bar per innings side by side.
+ *
+ * This used to plot each side's cumulative run rate, which is the slope of the worm drawn directly
+ * above it — the same data a second time, under a glow stroke, gradient fills, a gold icon tile and
+ * a tracked-caps title. Runs per over is what the worm cannot show: a 22-run over in over 15
+ * barely bends a cumulative line.
  */
 @Composable
 fun RunRateComparisonCard(
     overData: List<OverRunRate>,
     team1Name: String,
     team2Name: String,
-    team1Color: Color = GoldPrimary,
-    team2Color: Color = StatusInfo,
+    team1Color: Color,
+    team2Color: Color,
+    modifier: Modifier = Modifier,
     requiredRunRate: Double? = null,
-    modifier: Modifier = Modifier
 ) {
-    val colors = BouncerDesignSystem.colors
-    val hierarchy = BouncerDesignSystem.hierarchy
-    // Ambient shimmer removed: it drove nothing that reported a state change.
-    // Calculate cumulative runs for run rate
-    val team1Cumulative = overData.runningFold(0) { acc, data -> acc + data.team1Runs }.drop(1)
-    val team2Cumulative = overData.mapNotNull { it.team2Runs }.runningFold(0) { acc, runs -> acc + runs }.drop(1)
-    
-    val team1RunRates = MatchProjections.cumulativeRunRates(team1Cumulative)
-    val team2RunRates = MatchProjections.cumulativeRunRates(team2Cumulative)
-    
-    val maxRunRate = max(
-        team1RunRates.maxOrNull() ?: 0f,
-        team2RunRates.maxOrNull() ?: 0f
-    ).coerceAtLeast(requiredRunRate?.toFloat() ?: 6f)
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    val hasSecond = overData.any { it.team2Runs != null }
+    val required = requiredRunRate?.takeIf { it > 0.0 }
 
-    Card(
-        modifier = modifier
+    BouncerCard(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth().padding(spacing.lg)) {
+            Text(
+                text = stringResource(R.string.runs_per_over_title),
+                style = typography.titleMedium,
+                color = colors.onSurface,
+            )
+            Spacer(Modifier.height(spacing.sm))
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.lg)) {
+                LegendSwatch(team1Color, team1Name)
+                if (hasSecond) LegendSwatch(team2Color, team2Name)
+                if (required != null) {
+                    Text(
+                        text = stringResource(R.string.runs_per_over_required, String.format(Locale.US, "%.2f", required)),
+                        style = typography.labelMedium,
+                        color = colors.textSecondary,
+                    )
+                }
+            }
+            Spacer(Modifier.height(spacing.md))
+            ManhattanPlate(overData, team1Color, team2Color, hasSecond, required)
+            if (overData.isNotEmpty()) OverRange(overData.first().over, overData.last().over)
+        }
+    }
+}
+
+@Composable
+private fun ManhattanPlate(
+    overData: List<OverRunRate>,
+    team1Color: Color,
+    team2Color: Color,
+    hasSecond: Boolean,
+    required: Double?,
+) {
+    val colors = BouncerThemeV2.colors
+    Box(
+        modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 0.dp,
-                shape = RoundedCornerShape(12.dp),
-                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
-            ),
-        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
+            .height(CHART_HEIGHT)
+            .clip(BouncerThemeV2.shapes.small)
+            .background(colors.surfaceVariant),
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
-        ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ShowChart,
-                        contentDescription = null,
-                        tint = hierarchy.secondary.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        "RUN RATE COMPARISON",
-                        color = colors.textPrimary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Legend
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                LegendDot(color = team1Color, label = team1Name)
-                Spacer(modifier = Modifier.width(24.dp))
-                LegendDot(color = team2Color, label = team2Name)
-                if (requiredRunRate != null) {
-                    Spacer(modifier = Modifier.width(24.dp))
-                    LegendDot(
-                        color = colors.statusLive,
-                        label = "Required (${String.format(Locale.US, "%.2f", requiredRunRate)})",
-                        dashed = true,
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            // Chart
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-            ) {
-                Canvas(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    val width = size.width
-                    val height = size.height
-                    val chartPadding = 40.dp.toPx()
-                    val chartWidth = width - chartPadding
-                    val chartHeight = height - 30.dp.toPx()
-                    
-                    val maxOvers = overData.size.coerceAtLeast(1)
-                    val xStep = chartWidth / maxOvers
-                    
-                    // Draw grid lines
-                    val gridLines = 5
-                    for (i in 0..gridLines) {
-                        val y = chartHeight - (chartHeight * i / gridLines)
-                        drawLine(
-                            color = colors.glassBorder.copy(alpha = 0.2f),
-                            start = Offset(chartPadding, y),
-                            end = Offset(width, y),
-                            strokeWidth = 1.dp.toPx()
-                        )
-                        
-                        // Y-axis labels
-                        val runRate = maxRunRate * i / gridLines
-                    }
-                    
-                    // Draw required run rate line
-                    if (requiredRunRate != null) {
-                        val y = chartHeight - (chartHeight * (requiredRunRate.toFloat() / maxRunRate))
-                        val dashPath = Path().apply {
-                            moveTo(chartPadding, y)
-                            lineTo(width, y)
-                        }
-                        drawPath(
-                            path = dashPath,
-                            color = colors.statusLive.copy(alpha = 0.7f),
-                            style = Stroke(
-                                width = 2.dp.toPx(),
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
-                            )
-                        )
-                    }
-                    
-                    // Draw Team 2 line (if available)
-                    if (team2RunRates.isNotEmpty()) {
-                        val team2Path = Path()
-                        team2RunRates.forEachIndexed { index, runRate ->
-                            val x = chartPadding + (index + 1) * xStep
-                            val y = chartHeight - (chartHeight * (runRate / maxRunRate))
-                            if (index == 0) {
-                                team2Path.moveTo(x, y)
-                            } else {
-                                team2Path.lineTo(x, y)
-                            }
-                        }
-                        
-                        // Draw area under curve
-                        val team2AreaPath = Path().apply {
-                            addPath(team2Path)
-                            lineTo(chartPadding + team2RunRates.size * xStep, chartHeight)
-                            lineTo(chartPadding + xStep, chartHeight)
-                            close()
-                        }
-                        drawPath(
-                            path = team2AreaPath,
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    team2Color.copy(alpha = 0.2f),
-                                    team2Color.copy(alpha = 0.02f)
-                                )
-                            )
-                        )
-                        
-                        // Draw line
-                        drawPath(
-                            path = team2Path,
-                            color = team2Color,
-                            style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-                        )
-                        
-                        // Draw points
-                        team2RunRates.forEachIndexed { index, runRate ->
-                            val x = chartPadding + (index + 1) * xStep
-                            val y = chartHeight - (chartHeight * (runRate / maxRunRate))
-                            drawCircle(team2Color, 4.dp.toPx(), Offset(x, y))
-                            drawCircle(colors.surface1, 2.dp.toPx(), Offset(x, y))
-                        }
-                    }
-                    
-                    // Draw Team 1 line
-                    if (team1RunRates.isNotEmpty()) {
-                        val team1Path = Path()
-                        team1RunRates.forEachIndexed { index, runRate ->
-                            val x = chartPadding + (index + 1) * xStep
-                            val y = chartHeight - (chartHeight * (runRate / maxRunRate))
-                            if (index == 0) {
-                                team1Path.moveTo(x, y)
-                            } else {
-                                team1Path.lineTo(x, y)
-                            }
-                        }
-                        
-                        // Draw area under curve
-                        val team1AreaPath = Path().apply {
-                            addPath(team1Path)
-                            lineTo(chartPadding + team1RunRates.size * xStep, chartHeight)
-                            lineTo(chartPadding + xStep, chartHeight)
-                            close()
-                        }
-                        drawPath(
-                            path = team1AreaPath,
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    team1Color.copy(alpha = 0.25f),
-                                    team1Color.copy(alpha = 0.02f)
-                                )
-                            )
-                        )
-                        
-                        // Draw line with glow
-                        drawPath(
-                            path = team1Path,
-                            color = team1Color.copy(alpha = 0.4f),
-                            style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-                        )
-                        drawPath(
-                            path = team1Path,
-                            color = team1Color,
-                            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-                        )
-                        
-                        // Draw points
-                        team1RunRates.forEachIndexed { index, runRate ->
-                            val x = chartPadding + (index + 1) * xStep
-                            val y = chartHeight - (chartHeight * (runRate / maxRunRate))
-                            drawCircle(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(team1Color, team1Color.copy(alpha = 0.5f))
-                                ),
-                                radius = 5.dp.toPx(),
-                                center = Offset(x, y)
-                            )
-                            drawCircle(colors.surface1, 2.5.dp.toPx(), Offset(x, y))
-                        }
-                    }
-                    
-                    // X-axis labels (overs)
-                    val labelInterval = max(1, maxOvers / 5)
-                }
-                
-                // Overlay labels
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .width(36.dp)
-                ) {
-                    for (i in 5 downTo 0) {
-                        val value = maxRunRate * i / 5
-                        Text(
-                            String.format(Locale.US, "%.1f", value),
-                            color = colors.textTertiary,
-                            fontSize = 9.sp,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
-            
-            // X-axis labels
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 40.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                val labelCount = min(6, overData.size)
-                val interval = max(1, overData.size / labelCount)
-                (1..overData.size step interval).forEach { over ->
-                    Text(
-                        "$over",
-                        color = colors.textTertiary,
-                        fontSize = 10.sp,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-            
-            Text(
-                "Overs",
-                color = colors.textTertiary,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
-                textAlign = TextAlign.Center
+        val grid = colors.divider
+        val requiredInk = colors.textSecondary
+        Canvas(modifier = Modifier.fillMaxSize().padding(BouncerThemeV2.spacing.md)) {
+            val maxRuns = maxOf(
+                overData.maxOfOrNull { maxOf(it.team1Runs, it.team2Runs ?: 0) } ?: 0,
+                required?.toInt()?.plus(1) ?: 0,
+                MIN_SCALE,
             )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Current run rates
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                RunRateIndicator(
-                    label = team1Name,
-                    runRate = team1RunRates.lastOrNull() ?: 0f,
-                    color = team1Color
-                )
-                RunRateIndicator(
-                    label = team2Name,
-                    runRate = team2RunRates.lastOrNull() ?: 0f,
-                    color = team2Color
+            for (i in 0..GRID_LINES) {
+                val gy = size.height * i / GRID_LINES
+                drawLine(grid, Offset(0f, gy), Offset(size.width, gy), strokeWidth = 1.dp.toPx())
+            }
+            drawBars(overData, maxRuns, hasSecond, team1Color, team2Color)
+            if (required != null) {
+                val ry = size.height - size.height * (required / maxRuns).toFloat()
+                drawLine(
+                    color = requiredInk,
+                    start = Offset(0f, ry),
+                    end = Offset(size.width, ry),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)),
                 )
             }
         }
@@ -363,175 +135,68 @@ fun RunRateComparisonCard(
 }
 
 @Composable
-private fun LegendDot(
-    color: Color,
-    label: String,
-    dashed: Boolean = false
-) {
-    val colors = BouncerDesignSystem.colors
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        if (dashed) {
-            Box(
-                modifier = Modifier
-                    .width(16.dp)
-                    .height(2.dp)
-                    .drawBehind {
-                        drawLine(
-                            color = color,
-                            start = Offset.Zero,
-                            end = Offset(size.width, 0f),
-                            strokeWidth = 2.dp.toPx(),
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
-                        )
-                    }
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .background(color, CircleShape)
-            )
-        }
+private fun OverRange(first: Int, last: Int) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
         Text(
-            label,
+            text = stringResource(R.string.winprob_over_label, first.toString()),
+            style = typography.numericSmall,
             color = colors.textSecondary,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium
         )
-    }
-}
-
-@Composable
-private fun RunRateIndicator(
-    label: String,
-    runRate: Float,
-    color: Color
-) {
-    val colors = BouncerDesignSystem.colors
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
+        Spacer(Modifier.weight(1f))
         Text(
-            label,
-            color = colors.textTertiary,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium
+            text = stringResource(R.string.winprob_over_label, last.toString()),
+            style = typography.numericSmall,
+            color = colors.textSecondary,
         )
-        Surface(
-            color = color.copy(alpha = 0.12f),
-            shape = RoundedCornerShape(8.dp),
-            border = BorderStroke(0.5.dp, color.copy(alpha = 0.3f))
-        ) {
-            Text(
-                String.format(Locale.US, "%.2f", runRate),
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                color = color,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
     }
 }
 
-/**
- * Compact run rate display for match cards
- */
-@Composable
-fun CompactRunRateDisplay(
-    currentRunRate: Float,
-    requiredRunRate: Float?,
-    modifier: Modifier = Modifier
+private fun DrawScope.drawBars(
+    overData: List<OverRunRate>,
+    maxRuns: Int,
+    hasSecond: Boolean,
+    team1Color: Color,
+    team2Color: Color,
 ) {
-    val colors = BouncerDesignSystem.colors
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Current RR
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                "CRR",
-                color = colors.textTertiary,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                String.format(Locale.US, "%.2f", currentRunRate),
-                color = colors.textPrimary,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        
-        // Required RR
-        if (requiredRunRate != null) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    "RRR",
-                    color = colors.textTertiary,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    String.format(Locale.US, "%.2f", requiredRunRate),
-                    color = if (requiredRunRate > currentRunRate) colors.statusLive else colors.statusSuccess,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
+    val slot = size.width / overData.size.coerceAtLeast(1)
+    val bars = if (hasSecond) 2 else 1
+    val barWidth = (slot * BAR_FILL / bars).coerceAtLeast(1f)
+    overData.forEachIndexed { index, over ->
+        val left = slot * index + slot * (1 - BAR_FILL) / 2
+        drawBar(left, barWidth, over.team1Runs, maxRuns, team1Color)
+        over.team2Runs?.let { drawBar(left + barWidth, barWidth, it, maxRuns, team2Color) }
     }
 }
 
-/**
- * Run rate trend indicator with arrow
- */
-@Composable
-fun RunRateTrendIndicator(
-    previousRunRate: Float,
-    currentRunRate: Float,
-    modifier: Modifier = Modifier
+private fun DrawScope.drawBar(
+    left: Float,
+    width: Float,
+    runs: Int,
+    maxRuns: Int,
+    color: Color,
 ) {
-    val colors = BouncerDesignSystem.colors
-    val trend = currentRunRate - previousRunRate
-    val trendColor = when {
-        trend > 0.5f -> colors.statusSuccess
-        trend < -0.5f -> colors.statusLive
-        else -> colors.textTertiary
-    }
-    val trendIcon = when {
-        trend > 0.5f -> Icons.AutoMirrored.Filled.TrendingUp
-        trend < -0.5f -> Icons.AutoMirrored.Filled.TrendingDown
-        else -> Icons.AutoMirrored.Filled.TrendingFlat
-    }
-    
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Icon(
-            trendIcon,
-            contentDescription = null,
-            tint = trendColor,
-            modifier = Modifier.size(16.dp)
-        )
+    if (runs <= 0) return
+    val barHeight = size.height * runs / maxRuns
+    drawRect(color = color, topLeft = Offset(left, size.height - barHeight), size = Size(width, barHeight))
+}
+
+@Composable
+private fun LegendSwatch(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(10.dp).background(color))
+        Spacer(Modifier.width(6.dp))
         Text(
-            String.format(Locale.US, "%.2f", currentRunRate),
-            color = trendColor,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold
+            text = label,
+            style = BouncerThemeV2.typography.labelMedium,
+            color = BouncerThemeV2.colors.onSurface,
         )
     }
 }
+
+private val CHART_HEIGHT = 160.dp
+private const val GRID_LINES = 4
+private const val BAR_FILL = 0.8f
+/** A run-starved innings still scales to a full over of singles, so one-run bars are not full height. */
+private const val MIN_SCALE = 6

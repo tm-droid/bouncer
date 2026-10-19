@@ -14,10 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Flare
-import androidx.compose.material.icons.filled.HeartBroken
-import androidx.compose.material.icons.filled.Security
 import com.tanush.bouncer.models.BatsmanStats
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.ScrapedBatsman
@@ -27,14 +23,8 @@ import com.tanush.bouncer.ui.components.PredictionFactor
 import kotlin.math.roundToInt
 import com.tanush.bouncer.ui.components.MatchPredictionInfo
 import com.tanush.bouncer.ui.components.PredictionTrend
-import com.tanush.bouncer.ui.components.premium.MomentumEvent
 import com.tanush.bouncer.ui.components.v2.AnimatedScoreText
-import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import com.tanush.bouncer.ui.theme.Gold400
-import com.tanush.bouncer.ui.theme.StatusInfo
-import com.tanush.bouncer.ui.theme.StatusLive
-import com.tanush.bouncer.ui.theme.StatusSuccess
 import java.util.Locale
 
 // Shared, pure helpers + player cards for OverviewTabV2 sections.
@@ -63,14 +53,6 @@ internal fun computeEconomy(overs: String, runs: String, declared: String): Stri
         // would render "8,33".
         MatchProjections.currentRunRate(r, balls)?.let { String.format(Locale.US, "%.2f", it) }
     }
-
-internal fun momentumEventFor(overLabel: String, ball: String): MomentumEvent? = when (ball.uppercase()) {
-    "W" -> MomentumEvent(overLabel, "WICKET", "Fall of wicket", "W", Icons.Default.HeartBroken, StatusLive)
-    "6" -> MomentumEvent(overLabel, "SIX", "Boundary — 6 runs", "6", Icons.Default.Flare, StatusSuccess)
-    "4" -> MomentumEvent(overLabel, "FOUR", "Boundary — 4 runs", "4", Icons.Default.Flare, Gold400)
-    "0" -> MomentumEvent(overLabel, "DOT BALL", "Pressure on batting side", "·", Icons.Default.Security, StatusInfo)
-    else -> null
-}
 
 internal fun predictionTrendFor(delta: Float): PredictionTrend = when {
     delta > 0.05f -> PredictionTrend.TEAM1_RISING
@@ -198,9 +180,10 @@ internal fun FallbackBatsmanRow(bat: BatsmanStats) {
         }
         Spacer(Modifier.height(spacing.xs))
         val details = buildString {
-            append("SR: ${bat.strikeRate}")
-            if (bat.fours != "0") append(" • 4s: ${bat.fours}")
-            if (bat.sixes != "0") append(" • 6s: ${bat.sixes}")
+            // Same shape as the live crease row above, so the two read as one kind of line.
+            append("SR ${bat.strikeRate}")
+            if (bat.fours != "0") append(" • 4s ${bat.fours}")
+            if (bat.sixes != "0") append(" • 6s ${bat.sixes}")
             if (bat.dismissal.isNotBlank() && !bat.dismissal.lowercase().contains("not out")) {
                 append(" • ${bat.dismissal}")
             }

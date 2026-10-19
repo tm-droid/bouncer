@@ -14,42 +14,31 @@
     <ID>CognitiveComplexMethod:CricBuzzScraper.kt$CricBuzzScraper$suspend fun fetchBallByBallAndBatsmen(matchId: String): ScrapedMatchDetails</ID>
     <ID>CognitiveComplexMethod:CricBuzzScraper.kt$CricBuzzScraper$suspend fun fetchLiveMatches(url: String, matchState: String): List&lt;CricketMatch&gt;</ID>
     <ID>CognitiveComplexMethod:CricketBallPullRefresh.kt$@Composable fun CricketBallPullRefreshIndicator( isRefreshing: Boolean, pullProgress: Float, modifier: Modifier = Modifier )</ID>
-    <ID>CognitiveComplexMethod:FallOfWicketsCard.kt$@Composable private fun WicketTimeline( wickets: List&lt;FallOfWicket&gt;, currentScore: Int, currentOvers: Float, teamColor: Color )</ID>
     <ID>CognitiveComplexMethod:FavoritesScreen.kt$@Composable fun FavoritesScreen( onBackClick: () -&gt; Unit, onTeamClick: (String) -&gt; Unit )</ID>
     <ID>CognitiveComplexMethod:FavoritesScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AddTeamBottomSheet( currentFavorites: List&lt;String&gt;, onDismiss: () -&gt; Unit, onTeamSelected: (String) -&gt; Unit )</ID>
     <ID>CognitiveComplexMethod:HeroMatchCard.kt$@Composable fun HeroMatchCard( match: CricketMatch, onClick: () -&gt; Unit, modifier: Modifier = Modifier, onFavourite: (() -&gt; Unit)? = null, )</ID>
     <ID>CognitiveComplexMethod:HighlightFuzzyMatcher.kt$HighlightFuzzyMatcher$private fun jaro(s1: String, s2: String): Double</ID>
     <ID>CognitiveComplexMethod:HighlightsRepository.kt$HighlightsRepository$suspend fun fetchForMatch(bouncerMatchId: String): AppResult&lt;List&lt;HighlightEntity&gt;&gt;</ID>
-    <ID>CognitiveComplexMethod:HistoricalStatsCard.kt$@Composable private fun TeamHistoryInfo( name: String, logoUrl: String?, wins: Int, winRate: Float, isLeading: Boolean, modifier: Modifier = Modifier )</ID>
-    <ID>CognitiveComplexMethod:HistoricalStatsCard.kt$@Composable private fun WinRatioBar( team1Wins: Int, team2Wins: Int, noResults: Int, totalMatches: Int, team1Name: String, team2Name: String, modifier: Modifier = Modifier )</ID>
     <ID>CognitiveComplexMethod:HomeScreenV2.kt$@Composable fun HomeScreenV2( viewModel: LiveActivityViewModel, onMatchClick: (CricketMatch) -&gt; Unit, onMoreMatchesClick: () -&gt; Unit, onAchievementsClick: () -&gt; Unit, onSettingsClick: () -&gt; Unit = {}, onNewsClick: () -&gt; Unit = {}, onSearchClick: () -&gt; Unit = {}, onNotificationsClick: () -&gt; Unit = {}, )</ID>
     <ID>CognitiveComplexMethod:InfoTabV2.kt$@Composable fun InfoTabV2( match: CricketMatch, preMatchData: PreMatchData? = null, )</ID>
     <ID>CognitiveComplexMethod:InfoTabV2.kt$private fun buildPitchFromText(text: String): PitchCondition</ID>
-    <ID>CognitiveComplexMethod:KeyMomentsCard.kt$@Composable fun FeaturedMomentCard( moment: HighlightMoment, modifier: Modifier = Modifier, onLike: (() -&gt; Unit)? = null, onShare: (() -&gt; Unit)? = null )</ID>
     <ID>CognitiveComplexMethod:LiveMatchWidgetProvider.kt$LiveMatchWidgetProvider$private suspend fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int)</ID>
-    <ID>CognitiveComplexMethod:LiveScoringGraphCard.kt$@Composable fun LiveScoringGraphCard( scoringData: LiveScoringData, modifier: Modifier = Modifier, )</ID>
     <ID>CognitiveComplexMethod:MatchContextMenuSheet.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MatchContextMenuSheet( match: CricketMatch, onDismiss: () -&gt; Unit, onSetReminder: () -&gt; Unit = {}, )</ID>
     <ID>CognitiveComplexMethod:MatchDetailViewV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MatchDetailViewV2( match: CricketMatch, onBackClick: () -&gt; Unit, )</ID>
-    <ID>CognitiveComplexMethod:MatchPhasesCard.kt$@Composable private fun MomentumSummary( phases: List&lt;MatchPhaseData&gt;, team1Name: String, team2Name: String, team1Color: Color, team2Color: Color )</ID>
-    <ID>CognitiveComplexMethod:MatchPhasesCard.kt$@Composable private fun PhaseRow( phase: MatchPhaseData, phaseNumber: Int, team1Name: String, team2Name: String, team1Color: Color, team2Color: Color, isLast: Boolean )</ID>
     <ID>CognitiveComplexMethod:MatchPredictionCard.kt$@Composable fun MatchPredictionCard( predictionInfo: MatchPredictionInfo, modifier: Modifier = Modifier )</ID>
     <ID>CognitiveComplexMethod:MatchUtils.kt$fun getMatchPhase(status: String?, match: CricketMatch? = null): MatchPhase</ID>
     <ID>CognitiveComplexMethod:NewsDetailScreenV2.kt$@Composable fun NewsDetailScreenV2( viewModel: NewsViewModel, onBack: () -&gt; Unit, )</ID>
     <ID>CognitiveComplexMethod:NewsScreenV2.kt$@Composable fun NewsScreenV2( viewModel: NewsViewModel, onArticleClick: (NewsArticleData) -&gt; Unit, )</ID>
     <ID>CognitiveComplexMethod:NewsViewModel.kt$NewsViewModel$fun fetchNews()</ID>
     <ID>CognitiveComplexMethod:OnboardingScreenV2.kt$@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class) @Composable fun OnboardingScreenV2(onComplete: () -&gt; Unit)</ID>
-    <ID>CognitiveComplexMethod:OverByOverComparisonCard.kt$@Composable fun OverByOverComparisonCard( comparisonInfo: OverByOverComparisonInfo, modifier: Modifier = Modifier )</ID>
     <ID>CognitiveComplexMethod:PartnershipBreakdownCard.kt$@Composable private fun PartnershipRow( partnership: PartnershipEntry, maxRuns: Int, progress: Float, activeGlow: Float, index: Int, )</ID>
     <ID>CognitiveComplexMethod:PlayerComparisonScreen.kt$@Composable private fun PlayerSearchBox( onPlayerSelected: (PlayerSearchResult) -&gt; Unit, )</ID>
     <ID>CognitiveComplexMethod:PlayerDetailScreenV2.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) @Composable fun PlayerDetailScreenV2( playerName: String, playerRole: String, playerImageUrl: String?, isCaptain: Boolean = false, isWicketKeeper: Boolean = false, onBackClick: () -&gt; Unit, onCompareClick: (() -&gt; Unit)? = null, )</ID>
     <ID>CognitiveComplexMethod:PlayerFormCard.kt$@Composable private fun BatterFormRow( batter: BatterForm, progress: Float, index: Int, )</ID>
     <ID>CognitiveComplexMethod:PlayerFormCard.kt$@Composable private fun BowlerFormRow( bowler: BowlerForm, progress: Float, index: Int, )</ID>
     <ID>CognitiveComplexMethod:PointsTableScraper.kt$PointsTableScraper$suspend fun fetchPointsTable(seriesId: String): List&lt;PointsTableEntry&gt;</ID>
-    <ID>CognitiveComplexMethod:PowerPlayAnalysisCard.kt$@Composable fun PowerPlayAnalysisCard( teamName: String, phases: List&lt;PowerPlayPhase&gt;, modifier: Modifier = Modifier, )</ID>
-    <ID>CognitiveComplexMethod:PremiumAiStatisticsTab.kt$@Composable private fun ValueAddedChart(winProb: Float, probDelta: String)</ID>
     <ID>CognitiveComplexMethod:PremiumScorecardTab.kt$@Composable fun PremiumScorecardTab( scorecard: Scorecard?, modifier: Modifier = Modifier )</ID>
     <ID>CognitiveComplexMethod:PremiumScorecardTab.kt$@Composable private fun BattingRow(batsman: BatsmanStats)</ID>
-    <ID>CognitiveComplexMethod:RunRateComparisonCard.kt$@Composable fun RunRateComparisonCard( overData: List&lt;OverRunRate&gt;, team1Name: String, team2Name: String, team1Color: Color = GoldPrimary, team2Color: Color = StatusInfo, requiredRunRate: Double? = null, modifier: Modifier = Modifier )</ID>
     <ID>CognitiveComplexMethod:SentryOptionsConfig.kt$SentryOptionsConfig$internal fun shouldDropEvent(event: SentryEvent): Boolean</ID>
     <ID>CognitiveComplexMethod:SeriesDetailScreen.kt$@Composable fun SeriesDetailScreen( seriesId: String, onPointsTableClick: (String) -&gt; Unit, onBackClick: () -&gt; Unit, )</ID>
     <ID>CognitiveComplexMethod:SeriesScraper.kt$SeriesScraper$suspend fun fetchActiveSeries(): List&lt;Series&gt;</ID>
@@ -85,8 +74,6 @@
     <ID>CyclomaticComplexMethod:FavoritesScreen.kt$@Composable fun FavoritesScreen( onBackClick: () -&gt; Unit, onTeamClick: (String) -&gt; Unit )</ID>
     <ID>CyclomaticComplexMethod:HeroMatchCard.kt$@Composable fun HeroMatchCard( match: CricketMatch, onClick: () -&gt; Unit, modifier: Modifier = Modifier, onFavourite: (() -&gt; Unit)? = null, )</ID>
     <ID>CyclomaticComplexMethod:HighlightFuzzyMatcher.kt$HighlightFuzzyMatcher$private fun jaro(s1: String, s2: String): Double</ID>
-    <ID>CyclomaticComplexMethod:HistoricalStatsCard.kt$@Composable private fun RecentMatchChip( match: HistoricalMatch, team1Name: String, team2Name: String, modifier: Modifier = Modifier )</ID>
-    <ID>CyclomaticComplexMethod:HistoricalStatsCard.kt$@Composable private fun TeamHistoryInfo( name: String, logoUrl: String?, wins: Int, winRate: Float, isLeading: Boolean, modifier: Modifier = Modifier )</ID>
     <ID>CyclomaticComplexMethod:HomeScreenV2.kt$@Composable fun HomeScreenV2( viewModel: LiveActivityViewModel, onMatchClick: (CricketMatch) -&gt; Unit, onMoreMatchesClick: () -&gt; Unit, onAchievementsClick: () -&gt; Unit, onSettingsClick: () -&gt; Unit = {}, onNewsClick: () -&gt; Unit = {}, onSearchClick: () -&gt; Unit = {}, onNotificationsClick: () -&gt; Unit = {}, )</ID>
     <ID>CyclomaticComplexMethod:InfoTabV2.kt$@Composable fun InfoTabV2( match: CricketMatch, preMatchData: PreMatchData? = null, )</ID>
     <ID>CyclomaticComplexMethod:InfoTabV2.kt$private fun buildPitchFromText(text: String): PitchCondition</ID>
@@ -94,11 +81,9 @@
     <ID>CyclomaticComplexMethod:InteractiveWidgetComponents.kt$@Composable fun MatchStatusChip( modifier: GlanceModifier = GlanceModifier, status: MatchStatus, customText: String? = null )</ID>
     <ID>CyclomaticComplexMethod:InteractiveWidgetComponents.kt$@Composable fun PowerplayIndicator( modifier: GlanceModifier = GlanceModifier, currentPowerplay: PowerplayPhase, oversInPhase: Float, totalOversInPhase: Float )</ID>
     <ID>CyclomaticComplexMethod:LiveMatchWidgetProvider.kt$LiveMatchWidgetProvider$private suspend fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int)</ID>
-    <ID>CyclomaticComplexMethod:LiveScoringGraphCard.kt$@Composable fun LiveScoringGraphCard( scoringData: LiveScoringData, modifier: Modifier = Modifier, )</ID>
     <ID>CyclomaticComplexMethod:MainAppContainer.kt$private fun handleExternalDeepLink( deepLinkUri: String, navController: NavHostController, availableMatches: List&lt;CricketMatch&gt;, onMatchClick: (CricketMatch) -&gt; Unit ): Boolean</ID>
     <ID>CyclomaticComplexMethod:MatchDetailViewV2.kt$@Composable private fun ScoreHeaderV2( match: CricketMatch, team1: CricketMatch.Team?, team2: CricketMatch.Team?, score1: String, score2: String, overs1: String, overs2: String, currentRunRate: String?, requiredRunRate: String?, recentBalls: List&lt;String&gt;, )</ID>
     <ID>CyclomaticComplexMethod:MatchDetailViewV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MatchDetailViewV2( match: CricketMatch, onBackClick: () -&gt; Unit, )</ID>
-    <ID>CyclomaticComplexMethod:MatchPhasesCard.kt$@Composable private fun PhaseRow( phase: MatchPhaseData, phaseNumber: Int, team1Name: String, team2Name: String, team1Color: Color, team2Color: Color, isLast: Boolean )</ID>
     <ID>CyclomaticComplexMethod:MatchPredictionCard.kt$@Composable fun MatchPredictionCard( predictionInfo: MatchPredictionInfo, modifier: Modifier = Modifier )</ID>
     <ID>CyclomaticComplexMethod:MatchUtils.kt$fun getMatchPhase(status: String?, match: CricketMatch? = null): MatchPhase</ID>
     <ID>CyclomaticComplexMethod:MatchUtils.kt$fun getMatchStatusInfo(status: String?, match: CricketMatch? = null): MatchStatusInfo</ID>
@@ -106,7 +91,6 @@
     <ID>CyclomaticComplexMethod:NewsViewModel.kt$NewsViewModel$fun fetchNews()</ID>
     <ID>CyclomaticComplexMethod:NotificationsScreen.kt$@Composable private fun NotificationRow(item: NotificationItem)</ID>
     <ID>CyclomaticComplexMethod:OnboardingScreenV2.kt$@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class) @Composable fun OnboardingScreenV2(onComplete: () -&gt; Unit)</ID>
-    <ID>CyclomaticComplexMethod:OverByOverComparisonCard.kt$@Composable fun OverByOverComparisonCard( comparisonInfo: OverByOverComparisonInfo, modifier: Modifier = Modifier )</ID>
     <ID>CyclomaticComplexMethod:PlayerDetailScreenV2.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) @Composable fun PlayerDetailScreenV2( playerName: String, playerRole: String, playerImageUrl: String?, isCaptain: Boolean = false, isWicketKeeper: Boolean = false, onBackClick: () -&gt; Unit, onCompareClick: (() -&gt; Unit)? = null, )</ID>
     <ID>CyclomaticComplexMethod:PlayerFormCard.kt$@Composable private fun BowlerFormRow( bowler: BowlerForm, progress: Float, index: Int, )</ID>
     <ID>CyclomaticComplexMethod:PlayerProfileScraper.kt$PlayerProfileScraper$private fun extractPersonalInfo(doc: Document): PersonalInfo</ID>
@@ -118,7 +102,6 @@
     <ID>CyclomaticComplexMethod:PremiumScorecardTab.kt$private fun calculateRequiredRunRate(scorecard: Scorecard, currentInningsIndex: Int): String?</ID>
     <ID>CyclomaticComplexMethod:RecentBallsStrip.kt$private fun ballStyle(ball: String, colors: BouncerColorsToken): Pair&lt;Color, Color&gt;</ID>
     <ID>CyclomaticComplexMethod:RichNotificationBuilder.kt$NotificationPreferences$fun shouldShowNotification( context: Context, matchId: String, notificationType: String ): Boolean</ID>
-    <ID>CyclomaticComplexMethod:RunRateComparisonCard.kt$@Composable fun RunRateComparisonCard( overData: List&lt;OverRunRate&gt;, team1Name: String, team2Name: String, team1Color: Color = GoldPrimary, team2Color: Color = StatusInfo, requiredRunRate: Double? = null, modifier: Modifier = Modifier )</ID>
     <ID>CyclomaticComplexMethod:SentryOptionsConfig.kt$SentryOptionsConfig$internal fun shouldDropEvent(event: SentryEvent): Boolean</ID>
     <ID>CyclomaticComplexMethod:SeriesScraper.kt$SeriesScraper$private fun parseFromNextJsData(html: String): List&lt;Series&gt;</ID>
     <ID>CyclomaticComplexMethod:SeriesScraper.kt$SeriesScraper$suspend fun fetchActiveSeries(): List&lt;Series&gt;</ID>
@@ -133,8 +116,6 @@
     <ID>CyclomaticComplexMethod:WidgetManager.kt$WidgetManager$private fun updateGlanceHomeWidget( context: Context, match: CricketMatch, team1: CricketMatch.Team, team2: CricketMatch.Team, winProbability: Float? )</ID>
     <ID>ExceptionRaisedInUnexpectedLocation:InteractionAccessibility.kt$HapticPattern.Custom$override fun equals(other: Any?): Boolean</ID>
     <ID>ExceptionRaisedInUnexpectedLocation:InteractionAccessibility.kt$HapticPattern.Custom$override fun hashCode(): Int</ID>
-    <ID>ForEachOnRange:FallOfWicketsCard.kt$1..10</ID>
-    <ID>ForEachOnRange:RunRateComparisonCard.kt$1..overData.size step interval</ID>
     <ID>FunctionNaming:ColorUtils.kt$fun Color.meetsWCAG_AA(background: Color): Boolean</ID>
     <ID>FunctionNaming:ColorUtils.kt$fun Color.meetsWCAG_AAA(background: Color): Boolean</ID>
     <ID>FunctionNaming:ColorUtils.kt$fun Color.meetsWCAG_AA_Large(background: Color): Boolean</ID>
@@ -148,18 +129,12 @@
     <ID>ImplicitDefaultLocale:InteractiveWidgetComponents.kt$String.format("%.2f", currentRunRate)</ID>
     <ID>ImplicitDefaultLocale:InteractiveWidgetComponents.kt$String.format("%.2f", rrr)</ID>
     <ID>ImplicitDefaultLocale:InteractiveWidgetComponents.kt$String.format("%02d", value)</ID>
-    <ID>ImplicitDefaultLocale:LiveScoringGraphCard.kt$String.format("%.2f", rrr)</ID>
     <ID>ImplicitDefaultLocale:PartnershipBreakdownCard.kt$String.format("%.2f", best.runRate)</ID>
     <ID>ImplicitDefaultLocale:PlayerFormCard.kt$String.format("%.1f", batter.average)</ID>
     <ID>ImplicitDefaultLocale:PlayerFormCard.kt$String.format("%.1f", batter.strikeRate)</ID>
     <ID>ImplicitDefaultLocale:PlayerFormCard.kt$String.format("%.1f", bowler.average)</ID>
     <ID>ImplicitDefaultLocale:PlayerFormCard.kt$String.format("%.1f", bowler.economy)</ID>
-    <ID>ImplicitDefaultLocale:PowerPlayAnalysisCard.kt$String.format("%.2f", phase.runRate)</ID>
     <ID>ImplicitDefaultLocale:PremiumScorecardTab.kt$String.format("%.2f", it)</ID>
-    <ID>ImplicitDefaultLocale:RunRateComparisonCard.kt$String.format("%.1f", value)</ID>
-    <ID>ImplicitDefaultLocale:RunRateComparisonCard.kt$String.format("%.2f", currentRunRate)</ID>
-    <ID>ImplicitDefaultLocale:RunRateComparisonCard.kt$String.format("%.2f", requiredRunRate)</ID>
-    <ID>ImplicitDefaultLocale:RunRateComparisonCard.kt$String.format("%.2f", runRate)</ID>
     <ID>ImplicitDefaultLocale:SeriesStandingsCard.kt$String.format("%.2f", team.netRunRate)</ID>
     <ID>LongMethod:AboutScreenV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AboutScreenV2(onBackClick: () -&gt; Unit)</ID>
     <ID>LongMethod:AppearanceScreenV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppearanceScreenV2( onBackClick: () -&gt; Unit, currentMode: ThemeModeV2, onModeChanged: (ThemeModeV2) -&gt; Unit, )</ID>
@@ -182,52 +157,30 @@
     <ID>LongMethod:CountdownWidget.kt$CountdownWidget$@Composable private fun CountdownLayout( team1Name: String, team2Name: String, matchTitle: String, venue: String, timeRemainingMillis: Long, matchType: String )</ID>
     <ID>LongMethod:CricInfoScraper.kt$CricInfoScraper$suspend fun findClosestLiveMatchUrlAndId(matchName: String): Pair&lt;String, String&gt;?</ID>
     <ID>LongMethod:CricketBallPullRefresh.kt$@Composable fun CricketBallPullRefreshIndicator( isRefreshing: Boolean, pullProgress: Float, modifier: Modifier = Modifier )</ID>
-    <ID>LongMethod:DRSReviewCard.kt$@Composable fun DRSReviewCard( review: DRSReviewData, modifier: Modifier = Modifier, )</ID>
-    <ID>LongMethod:EliteMomentumTracker.kt$@Composable private fun MomentumItem(event: MomentumEvent)</ID>
     <ID>LongMethod:EliteShareCard.kt$@Composable fun EliteShareCardPreview( data: ShareCardData, modifier: Modifier = Modifier, onShareClick: () -&gt; Unit = {} )</ID>
     <ID>LongMethod:EliteShareCard.kt$@Composable private fun WinProbabilityShareBar( probability: Float, team1Name: String, team2Name: String )</ID>
     <ID>LongMethod:EliteShareCard.kt$ShareCardGenerator$fun generatePlayerInningsCard( playerName: String, teamName: String, runs: String, balls: String, fours: String, sixes: String, strikeRate: String, dismissal: String, matchTitle: String, format: ShareCardFormat = ShareCardFormat.INSTAGRAM_POST ): Bitmap</ID>
     <ID>LongMethod:EliteShareCard.kt$ShareCardGenerator$fun generateShareBitmap( data: ShareCardData, format: ShareCardFormat = ShareCardFormat.INSTAGRAM_STORY ): Bitmap</ID>
     <ID>LongMethod:EnhancedWidgetStyles.kt$@Composable fun ExtraLargeWidgetLayout( modifier: GlanceModifier = GlanceModifier, backgroundColor: GlanceColorProvider = WidgetColorScheme.background, header: @Composable () -&gt; Unit, scoreboard: @Composable () -&gt; Unit, battingCard: @Composable (() -&gt; Unit)? = null, bowlingCard: @Composable (() -&gt; Unit)? = null, statsRow: @Composable (() -&gt; Unit)? = null, footer: @Composable () -&gt; Unit )</ID>
-    <ID>LongMethod:FallOfWicketsCard.kt$@Composable fun FallOfWicketsCard( wickets: List&lt;FallOfWicket&gt;, teamName: String, currentScore: Int, currentOvers: Float, teamColor: Color = GoldPrimary, modifier: Modifier = Modifier )</ID>
-    <ID>LongMethod:FallOfWicketsCard.kt$@Composable private fun WicketCard( wicket: FallOfWicket, isLatest: Boolean, teamColor: Color )</ID>
-    <ID>LongMethod:FallOfWicketsCard.kt$@Composable private fun WicketTimeline( wickets: List&lt;FallOfWicket&gt;, currentScore: Int, currentOvers: Float, teamColor: Color )</ID>
-    <ID>LongMethod:FallOfWicketsCard.kt$@Composable private fun WicketsSummary(wickets: List&lt;FallOfWicket&gt;, currentScore: Int)</ID>
     <ID>LongMethod:FavoritesScreen.kt$@Composable fun FavoritesScreen( onBackClick: () -&gt; Unit, onTeamClick: (String) -&gt; Unit )</ID>
     <ID>LongMethod:FavoritesScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AddTeamBottomSheet( currentFavorites: List&lt;String&gt;, onDismiss: () -&gt; Unit, onTeamSelected: (String) -&gt; Unit )</ID>
-    <ID>LongMethod:HeadToHeadCard.kt$@Composable fun HeadToHeadCard( match: CricketMatch, stats: HeadToHeadStats, team1Color: Color = GoldPrimary, team2Color: Color = BouncerDesignSystem.colors.statusInfo, modifier: Modifier = Modifier )</ID>
-    <ID>LongMethod:HeadToHeadCard.kt$@Composable private fun ScoreRecords( team1Name: String, team2Name: String, team1Highest: String, team2Highest: String, team1Lowest: String, team2Lowest: String, team1Color: Color, team2Color: Color )</ID>
-    <ID>LongMethod:HeadToHeadCard.kt$@Composable private fun WinPercentageBar( team1Wins: Int, team2Wins: Int, draws: Int, team1Color: Color, team2Color: Color )</ID>
     <ID>LongMethod:HeroMatchCard.kt$@Composable fun HeroMatchCard( match: CricketMatch, onClick: () -&gt; Unit, modifier: Modifier = Modifier, onFavourite: (() -&gt; Unit)? = null, )</ID>
     <ID>LongMethod:HighlightClipCard.kt$@Composable fun HighlightClipCard( highlight: HighlightEntity, onClick: (HighlightEntity) -&gt; Unit, modifier: Modifier = Modifier )</ID>
-    <ID>LongMethod:HistoricalStatsCard.kt$@Composable fun HistoricalStatsCard( data: HeadToHeadHistory, modifier: Modifier = Modifier )</ID>
-    <ID>LongMethod:HistoricalStatsCard.kt$@Composable private fun TeamHistoryInfo( name: String, logoUrl: String?, wins: Int, winRate: Float, isLeading: Boolean, modifier: Modifier = Modifier )</ID>
-    <ID>LongMethod:HistoricalStatsCard.kt$@Composable private fun VenueHistorySection( venueStats: VenueHistoryStats, team1Name: String, team2Name: String, modifier: Modifier = Modifier )</ID>
-    <ID>LongMethod:HistoricalStatsCard.kt$@Composable private fun WinRatioBar( team1Wins: Int, team2Wins: Int, noResults: Int, totalMatches: Int, team1Name: String, team2Name: String, modifier: Modifier = Modifier )</ID>
     <ID>LongMethod:HomeScreenV2.kt$@Composable fun HomeScreenV2( viewModel: LiveActivityViewModel, onMatchClick: (CricketMatch) -&gt; Unit, onMoreMatchesClick: () -&gt; Unit, onAchievementsClick: () -&gt; Unit, onSettingsClick: () -&gt; Unit = {}, onNewsClick: () -&gt; Unit = {}, onSearchClick: () -&gt; Unit = {}, onNotificationsClick: () -&gt; Unit = {}, )</ID>
     <ID>LongMethod:InfoTabV2.kt$@Composable fun InfoTabV2( match: CricketMatch, preMatchData: PreMatchData? = null, )</ID>
     <ID>LongMethod:InteractiveWidgetComponents.kt$@Composable fun ExpandedMatchDetails( modifier: GlanceModifier = GlanceModifier, team1Name: String, team1Score: String, team2Name: String, team2Score: String?, currentOvers: Float, totalOvers: Float, status: String, venue: String, matchType: String, striker: BatsmanInfo? = null, nonStriker: BatsmanInfo? = null, currentBowler: BowlerInfo? = null, recentBalls: List&lt;String&gt; = emptyList(), winProbability: Float? = null, matchId: String, onTap: Action = actionStartActivity&lt;BouncerActivity&gt;() )</ID>
     <ID>LongMethod:InteractiveWidgetComponents.kt$@Composable fun WidgetRefreshButton( modifier: GlanceModifier = GlanceModifier, style: RefreshButtonStyle = RefreshButtonStyle.ICON )</ID>
-    <ID>LongMethod:KeyMomentsCard.kt$@Composable fun FeaturedMomentCard( moment: HighlightMoment, modifier: Modifier = Modifier, onLike: (() -&gt; Unit)? = null, onShare: (() -&gt; Unit)? = null )</ID>
-    <ID>LongMethod:KeyMomentsCard.kt$@Composable fun HighlightMomentsCard( moments: List&lt;HighlightMoment&gt;, modifier: Modifier = Modifier, onMomentClick: ((HighlightMoment) -&gt; Unit)? = null )</ID>
-    <ID>LongMethod:KeyMomentsCard.kt$@Composable private fun ImpactIndicator(impact: Float)</ID>
-    <ID>LongMethod:KeyMomentsCard.kt$@Composable private fun MomentRow( moment: HighlightMoment, onClick: () -&gt; Unit )</ID>
     <ID>LongMethod:LiveMatchWidgetProvider.kt$LiveMatchWidgetProvider$private suspend fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int)</ID>
-    <ID>LongMethod:LiveScoringGraphCard.kt$@Composable fun LiveScoringGraphCard( scoringData: LiveScoringData, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:MainAppContainer.kt$@Composable fun BouncerAppContent( externalDeepLinkUri: String? = null )</ID>
     <ID>LongMethod:MatchContextMenuSheet.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MatchContextMenuSheet( match: CricketMatch, onDismiss: () -&gt; Unit, onSetReminder: () -&gt; Unit = {}, )</ID>
     <ID>LongMethod:MatchDetailViewV2.kt$@Composable private fun ScoreHeaderV2( match: CricketMatch, team1: CricketMatch.Team?, team2: CricketMatch.Team?, score1: String, score2: String, overs1: String, overs2: String, currentRunRate: String?, requiredRunRate: String?, recentBalls: List&lt;String&gt;, )</ID>
     <ID>LongMethod:MatchDetailViewV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MatchDetailViewV2( match: CricketMatch, onBackClick: () -&gt; Unit, )</ID>
     <ID>LongMethod:MatchNotificationPrefsSheet.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MatchNotificationPrefsSheet( matchId: String, matchTitle: String, onDismiss: () -&gt; Unit, )</ID>
-    <ID>LongMethod:MatchPhasesCard.kt$@Composable fun MatchPhasesCard( phases: List&lt;MatchPhaseData&gt;, team1Name: String, team2Name: String, team1Color: Color = BouncerDesignSystem.hierarchy.secondary.primary, team2Color: Color = BouncerDesignSystem.colors.statusInfo, modifier: Modifier = Modifier )</ID>
-    <ID>LongMethod:MatchPhasesCard.kt$@Composable private fun MomentumSummary( phases: List&lt;MatchPhaseData&gt;, team1Name: String, team2Name: String, team1Color: Color, team2Color: Color )</ID>
-    <ID>LongMethod:MatchPhasesCard.kt$@Composable private fun PhaseRow( phase: MatchPhaseData, phaseNumber: Int, team1Name: String, team2Name: String, team1Color: Color, team2Color: Color, isLast: Boolean )</ID>
     <ID>LongMethod:MatchPredictionCard.kt$@Composable fun MatchPredictionCard( predictionInfo: MatchPredictionInfo, modifier: Modifier = Modifier )</ID>
     <ID>LongMethod:NewsDetailScreenV2.kt$@Composable fun NewsDetailScreenV2( viewModel: NewsViewModel, onBack: () -&gt; Unit, )</ID>
     <ID>LongMethod:NewsScreenV2.kt$@Composable fun NewsScreenV2( viewModel: NewsViewModel, onArticleClick: (NewsArticleData) -&gt; Unit, )</ID>
     <ID>LongMethod:NotificationsScreen.kt$@Composable private fun NotificationRow(item: NotificationItem)</ID>
     <ID>LongMethod:OnboardingScreenV2.kt$@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class) @Composable fun OnboardingScreenV2(onComplete: () -&gt; Unit)</ID>
-    <ID>LongMethod:OverByOverComparisonCard.kt$@Composable fun OverByOverComparisonCard( comparisonInfo: OverByOverComparisonInfo, modifier: Modifier = Modifier )</ID>
     <ID>LongMethod:PartnershipBreakdownCard.kt$@Composable fun PartnershipBreakdownCard( teamName: String, partnerships: List&lt;PartnershipEntry&gt;, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:PartnershipBreakdownCard.kt$@Composable private fun PartnershipRow( partnership: PartnershipEntry, maxRuns: Int, progress: Float, activeGlow: Float, index: Int, )</ID>
     <ID>LongMethod:PlayerComparisonScreen.kt$@Composable private fun PlayerPickerCard( player: PlayerProfile?, loading: Boolean, label: String, isActive: Boolean, onTap: () -&gt; Unit, onClear: () -&gt; Unit, modifier: Modifier = Modifier, )</ID>
@@ -236,15 +189,9 @@
     <ID>LongMethod:PlayerFormCard.kt$@Composable fun PlayerFormCard( batters: List&lt;BatterForm&gt;, bowlers: List&lt;BowlerForm&gt;, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:PlayerFormCard.kt$@Composable private fun BatterFormRow( batter: BatterForm, progress: Float, index: Int, )</ID>
     <ID>LongMethod:PlayerFormCard.kt$@Composable private fun BowlerFormRow( bowler: BowlerForm, progress: Float, index: Int, )</ID>
-    <ID>LongMethod:PowerPlayAnalysisCard.kt$@Composable fun PowerPlayAnalysisCard( teamName: String, phases: List&lt;PowerPlayPhase&gt;, modifier: Modifier = Modifier, )</ID>
-    <ID>LongMethod:PowerPlayAnalysisCard.kt$@Composable private fun PowerPlayPhaseRow( phase: PowerPlayPhase, progress: Float, maxRuns: Int, pulseAlpha: Float, )</ID>
-    <ID>LongMethod:PremiumAiStatisticsTab.kt$@Composable private fun AiImpactHero(winProb: Float)</ID>
-    <ID>LongMethod:PremiumAiStatisticsTab.kt$@Composable private fun PredictiveInsightCard(winProb: Float)</ID>
-    <ID>LongMethod:PremiumAiStatisticsTab.kt$@Composable private fun ValueAddedChart(winProb: Float, probDelta: String)</ID>
     <ID>LongMethod:PremiumScorecardTab.kt$@Composable fun PremiumScorecardTab( scorecard: Scorecard?, modifier: Modifier = Modifier )</ID>
     <ID>LongMethod:ReminderBottomSheet.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ReminderBottomSheet( matchId: String, matchTitle: String, matchStartTime: Long, // epoch millis, 0 if unknown onDismiss: () -&gt; Unit, )</ID>
     <ID>LongMethod:RemindersActivity.kt$@Composable fun RemindersScreen()</ID>
-    <ID>LongMethod:RunRateComparisonCard.kt$@Composable fun RunRateComparisonCard( overData: List&lt;OverRunRate&gt;, team1Name: String, team2Name: String, team1Color: Color = GoldPrimary, team2Color: Color = StatusInfo, requiredRunRate: Double? = null, modifier: Modifier = Modifier )</ID>
     <ID>LongMethod:SeriesListScreen.kt$@Composable private fun SeriesCard(series: Series, onClick: () -&gt; Unit)</ID>
     <ID>LongMethod:SeriesStandingsCard.kt$@Composable fun SeriesStandingsCard( seriesName: String, teams: List&lt;SeriesTeam&gt;, currentMatchTeams: Pair&lt;String, String&gt;? = null, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:SeriesStandingsCard.kt$@Composable private fun StandingsTeamRow( position: Int, team: SeriesTeam, isCurrentMatchTeam: Boolean, isQualified: Boolean, modifier: Modifier = Modifier, )</ID>
@@ -283,8 +230,6 @@
     <ID>MaxLineLength:CricInfoScraper.kt$CricInfoScraper$.</ID>
     <ID>MaxLineLength:CricInfoScraper.kt$CricInfoScraper$parseScoreMilestone(line)?.let { (over, runs) -&gt; overMilestonesMap[over] = maxOf(overMilestonesMap.getOrDefault(over, 0), runs) }</ID>
     <ID>MaxLineLength:CricketRepository.kt$CricketRepository$suspend</ID>
-    <ID>MaxLineLength:DRSReviewCard.kt$Box</ID>
-    <ID>MaxLineLength:DRSReviewCard.kt$Box(modifier = Modifier.size(6.dp).alpha(neonPulse).background(ChartCyan, CircleShape).shadow(4.dp, spotColor = ChartCyan))</ID>
     <ID>MaxLineLength:DevToolsScreen.kt$Button(onClick = { val path = com.tanush.bouncer.ui.devtools.DevToolsExporter.exportDiagnostics(context); com.tanush.bouncer.ui.devtools.LogCollector.log("Diagnostics exported to: $path") }) { Icon(Icons.Filled.UploadFile, contentDescription = null); Spacer(Modifier.width(6.dp)); Text("Export") }</ID>
     <ID>MaxLineLength:DevToolsScreen.kt$FilledTonalButton(onClick = { com.tanush.bouncer.ui.devtools.LogCollector.log("Simulate: create sample matches"); com.tanush.bouncer.ui.devtools.SimulatedMatchManager.createSampleMatches() }) { Text("Create Matches") }</ID>
     <ID>MaxLineLength:DevToolsScreen.kt$FilledTonalButton(onClick = { val dump = com.tanush.bouncer.ui.devtools.CrashDumper.triggerAndCapture(); com.tanush.bouncer.ui.devtools.LogCollector.log("Crash dump captured: ${'$'}dump") }) { Text("Trigger Crash") }</ID>
@@ -293,19 +238,11 @@
     <ID>MaxLineLength:DevToolsScreen.kt$Row</ID>
     <ID>MaxLineLength:DevToolsScreen.kt$onValueChange = { v -&gt; cannedDelayMs = v.toIntOrNull() ?: 0; prefs.edit().putInt("canned_delay_ms", cannedDelayMs).apply(); com.tanush.bouncer.ui.devtools.NetworkStub.delayMs = cannedDelayMs }</ID>
     <ID>MaxLineLength:HighlightDao.kt$HighlightDao$@Query("SELECT * FROM highlights WHERE matchedBouncerMatchId = :bouncerMatchId AND fetchedAt &gt;= :freshnessCutoff ORDER BY type DESC, fetchedAt DESC LIMIT 50")</ID>
-    <ID>MaxLineLength:HistoricalStatsCard.kt$color = if (isLeading) hierarchy.secondary.primary.copy(alpha = 0.1f) else colors.glassBorder.copy(alpha = 0.1f)</ID>
     <ID>MaxLineLength:MatchContextMenuSheet.kt$leadingContent = { Icon(if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = null) }</ID>
     <ID>MaxLineLength:MatchProjectionsTest.kt$MatchProjectionsTest$assertEquals(143, MatchProjections.projectedScore(currentRuns = 143, ballsBowled = T20_INNINGS_BALLS, totalBalls = T20_INNINGS_BALLS))</ID>
     <ID>MaxLineLength:MatchProjectionsTest.kt$MatchProjectionsTest$assertNull(MatchProjections.requiredRunRate(target = 150, currentRuns = 80, ballsBowled = T20_INNINGS_BALLS, totalBalls = T20_INNINGS_BALLS))</ID>
     <ID>MaxLineLength:OnboardingScreenV2.kt$"Following ${selectedTeams.size} team${if (selectedTeams.size &gt; 1) "s" else ""}. Showing $selectedCategory matches."</ID>
     <ID>MaxLineLength:OnboardingScreenV2.kt$"You follow ${selectedTeams.size} team${if (selectedTeams.size &gt; 1) "s" else ""} — we'll only ping you about them."</ID>
-    <ID>MaxLineLength:PremiumAiStatisticsTab.kt$Row</ID>
-    <ID>MaxLineLength:PremiumAiStatisticsTab.kt$Text("%", color = hierarchy.secondary.primary, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(bottom = 6.dp))</ID>
-    <ID>MaxLineLength:PremiumAiStatisticsTab.kt$Text("BOUNCER PREDICTIVE ENGINE", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)</ID>
-    <ID>MaxLineLength:PremiumAiStatisticsTab.kt$Text("CONFIDENCE: ${winProb.toInt()}%", color = hierarchy.secondary.primary, fontSize = 9.sp, fontWeight = FontWeight.Black)</ID>
-    <ID>MaxLineLength:PremiumAiStatisticsTab.kt$Text(name, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)</ID>
-    <ID>MaxLineLength:PremiumAiStatisticsTab.kt$else</ID>
-    <ID>MaxLineLength:PremiumAiStatisticsTab.kt$if (isHighlighted) Modifier.shadow(16.dp, CircleShape, spotColor = hierarchy.secondary.primary.copy(alpha = 0.4f)) else Modifier</ID>
     <ID>MaxLineLength:PremiumScorecardTab.kt$Row</ID>
     <ID>MaxLineLength:PremiumScorecardTab.kt$Surface</ID>
     <ID>MaxLineLength:PremiumScorecardTab.kt$Text("4s", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)</ID>
@@ -361,13 +298,7 @@
     <ID>UnusedParameter:BouncerGlanceWidget.kt$BouncerGlanceWidget.Companion$context: Context</ID>
     <ID>UnusedParameter:BouncerTheme.kt$darkTheme: Boolean = true</ID>
     <ID>UnusedParameter:EnhancedWidgetStyles.kt$onRetry: (() -&gt; Unit)? = null</ID>
-    <ID>UnusedParameter:FallOfWicketsCard.kt$currentOvers: Float</ID>
-    <ID>UnusedParameter:FallOfWicketsCard.kt$currentScore: Int</ID>
-    <ID>UnusedParameter:FallOfWicketsCard.kt$teamColor: Color</ID>
-    <ID>UnusedParameter:HeadToHeadCard.kt$totalMatches: Int</ID>
     <ID>UnusedParameter:HeroMatchCard.kt$onFavourite: (() -&gt; Unit)? = null</ID>
-    <ID>UnusedParameter:HistoricalStatsCard.kt$team1Name: String</ID>
-    <ID>UnusedParameter:HistoricalStatsCard.kt$team2Name: String</ID>
     <ID>UnusedParameter:HomeScreenV2.kt$onAchievementsClick: () -&gt; Unit</ID>
     <ID>UnusedParameter:HomeScreenV2.kt$onNewsClick: () -&gt; Unit = {}</ID>
     <ID>UnusedParameter:InteractiveWidgetComponents.kt$contentDescription: String</ID>
@@ -378,12 +309,8 @@
     <ID>UnusedParameter:InteractiveWidgetComponents.kt$originalTarget: Int</ID>
     <ID>UnusedParameter:MainAppContainer.kt$availableMatches: List&lt;CricketMatch&gt;</ID>
     <ID>UnusedParameter:MainAppContainer.kt$onMatchClick: (CricketMatch) -&gt; Unit</ID>
-    <ID>UnusedParameter:MatchPhasesCard.kt$phaseNumber: Int</ID>
     <ID>UnusedParameter:OverviewSituationSections.kt$winProb: Double?</ID>
     <ID>UnusedParameter:PointsTableScraper.kt$PointsTableScraper$seriesId: String</ID>
-    <ID>UnusedParameter:PowerPlayAnalysisCard.kt$maxRuns: Int</ID>
-    <ID>UnusedParameter:PowerPlayAnalysisCard.kt$progress: Float</ID>
-    <ID>UnusedParameter:PremiumAiStatisticsTab.kt$winProb: Float</ID>
     <ID>UnusedParameter:PremiumComponents.kt$showShimmer: Boolean = true</ID>
     <ID>UnusedParameter:RichNotificationBuilder.kt$RichNotificationBuilder$batsmen: List&lt;BatsmanData&gt;?</ID>
     <ID>UnusedParameter:RichNotificationBuilder.kt$RichNotificationBuilder$bowler: BowlerData?</ID>
@@ -400,14 +327,8 @@
     <ID>UnusedPrivateProperty:BouncerNavHost.kt$val articleId = backStackEntry.arguments?.getString(BouncerScreen.NewsDetail.ARG_ARTICLE_ID) ?.decodeUrlSafe() ?: return@composable</ID>
     <ID>UnusedPrivateProperty:DevToolsScreen.kt$val dump = com.tanush.bouncer.ui.devtools.CrashDumper.triggerAndCapture()</ID>
     <ID>UnusedPrivateProperty:EliteShareCard.kt$val shimmerOffset by infiniteTransition.animateFloat( initialValue = -500f, targetValue = 1500f, animationSpec = infiniteRepeatable( animation = tween(2000, easing = LinearEasing), repeatMode = RepeatMode.Restart ), label = "shimmer" )</ID>
-    <ID>UnusedPrivateProperty:FallOfWicketsCard.kt$val topScorer = wickets.maxByOrNull { it.batsmanRuns }</ID>
-    <ID>UnusedPrivateProperty:HistoricalStatsCard.kt$val animatedTeam2 by animateFloatAsState( targetValue = team2Ratio, animationSpec = tween(1000, easing = FastOutSlowInEasing), label = "team2ratio" )</ID>
-    <ID>UnusedPrivateProperty:HistoricalStatsCard.kt$val shimmer by infiniteTransition.animateFloat( initialValue = 0f, targetValue = 1f, animationSpec = infiniteRepeatable( animation = tween(2500, easing = LinearEasing), repeatMode = RepeatMode.Restart ), label = "shimmer" )</ID>
-    <ID>UnusedPrivateProperty:OverByOverComparisonCard.kt$val over = (totalOvers * i) / oversToShow</ID>
     <ID>UnusedPrivateProperty:PlayerProfileScraper.kt$PlayerProfileScraper$private const val TAG = "PlayerProfileScraper"</ID>
     <ID>UnusedPrivateProperty:PointsTableScraper.kt$PointsTableScraper.Companion$private const val TAG = "PointsTableScraper"</ID>
-    <ID>UnusedPrivateProperty:RunRateComparisonCard.kt$val labelInterval = max(1, maxOvers / 5)</ID>
-    <ID>UnusedPrivateProperty:RunRateComparisonCard.kt$val shimmerOffset by infiniteTransition.animateFloat( initialValue = 0f, targetValue = 1f, animationSpec = infiniteRepeatable( animation = tween(2500, easing = LinearEasing), repeatMode = RepeatMode.Restart ), label = "shimmer" )</ID>
     <ID>UnusedPrivateProperty:SeriesScraper.kt$SeriesScraper.Companion$private const val TAG = "SeriesScraper"</ID>
     <ID>UseCheckOrError:RetryPolicy.kt$throw lastThrowable ?: IllegalStateException("RetryPolicy exhausted ${maxAttempts} attempts with no recorded exception")</ID>
     <ID>UseCheckOrError:RetryPolicyTest.kt$RetryPolicyTest$throw IllegalStateException("permanent")</ID>

@@ -1,12 +1,8 @@
 package com.tanush.bouncer.data.remote
 
-import com.tanush.bouncer.ui.components.FormatStats
 import com.tanush.bouncer.ui.components.HeadToHeadHistory
 import com.tanush.bouncer.ui.components.HeadToHeadStats
 import com.tanush.bouncer.ui.components.HistoricalMatch
-import com.tanush.bouncer.ui.components.VenueHistoryStats
-import com.tanush.bouncer.utils.WinnerSide
-import com.tanush.bouncer.utils.attributeWinner
 import org.json.JSONObject
 
 data class H2HPair(
@@ -102,8 +98,6 @@ object H2HRepository {
             team2Wins = stats.team2Wins,
             noResults = stats.draws,
             recentMatches = recentMatches,
-            venueStats = buildVenueStats(recentMatches, queryTeam1, queryTeam2),
-            formatStats = buildFormatStats(recentMatches, queryTeam1, queryTeam2),
         )
         return H2HPair(stats, history)
     }
@@ -152,63 +146,5 @@ object H2HRepository {
                 ))
             }
         }
-    }
-
-    private fun buildVenueStats(
-        recentMatches: List<HistoricalMatch>,
-        queryTeam1: String,
-        queryTeam2: String,
-    ): VenueHistoryStats? = recentMatches
-        .groupBy { it.venue }
-        .maxByOrNull { it.value.size }
-        ?.let { (venue, matches) ->
-            val (team1Wins, team2Wins) = countWins(matches, queryTeam1, queryTeam2)
-            VenueHistoryStats(
-                venueName = venue,
-                totalMatches = matches.size,
-                team1Wins = team1Wins,
-                team2Wins = team2Wins,
-            )
-        }
-
-    private fun buildFormatStats(
-        recentMatches: List<HistoricalMatch>,
-        queryTeam1: String,
-        queryTeam2: String,
-    ): Map<String, FormatStats> = recentMatches
-        .groupBy { it.format }
-        .mapValues { (format, matches) ->
-            val (team1Wins, team2Wins) = countWins(matches, queryTeam1, queryTeam2)
-            FormatStats(
-                format = format,
-                totalMatches = matches.size,
-                team1Wins = team1Wins,
-                team2Wins = team2Wins,
-            )
-        }
-
-    /**
-     * Wins for each side, attributed exclusively.
-     *
-     * Previously each side was counted with its own `winner.contains(team)`, which meant a single
-     * match could be credited to both — "India" is a substring of "West Indies", so every West
-     * Indies win also counted as an India win and team1Wins + team2Wins could exceed the number of
-     * matches played. A result is now attributed to at most one side, or to neither.
-     */
-    internal fun countWins(
-        matches: List<HistoricalMatch>,
-        queryTeam1: String,
-        queryTeam2: String,
-    ): Pair<Int, Int> {
-        var team1 = 0
-        var team2 = 0
-        for (match in matches) {
-            when (attributeWinner(match.winner, queryTeam1, queryTeam2)) {
-                WinnerSide.TEAM1 -> team1++
-                WinnerSide.TEAM2 -> team2++
-                null -> Unit
-            }
-        }
-        return team1 to team2
     }
 }

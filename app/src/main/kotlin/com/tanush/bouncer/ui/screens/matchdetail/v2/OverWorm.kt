@@ -5,8 +5,6 @@ import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.analysis.MatchProjections
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.OverPoint
-import com.tanush.bouncer.ui.components.OverByOverComparisonCard
-import com.tanush.bouncer.ui.components.OverByOverComparisonInfo
 import com.tanush.bouncer.ui.components.OverRunRate
 import com.tanush.bouncer.ui.components.RunRateComparisonCard
 import com.tanush.bouncer.ui.components.premium.LiveScoringData
@@ -66,7 +64,7 @@ private fun contiguousScores(byOver: Map<Int, OverPoint>): List<Int> = buildList
     }
 }
 
-/** Worm, over-by-over and manhattan for both innings, labelled by the side the data names. */
+/** Worm and manhattan for both innings, labelled by the side the data names. */
 internal fun LazyListScope.wormCharts(
     match: CricketMatch,
     worm: OverWorm,
@@ -89,22 +87,8 @@ internal fun LazyListScope.wormCharts(
                 currentOver = worm.maxOver,
                 projectedScore = MatchProjections.projectedTotalFor(match, battingScores),
                 totalOvers = totalOvers,
-            ),
-        )
-    }
-    item(key = "over_by_over_card") {
-        val (team1Color, team2Color) = rememberChartColorsFor(match, worm.team1Name)
-        OverByOverComparisonCard(
-            comparisonInfo = OverByOverComparisonInfo(
-                team1Color = team1Color,
-                team2Color = team2Color,
-                team1Name = worm.team1Name,
-                team2Name = worm.team2Name,
-                team1Scores = worm.team1Scores,
-                team2Scores = worm.team2Scores,
-                currentOver = worm.maxOver,
-                maxOvers = totalOvers,
-                highlightOvers = wicketOvers,
+                // Over numbers of the latest innings' wickets, so they mark the line still batting.
+                battingWicketOvers = wicketOvers,
             ),
         )
     }

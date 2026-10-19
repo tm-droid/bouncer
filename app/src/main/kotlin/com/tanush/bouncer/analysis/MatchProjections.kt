@@ -84,30 +84,6 @@ object MatchProjections {
     }
 
     /**
-     * Cumulative run rate after each completed over — the "run rate progression" line, not the
-     * runs scored in each individual over.
-     *
-     * Named `overRunRates` and documented as "over-by-over run rate" until 2026-08, while the body
-     * computed `total / (index + 1)`; the tests asserted the cumulative behaviour, so the code and
-     * the tests agreed and only the name and the KDoc were wrong. Cumulative is the right curve for
-     * [com.tanush.bouncer.ui.components.RunRateComparisonCard], which plots progression — but under
-     * the old name a reader had every reason to expect per-over values, where a 22-run over in over
-     * 15 barely moves the line because it is divided by 15.
-     *
-     * For genuine per-over runs, difference the cumulative scores instead.
-     *
-     * Each entry in [cumulativeScores] must correspond to exactly one completed over.
-     * Returns an empty list when there is no data.
-     */
-    fun cumulativeRunRates(cumulativeScores: List<Int>): List<Float> {
-        if (cumulativeScores.isEmpty()) return emptyList()
-        return cumulativeScores.mapIndexed { index, total ->
-            val oversCompleted = (index + 1).toFloat()
-            total.toFloat() / oversCompleted
-        }
-    }
-
-    /**
      * The batting side's projected final total for [match], or its current total when a projection
      * would be meaningless.
      *

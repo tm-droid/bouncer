@@ -17,7 +17,6 @@ import androidx.compose.ui.text.font.FontWeight
 import com.tanush.bouncer.ui.theme.rememberTeamInk
 import com.tanush.bouncer.analysis.MatchProjections
 import com.tanush.bouncer.models.CricketMatch
-import com.tanush.bouncer.models.DRSReviewData
 import com.tanush.bouncer.models.Innings
 import com.tanush.bouncer.models.MatchFlowData
 import com.tanush.bouncer.models.Scorecard
@@ -27,24 +26,14 @@ import com.tanush.bouncer.data.remote.H2HPair
 import com.tanush.bouncer.ui.components.FallOfWicket as UiFallOfWicket
 import com.tanush.bouncer.ui.components.FallOfWicketsCard
 import com.tanush.bouncer.ui.components.HeadToHeadCard
-import com.tanush.bouncer.ui.components.HighlightMoment
-import com.tanush.bouncer.ui.components.HighlightMomentsCard
-import com.tanush.bouncer.ui.components.HistoricalStatsCard
 import com.tanush.bouncer.ui.components.MatchPhaseData
 import com.tanush.bouncer.ui.components.MatchPhasesCard
 import com.tanush.bouncer.ui.components.MatchPredictionCard
-import com.tanush.bouncer.ui.components.OverByOverComparisonCard
-import com.tanush.bouncer.ui.components.OverByOverComparisonInfo
-import com.tanush.bouncer.ui.components.OverRunRate
-import com.tanush.bouncer.ui.components.RunRateComparisonCard
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.premium.DRSReviewCard
 import com.tanush.bouncer.ui.components.premium.LiveScoringData
 import com.tanush.bouncer.ui.components.premium.LiveScoringGraphCard
-import com.tanush.bouncer.ui.components.premium.PowerPlayAnalysisCard
-import com.tanush.bouncer.ui.components.premium.PowerPlayPhase
 import com.tanush.bouncer.ui.components.premium.PremiumWinProbabilityHero
-import com.tanush.bouncer.ui.components.premium.WinProbabilityState
 import com.tanush.bouncer.ui.components.premium.winProbabilityStateFor
 import com.tanush.bouncer.ui.components.premium.WinProbabilityChartCard
 import com.tanush.bouncer.ui.components.v2.BouncerCard
@@ -132,42 +121,17 @@ private fun probabilitySwing(history: List<WinProbabilityPoint>): Float? {
 }
 
 internal fun LazyListScope.overviewPhaseCards(
-    match: CricketMatch,
     matchFlow: MatchFlowData?,
-    ppPhaseList: List<PowerPlayPhase>,
     matchPhases: List<MatchPhaseData>,
 ) {
-    if (ppPhaseList.isNotEmpty()) {
-        val battingTeamName = match.teams.firstOrNull { it.isBatting }?.name
-            ?: match.teams.firstOrNull()?.name ?: ""
-        item(key = "powerplay_card") {
-            PowerPlayAnalysisCard(teamName = battingTeamName, phases = ppPhaseList)
-        }
+    // The powerplays are the first rows of this card (`buildMatchPhases` takes them), so there is
+    // no separate powerplay card: it used to state the same runs and wickets a second time.
+    if (matchPhases.isNotEmpty()) {
+        item(key = "match_phases_card") { MatchPhasesCard(phases = matchPhases) }
     }
-    if (matchPhases.size >= 2 && match.teams.size >= 2) {
-        item(key = "match_phases_card") {
-            val (team1Color, team2Color) = rememberMatchChartColors(match)
-            MatchPhasesCard(
-                team1Color = team1Color,
-                team2Color = team2Color,
-                phases = matchPhases,
-                team1Name = match.teams[0].name,
-                team2Name = match.teams[1].name,
-            )
-        }
-    }
-    val latestDrs = matchFlow?.drsReviews?.lastOrNull()
-    if (latestDrs != null) {
-        item(key = "drs_card") {
-            DRSReviewCard(
-                review = DRSReviewData(
-                    isSuccessful = latestDrs.isUpheld,
-                    over = latestDrs.over,
-                    decision = latestDrs.decision,
-                    umpireName = latestDrs.umpireName,
-                ),
-            )
-        }
+    val reviews = matchFlow?.drsReviews.orEmpty()
+    if (reviews.isNotEmpty()) {
+        item(key = "drs_card") { DRSReviewCard(reviews = reviews) }
     }
 }
 
@@ -178,7 +142,6 @@ internal fun LazyListScope.overviewScoringCharts(
     cumulativeScores: List<Int>,
     maxOver: Int,
     wicketOvers: List<Int>,
-    perOverRuns: List<OverRunRate>,
     requiredRunRate: String?,
 ) {
     if (worm != null) {
@@ -198,38 +161,13 @@ internal fun LazyListScope.overviewScoringCharts(
                     team2Scores = emptyList(),
                     currentOver = maxOver,
                     projectedScore = MatchProjections.projectedTotalFor(match, cumulativeScores),
-                ),
-            )
-        }
-        item(key = "over_by_over_card") {
-            val (team1Color, team2Color) = rememberMatchChartColors(match)
-            OverByOverComparisonCard(
-                comparisonInfo = OverByOverComparisonInfo(
-                    team1Color = team1Color,
-                    team2Color = team2Color,
-                    team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
-                    team2Name = match.teams[1].acronym.ifBlank { match.teams[1].name.take(3).uppercase() },
-                    team1Scores = cumulativeScores,
-                    team2Scores = emptyList(),
-                    currentOver = maxOver,
-                    highlightOvers = wicketOvers,
+                    battingWicketOvers = wicketOvers,
                 ),
             )
         }
     }
-    if (perOverRuns.isNotEmpty() && match.teams.size >= 2) {
-        item(key = "run_rate_card") {
-            val (team1Color, team2Color) = rememberMatchChartColors(match)
-            RunRateComparisonCard(
-                overData = perOverRuns,
-                team1Color = team1Color,
-                team2Color = team2Color,
-                team1Name = match.teams[0].name,
-                team2Name = match.teams[1].name,
-                requiredRunRate = requiredRunRate?.toDoubleOrNull(),
-            )
-        }
-    }
+    // No manhattan here: these milestones ("50 runs in 6.3 overs") are spans of several overs, and
+    // bars drawn from them would show a 50-run "over". The worm above carries them honestly.
 }
 
 internal fun LazyListScope.overviewScorecardSections(
@@ -238,7 +176,6 @@ internal fun LazyListScope.overviewScorecardSections(
     uniqueInnings: List<Innings>,
     scorecard: Scorecard?,
     fallOfWicketsByInnings: List<List<UiFallOfWicket>>,
-    keyMoments: List<HighlightMoment>,
     headToHead: H2HPair?,
 ) {
     if (batsmen.isEmpty() && uniqueInnings.isNotEmpty()) {
@@ -254,23 +191,13 @@ internal fun LazyListScope.overviewScorecardSections(
                         wickets = uiFow,
                         teamName = innings.teamName,
                         teamColor = rememberTeamInk(innings.teamName),
-                        currentScore = innings.score.split("/").firstOrNull()?.toIntOrNull() ?: 0,
-                        currentOvers = innings.overs.toFloatOrNull() ?: 0f,
                     )
                 }
             }
         }
     }
-    if (keyMoments.size >= 2) {
-        item(key = "key_moments_header") { SectionHeaderV2(title = stringResource(R.string.overview_key_moments)) }
-        item(key = "key_moments_card") { HighlightMomentsCard(moments = keyMoments) }
-    }
     headToHead?.let { h2h ->
-        item(key = "h2h_card") {
-            val (team1Color, team2Color) = rememberMatchChartColors(match)
-            HeadToHeadCard(match = match, stats = h2h.stats, team1Color = team1Color, team2Color = team2Color)
-        }
-        item(key = "historical_card") { HistoricalStatsCard(data = h2h.history) }
+        item(key = "h2h_card") { HeadToHeadCard(match = match, stats = h2h.stats, history = h2h.history) }
     }
 }
 

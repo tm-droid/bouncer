@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -63,12 +62,10 @@ import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.MatchStatus
 import com.tanush.bouncer.ui.components.v2.MatchFollowSheet
-import com.tanush.bouncer.ui.components.v2.MatchStatusType
 import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
 import com.tanush.bouncer.ui.components.v2.ReminderBottomSheet
 import com.tanush.bouncer.ui.components.v2.StatusBadgeV2
 import com.tanush.bouncer.ui.components.v2.determineMatchStatus
-import com.tanush.bouncer.ui.components.premium.PremiumAiStatisticsTab
 import com.tanush.bouncer.ui.components.premium.ScorecardTab
 import com.tanush.bouncer.ui.screens.matchdetail.v2.CommentaryTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.HighlightsTabV2
@@ -101,7 +98,7 @@ private val SERIES_LINK_TOUCH_PADDING = 8.dp
 
 /**
  * MatchDetailViewV2 — Clean match detail screen with score header and tabbed content.
- * Tabs: Overview, Scorecard, Commentary, Info
+ * Tabs: Overview, Scorecard, Commentary, Highlights, Info
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,7 +137,6 @@ fun MatchDetailViewV2(
         R.string.tab_commentary,
         R.string.tab_highlights,
         R.string.tab_info,
-        R.string.tab_ai,
     )
     val pagerState = rememberPagerState(pageCount = { tabTitles.size })
     val scope = rememberCoroutineScope()
@@ -414,7 +410,6 @@ fun MatchDetailViewV2(
                     )
                     R.string.tab_highlights -> HighlightsTabV2(highlights = highlights)
                     R.string.tab_info -> InfoTabV2(match = match, preMatchData = uiState.preMatchData)
-                    R.string.tab_ai -> PremiumAiStatisticsTab(match = liveMatch)
                     // Resource ids are non-final under nonTransitiveRClass, so this `when` is a
                     // chain of runtime comparisons, not a verified-exhaustive switch: a tab added
                     // to tabTitles without a branch here rendered a silently blank page.

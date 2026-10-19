@@ -196,41 +196,4 @@ class MatchProjectionsTest {
         assertEquals(ten, absurd)
         assertEquals(none, negative)
     }
-
-    // -------------------------------------------------------------------------
-    // cumulativeRunRates
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `cumulativeRunRates empty list returns empty list`() {
-        assertEquals(emptyList<Float>(), MatchProjections.cumulativeRunRates(emptyList()))
-    }
-
-    @Test
-    fun `cumulativeRunRates single over 45 runs returns 45_0f`() {
-        val result = MatchProjections.cumulativeRunRates(listOf(45))
-        assertEquals(1, result.size)
-        assertEquals(45.0f, result[0], 0.01f)
-    }
-
-    @Test
-    fun `cumulativeRunRates two overs cumulative 6 and 14 returns correct run rates`() {
-        // over 0: 6/1 = 6.0, over 1: 14/2 = 7.0
-        val result = MatchProjections.cumulativeRunRates(listOf(6, 14))
-        assertEquals(2, result.size)
-        assertEquals(6.0f, result[0], 0.01f)
-        assertEquals(7.0f, result[1], 0.01f)
-    }
-
-    @Test
-    fun `cumulativeRunRates large list last element is cumulative total divided by overs`() {
-        // 20-over cumulative scores: each over adds 8 runs
-        val cumulative = (1..20).map { it * 8 }   // 8, 16, 24, ... 160
-        val result = MatchProjections.cumulativeRunRates(cumulative)
-        assertEquals(20, result.size)
-        // Last element: 160 runs / 20 overs = 8.0f
-        assertEquals(8.0f, result.last(), 0.01f)
-        // First element: 8 / 1 = 8.0f
-        assertEquals(8.0f, result.first(), 0.01f)
-    }
 }

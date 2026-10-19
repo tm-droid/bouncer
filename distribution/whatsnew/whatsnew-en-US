@@ -1,3 +1,3 @@
-Real team logos: franchise and county logos replace the simplified marks, and national sides show their board's crest (BCCI, ECB, Cricket Australia). Crests that would disappear on your theme, such as England in dark mode, are drawn reversed.
+The AI tab is gone: it only repeated the win probability and run rates you can already see.
 
-Teams with no crest of their own, like Jamaica and Guyana, now show their initials instead of a grey box. Many more teams get team colours.
+Match Overview is cleaner. Each card now matches the rest of the app, and nothing is shown twice. Phases, fall of wickets, reviews and head to head are plain lists, the worm marks each wicket, and a new runs-per-over chart replaces the second run-rate graph. Reviews now show only what happened: over, batter, umpire and whether the review was upheld.

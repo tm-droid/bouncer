@@ -209,4 +209,4 @@ private fun KeyMomentsList(keyEvents: List<WinProbabilityPoint>) {
 private val CHART_HEIGHT = 180.dp
 private val OVER_COLUMN = 44.dp
 private const val FILL_ALPHA = 0.22f
-private const val KEY_MOMENTS = 3
+private const val KEY_MOMENTS = 5

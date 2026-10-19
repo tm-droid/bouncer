@@ -32,15 +32,6 @@ data class ScrapedBatsman(
 
 @Serializable
 @Immutable
-data class DRSReviewData(
-    val isSuccessful: Boolean,
-    val over: String,
-    val decision: String,
-    val umpireName: String,
-)
-
-@Serializable
-@Immutable
 data class PowerPlayPhaseData(
     val phaseName: String,
     val overs: String,
