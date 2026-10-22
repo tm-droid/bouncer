@@ -110,7 +110,7 @@ internal object MatchSquadsRsc {
 }
 
 /**
- * Fetches team sheets on demand — only when a reader opens the Info tab — and keeps them for the
+ * Fetches team sheets on demand — once per open match, from its ViewModel — and keeps them for the
  * process. A playing XI does not change once announced; a pre-toss squad is kept only
  * [PRE_TOSS_TTL_MS], so the XI appears once it is published. Costs Cricbuzz one page, no Appwrite.
  */

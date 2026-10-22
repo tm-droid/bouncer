@@ -104,14 +104,27 @@ private fun SideHeader(team: TeamSquad, modifier: Modifier) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         TeamCrest(teamName = team.name, size = 22.dp, acronym = team.shortName.ifBlank { null })
         Spacer(Modifier.width(BouncerThemeV2.spacing.sm))
-        Text(
-            text = team.shortName.ifBlank { team.name },
-            style = BouncerThemeV2.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = rememberTeamInk(team.name),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        // The code in the side's ink, and the full name under it: this header is the one place on
+        // the match screen that spells the sides out (Info's teams card restated the score header).
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = team.shortName.ifBlank { team.name },
+                style = BouncerThemeV2.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = rememberTeamInk(team.name),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (team.shortName.isNotBlank() && !team.shortName.equals(team.name, ignoreCase = true)) {
+                Text(
+                    text = team.name,
+                    style = BouncerThemeV2.typography.labelMedium,
+                    color = BouncerThemeV2.colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 

@@ -68,12 +68,28 @@ import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
 import com.tanush.bouncer.ui.components.v2.ReminderBottomSheet
 import com.tanush.bouncer.ui.components.v2.StatusBadgeV2
 import com.tanush.bouncer.ui.components.v2.determineMatchStatus
-import com.tanush.bouncer.ui.components.premium.PremiumAiStatisticsTab
 import com.tanush.bouncer.ui.components.premium.ScorecardTab
 import com.tanush.bouncer.ui.screens.matchdetail.v2.CommentaryTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.HighlightsTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.InfoTabV2
-import com.tanush.bouncer.ui.screens.matchdetail.v2.OverviewTabV2
+import com.tanush.bouncer.ui.screens.matchdetail.v2.GraphsTabV2
+import com.tanush.bouncer.ui.screens.matchdetail.v2.LiveTabV2
+import com.tanush.bouncer.ui.screens.matchdetail.v2.MatchPhase
+import com.tanush.bouncer.ui.screens.matchdetail.v2.MatchTab
+import com.tanush.bouncer.ui.screens.matchdetail.v2.MatchTabContent
+import com.tanush.bouncer.ui.screens.matchdetail.v2.SquadsTabV2
+import com.tanush.bouncer.ui.screens.matchdetail.v2.SummaryTabV2
+import com.tanush.bouncer.ui.screens.matchdetail.v2.hasGraphs
+import com.tanush.bouncer.ui.screens.matchdetail.v2.matchPhaseOf
+import com.tanush.bouncer.ui.screens.matchdetail.v2.matchTabsFor
+import com.tanush.bouncer.ui.screens.matchdetail.v2.pageFor
+import com.tanush.bouncer.ui.screens.matchdetail.v2.rememberOverviewDerivedData
+import com.tanush.bouncer.ui.screens.matchdetail.v2.titleRes
+import com.tanush.bouncer.viewmodels.mergedProbabilityHistory
+import com.tanush.bouncer.viewmodels.probabilityHistoryFrom
+import androidx.compose.runtime.key
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
 import com.tanush.bouncer.ui.screens.matchdetail.v2.buildOverStrip
 import com.tanush.bouncer.viewmodels.HighlightsViewModel
 import com.tanush.bouncer.viewmodels.MatchDetailViewModel
@@ -92,7 +108,6 @@ import com.tanush.bouncer.ui.components.ShareCardGenerator
 import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
-import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.meaningfulRequiredRunRate
 import androidx.compose.ui.semantics.Role
 
@@ -100,8 +115,8 @@ private const val EVENT_FLASH_MILLIS = 1500L
 private val SERIES_LINK_TOUCH_PADDING = 8.dp
 
 /**
- * MatchDetailViewV2 — Clean match detail screen with score header and tabbed content.
- * Tabs: Overview, Scorecard, Commentary, Info
+ * The match screen: the fixed score header, then the tabs [matchTabsFor] offers for the match's
+ * state — Info first for a fixture, Live while it is on, Summary once it is over.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -134,15 +149,6 @@ fun MatchDetailViewV2(
     )
     val highlights by highlightsViewModel.highlights.collectAsStateWithLifecycle()
 
-    val tabTitles = listOf(
-        R.string.tab_overview,
-        R.string.tab_scorecard,
-        R.string.tab_commentary,
-        R.string.tab_highlights,
-        R.string.tab_info,
-        R.string.tab_ai,
-    )
-    val pagerState = rememberPagerState(pageCount = { tabTitles.size })
     val scope = rememberCoroutineScope()
 
     var showReminderSheet by remember { mutableStateOf(false) }
@@ -202,6 +208,47 @@ fun MatchDetailViewV2(
             winProbabilityDraw = liveDrawProbability,
             winProbabilityIsPrematch = prematch,
         )
+    }
+
+    // The whole match's series where the server recorded one, not only this screen's time open.
+    val probabilityHistory = remember(uiState.scorecard, uiState.probabilityHistory, match.teams) {
+        mergedProbabilityHistory(probabilityHistoryFrom(uiState.scorecard, match.teams), uiState.probabilityHistory)
+    }
+    // Live and Summary narrate the lines; the per-ball event verdict is the commentary tab's
+    // filter input, so it is not threaded through them.
+    val commentaryText = remember(uiState.commentary) { uiState.commentary.map { it.text } }
+    val phase = matchPhaseOf(liveMatch)
+    // Derived once for the three tabs that read it: Live, Summary and Graphs. This recomposes on
+    // every ball of a live match, and every list transform in it is remembered against its inputs.
+    val derived = rememberOverviewDerivedData(
+        match = liveMatch,
+        scorecard = uiState.scorecard,
+        matchFlow = uiState.matchFlow,
+        isMatchActive = phase == MatchPhase.IN_PLAY,
+        probabilityHistory = probabilityHistory,
+        commentary = commentaryText,
+    )
+    val tabs = matchTabsFor(
+        phase,
+        MatchTabContent(
+            scorecard = uiState.scorecardLoading || uiState.scorecard?.innings?.isNotEmpty() == true,
+            commentary = uiState.commentaryLoading || uiState.commentary.isNotEmpty(),
+            graphs = hasGraphs(liveMatch, uiState.scorecard, derived, probabilityHistory),
+            squads = uiState.squads != null,
+            highlights = highlights.isNotEmpty(),
+        ),
+    )
+    // The selection is a tab, and the pager is rebuilt on it whenever the set changes (Graphs
+    // arriving with the first plotted over, a match starting or ending under the reader): an index
+    // carried across would land on whichever tab now sits there. See pageFor.
+    var selectedTab by rememberSaveable { mutableStateOf<MatchTab?>(null) }
+    val pagerState = key(tabs) { rememberPagerState(initialPage = pageFor(tabs, selectedTab)) { tabs.size } }
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }.collect { page -> tabs.getOrNull(page)?.let { selectedTab = it } }
+    }
+    val openCommentary: () -> Unit = {
+        val page = tabs.indexOf(MatchTab.COMMENTARY)
+        if (page >= 0) scope.launch { pagerState.animateScrollToPage(page) }
     }
 
     val battingTeam = liveMatch.teams.firstOrNull { it.isBatting }
@@ -339,7 +386,7 @@ fun MatchDetailViewV2(
                 },
                 divider = { HorizontalDivider(color = colors.divider) },
             ) {
-                tabTitles.forEachIndexed { index, title ->
+                tabs.forEachIndexed { index, tab ->
                     Tab(
                         selected = pagerState.currentPage == index,
                         onClick = {
@@ -347,7 +394,7 @@ fun MatchDetailViewV2(
                         },
                         text = {
                             Text(
-                                text = stringResource(title),
+                                text = stringResource(tab.titleRes(uiState.squads?.hasPlayingXi == true)),
                                 style = typography.labelLarge,
                                 fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal,
                                 color = if (pagerState.currentPage == index) tabAccentColor else colors.textSecondary,
@@ -364,35 +411,31 @@ fun MatchDetailViewV2(
                     .weight(1f)
                     .bouncerScreenBackground(),
             ) { page ->
-                // Dispatching on the resource id rather than on the rendered title: the title is
-                // translated now, so matching its text would send every tab to the else branch in
-                // any locale but English.
-                val tabTitle = tabTitles.getOrNull(page) ?: return@HorizontalPager
-                // Overview only narrates the lines; the per-ball event verdict is the commentary
-                // tab's filter input, so it is not threaded through the whole overview tree.
-                val commentaryText = remember(uiState.commentary) { uiState.commentary.map { it.text } }
-                when (tabTitle) {
-                    R.string.tab_overview -> OverviewTabV2(
+                when (tabs.getOrNull(page) ?: return@HorizontalPager) {
+                    MatchTab.LIVE -> LiveTabV2(
                         match = liveMatch,
                         batsmen = uiState.batsmen,
                         bowler = uiState.bowler,
-                        recentBalls = uiState.recentBalls,
-                        commentary = commentaryText,
-                        currentRunRate = uiState.liveCurrentRunRate,
-                        requiredRunRate = meaningfulRequiredRunRate(uiState.liveRequiredRunRate),
                         scorecard = uiState.scorecard,
-                        streamingCommentary = streamingCommentary,
                         matchFlow = uiState.matchFlow,
-                        probabilityHistory = uiState.probabilityHistory,
-                        headToHead = uiState.headToHead,
+                        derived = derived,
+                        probabilityHistory = probabilityHistory,
+                        streamingCommentary = streamingCommentary,
+                        onOpenCommentary = openCommentary,
                     )
-                    R.string.tab_scorecard -> ScorecardTab(
+                    MatchTab.SUMMARY -> SummaryTabV2(
+                        match = liveMatch,
+                        scorecard = uiState.scorecard,
+                        hasCommentary = MatchTab.COMMENTARY in tabs,
+                        onOpenCommentary = openCommentary,
+                    )
+                    MatchTab.SCORECARD -> ScorecardTab(
                         scorecard = uiState.scorecard,
                         isLoading = uiState.scorecardLoading,
                         onRetry = vm::retryInitialLoad,
                         isLive = liveMatch.isLive,
                     )
-                    R.string.tab_commentary -> CommentaryTabV2(
+                    MatchTab.COMMENTARY -> CommentaryTabV2(
                         commentary = uiState.commentary,
                         matchStatus = liveMatch.currentStatus,
                         isLoading = uiState.commentaryLoading,
@@ -412,17 +455,23 @@ fun MatchDetailViewV2(
                             null
                         },
                     )
-                    R.string.tab_highlights -> HighlightsTabV2(highlights = highlights)
-                    R.string.tab_info -> InfoTabV2(match = match, preMatchData = uiState.preMatchData)
-                    R.string.tab_ai -> PremiumAiStatisticsTab(match = liveMatch)
-                    // Resource ids are non-final under nonTransitiveRClass, so this `when` is a
-                    // chain of runtime comparisons, not a verified-exhaustive switch: a tab added
-                    // to tabTitles without a branch here rendered a silently blank page.
-                    else -> EmptyStateV2(
-                        title = stringResource(R.string.tab_unavailable_title),
-                        icon = Icons.Outlined.CloudOff,
-                        subtitle = stringResource(R.string.tab_unavailable_subtitle),
+                    MatchTab.GRAPHS -> GraphsTabV2(
+                        match = liveMatch,
+                        scorecard = uiState.scorecard,
+                        derived = derived,
+                        probabilityHistory = probabilityHistory,
+                        requiredRunRate = meaningfulRequiredRunRate(uiState.liveRequiredRunRate),
                     )
+                    MatchTab.SQUADS -> SquadsTabV2(
+                        match = liveMatch,
+                        squads = uiState.squads,
+                        impactSubs = uiState.matchFlow?.impactSubs.orEmpty(),
+                        teamNews = uiState.preMatchData?.teamNews,
+                    )
+                    // The live entry, not the one this screen opened with: Info's Test day and toss
+                    // rows read the status line.
+                    MatchTab.INFO -> InfoTabV2(match = liveMatch, preMatchData = uiState.preMatchData, headToHead = uiState.headToHead)
+                    MatchTab.HIGHLIGHTS -> HighlightsTabV2(highlights = highlights)
                 }
             }
             }

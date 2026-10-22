@@ -1,3 +1,1 @@
-Real team logos: franchise and county logos replace the simplified marks, and national sides show their board's crest (BCCI, ECB, Cricket Australia). Crests that would disappear on your theme, such as England in dark mode, are drawn reversed.
-
-Teams with no crest of their own, like Jamaica and Guyana, now show their initials instead of a grey box. Many more teams get team colours.
+The match screen is reorganised. It opens on Live while a match is on, Summary once it's over and Info before it starts, and only shows tabs with something in them. Charts have their own Graphs tab. The playing XI has its own Squads tab, with impact subs and team news. Live now shows the current partnership. The AI tab is gone: its win probability is on Live and Graphs.

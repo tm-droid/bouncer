@@ -42,7 +42,7 @@ Read-only from Android via `AppwriteClient.downloadFile(bucketId, fileId)`; writ
 | `active-series` | match-list poll | active **and archived** series, read by `SeriesSyncWorker` |
 | `live-matches`, `recent-matches`, `upcoming-matches`, `live-count`, `poll-state` | match-list poll | the lists `match-sync` runs off, plus its cursor/hash state |
 | `live-winprob`, `slow-sync-state`, `rewrite-backlog` | `match-sync` | published probabilities; the per-match slow-tier clock; deliveries held until a line passes the checker |
-| `mc-{matchId}` | `match-sync` | one match's context: sides, ground, record, elevens, forecast, preview, summary. Read by the device (Info and Overview tabs). Pruned after 14 days by `pruneContexts`, selected by `startsWith("$id", "mc-")` |
+| `mc-{matchId}` | `match-sync` | one match's context: sides, ground, record, elevens, forecast, preview, summary. Read by the device (Info and Summary tabs). Pruned after 14 days by `pruneContexts`, selected by `startsWith("$id", "mc-")` |
 | `wpe-{matchId}` | `match-sync` | one finished match's evaluation log. Not read by the device. Pruned after 60 days by `pruneEvalLogs` |
 | `prematch-log` | `match-sync` | each upcoming fixture's latest pre-match probability, `{matchId: {teamId, p, at}}`, kept a week |
 | `wci-{cricinfoId}` | `match-sync` | Cricinfo's live win prediction for one match, keyed by CRICINFO's match id; pruned after 60 days |

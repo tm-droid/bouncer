@@ -10,7 +10,7 @@
 
     <!-- Tab Titles -->
     <string name="tab_scorecard">Scorecard</string>
-    <string name="tab_info">Match Info</string>
+    <string name="tab_info">Info</string>
     
     <!-- Actions -->
 
@@ -116,12 +116,11 @@
     <string name="onboarding_start_exploring">Start exploring!</string>
 
     <!-- ── Match detail ─────────────────────────────────────────────────── -->
-    <string name="tab_overview">Overview</string>
+    <string name="tab_live">Live</string>
+    <string name="tab_summary">Summary</string>
+    <string name="tab_graphs">Graphs</string>
     <string name="tab_commentary">Commentary</string>
     <string name="tab_highlights">Highlights</string>
-    <string name="tab_ai" translatable="false">AI</string>
-    <string name="tab_unavailable_title">Tab unavailable</string>
-    <string name="tab_unavailable_subtitle">This section could not be loaded.</string>
     <string name="commentary_filter_all">All</string>
     <string name="commentary_filter_wickets">Wickets</string>
     <string name="commentary_filter_boundaries">Boundaries</string>
@@ -146,13 +145,13 @@
     <string name="match_info_umpire_1">Umpire 1</string>
     <string name="match_info_umpire_2">Umpire 2</string>
     <string name="match_info_umpires">Umpires</string>
+    <string name="match_info_officials">Officials</string>
+    <string name="match_info_head_to_head">Head to head</string>
     <string name="match_info_tv_umpire">TV umpire</string>
     <string name="match_info_referee">Match referee</string>
     <string name="match_info_reviews">Reviews left</string>
     <string name="match_info_debuts">On debut</string>
     <string name="match_info_day">Day</string>
-    <string name="match_info_additional">Additional Info</string>
-    <string name="match_info_info">Info</string>
     <string name="match_info_pitch_report">Pitch report</string>
     <string name="match_info_forecast">Forecast at the ground</string>
     <string name="match_info_forecast_temperature">Temperature</string>
@@ -174,10 +173,8 @@
     <string name="match_info_ground_scoring_below">%1$d%% below the format\'s average</string>
     <string name="match_info_ground_scoring_level">In line with the format\'s average</string>
 
-    <string name="overview_innings_summary">Innings Summary</string>
     <string name="overview_key_moments">Key moments</string>
     <string name="overview_recent_commentary">Recent Commentary</string>
-    <string name="overview_match_preview">Match Preview</string>
     <string name="overview_at_the_crease">At the Crease</string>
     <string name="overview_last_batsmen">Last Batsmen</string>
     <string name="overview_current_bowler">Current Bowler</string>
@@ -185,10 +182,13 @@
     <!-- Cricbuzz's own over numbering: ball 48.4 is in over 49. -->
     <string name="over_number">Over %1$d</string>
     <string name="overview_last_wicket">Last Wicket</string>
-    <string name="overview_not_started_title">Match hasn\'t started</string>
-    <string name="overview_not_started_subtitle">Live scores, batsmen at the crease and win probability will appear here once play begins.</string>
-    <string name="overview_pending_title">Details on their way</string>
-    <string name="overview_pending_subtitle">Live match data will appear here shortly.</string>
+    <string name="live_partnership">Partnership</string>
+    <string name="live_partnership_value">%1$d (%2$d)</string>
+    <string name="live_all_commentary">All commentary</string>
+    <string name="summary_innings_title">%1$s innings</string>
+    <string name="summary_empty_title">Nothing more to show</string>
+    <string name="summary_empty_subtitle">The result above is all there is for this match.</string>
+    <string name="graphs_wagon_title">Where the runs went, %1$s</string>
 
     <string name="commentary_error_title">Commentary interrupted</string>
     <string name="commentary_action_copy">Copy text</string>
@@ -270,7 +270,6 @@
     <string name="share_key_performer">KEY PERFORMER</string>
     <string name="share_match_momentum_stream">MATCH MOMENTUM STREAM</string>
     <string name="state_no_internet_connection">No internet connection</string>
-    <string name="fow_avg_partnership">Avg Partnership</string>
     <string name="favorites_add">Add</string>
     <string name="favorites_add_team">Add Team</string>
     <string name="favorites_add_teams_to_quickly_access_fixtures">Add teams to quickly access fixtures and updates.</string>
@@ -324,8 +323,6 @@
     <string name="news_this_story_may_have_expired_head">This story may have expired. Head back for the latest headlines.</string>
     <string name="notifications_no_notifications_yet">No notifications yet</string>
     <string name="notifications_subscribe_to_matches_with_the_bell">Subscribe to matches with the bell icon to get alerts</string>
-    <string name="comparison_over_by_over">Over-by-Over Comparison</string>
-    <string name="comparison_phase">PHASE COMPARISON</string>
     <string name="player_batters">BATTERS</string>
     <string name="player_bowlers">BOWLERS</string>
     <string name="player_compare">Compare</string>
@@ -340,21 +337,19 @@
     <string name="player_the_profile_isn_t_available_right">The profile isn\'t available right now. Check your connection and try again.</string>
     <string name="points_no_standings_available">No standings available</string>
     <string name="points_points_table">Points table</string>
-    <string name="powerplay_analysis">POWERPLAY ANALYSIS</string>
-    <string name="powerplay_score">Score</string>
-    <string name="premium_a_win_probability_appears_once_the">A win probability appears once the model has enough of the innings to</string>
     <string name="premium_batter">Batter</string>
     <string name="premium_batting">Batting</string>
     <string name="premium_bowler">Bowler</string>
-    <string name="premium_current_run_rate">CURRENT RUN RATE</string>
-    <string name="premium_no_forecast_for_this_match_yet">No forecast for this match yet</string>
-    <string name="premium_required_run_rate">REQUIRED RUN RATE</string>
     <string name="squads_playing_xi">Playing XI</string>
     <string name="squads_squads">Squads</string>
     <string name="squads_show_bench">Show bench</string>
     <string name="squads_hide_bench">Hide bench</string>
     <string name="squads_captain_mark">c</string>
     <string name="squads_keeper_mark">wk</string>
+    <string name="squads_impact_subs">Impact substitutes</string>
+    <string name="squads_impact_sub_line">%1$s in for %2$s</string>
+    <string name="squads_impact_sub_over">Over %1$s</string>
+    <string name="squads_team_news">Team news</string>
     <string name="reminders_clear_all">Clear all</string>
     <string name="reminders_delete">Cancel</string>
     <string name="reminders_no_reminders_set">No reminders set</string>
@@ -478,7 +473,6 @@
         <item quantity="one">%d run</item>
         <item quantity="other">%d runs</item>
     </plurals>
-    <string name="overview_starts_at">Starts at %1$s</string>
     <string name="points_team">Team</string>
     <string name="points_qualification_note">Teams above the line have qualified.</string>
     <string name="series_state_running">Live now</string>

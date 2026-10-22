@@ -30,28 +30,7 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
 
-// Situation, live-state, batsmen and bowler sections for OverviewTabV2's LazyColumn.
-
-internal fun LazyListScope.overviewHeaderSections(
-    isUpcoming: Boolean,
-    hasAnyContent: Boolean,
-) {
-    // Nothing here restates the score header.
-    //
-    // `ScoreHeaderV2` is a sibling of the pager, not a page inside it, so it stays on screen for
-    // every tab. This section used to open with the match status, a CRR/RRR tile pair, the recent
-    // balls and a six-card "momentum stream" — all four of which the header already shows, three
-    // of them from the identical field. A tab whose first screenful repeats the thing pinned above
-    // it reads as padding, which is what made this screen feel generated. Overview now starts at
-    // the first fact the header does not carry: who is at the crease.
-    //
-    // No WIN % tile either. The hero below states both sides, the draw and what kind of number it
-    // is; a one-sided tile above it showed the same probability rounded differently (49% against
-    // the hero's 50%) and read as a second, disagreeing model.
-    if (!hasAnyContent) {
-        item(key = "no_data") { OverviewNoDataMessage(isUpcoming = isUpcoming) }
-    }
-}
+// The batting pair, last wicket and bowler for the Live tab.
 
 internal fun LazyListScope.overviewLiveSituation(
     match: CricketMatch,

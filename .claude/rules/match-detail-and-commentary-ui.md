@@ -8,6 +8,14 @@ paths:
 
 # Match Detail and Commentary UI
 
+## Tabs
+
+**The tab set follows the match, and each fact has one tab** (`MatchTabs.kt`, pinned by `MatchTabsTest`). A fixture opens on Info (Info, Squads, Commentary if any); a match in play on Live (Live, Scorecard, Commentary, Graphs, Squads, Info, Highlights); a finished one on Summary (Summary, Scorecard, Commentary, Graphs, Highlights, Squads, Info). An optional tab appears only with something in it: Graphs only when `hasGraphs` finds a chart with data, Squads once `MatchSquadsSource` answers, Highlights with a clip. The first tab is the default. Overview and AI are gone: Overview had become four tabs in one (state of play, charts, the fall of wickets again, pre-match facts), and AI showed only the win probability Overview already had and the header's run rates.
+
+**The selection is a tab, never an index.** The set changes under the reader: Graphs arrives with the first plotted over, Squads when the page loads, everything when a match starts or ends. The pager is rebuilt with `key(tabs)` at `pageFor(tabs, selected)`, which also sends a reader on Live to Summary when the match ends. Rebuilding (rather than scrolling a live pager) avoids recording the coerced page as a selection when the page count shrinks.
+
+**Where things went.** Live: the batting pair, the current stand (`currentPartnership`: runs and legal balls since the highest-scoring wicket, because the stored wicket numbers are often 0), the last wicket, the bowler, the latest review, the win-probability bar, three lines and "All commentary". Summary: the server's summary and each innings' top two batters and bowlers. Graphs: the probability arc, its key moments and the prediction card, the worm, the manhattan, the phases (which cover the powerplay, so `PowerPlayAnalysisCard` went) and the wagon wheels, newest innings first. The over-by-over comparison card plotted the worm's own series and went. Squads: the team sheet, impact substitutes and Cricinfo's team news. Info: preview, details, toss, officials, forecast, pitch, head to head, ground. Cricbuzz's `matchInfo.state` ("Preview", "Complete") is not shown: it was an "Additional info" row restating the status.
+
 ## Detail state
 
 **Every `match-sync` row carries an `updated_at`, and the device reads it.** `getForMatch` and `observeMatch` return `LiveDetailSnapshot`/`ScorecardSnapshot` — payload plus the row's write time — because a row that froze when its match left `live-matches.json` and one written this minute are otherwise identical (the staleness in `eb91dcd`). `updatedAtMs` is null when the column is missing or unparseable, and **null means unknown, never old**: fall back to the prior rule, or one malformed timestamp blanks a live score. `ROW_STALE_MS`/`DETAIL_STALE_MS` are both 3 minutes: an open screen pings presence every 90s, which earns a detail-tier pass every run, so a live row is about a minute old at worst.
@@ -36,7 +44,7 @@ paths:
 
 ## Cards
 
-**The head-to-head card.** `H2HRepository` lowercased the pair and compared it with keys the trainer writes in original case (none of the 1,732 keys is lowercase), so it never matched; it now indexes case-insensitively on load. The file is the **T20 record only** and used to pool a country's men's and women's sides: a women's pair has its own key (`A|||B|female`) and the card shows on T20 matches only. Every other format reads its own record (right format, right gender) from the match context, on the Info tab.
+**The head-to-head card.** `H2HRepository` lowercased the pair and compared it with keys the trainer writes in original case (none of the 1,732 keys is lowercase), so it never matched; it now indexes case-insensitively on load. The file is the **T20 record only** and used to pool a country's men's and women's sides: a women's pair has its own key (`A|||B|female`) and the card shows on T20 matches only. Every other format reads its own record (right format, right gender) from the match context. Both now sit in one Head to head section on Info, and never together: the context record is shown only when the T20 file did not answer.
 
 **Removed because each was a constant — do not bring back:** the toss card's "venue win %", "H2H toss 3-2" and "Dew factor HIGH"; the prediction card's 85% confidence badge and "Updated: Just now"; the Info tab's weather panel (wind, dew point, visibility hardcoded; temperature and humidity defaulted) with pace/bounce/spin bars scored from keywords in the preview text. The pitch report is shown as written; the forecast and the ground's record come from `mc-{matchId}`.
 

@@ -31,6 +31,8 @@ import com.tanush.bouncer.data.remote.RealtimeLifecycleController
 import com.tanush.bouncer.data.remote.WinProbabilityStore
 import com.tanush.bouncer.data.remote.toEvent
 import com.tanush.bouncer.network.CricBuzzUrls
+import com.tanush.bouncer.network.MatchSquads
+import com.tanush.bouncer.network.MatchSquadsSource
 import com.tanush.bouncer.network.isReportableScrapeFailure
 import com.tanush.bouncer.services.MatchPresenceReporter
 import com.tanush.bouncer.ui.components.BatsmanMilestoneInfo
@@ -120,6 +122,11 @@ class MatchDetailViewModel(
         val probabilityHistory: List<WinProbabilityPoint> = emptyList(),
         val batsmanMilestone: BatsmanMilestoneInfo? = null,
         val headToHead: H2HPair? = null,
+        /**
+         * The team sheets: the elevens once named, the squads before. Null until the page answers,
+         * and for a match it does not cover — the screen offers no Squads tab then.
+         */
+        val squads: MatchSquads? = null,
         /** Non-null when the initial load produced no live data at all (network-level failure). */
         val loadError: String? = null,
         /** Non-null when the commentary feed failed and no lines are available. */
@@ -333,6 +340,18 @@ class MatchDetailViewModel(
                 delay(PRESENCE_HEARTBEAT_MS)
             }
         }
+        // The team sheet: one Cricbuzz page, no Appwrite. Asked again while only the squads are
+        // out, because the elevens replace them at the toss (the source keeps a squad that long).
+        // Held here, not fetched by the tab, because whether there is a Squads tab depends on it.
+        viewModelScope.launch(bouncerExceptionHandler) {
+            while (isActive) {
+                RealtimeLifecycleController.foreground.first { it }
+                val sheet = MatchSquadsSource.get(match.id)
+                if (sheet != null) _uiState.update { it.copy(squads = sheet) }
+                if (sheet?.hasPlayingXi == true || isMatchOver(match, _uiState.value.liveStatus)) break
+                delay(SQUADS_RECHECK_MS)
+            }
+        }
     }
 
     private suspend fun loadInitial() {
@@ -465,7 +484,10 @@ class MatchDetailViewModel(
             ?: return
         AppResult.runCatchingSuspend {
             val flow = matchRepository.fetchMatchFlow(url)
-            if (flow.drsReviews.isNotEmpty() || flow.powerplays.isNotEmpty() || flow.impactSubs.isNotEmpty()) {
+            // Milestones alone are worth keeping: they are the worm and manhattan when the server
+            // has no over history for the match.
+            val hasAny = listOf(flow.drsReviews, flow.powerplays, flow.impactSubs, flow.overMilestones).any { it.isNotEmpty() }
+            if (hasAny) {
                 _uiState.update { it.copy(matchFlow = flow) }
             }
         }.onError { sentryBreadcrumb("match_detail_v2.matchflow", "Match flow fetch failed: ${it.message}", SentryLevel.WARNING) }
@@ -633,6 +655,8 @@ class MatchDetailViewModel(
         private const val MILESTONE_BANNER_MS = 15_000L
         // Re-ping well within match-sync's 4-min VIEWER_TTL_MS so ~2 dropped pings still count.
         private const val PRESENCE_HEARTBEAT_MS = 90_000L
+        // As long as MatchSquadsSource keeps a pre-toss squad, so each ask can bring the elevens.
+        private const val SQUADS_RECHECK_MS = 10 * 60_000L
 
         /** Per-type store key — see [HighlightsViewModel.storeKey] for why sharing one collides. */
         fun storeKey(matchId: String): String = "match_detail_$matchId"

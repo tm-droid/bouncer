@@ -2,8 +2,11 @@ package com.tanush.bouncer.ui.screens.matchdetail.v2
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.runtime.Composable
@@ -11,10 +14,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.data.local.entities.HighlightEntity
 import com.tanush.bouncer.ui.components.HighlightClipCard
 import com.tanush.bouncer.ui.components.HighlightPlayerDialog
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
 
@@ -36,12 +41,23 @@ fun HighlightsTabV2(
 
     val selectedHighlight = remember { mutableStateOf<HighlightEntity?>(null) }
 
-    LazyRow(modifier = modifier) {
+    // A grid that scrolls down, not a row that scrolls sideways: a horizontal list inside the
+    // tabs' horizontal pager fought it for every swipe.
+    val spacing = BouncerThemeV2.spacing
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(CLIP_WIDTH),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = spacing.lg, vertical = spacing.md),
+        horizontalArrangement = Arrangement.spacedBy(spacing.md),
+        verticalArrangement = Arrangement.spacedBy(spacing.md),
+    ) {
         items(highlights, key = { it.id }) { highlight ->
-            HighlightClipCard(
-                highlight = highlight,
-                onClick = { selectedHighlight.value = it }
-            )
+            Box(contentAlignment = Alignment.TopCenter) {
+                HighlightClipCard(
+                    highlight = highlight,
+                    onClick = { selectedHighlight.value = it }
+                )
+            }
         }
     }
 
@@ -52,3 +68,6 @@ fun HighlightsTabV2(
         )
     }
 }
+
+/** The width [HighlightClipCard] draws itself at. */
+private val CLIP_WIDTH = 180.dp

@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.WagonWheel
@@ -69,13 +70,15 @@ private val ZONE_WORDS = listOf(
 
 /** One wheel per batter, side by side, left and right as the ground lies with the bowler's end at the bottom. */
 @Composable
-internal fun WagonWheelRow(wheels: List<WagonWheel>, modifier: Modifier = Modifier) {
+internal fun WagonWheelRow(wheels: List<WagonWheel>, modifier: Modifier = Modifier, edgePadding: Dp? = null) {
     val spacing = BouncerThemeV2.spacing
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
+    // The row scrolls to the screen edge on Scorecard; on Graphs its list already pads the page.
+    val edge = edgePadding ?: spacing.lg
     Column(modifier = modifier) {
         LazyRow(
-            contentPadding = PaddingValues(horizontal = spacing.lg),
+            contentPadding = PaddingValues(horizontal = edge),
             horizontalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             itemsIndexed(wheels, key = { index, wheel -> "wagon_${index}_${wheel.innings}" }) { _, wheel ->
@@ -86,7 +89,7 @@ internal fun WagonWheelRow(wheels: List<WagonWheel>, modifier: Modifier = Modifi
             text = stringResource(R.string.scorecard_wagon_source),
             style = typography.labelSmall,
             color = colors.textSecondary,
-            modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
+            modifier = Modifier.padding(horizontal = edge, vertical = spacing.xs),
         )
     }
 }
