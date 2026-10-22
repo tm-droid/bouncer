@@ -1,5 +1,21 @@
 package com.tanush.bouncer.ui.screens
 
+import com.tanush.bouncer.network.SquadPlayer
+
+import com.tanush.bouncer.network.MatchSquadsSource
+
+import com.tanush.bouncer.managers.FavouriteTeamsManager
+
+import androidx.compose.ui.platform.LocalContext
+
+import androidx.compose.runtime.produceState
+
+import androidx.compose.material.icons.outlined.StarBorder
+
+import androidx.compose.material.icons.filled.Star
+
+import android.widget.Toast
+
 import androidx.compose.foundation.layout.fillMaxHeight
 import com.tanush.bouncer.ui.theme.rememberTeamInk
 import com.tanush.bouncer.ui.theme.rememberTeamColors
@@ -64,6 +80,7 @@ fun TeamDetailScreen(
     teamName: String,
     liveActivityViewModel: LiveActivityViewModel = viewModel(),
     onMatchClick: (CricketMatch) -> Unit,
+    onPlayerClick: (name: String, cricbuzzId: String?) -> Unit,
     onBackClick: () -> Unit,
 ) {
     val colors = BouncerThemeV2.colors
@@ -84,29 +101,15 @@ fun TeamDetailScreen(
     // The curated code ("IND"), not the name's initials, which made "India" "I".
     val acronym = remember(teamName) { TeamAcronymManager.getAcronym(teamName) }
     val logoUrl = remember(teamName) { TeamLogoManager.getLogoUrl(teamName) }
+    // The eleven from the side's latest result: one Cricbuzz page, cached for the process.
+    val lastMatch = results.firstOrNull()
+    val lastXi by produceState(initialValue = emptyList<SquadPlayer>(), lastMatch?.id) {
+        value = lastMatch?.let { lastElevenOf(it, teamName, MatchSquadsSource.get(it.id)) }.orEmpty()
+    }
 
     Scaffold(
         containerColor = colors.background,
-        topBar = {
-            TopAppBar(
-                title = { Text(teamName, style = typography.titleMedium, color = colors.onSurface) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.common_back),
-                            tint = colors.onSurface,
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colors.topBar,
-                    titleContentColor = colors.onTopBar,
-                    navigationIconContentColor = colors.onTopBarMuted,
-                    actionIconContentColor = colors.onTopBarMuted,
-                ),
-            )
-        },
+        topBar = { TeamTopBar(teamName = teamName, onBackClick = onBackClick) },
     ) { innerPadding ->
         PullRefreshWrapperV2(
             isRefreshing = isRefreshing,
@@ -121,6 +124,7 @@ fun TeamDetailScreen(
                 logoUrl = logoUrl,
                 acronym = acronym,
                 onMatchClick = onMatchClick,
+                lastXi = { teamLastXiItems(lastMatch, teamName, lastXi, onPlayerClick) },
             )
         }
     }
@@ -135,6 +139,7 @@ private fun TeamDetailContent(
     logoUrl: String?,
     acronym: String,
     onMatchClick: (CricketMatch) -> Unit,
+    lastXi: LazyListScope.() -> Unit,
 ) {
     val colors = BouncerThemeV2.colors
     val spacing = BouncerThemeV2.spacing
@@ -165,6 +170,7 @@ private fun TeamDetailContent(
         } else {
             teamMatchSections(teamMatches, results, onMatchClick)
         }
+        lastXi()
 
         item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
     }
@@ -242,5 +248,51 @@ private fun TeamBand(teamName: String) {
         }
     } else {
         HorizontalDivider(color = BouncerThemeV2.colors.divider)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TeamTopBar(teamName: String, onBackClick: () -> Unit) {
+    val colors = BouncerThemeV2.colors
+    TopAppBar(
+        title = { Text(teamName, style = BouncerThemeV2.typography.titleMedium, color = colors.onSurface) },
+        navigationIcon = {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.common_back),
+                    tint = colors.onSurface,
+                )
+            }
+        },
+        // Following a side is done here, on its page, rather than from a match's menu.
+        actions = { FavouriteAction(teamName) },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = colors.topBar,
+            titleContentColor = colors.onTopBar,
+            navigationIconContentColor = colors.onTopBarMuted,
+            actionIconContentColor = colors.onTopBarMuted,
+        ),
+    )
+}
+
+@Composable
+private fun FavouriteAction(teamName: String) {
+    val favourites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val isFavourite = teamName in favourites
+    IconButton(
+        onClick = {
+            if (FavouriteTeamsManager.toggle(teamName) == null) {
+                Toast.makeText(context, R.string.teams_favourites_full, Toast.LENGTH_SHORT).show()
+            }
+        },
+    ) {
+        Icon(
+            imageVector = if (isFavourite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+            contentDescription = stringResource(if (isFavourite) R.string.teams_favourite_remove else R.string.teams_favourite_add),
+            tint = if (isFavourite) BouncerThemeV2.colors.primaryText else BouncerThemeV2.colors.onSurface,
+        )
     }
 }

@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.foundation.clickable
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +46,7 @@ private val COL_RANK = 24.dp
 private val COL_SMALL = 28.dp
 private val COL_NRR = 56.dp
 private val COL_PTS = 40.dp
+private val COL_NR = 40.dp
 private val STRIP = 3.dp
 
 @Composable
@@ -60,7 +63,7 @@ private fun RowScope.Figure(text: String, width: Dp, style: TextStyle, color: Co
 }
 
 @Composable
-internal fun StandingsHeader() {
+internal fun StandingsHeader(showDrawn: Boolean) {
     val colors = BouncerThemeV2.colors
     val style = BouncerThemeV2.typography.labelMedium
     Row(
@@ -72,6 +75,7 @@ internal fun StandingsHeader() {
         Figure("P", COL_SMALL, style, colors.textSecondary)
         Figure("W", COL_SMALL, style, colors.textSecondary)
         Figure("L", COL_SMALL, style, colors.textSecondary)
+        if (showDrawn) Figure("T/NR", COL_NR, style, colors.textSecondary)
         Figure("NRR", COL_NRR, style, colors.textSecondary)
         Figure("Pts", COL_PTS, style, colors.textSecondary)
     }
@@ -83,11 +87,12 @@ internal fun StandingsHeader() {
  * `qualified` flags, where it used to be a hardcoded "top four".
  */
 @Composable
-internal fun StandingsRow(entry: PointsTableEntry, rank: Int, cutoffBelow: Boolean) {
+internal fun StandingsRow(entry: PointsTableEntry, rank: Int, cutoffBelow: Boolean, showDrawn: Boolean, onClick: () -> Unit) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val strip = if (TeamColorRegistry.isKnown(entry.teamName)) rememberTeamColors(entry.teamName).primary else Color.Transparent
-    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+    val openLabel = stringResource(R.string.cd_open_team, entry.teamName)
+    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).clickable(onClickLabel = openLabel, onClick = onClick)) {
         Box(Modifier.width(STRIP).fillMaxHeight().background(strip))
         Column(modifier = Modifier.weight(1f).padding(start = 16.dp - STRIP, end = 16.dp, top = 10.dp, bottom = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -106,6 +111,7 @@ internal fun StandingsRow(entry: PointsTableEntry, rank: Int, cutoffBelow: Boole
                 Figure(entry.matches.toString(), COL_SMALL, typography.numeric, colors.textSecondary)
                 Figure(entry.won.toString(), COL_SMALL, typography.numeric, colors.onSurface)
                 Figure(entry.lost.toString(), COL_SMALL, typography.numeric, colors.textSecondary)
+                if (showDrawn) Figure(entry.drawOrNR.toString(), COL_NR, typography.numeric, colors.textSecondary)
                 Figure(signedNrr(entry.netRunRate), COL_NRR, typography.numeric, colors.textSecondary)
                 Figure(entry.points.toString(), COL_PTS, typography.scoreMedium, colors.onSurface, FontWeight.Bold)
             }

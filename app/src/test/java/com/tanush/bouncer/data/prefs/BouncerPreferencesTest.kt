@@ -61,7 +61,7 @@ class BouncerPreferencesTest {
 
     @Test
     fun `a write is visible to the very next read`() {
-        // The point of the volatile snapshot. SettingsScreenV2 writes a toggle and re-reads it in
+        // The point of the volatile snapshot. The More tab writes a toggle and re-reads it in
         // the same frame; if that had to wait for the durable write, the toggle would flick back.
         BouncerPreferences.putBoolean("haptic_feedback", false)
         assertEquals(false, BouncerPreferences.getBoolean("haptic_feedback", true))

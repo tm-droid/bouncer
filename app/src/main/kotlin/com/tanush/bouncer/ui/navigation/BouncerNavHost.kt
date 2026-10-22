@@ -24,7 +24,6 @@ import com.tanush.bouncer.ui.devtools.DevToolsScreen
 import com.tanush.bouncer.ui.screens.*
 import com.tanush.bouncer.ui.screens.news.NewsDetailScreenV2
 import com.tanush.bouncer.ui.screens.news.NewsScreenV2
-import com.tanush.bouncer.ui.screens.NotificationsScreen
 import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.v2.ThemeModeV2
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
@@ -81,10 +80,13 @@ fun BouncerNavHost(
         }
 
         // Primary tabs
-        primaryTabDestinations(navController, liveActivityViewModel, newsViewModel, onMatchClick)
+        primaryTabDestinations(navController, liveActivityViewModel, newsViewModel, onMatchClick, themeMode, onThemeModeChanged)
 
         // Secondary screens from More tab
-        moreChildDestinations(navController, liveActivityViewModel, newsViewModel, onMatchClick, themeMode, onThemeModeChanged)
+        moreChildDestinations(navController, liveActivityViewModel, newsViewModel, onMatchClick)
+
+        // Pages opened from any tab: comparison and Alerts
+        sharedDestinations(navController, liveActivityViewModel, onMatchClick)
 
         // Parameterized screens
         parameterizedDestinations(navController, newsViewModel, liveActivityViewModel, onMatchClick)
@@ -99,7 +101,9 @@ private fun NavGraphBuilder.primaryTabDestinations(
     navController: NavHostController,
     liveActivityViewModel: LiveActivityViewModel,
     newsViewModel: NewsViewModel,
-    onMatchClick: (CricketMatch) -> Unit
+    onMatchClick: (CricketMatch) -> Unit,
+    themeMode: ThemeModeV2,
+    onThemeModeChanged: (ThemeModeV2) -> Unit,
 ) {
     // Home Tab
     composable(
@@ -112,28 +116,12 @@ private fun NavGraphBuilder.primaryTabDestinations(
         HomeScreenV2(
             viewModel = liveActivityViewModel,
             onMatchClick = onMatchClick,
-            onMoreMatchesClick = {
-                navController.navigateForward(BouncerScreen.Matches.route)
-            },
-            onAchievementsClick = {},
-            onNewsClick = {
-                navController.navigateToTab(BouncerScreen.News.route)
-            },
             onSearchClick = {
                 navController.navigateForward(BouncerScreen.Search.route)
             },
             onNotificationsClick = {
                 navController.navigateForward(BouncerScreen.Notifications.route)
             },
-        )
-    }
-
-    // All Matches — pushed from Home's "All matches" link; Home already lists every match.
-    composable(BouncerScreen.Matches.route) {
-        AllMatchesScreenV2(
-            viewModel = liveActivityViewModel,
-            onMatchClick = onMatchClick,
-            onBackClick = { navController.popBackStack() },
         )
     }
 
@@ -176,50 +164,9 @@ private fun NavGraphBuilder.primaryTabDestinations(
         )
     }
 
-    // Favourites (route kept for deep links, no longer primary tab)
-    composable(
-        BouncerScreen.Favorites.route,
-        enterTransition = { BouncerMotion.Transitions.tabEnter() },
-        exitTransition = { BouncerMotion.Transitions.tabExit() },
-        popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
-        popExitTransition = { BouncerMotion.Transitions.tabExit() }
-    ) {
-        FavoritesScreen(
-            onBackClick = {
-                navController.navigateToTab(BouncerScreen.Home.route)
-            },
-            onTeamClick = { teamName ->
-                navController.navigateForward(
-                    BouncerScreen.TeamDetail.createRoute(teamName)
-                )
-            }
-        )
-    }
-
-    // More Tab
-    composable(
-        BouncerScreen.More.route,
-        enterTransition = { BouncerMotion.Transitions.tabEnter() },
-        exitTransition = { BouncerMotion.Transitions.tabExit() },
-        popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
-        popExitTransition = { BouncerMotion.Transitions.tabExit() }
-    ) {
-        MoreScreenV2(
-            onSettingsClick = {
-                navController.navigateForward(BouncerScreen.Settings.route)
-            },
-            onAboutClick = {
-                navController.navigateForward(BouncerScreen.About.route)
-            },
-            onDevToolsClick = {
-                navController.navigateForward(BouncerScreen.DevTools.route)
-            },
-            onAppearanceClick = {
-                navController.navigateForward(BouncerScreen.Appearance.route)
-            },
-        )
-    }
+    moreTabDestinations(navController, themeMode, onThemeModeChanged)
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // More Tab Child Destinations
@@ -230,8 +177,6 @@ private fun NavGraphBuilder.moreChildDestinations(
     liveActivityViewModel: LiveActivityViewModel,
     newsViewModel: NewsViewModel,
     onMatchClick: (CricketMatch) -> Unit,
-    themeMode: ThemeModeV2,
-    onThemeModeChanged: (ThemeModeV2) -> Unit
 ) {
     // Search
     composable(
@@ -281,36 +226,6 @@ private fun NavGraphBuilder.moreChildDestinations(
         )
     }
 
-    // Settings
-    composable(BouncerScreen.Settings.route) {
-        val context = LocalContext.current
-        SettingsScreenV2(
-            onBackClick = { navController.popBackStack() },
-            onFavoritesClick = {
-                navController.navigateToTab(BouncerScreen.Favorites.route)
-            },
-            onAboutClick = {
-                navController.navigateForward(BouncerScreen.About.route)
-            },
-            onAppearanceClick = {
-                navController.navigateForward(BouncerScreen.Appearance.route)
-            },
-            onRedoSetup = {
-                PreferencesHelper.setBoolean(context, PreferencesHelper.KEY_ONBOARDING_COMPLETE, false)
-                navController.navigateAndClearStack(BouncerScreen.Onboarding.route)
-            },
-        )
-    }
-
-    // Appearance customization (V2 — Light/Dark/System)
-    composable(BouncerScreen.Appearance.route) {
-        AppearanceScreenV2(
-            onBackClick = { navController.popBackStack() },
-            currentMode = themeMode,
-            onModeChanged = onThemeModeChanged
-        )
-    }
-
     // About
     composable(BouncerScreen.About.route) {
         AboutScreenV2(
@@ -329,24 +244,6 @@ private fun NavGraphBuilder.moreChildDestinations(
         }
     }
 
-    // Player Comparison
-    composable(BouncerScreen.PlayerComparison.route) {
-        PlayerComparisonScreen(
-            onBackClick = { navController.popBackStack() }
-        )
-    }
-
-    // Notification Inbox
-    composable(BouncerScreen.Notifications.route) {
-        NotificationsScreen(
-            onBack = { navController.popBackStack() },
-            onRemindersClick = { navController.navigateForward(BouncerScreen.Reminders.route) },
-        )
-    }
-
-    composable(BouncerScreen.Reminders.route) {
-        RemindersScreen(onBack = { navController.popBackStack() })
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -412,7 +309,7 @@ private fun NavGraphBuilder.detailDestinations(
             isCaptain = false,
             isWicketKeeper = false,
             onBackClick = { navController.popBackStack() },
-            onCompareClick = { navController.navigateForward(BouncerScreen.PlayerComparison.route) },
+            onCompareClick = { navController.navigateForward(BouncerScreen.PlayerComparison.createRoute(playerId)) },
             cricbuzzId = cricbuzzId,
         )
     }
@@ -446,9 +343,7 @@ private fun NavGraphBuilder.matchDeepLinkDestination(
 
         when {
             match != null -> CompositionLocalProvider(
-                LocalOpenSeries provides { seriesId: String ->
-                    navController.navigateForward(BouncerScreen.SeriesDetail.createRoute(seriesId))
-                },
+                LocalOpenRoute provides { route: String -> navController.navigateForward(route) },
             ) {
                 MatchDetailViewV2(
                     match = match,
@@ -491,13 +386,11 @@ private fun NavGraphBuilder.entityDestinations(
 
         SeriesDetailScreen(
             seriesId = seriesId,
-            onPointsTableClick = { id ->
-                navController.navigateForward(BouncerScreen.PointsTable.createRoute(id))
-            },
             onMatchClick = onMatchClick,
-            onPlayerClick = { name ->
-                navController.navigateForward(BouncerScreen.PlayerDetail.createRoute(name))
+            onPlayerClick = { name, cricbuzzId ->
+                navController.navigateForward(BouncerScreen.PlayerDetail.createRoute(name, cricbuzzId))
             },
+            onTeamClick = { name -> navController.navigateForward(BouncerScreen.TeamDetail.createRoute(name)) },
             // Through the dispatcher, not popBackStack: a series opened from a match's series link
             // returns to that match, and the arrow must take the same path as the system back.
             onBackClick = {
@@ -519,21 +412,10 @@ private fun NavGraphBuilder.entityDestinations(
             teamName = teamName,
             liveActivityViewModel = liveActivityViewModel,
             onMatchClick = onMatchClick,
+            onPlayerClick = { name, cricbuzzId ->
+                navController.navigateForward(BouncerScreen.PlayerDetail.createRoute(name, cricbuzzId))
+            },
             onBackClick = { navController.popBackStack() },
-        )
-    }
-
-    // Points Table with series ID
-    composable(
-        route = BouncerScreen.PointsTable.ROUTE_PATTERN,
-        arguments = BouncerScreen.PointsTable.arguments
-    ) { backStackEntry ->
-        val seriesId = backStackEntry.arguments?.getString(BouncerScreen.PointsTable.ARG_SERIES_ID)
-            ?.decodeUrlSafe() ?: return@composable
-
-        PointsTableScreen(
-            seriesId = seriesId,
-            onBackClick = { navController.popBackStack() }
         )
     }
 }

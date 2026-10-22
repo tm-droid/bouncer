@@ -1,5 +1,11 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
+import com.tanush.bouncer.ui.navigation.LocalOpenRoute
+
+import com.tanush.bouncer.ui.navigation.BouncerScreen
+
+import androidx.compose.foundation.clickable
+
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -101,7 +107,15 @@ private fun TeamSheetColumns(leftTeam: TeamSquad?, rightTeam: TeamSquad?, left: 
 
 @Composable
 private fun SideHeader(team: TeamSquad, modifier: Modifier) {
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+    val open = LocalOpenRoute.current
+    val link = if (open != null && team.name.isNotBlank()) {
+        Modifier.clickable(onClickLabel = stringResource(R.string.cd_open_team, team.name)) {
+            open(BouncerScreen.TeamDetail.createRoute(team.name))
+        }
+    } else {
+        Modifier
+    }
+    Row(modifier = modifier.then(link), verticalAlignment = Alignment.CenterVertically) {
         TeamCrest(teamName = team.name, size = 22.dp, acronym = team.shortName.ifBlank { null })
         Spacer(Modifier.width(BouncerThemeV2.spacing.sm))
         // The code in the side's ink, and the full name under it: this header is the one place on
@@ -136,7 +150,7 @@ private fun SideHeader(team: TeamSquad, modifier: Modifier) {
 private fun PlayerCell(player: SquadPlayer?, modifier: Modifier) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
-    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.profileLink(player), verticalAlignment = Alignment.CenterVertically) {
         if (player == null) return@Row
         PersonAvatar(name = player.name, size = 28.dp)
         Spacer(Modifier.width(BouncerThemeV2.spacing.sm))
@@ -189,4 +203,15 @@ private fun BenchToggle(team1: TeamSquad, team2: TeamSquad) {
         )
     }
     if (open) TeamSheetColumns(null, null, team1.bench, team2.bench)
+}
+
+/** Opens [player]'s profile by name and Cricbuzz id, where something can navigate. */
+@Composable
+private fun Modifier.profileLink(player: SquadPlayer?): Modifier {
+    val open = LocalOpenRoute.current
+    if (player == null || open == null) return this
+    val label = stringResource(R.string.cd_open_player, player.name)
+    return clickable(onClickLabel = label) {
+        open(BouncerScreen.PlayerDetail.createRoute(player.name, player.id.ifBlank { null }))
+    }
 }

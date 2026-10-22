@@ -67,11 +67,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".ui.screens.StatsDetailActivity"
-            android:exported="false"
-            android:label="@string/title_stats_detail" />
-
         <receiver android:name=".ui.widgets.LiveMatchWidgetProvider"
                   android:exported="true">
             <intent-filter>

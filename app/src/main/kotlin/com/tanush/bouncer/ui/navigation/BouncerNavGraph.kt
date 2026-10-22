@@ -15,30 +15,23 @@ import java.nio.charset.StandardCharsets
 sealed class BouncerScreen(val route: String) {
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Primary Tab Destinations (Bottom Navigation: Home / Matches / News / More)
+    // Primary Tab Destinations (Bottom Navigation: Home / Series / News / More)
     // ═══════════════════════════════════════════════════════════════════════════
 
     /** Home tab - Live matches, featured content */
     data object Home : BouncerScreen("home")
 
-    /** All Matches - complete match listings, pushed from Home's "All matches" link (not a tab) */
-    data object Matches : BouncerScreen("all_matches")
-
-    /** Favourites - saved teams and matches (deep-link route, not a bottom tab) */
+    /** Favourites: reorder, add and remove, pushed from the More tab's Your teams. */
     data object Favorites : BouncerScreen("favourites")
 
-    /** More tab - Settings, Appearance, About, DevTools access */
+    /** More tab: your teams, the settings, appearance, about. */
     data object More : BouncerScreen("more")
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Secondary Screens (Navigated from tabs)
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /** Settings screen - App preferences and configuration */
-    data object Settings : BouncerScreen("settings")
 
-    /** Appearance customization screen */
-    data object Appearance : BouncerScreen("appearance")
 
     /** About screen - App info, licenses, credits */
     data object About : BouncerScreen("about")
@@ -92,28 +85,24 @@ sealed class BouncerScreen(val route: String) {
     }
 
     /**
-     * Points table screen with series ID argument.
-     */
-    data class PointsTable(val seriesId: String) : BouncerScreen("points-table/$seriesId") {
-        companion object {
-            const val ROUTE_PATTERN = "points-table/{seriesId}"
-            const val ARG_SERIES_ID = "seriesId"
-
-            fun createRoute(seriesId: String): String = "points-table/${seriesId.encodeUrlSafe()}"
-
-            val arguments = listOf(
-                navArgument(ARG_SERIES_ID) {
-                    type = NavType.StringType
-                    nullable = false
-                }
-            )
-        }
-    }
-
-    /**
      * Player comparison screen.
      */
-    data object PlayerComparison : BouncerScreen("compare-players")
+    data object PlayerComparison : BouncerScreen("compare-players") {
+        /** The player whose page Compare was tapped on, already in the first slot. */
+        const val ARG_FIRST = "first"
+        const val ROUTE_PATTERN = "compare-players?first={first}"
+
+        fun createRoute(first: String?): String =
+            if (first.isNullOrBlank()) route else "$route?first=${first.encodeUrlSafe()}"
+
+        val arguments = listOf(
+            navArgument(ARG_FIRST) {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            },
+        )
+    }
 
     /** In-app notification inbox */
     data object Notifications : BouncerScreen("notifications")
@@ -242,15 +231,23 @@ sealed class BouncerScreen(val route: String) {
          */
         val moreChildRoutes by lazy {
             setOf(
-                Settings.route,
-                Appearance.route,
+                Favorites.route,
                 About.route,
                 DevTools.route,
-                Search.route,
-                PlayerComparison.route,
-                Notifications.route,
             )
         }
+
+        /**
+         * Pages opened from any tab — a player, a team, search, the comparison, Alerts. They belong
+         * to no tab, so the bar keeps the one they were opened from: a player opened from a series
+         * used to light up More, and Alerts behind Home's bell did too.
+         */
+        val sharedRoutes by lazy {
+            setOf(Search.route, PlayerComparison.route, Notifications.route, Reminders.route)
+        }
+
+        fun isSharedRoute(route: String): Boolean =
+            route.substringBefore('?') in sharedRoutes || route.startsWith("player/") || route.startsWith("team/")
 
         /**
          * Check if a route is a child of the "More" tab.
@@ -262,22 +259,20 @@ sealed class BouncerScreen(val route: String) {
 
         /**
          * Get the parent tab route for a given screen route.
-         * Returns the route itself if it's a primary tab.
+         * Returns the route itself if it's a primary tab; Home for a page no tab owns.
          */
-        fun getParentTab(route: String?): String {
-            return when {
-                route == null -> Home.route
-                route in primaryTabs.map { it.route } -> route
-                route.startsWith("news/") -> News.route
-                isMoreChildRoute(route) -> More.route
-                route == Matches.route -> Home.route
-                route.startsWith("match/") -> Home.route
-                route.startsWith("player/") -> More.route
-                route.startsWith("team/") -> More.route
-                route.startsWith("series/") -> SeriesList.route
-                route.startsWith("points-table/") -> SeriesList.route
-                else -> Home.route
-            }
+        fun getParentTab(route: String?): String = ownerTab(route) ?: Home.route
+
+        /** The tab that owns [route], or null for a [isSharedRoute] page, which keeps whatever tab was lit. */
+        fun ownerTab(route: String?): String? = when {
+            route == null -> Home.route
+            route in primaryTabs.map { it.route } -> route
+            isSharedRoute(route) -> null
+            route.startsWith("news/") -> News.route
+            isMoreChildRoute(route) -> More.route
+            route.startsWith("match/") -> Home.route
+            route.startsWith("series/") -> SeriesList.route
+            else -> Home.route
         }
     }
 }

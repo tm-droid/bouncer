@@ -7,27 +7,6 @@ import org.junit.Test
 
 class LiveActivityViewModelTest {
 
-    @Test
-    fun `selectedFormat starts as All`() {
-        val vm = LiveActivityViewModel()
-        assertEquals("All", vm.selectedFormat.value)
-    }
-
-    @Test
-    fun `setFormat updates selectedFormat`() {
-        val vm = LiveActivityViewModel()
-        vm.setFormat("T20")
-        assertEquals("T20", vm.selectedFormat.value)
-    }
-
-    @Test
-    fun `setFormat to All resets filter`() {
-        val vm = LiveActivityViewModel()
-        vm.setFormat("ODI")
-        vm.setFormat("All")
-        assertEquals("All", vm.selectedFormat.value)
-    }
-
     // ── The home screen's "All" status chip ───────────────────────────────────
     //
     // It used to map onto "Live" on its way into the ViewModel, so tapping it moved the highlight

@@ -59,8 +59,8 @@ import com.tanush.bouncer.models.FormatStats
 import com.tanush.bouncer.models.PlayerProfile
 import com.tanush.bouncer.network.PlayerProfileScraper
 import com.tanush.bouncer.services.PlayerCacheWorker
-import com.tanush.bouncer.ui.components.premium.PlayerFormCard
-import com.tanush.bouncer.ui.screens.player.buildBatterForm
+import com.tanush.bouncer.ui.screens.player.playerBioItems
+import com.tanush.bouncer.ui.screens.player.playerRecentFormItems
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
@@ -269,13 +269,7 @@ private fun PlayerProfileList(
         }
         formatStatItems(profile.stats[selectedFormat], selectedFormat)
 
-        // Recent form card — only shown when batting form data was scraped
-        buildBatterForm(profile)?.let { batterForm ->
-            item(key = "form_card") {
-                Column(Modifier.padding(spacing.lg)) {
-                    PlayerFormCard(batters = listOf(batterForm), bowlers = emptyList())
-                }
-            }
-        }
+        playerRecentFormItems(profile)
+        playerBioItems(profile)
     }
 }

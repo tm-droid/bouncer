@@ -84,16 +84,16 @@ fun BottomNavBarV2(
 }
 
 private val MORE_CHILD_ROUTES = setOf(
-    "settings", "appearance", "about", "devtools",
+    "favourites", "about", "devtools",
 )
 
 // Child routes that keep a tab highlighted. Home owns match detail and the full match list it links
-// to; Series owns series detail and points tables.
+// to; Series owns series detail.
 private val TAB_CHILDREN: Map<String, (String) -> Boolean> = mapOf(
-    "home" to { route -> route.startsWith("match/") || route == "all_matches" },
-    "series" to { route -> route.startsWith("series/") || route.startsWith("points-table/") },
+    "home" to { route -> route.startsWith("match/") },
+    "series" to { route -> route.startsWith("series/") },
     "news" to { route -> route.startsWith("news/") },
-    "more" to { route -> route in MORE_CHILD_ROUTES || route.startsWith("player/") },
+    "more" to { route -> route in MORE_CHILD_ROUTES },
 )
 
 private fun isTabActive(currentRoute: String?, tabRoute: String): Boolean = when (currentRoute) {

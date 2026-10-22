@@ -37,8 +37,6 @@ import com.tanush.bouncer.models.Innings
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.TeamCrest
-import com.tanush.bouncer.ui.screens.matchdetail.v2.WagonWheelRow
-import com.tanush.bouncer.ui.screens.matchdetail.v2.wagonWheelsFor
 import com.tanush.bouncer.ui.theme.rememberTeamInk
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
@@ -76,6 +74,7 @@ fun PremiumScorecardTab(
     val innings = scorecard.innings.getOrNull(selected) ?: return
     val isLive = LocalScorecardIsLive.current
     val battingNow = isLive && selected == scorecard.innings.lastIndex
+    val notBatted = yetToBat(innings, LocalScorecardSquads.current)
 
     Column(modifier = modifier.fillMaxSize()) {
         if (scorecard.innings.size > 1) {
@@ -89,12 +88,10 @@ fun PremiumScorecardTab(
                 InningsSummary(innings, requiredRate = if (battingNow) calculateRequiredRunRate(scorecard, selected) else null)
             }
             battingItems(innings, battingNow)
-            fallOfWicketItems(innings)
-            val wheels = wagonWheelsFor(scorecard.wagon, selected + 1)
-            if (wheels.isNotEmpty()) {
-                item(key = "wagon_header") { SectionHeaderV2(title = stringResource(R.string.scorecard_wagon_title)) }
-                item(key = "wagon_wheels") { WagonWheelRow(wheels) }
+            if (notBatted.isNotEmpty()) {
+                item(key = "yet_to_bat") { YetToBatRow(notBatted.map { it.name }, battingNow) }
             }
+            fallOfWicketItems(innings)
             partnershipItems(innings)
             bowlingItems(innings)
         }

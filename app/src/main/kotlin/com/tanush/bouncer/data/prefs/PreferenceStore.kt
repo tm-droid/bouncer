@@ -201,7 +201,7 @@ object PreferenceStore {
 
     fun <T> write(key: Preferences.Key<T>, value: T) {
         val store = requireStore()
-        // Readable immediately — SettingsScreenV2 writes a toggle and re-reads it in the same
+        // Readable immediately — the More tab writes a toggle and re-reads it in the same
         // frame. `apply()` behaved the same way. What changed is that the durable write no longer
         // has to finish before the activity can pause.
         pending[key] = value as Any

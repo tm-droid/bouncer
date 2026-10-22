@@ -18,7 +18,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import com.tanush.bouncer.data.history.PastFeedSource
-import com.tanush.bouncer.ui.navigation.LocalOpenSeries
+import com.tanush.bouncer.ui.navigation.BouncerScreen
+import com.tanush.bouncer.ui.navigation.LocalOpenRoute
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -433,7 +434,10 @@ fun MatchDetailViewV2(
                         scorecard = uiState.scorecard,
                         isLoading = uiState.scorecardLoading,
                         onRetry = vm::retryInitialLoad,
-                        isLive = liveMatch.isLive,
+                        // The screen's phase, not the list's status: after the toss the status line
+                        // reads "India opt to bowl" for the whole first innings.
+                        isLive = phase == MatchPhase.IN_PLAY,
+                        squads = uiState.squads,
                     )
                     MatchTab.COMMENTARY -> CommentaryTabV2(
                         commentary = uiState.commentary,
@@ -530,6 +534,7 @@ private fun ScoreHeaderV2(
     // loud enough to make the scores sit on an uneven ground. The scores are the header.
 
     val statusType = determineMatchStatus(match)
+    val openRoute = LocalOpenRoute.current
 
     val flashOverlay = rememberEventFlashOverlay(recentBalls)
 
@@ -544,7 +549,11 @@ private fun ScoreHeaderV2(
         // bar cannot: the series (a link to it, when the match knows its series id) and which match
         // of it this is.
         Row(verticalAlignment = Alignment.CenterVertically) {
-            MatchContextLine(match = match, onSeriesClick = LocalOpenSeries.current, modifier = Modifier.weight(1f))
+            MatchContextLine(
+                match = match,
+                onSeriesClick = openRoute?.let { open -> { id: String -> open(BouncerScreen.SeriesDetail.createRoute(id)) } },
+                modifier = Modifier.weight(1f),
+            )
             StatusBadgeV2(statusType)
         }
         Spacer(Modifier.height(spacing.md))
@@ -558,6 +567,7 @@ private fun ScoreHeaderV2(
             overs = overs1,
             isBatting = team1?.isBatting == true,
             anyBatting = match.teams.any { it.isBatting },
+            onTeamClick = teamOpener(openRoute, team1?.name),
         )
         Spacer(Modifier.height(spacing.sm))
 
@@ -570,6 +580,7 @@ private fun ScoreHeaderV2(
             overs = overs2,
             isBatting = team2?.isBatting == true,
             anyBatting = match.teams.any { it.isBatting },
+            onTeamClick = teamOpener(openRoute, team2?.name),
         )
         Spacer(Modifier.height(spacing.sm))
 
@@ -744,4 +755,11 @@ private fun LiveDataErrorBanner(message: String, onRetry: () -> Unit) {
             Text(stringResource(R.string.action_retry), color = colors.primaryText)
         }
     }
+}
+
+/** Opens a side's team page, or null when nothing can navigate or the side has no name. */
+private fun teamOpener(openRoute: ((String) -> Unit)?, teamName: String?): (() -> Unit)? {
+    val name = teamName?.takeIf { it.isNotBlank() } ?: return null
+    val open = openRoute ?: return null
+    return { open(BouncerScreen.TeamDetail.createRoute(name)) }
 }

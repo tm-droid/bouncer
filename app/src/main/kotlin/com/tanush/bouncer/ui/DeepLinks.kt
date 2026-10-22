@@ -65,20 +65,22 @@ private const val MAX_DEEP_LINK_ID_LENGTH = 64
 // usable id never reaches this table (see deepLinkMatchId); one without lands on Home.
 private val DEEP_LINK_TABS = mapOf(
     "home" to BouncerScreen.Home.route,
+    // The All matches screen was Home again; its links open Home.
+    "matches" to BouncerScreen.Home.route,
+    "all_matches" to BouncerScreen.Home.route,
     "match" to BouncerScreen.Home.route,
     "series" to BouncerScreen.SeriesList.route,
-    "favorites" to BouncerScreen.Favorites.route,
-    "favourites" to BouncerScreen.Favorites.route,
+    // Favourites, settings and appearance are all on the More tab now.
+    "favorites" to BouncerScreen.More.route,
+    "favourites" to BouncerScreen.More.route,
+    "settings" to BouncerScreen.More.route,
+    "appearance" to BouncerScreen.More.route,
     "more" to BouncerScreen.More.route,
     "news" to BouncerScreen.News.route,
 )
 
 // …and to the page it pushes.
 private val DEEP_LINK_PAGES = mapOf(
-    "matches" to BouncerScreen.Matches.route,
-    "all_matches" to BouncerScreen.Matches.route,
-    "settings" to BouncerScreen.Settings.route,
-    "appearance" to BouncerScreen.Appearance.route,
     "about" to BouncerScreen.About.route,
 )
 

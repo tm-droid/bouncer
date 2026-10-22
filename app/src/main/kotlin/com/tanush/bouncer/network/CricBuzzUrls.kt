@@ -16,6 +16,15 @@ object CricBuzzUrls {
     fun squadsUrl(matchId: String) = "$BASE/cricket-match-squads/$matchId"
 
     /**
+     * The player id in a scorecard row's `profileUrl` (`/profiles/{id}/{slug}`, relative or
+     * absolute), or null. It is the id a player route carries as `cbId`, and the one the team
+     * sheet's `SquadPlayer.id` holds.
+     */
+    fun profileIdOf(profileUrl: String): String? = PROFILE_ID.find(profileUrl)?.groupValues?.get(1)
+
+    private val PROFILE_ID = Regex("""/profiles/(\d+)""")
+
+    /**
      * Returns the appropriate match list URL for the given status tab.
      */
     fun urlForStatus(status: String): String = when (status) {

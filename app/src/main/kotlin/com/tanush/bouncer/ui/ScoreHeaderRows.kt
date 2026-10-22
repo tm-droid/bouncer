@@ -1,5 +1,11 @@
 package com.tanush.bouncer.ui
 
+import com.tanush.bouncer.R
+
+import androidx.compose.ui.res.stringResource
+
+import androidx.compose.foundation.clickable
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -90,6 +96,7 @@ internal fun TeamScoreRow(
     overs: String,
     isBatting: Boolean,
     anyBatting: Boolean,
+    onTeamClick: (() -> Unit)? = null,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -101,17 +108,25 @@ internal fun TeamScoreRow(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TeamCrest(teamName = teamName, logoUrl = logoUrl, size = 28.dp, acronym = acronym.ifBlank { null })
-        Spacer(Modifier.width(spacing.md))
-        Text(
-            text = acronym.ifBlank { teamName },
-            style = typography.titleMedium,
-            color = ink,
-            fontWeight = if (isBatting) FontWeight.Bold else FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
+        // The crest and code open the team, where the app has a page for it. The score stays a score.
+        val openTeam = stringResource(R.string.cd_open_team, teamName)
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .then(if (onTeamClick != null) Modifier.clickable(onClickLabel = openTeam, onClick = onTeamClick) else Modifier),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TeamCrest(teamName = teamName, logoUrl = logoUrl, size = 28.dp, acronym = acronym.ifBlank { null })
+            Spacer(Modifier.width(spacing.md))
+            Text(
+                text = acronym.ifBlank { teamName },
+                style = typography.titleMedium,
+                color = ink,
+                fontWeight = if (isBatting) FontWeight.Bold else FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         if (score.isNotBlank()) {
             HeaderScore(
                 score = score,

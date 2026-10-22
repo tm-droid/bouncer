@@ -1,5 +1,9 @@
 package com.tanush.bouncer.ui.components.premium
 
+
+
+
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -84,7 +88,10 @@ internal fun BattingRow(batsman: BatsmanStats, battingNow: Boolean, isTopScore: 
     val notOut = batsman.dismissal.isBlank() || batsman.dismissal.contains("not out", ignoreCase = true)
     val ink = rememberTeamInk(teamName)
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = ROW_PADDING_H, vertical = ROW_PADDING_V),
+        modifier = Modifier
+            .fillMaxWidth()
+            .playerLink(batsman.name, batsman.profileUrl)
+            .padding(horizontal = ROW_PADDING_H, vertical = ROW_PADDING_V),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -203,19 +210,29 @@ internal fun BowlingRow(bowler: BowlerStats, isBest: Boolean) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val figures = if (isBest) colors.onSurface else colors.textSecondary
+    val extras = bowlingExtras(bowler)
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = ROW_PADDING_H, vertical = ROW_PADDING_V),
+        modifier = Modifier
+            .fillMaxWidth()
+            .playerLink(bowler.name, bowler.profileUrl)
+            .padding(horizontal = ROW_PADDING_H, vertical = ROW_PADDING_V),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = bowler.name,
-            style = typography.bodyMedium,
-            fontWeight = if (isBest) FontWeight.Bold else FontWeight.SemiBold,
-            color = colors.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = bowler.name,
+                style = typography.bodyMedium,
+                fontWeight = if (isBest) FontWeight.Bold else FontWeight.SemiBold,
+                color = colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            // Under the name, like a batter's dismissal: two more figure columns would leave the
+            // name a few letters on a phone.
+            if (extras != null) {
+                Text(text = extras, style = typography.bodySmall, color = colors.textSecondary, maxLines = 1)
+            }
+        }
         Cell(bowler.overs, COL_MID, typography.numericSmall, figures)
         Cell(bowler.maidens, COL_NARROW, typography.numericSmall, figures)
         Cell(bowler.runs, COL_MID, typography.numericSmall, figures)

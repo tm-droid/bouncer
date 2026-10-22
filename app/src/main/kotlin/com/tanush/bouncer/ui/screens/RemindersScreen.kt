@@ -1,5 +1,9 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.foundation.layout.Box
+
+import androidx.compose.foundation.clickable
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -42,49 +46,30 @@ import java.text.DateFormat
 import java.util.Date
 
 /**
- * The reminders a user has set from match pages, soonest first, each cancellable.
+ * The reminders a user has set from match pages, soonest first, each cancellable, on the Alerts
+ * screen's Reminders tab. A reminder for a match opens it.
  *
  * Replaces `RemindersActivity`, which nothing ever launched and whose list nothing ever wrote to:
  * the match page scheduled an alarm and kept no record of it, so a reminder could be set but never
  * seen or undone.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RemindersScreen(onBack: () -> Unit) {
+internal fun ReminderList(reminders: List<Reminder>, onCancel: (Reminder) -> Unit, onOpenMatch: (String) -> Unit) {
     val colors = BouncerThemeV2.colors
-    val context = LocalContext.current
-    var reminders by remember { mutableStateOf(RemindersManager.upcoming(context, System.currentTimeMillis())) }
-
-    Scaffold(
-        topBar = {
-            RemindersTopBar(showClearAll = reminders.isNotEmpty(), onBack = onBack) {
-                reminders.forEach { ReminderScheduler.cancelReminder(context, it.id) }
-                RemindersManager.clearAll(context)
-                reminders = emptyList()
-            }
-        },
-        containerColor = colors.background,
-    ) { innerPadding ->
-        if (reminders.isEmpty()) {
-            EmptyStateV2(
-                title = stringResource(R.string.reminders_no_reminders_set),
-                subtitle = stringResource(R.string.reminders_empty_subtitle),
-                icon = Icons.Outlined.NotificationsNone,
-                modifier = Modifier.padding(innerPadding),
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(bottom = BouncerThemeV2.spacing.xxl),
-            ) {
-                itemsIndexed(reminders, key = { index, r -> "${r.id}-$index" }) { index, reminder ->
-                    if (index > 0) HorizontalDivider(color = colors.divider)
-                    ReminderRow(reminder) {
-                        ReminderScheduler.cancelReminder(context, reminder.id)
-                        RemindersManager.deleteReminder(context, reminder.id)
-                        reminders = RemindersManager.upcoming(context, System.currentTimeMillis())
-                    }
-                }
+    if (reminders.isEmpty()) {
+        EmptyStateV2(
+            title = stringResource(R.string.reminders_no_reminders_set),
+            subtitle = stringResource(R.string.reminders_empty_subtitle),
+            icon = Icons.Outlined.NotificationsNone,
+        )
+        return
+    }
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = BouncerThemeV2.spacing.xxl)) {
+        itemsIndexed(reminders, key = { index, r -> "${r.id}-$index" }) { index, reminder ->
+            if (index > 0) HorizontalDivider(color = colors.divider)
+            val matchId = reminder.matchId
+            Box(if (matchId.isNullOrBlank()) Modifier else Modifier.clickable { onOpenMatch(matchId) }) {
+                ReminderRow(reminder) { onCancel(reminder) }
             }
         }
     }
@@ -117,37 +102,4 @@ private fun ReminderRow(reminder: Reminder, onCancel: () -> Unit) {
             Text(stringResource(R.string.reminders_delete), color = colors.primaryText)
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RemindersTopBar(showClearAll: Boolean, onBack: () -> Unit, onClearAll: () -> Unit) {
-    val colors = BouncerThemeV2.colors
-    CenterAlignedTopAppBar(
-        title = {
-            Text(
-                stringResource(R.string.reminders_scheduled_reminders),
-                style = BouncerThemeV2.typography.titleMedium,
-                color = colors.onSurface,
-                fontWeight = FontWeight.Bold,
-            )
-        },
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.common_back),
-                    tint = colors.onSurface,
-                )
-            }
-        },
-        actions = {
-            if (showClearAll) {
-                TextButton(onClick = onClearAll) {
-                    Text(stringResource(R.string.reminders_clear_all), color = colors.primaryText)
-                }
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.background),
-    )
 }

@@ -32,8 +32,17 @@ class BouncerScreenInitOrderTest {
 
     @Test
     fun `a More child touched first still resolves to More`() {
-        for (child in listOf("Settings", "Search", "Notifications")) {
-            assertEquals("more", parentTabWhenFirstTouched(child, "settings"))
+        for (child in listOf("Favorites", "About", "Search")) {
+            assertEquals("more", parentTabWhenFirstTouched(child, "about"))
         }
+    }
+
+    @Test
+    fun `a page opened from any tab belongs to none, so the bar keeps the tab it came from`() {
+        for (route in listOf("player/Virat%20Kohli?cbId=1413", "team/India", "search?tab=NEWS", "notifications", "compare-players")) {
+            assertEquals(null, BouncerScreen.ownerTab(route))
+        }
+        assertEquals("series", BouncerScreen.ownerTab("series/123"))
+        assertEquals("home", BouncerScreen.ownerTab("match/42"))
     }
 }

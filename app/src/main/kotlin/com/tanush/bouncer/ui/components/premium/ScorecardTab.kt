@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.components.premium
 
+import com.tanush.bouncer.network.MatchSquads
+
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.CompositionLocalProvider
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -28,6 +30,7 @@ fun ScorecardTab(
     modifier: Modifier = Modifier,
     onRetry: (() -> Unit)? = null,
     isLive: Boolean = false,
+    squads: MatchSquads? = null,
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     when {
@@ -46,7 +49,7 @@ fun ScorecardTab(
                 }
             }
         }
-        else -> CompositionLocalProvider(LocalScorecardIsLive provides isLive) {
+        else -> CompositionLocalProvider(LocalScorecardIsLive provides isLive, LocalScorecardSquads provides squads) {
             PremiumScorecardTab(scorecard = scorecard, modifier = modifier)
         }
     }
@@ -57,3 +60,6 @@ fun ScorecardTab(
  * [PremiumScorecardTab], whose signature is the key of its detekt baseline entries.
  */
 internal val LocalScorecardIsLive = staticCompositionLocalOf { false }
+
+/** The match's team sheets, for "Yet to bat". A local for the same reason as [LocalScorecardIsLive]. */
+internal val LocalScorecardSquads = staticCompositionLocalOf<MatchSquads?> { null }

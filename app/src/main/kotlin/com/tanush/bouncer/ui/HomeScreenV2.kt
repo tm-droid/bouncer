@@ -1,16 +1,19 @@
 package com.tanush.bouncer.ui
 
+import androidx.compose.runtime.LaunchedEffect
+
+
+
+
+
+
 import com.tanush.bouncer.services.MatchCacheService
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -52,10 +55,8 @@ import com.tanush.bouncer.ui.components.rememberIsOffline
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.HeroMatchCard
-import com.tanush.bouncer.ui.components.v2.MatchCardV2
 import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
-import com.tanush.bouncer.ui.screens.RefreshFailureSnackbarEffect
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.v2.bouncerScreenBackground
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
@@ -75,9 +76,6 @@ import com.tanush.bouncer.viewmodels.STATUS_ALL
 fun HomeScreenV2(
     viewModel: LiveActivityViewModel,
     onMatchClick: (CricketMatch) -> Unit,
-    onMoreMatchesClick: () -> Unit,
-    onAchievementsClick: () -> Unit,
-    onNewsClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
 ) {
@@ -87,30 +85,20 @@ fun HomeScreenV2(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val loadingState by viewModel.loadingState.collectAsStateWithLifecycle()
-    val unreadCount by NotificationInboxManager.unreadCount.collectAsStateWithLifecycle()
-    val isOffline = rememberIsOffline()
+    val favourites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
+    val favouriteNames = remember(favourites) { favourites.map { it.trim().lowercase() }.toSet() }
+    val matches = remember(currentMatches, filters, favouriteNames) { currentMatches.narrowedBy(filters, favouriteNames) }
 
     // Refresh failed while content is on screen: keep the stale list, say so.
     // (The empty-list failure case is handled by the EmptyState below.)
     val snackbarHostState = remember { SnackbarHostState() }
-    RefreshFailureSnackbarEffect(
-        loadingState = loadingState,
-        hasContent = currentMatches.isNotEmpty(),
-        snackbarHostState = snackbarHostState,
-    )
+    RefreshFailureSnackbarEffect(loadingState = loadingState, hasContent = matches.isNotEmpty(), snackbarHostState = snackbarHostState)
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            Column {
-                HomeTopBar(unreadCount, onNotificationsClick, onSearchClick)
-                NetworkStatusBanner(isOffline = isOffline)
-                HomeFilterBar(
-                    selectedStatus = selectedStatus,
-                    filters = filters,
-                    onStatusSelected = { viewModel.setAndFetchMatches(it) },
-                    onFiltersChanged = onFiltersChanged,
-                )
+            HomeHeader(selectedStatus, filters, onFiltersChanged, onNotificationsClick, onSearchClick) {
+                viewModel.setAndFetchMatches(it)
             }
         },
         containerColor = BouncerThemeV2.colors.background,
@@ -120,19 +108,42 @@ fun HomeScreenV2(
             onRefresh = { viewModel.refreshMatches() },
             modifier = Modifier.padding(innerPadding),
         ) {
-            val filtered = if (filters.active) FilteredList(filters.label) { onFiltersChanged(HomeFilters()) } else null
             HomeMatchList(
-                matches = currentMatches,
+                matches = matches,
+                favouriteNames = favouriteNames,
+                byDay = dayOrderFor(selectedStatus),
                 isLoading = isLoading,
                 loadError = (loadingState as? LoadingState.Error)?.message,
-                filtered = filtered,
+                filtered = if (filters.active) FilteredList(filters.label) { onFiltersChanged(HomeFilters()) } else null,
                 onMatchClick = onMatchClick,
-                onMoreMatchesClick = onMoreMatchesClick,
                 onRetry = { viewModel.refreshMatches() },
                 onSeeUpcoming = { viewModel.setAndFetchMatches(MatchCacheService.UPCOMING) }
                     .takeIf { selectedStatus == MatchCacheService.LIVE },
             )
         }
+    }
+}
+
+/** The top bar, the offline banner and the status tabs with the filter menu. */
+@Composable
+private fun HomeHeader(
+    selectedStatus: String,
+    filters: HomeFilters,
+    onFiltersChanged: (HomeFilters) -> Unit,
+    onNotificationsClick: () -> Unit,
+    onSearchClick: () -> Unit,
+    onStatusSelected: (String) -> Unit,
+) {
+    val unreadCount by NotificationInboxManager.unreadCount.collectAsStateWithLifecycle()
+    Column {
+        HomeTopBar(unreadCount, onNotificationsClick, onSearchClick)
+        NetworkStatusBanner(isOffline = rememberIsOffline())
+        HomeFilterBar(
+            selectedStatus = selectedStatus,
+            filters = filters,
+            onStatusSelected = onStatusSelected,
+            onFiltersChanged = onFiltersChanged,
+        )
     }
 }
 
@@ -217,20 +228,24 @@ private fun HomeFilterBar(
 @Composable
 private fun HomeMatchList(
     matches: List<CricketMatch>,
+    favouriteNames: Set<String>,
+    byDay: DayOrder,
     isLoading: Boolean,
     loadError: String?,
     filtered: FilteredList?,
     onMatchClick: (CricketMatch) -> Unit,
-    onMoreMatchesClick: () -> Unit,
     onRetry: () -> Unit,
     onSeeUpcoming: (() -> Unit)?,
 ) {
     val spacing = BouncerThemeV2.spacing
+    val (featured, rows) = remember(matches, favouriteNames) { splitFeatured(matches, favouriteNames) }
     val subscriptions by MatchSubscriptionManager.subscriptions.collectAsStateWithLifecycle()
     val alertPrefs by MatchSubscriptionManager.alertPrefs.collectAsStateWithLifecycle()
-    val favourites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
-    val favouriteNames = remember(favourites) { favourites.map { it.trim().lowercase() }.toSet() }
-    val (featured, rows) = remember(matches, favouriteNames) { splitFeatured(matches, favouriteNames) }
+    val rowContext = RowContext(
+        favouriteNames = favouriteNames,
+        following = subscriptions + alertPrefs.filterValues { it.anyOn }.keys,
+        onMatchClick = onMatchClick,
+    )
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().bouncerScreenBackground(),
@@ -241,24 +256,18 @@ private fun HomeMatchList(
                 // Mirror the real row's geometry so first paint does not jump.
                 ShimmerMatchCard(Modifier.padding(horizontal = spacing.lg, vertical = spacing.rowVertical))
             }
-            matches.isEmpty() -> homeEmptyItems(loadError, filtered, onRetry, onMoreMatchesClick, onSeeUpcoming)
+            matches.isEmpty() -> homeEmptyItems(loadError, filtered, onRetry, onSeeUpcoming)
             else -> {
                 featured?.let { fm ->
                     item(key = "hero_${fm.id}", contentType = "hero") {
                         HeroMatchCard(match = fm, onClick = { onMatchClick(fm) }, modifier = Modifier.animateItem())
                     }
                 }
-                items(rows, key = { "match_${it.id}" }, contentType = { "match" }) { match ->
-                    MatchCardV2(
-                        match = match,
-                        onClick = { onMatchClick(match) },
-                        modifier = Modifier.fillMaxWidth().animateItem(),
-                        isFollowing = match.id in subscriptions || alertPrefs[match.id]?.anyOn == true,
-                        followable = true,
-                        isFavouriteTeam = match.hasFavouriteTeam(favouriteNames),
-                    )
+                if (byDay == DayOrder.NONE) {
+                    matchRows(rows, "all", rowContext)
+                } else {
+                    dayGroupedRows(rows, byDay == DayOrder.DESCENDING, rowContext)
                 }
-                item(key = "all_matches") { AllMatchesLink(onMoreMatchesClick) }
             }
         }
     }
@@ -269,7 +278,6 @@ private fun LazyListScope.homeEmptyItems(
     loadError: String?,
     filtered: FilteredList?,
     onRetry: () -> Unit,
-    onMoreMatchesClick: () -> Unit,
     onSeeUpcoming: (() -> Unit)?,
 ) {
     when {
@@ -284,18 +292,15 @@ private fun LazyListScope.homeEmptyItems(
             )
         }
         // A filter that empties the list says which filter, and offers the way out. It used to
-        // read "No matches found" with no action and no link to the full list.
-        filtered != null -> {
-            item(key = "empty_filtered") {
-                EmptyStateV2(
-                    title = stringResource(R.string.home_empty_filtered_title, filtered.label),
-                    subtitle = stringResource(R.string.home_empty_filtered_subtitle),
-                    icon = Icons.Outlined.SportsCricket,
-                    onRetry = filtered.onShowAll,
-                    actionLabel = stringResource(R.string.home_show_all),
-                )
-            }
-            item(key = "all_matches") { AllMatchesLink(onMoreMatchesClick) }
+        // read "No matches found" with no action.
+        filtered != null -> item(key = "empty_filtered") {
+            EmptyStateV2(
+                title = stringResource(R.string.home_empty_filtered_title, filtered.label),
+                subtitle = stringResource(R.string.home_empty_filtered_subtitle),
+                icon = Icons.Outlined.SportsCricket,
+                onRetry = filtered.onShowAll,
+                actionLabel = stringResource(R.string.home_show_all),
+            )
         }
         // Nothing live is the usual state between matches, not a filter problem; the old copy said
         // "Try changing your filters" on an unfiltered Live tab.
@@ -318,22 +323,22 @@ private fun LazyListScope.homeEmptyItems(
     }
 }
 
-@Composable
-private fun AllMatchesLink(onClick: () -> Unit) {
-    val spacing = BouncerThemeV2.spacing
-    Spacer(Modifier.height(spacing.xs))
-    Text(
-        text = stringResource(R.string.home_all_matches),
-        style = BouncerThemeV2.typography.labelLarge,
-        color = BouncerThemeV2.colors.primaryText,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = spacing.lg, vertical = spacing.md),
-    )
-}
-
 // ─── Helpers ──────────────────────────────────────────────
+
+/** Shows the refresh-failure message as a snackbar when stale content is still visible. */
+@Composable
+private fun RefreshFailureSnackbarEffect(
+    loadingState: LoadingState,
+    hasContent: Boolean,
+    snackbarHostState: SnackbarHostState,
+) {
+    LaunchedEffect(loadingState) {
+        val errorState = loadingState as? LoadingState.Error
+        if (errorState != null && hasContent) {
+            snackbarHostState.showSnackbar(errorState.message)
+        }
+    }
+}
 
 /**
  * The featured match is a live one — a followed team's first, then any. Upcoming and finished lists
@@ -351,10 +356,10 @@ private fun splitFeatured(
     return featured to followed + others
 }
 
-private fun CricketMatch.hasFavouriteTeam(favouriteNames: Set<String>): Boolean =
+internal fun CricketMatch.hasFavouriteTeam(favouriteNames: Set<String>): Boolean =
     favouriteNames.isNotEmpty() && teams.any { it.name.trim().lowercase() in favouriteNames }
 
-private fun tabForStatus(vmStatus: String): String = when (vmStatus) {
+internal fun tabForStatus(vmStatus: String): String = when (vmStatus) {
     "Live" -> "Live"
     "Upcoming" -> "Upcoming"
     "Recent", "Completed" -> "Recent"

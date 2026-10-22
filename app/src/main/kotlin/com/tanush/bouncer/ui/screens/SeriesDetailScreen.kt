@@ -76,9 +76,9 @@ private const val TAB_STATS = 2
 @Composable
 fun SeriesDetailScreen(
     seriesId: String,
-    onPointsTableClick: (String) -> Unit,
     onMatchClick: (CricketMatch) -> Unit,
-    onPlayerClick: (String) -> Unit,
+    onPlayerClick: (name: String, cricbuzzId: String?) -> Unit,
+    onTeamClick: (String) -> Unit,
     onBackClick: () -> Unit,
     viewModel: SeriesDetailViewModel = viewModel(),
 ) {
@@ -105,14 +105,11 @@ fun SeriesDetailScreen(
                     stringResource(R.string.series_stats),
                 ),
                 selectedIndex = selectedTab,
-                onSelect = { index ->
-                    // Points table opens its own screen; keep the current tab selected so returning
-                    // here doesn't land on a blank body.
-                    if (index == TAB_POINTS) onPointsTableClick(seriesId) else selectedTab = index
-                },
+                onSelect = { selectedTab = it },
             )
             when (selectedTab) {
                 TAB_SCHEDULE -> ScheduleTab(schedule, onMatchClick, viewModel::retrySchedule)
+                TAB_POINTS -> PointsTableTab(seriesId = seriesId, onTeamClick = onTeamClick)
                 TAB_STATS -> StatsTab(viewModel, onPlayerClick)
             }
         }
@@ -203,7 +200,7 @@ internal fun scheduleAnchorIndex(days: List<SeriesMatchDay>, nowMs: Long): Int {
 private const val STALE_FIXTURE_MS = 24 * 60 * 60 * 1000L
 
 @Composable
-private fun StatsTab(viewModel: SeriesDetailViewModel, onPlayerClick: (String) -> Unit) {
+private fun StatsTab(viewModel: SeriesDetailViewModel, onPlayerClick: (name: String, cricbuzzId: String?) -> Unit) {
     val state by viewModel.stats.collectAsStateWithLifecycle()
     val selectedType by viewModel.selectedStatType.collectAsStateWithLifecycle()
     val selectedFormat by viewModel.selectedFormat.collectAsStateWithLifecycle()
@@ -239,7 +236,7 @@ private fun StatsContent(
     selectedFormat: String?,
     onTypeSelected: (String) -> Unit,
     onFormatSelected: (String) -> Unit,
-    onPlayerClick: (String) -> Unit,
+    onPlayerClick: (name: String, cricbuzzId: String?) -> Unit,
 ) {
     val spacing = BouncerThemeV2.spacing
     val table = stats.tables.firstOrNull { it.format == selectedFormat } ?: stats.tables.firstOrNull()
@@ -291,7 +288,7 @@ private fun StatsContent(
  * which does not fit a phone. Every row shares one [ScrollState], so the columns stay aligned.
  */
 @Composable
-private fun StatsTable(table: SeriesStatsTable, onPlayerClick: (String) -> Unit) {
+private fun StatsTable(table: SeriesStatsTable, onPlayerClick: (name: String, cricbuzzId: String?) -> Unit) {
     val colors = BouncerThemeV2.colors
     val spacing = BouncerThemeV2.spacing
     val scroll = rememberScrollState()
@@ -308,7 +305,8 @@ private fun StatsTable(table: SeriesStatsTable, onPlayerClick: (String) -> Unit)
                 name = row.playerName,
                 cells = row.cells,
                 scroll = scroll,
-                modifier = Modifier.clickable { onPlayerClick(row.playerName) },
+                // The row's Cricbuzz id goes with the name, so two players sharing a name open the right one.
+                modifier = Modifier.clickable { onPlayerClick(row.playerName, row.playerId.ifBlank { null }) },
             )
             HorizontalDivider(color = colors.divider, modifier = Modifier.padding(start = spacing.lg))
         }

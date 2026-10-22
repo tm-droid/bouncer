@@ -56,8 +56,10 @@ data class MatchTabContent(
  * The tabs for a match in [phase], in order. **The first is the one the screen opens on**: Info
  * for a fixture, Live while it is on, Summary once it is over.
  *
- * In play, Commentary is offered with nothing in it yet: its empty state says the feed is coming,
- * which is true. Before the toss and after the end, an empty feed is all there will ever be.
+ * In play, Scorecard and Commentary are offered with nothing in them yet. Commentary's empty state
+ * says the feed is coming, which is true; Scorecard's carries the retry that runs the on-device
+ * scrape when the server has not written a card. Before the toss and after the end, an empty feed
+ * is all there will ever be.
  */
 internal fun matchTabsFor(phase: MatchPhase, content: MatchTabContent): List<MatchTab> = when (phase) {
     MatchPhase.UPCOMING -> listOfNotNull(
@@ -67,7 +69,7 @@ internal fun matchTabsFor(phase: MatchPhase, content: MatchTabContent): List<Mat
     )
     MatchPhase.IN_PLAY -> listOfNotNull(
         MatchTab.LIVE,
-        MatchTab.SCORECARD.takeIf { content.scorecard },
+        MatchTab.SCORECARD,
         MatchTab.COMMENTARY,
         MatchTab.GRAPHS.takeIf { content.graphs },
         MatchTab.SQUADS.takeIf { content.squads },

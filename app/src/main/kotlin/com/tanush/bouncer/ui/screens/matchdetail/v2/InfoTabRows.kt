@@ -29,9 +29,7 @@ internal fun officialRows(officials: MatchContext.Officials, showUmpires: Boolea
     if (officials.tvUmpires.isNotEmpty()) add(R.string.match_info_tv_umpire to officials.tvUmpires.joinToString(", "))
     if (officials.referees.isNotEmpty()) add(R.string.match_info_referee to officials.referees.joinToString(", "))
     officials.reviews?.takeIf { it.isNotBlank() }?.let { add(R.string.match_info_reviews to it) }
-    // Names alone. The page's team for a debutant is the player's COUNTRY ("AUS" for a Victoria
-    // player in a Sheffield Shield match), not the side they are playing for.
-    if (officials.debutants.isNotEmpty()) add(R.string.match_info_debuts to officials.debutants.joinToString(", ") { it.name })
+    // Debutants are on Squads now, beside the elevens they are part of.
 }
 
 internal fun extractTossInfo(info: String, status: String): String {

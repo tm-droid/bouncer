@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
  * Two things used to be wrong here and both showed up under load rather than in review:
  *
  * 1. Every read and write added a Sentry breadcrumb. Sentry's ring buffer holds ~100 entries, and
- *    `SettingsScreenV2` alone performs nine reads while composing its first frame — so opening
+ *    The settings screen alone performed nine reads while composing its first frame — so opening
  *    Settings evicted most of the buffer, and whatever crashed next arrived with a timeline of
  *    "Reading boolean preference" and nothing useful. This is the same argument
  *    `.claude/rules/appwrite-patterns.md` already makes for not breadcrumbing per Appwrite
@@ -51,6 +51,8 @@ object PreferencesHelper {
     const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
     const val KEY_PREFERRED_CATEGORY = "preferred_category"
     const val KEY_PREFERRED_GENDER = "preferred_gender"
+    const val KEY_PREFERRED_FORMAT = "preferred_format"
+    const val KEY_HOME_MY_TEAMS = "home_my_teams"
 
     fun getBoolean(context: Context, key: String, default: Boolean): Boolean {
         PreferenceStore.initialize(context)

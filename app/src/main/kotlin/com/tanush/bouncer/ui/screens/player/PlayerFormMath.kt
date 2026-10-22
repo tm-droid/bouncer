@@ -2,7 +2,6 @@ package com.tanush.bouncer.ui.screens.player
 
 import com.tanush.bouncer.models.FormatStats
 import com.tanush.bouncer.models.PlayerProfile
-import com.tanush.bouncer.ui.components.premium.BatterForm
 
 /**
  * Batting form maths for the player detail screen.
@@ -76,7 +75,18 @@ internal fun formTrend(recentScores: List<Int>): String {
     }
 }
 
-/** Null when nothing was scraped into [PlayerProfile.recentForm], which is what hides the card. */
+/** A player's recent batting, summed up against their career. */
+internal data class BatterForm(
+    val name: String,
+    val recentScores: List<Int>,
+    val average: Double,
+    val strikeRate: Double,
+    /** 0..1, recent runs per innings against the career's; 0.5 is level. */
+    val formRating: Float,
+    val trend: String,
+)
+
+/** Null when nothing was scraped into [PlayerProfile.recentForm], which is what hides the section. */
 internal fun buildBatterForm(profile: PlayerProfile): BatterForm? {
     val recentScores = profile.recentForm.map { it.runs }
     if (recentScores.isEmpty()) return null

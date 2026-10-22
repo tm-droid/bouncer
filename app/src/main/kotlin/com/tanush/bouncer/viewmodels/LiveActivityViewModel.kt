@@ -34,8 +34,8 @@ import kotlinx.coroutines.launch
  * The home screen's "All" status: not a Cricbuzz endpoint, a union of the three that are.
  *
  * It used to be a chip that mapped to "Live" — so tapping it moved the highlight to Live and
- * changed nothing, which reads as a dead control. `AllMatchesScreenV2` dropped the chip rather
- * than fix it; this makes it mean what it says.
+ * changed nothing, which reads as a dead control. The All matches screen dropped the chip
+ * rather than fix it; this makes it mean what it says.
  */
 internal const val STATUS_ALL = "All"
 
@@ -97,17 +97,6 @@ class LiveActivityViewModel(
 
     private val _selectedCompetitionType = MutableStateFlow("All")
     val selectedCompetitionType: StateFlow<String> = _selectedCompetitionType.asStateFlow()
-
-    private val _selectedFormat = MutableStateFlow("All")
-    val selectedFormat: StateFlow<String> = _selectedFormat.asStateFlow()
-
-    // Format filter is applied in the UI layer (AllMatchesScreenV2); this ViewModel
-    // only holds the selected value for persistence across tab switches.
-    fun setFormat(format: String) {
-        if (_selectedFormat.value == format) return
-        breadcrumb("user.action", "Format changed to: $format")
-        _selectedFormat.value = format
-    }
 
     private val _selectedGender = MutableStateFlow("All")
     val selectedGender: StateFlow<String> = _selectedGender.asStateFlow()

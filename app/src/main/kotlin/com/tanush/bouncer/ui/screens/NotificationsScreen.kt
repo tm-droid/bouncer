@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.foundation.clickable
+
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.tanush.bouncer.ui.theme.v2.BouncerColorsV2
 import com.tanush.bouncer.ui.components.v2.ballChipInk
@@ -56,77 +58,35 @@ import com.tanush.bouncer.managers.NotificationItem
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun NotificationsScreen(onBack: () -> Unit, onRemindersClick: () -> Unit = {}) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-
-    val items by NotificationInboxManager.items.collectAsStateWithLifecycle()
-
-    LaunchedEffect(Unit) {
-        NotificationInboxManager.markAllRead()
-    }
-
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        "Notifications",
-                        style = typography.titleMedium,
-                        color = colors.onSurface,
-                        fontWeight = FontWeight.Bold,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.common_back),
-                            tint = colors.onSurface,
-                        )
-                    }
-                },
-                actions = { RemindersAction(onRemindersClick) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.background),
-            )
-        },
-        containerColor = colors.background,
-    ) { innerPadding ->
-        if (items.isEmpty()) {
-            EmptyStateV2(
-                title = stringResource(R.string.notifications_no_notifications_yet),
-                icon = Icons.Outlined.NotificationsNone,
-                subtitle = stringResource(R.string.notifications_subscribe_to_matches_with_the_bell),
-                modifier = Modifier.padding(innerPadding),
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = PaddingValues(vertical = spacing.sm),
-            ) {
-                items(items, key = { it.id }) { item ->
-                    NotificationRow(item = item)
-                    HorizontalDivider(color = colors.divider, modifier = Modifier.padding(start = spacing.lg + CHIP + spacing.md))
-                }
-                item { Spacer(Modifier.height(80.dp)) }
-            }
-        }
-    }
-}
-
 /**
- * Reminders are the other half of "what will tell me about a match": alerts that have arrived are
- * listed on this screen, the ones still to come one tap away.
+ * Alerts that have arrived, newest first, on the Alerts screen's Inbox tab. Opening it marks them
+ * read. A row about a match opens it; the rows used to be dead ends although each carried its id.
  */
 @Composable
-private fun RemindersAction(onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
-        Text(stringResource(R.string.reminders_scheduled_reminders), color = BouncerThemeV2.colors.primaryText)
+internal fun NotificationInbox(onOpenMatch: (String) -> Unit) {
+    val colors = BouncerThemeV2.colors
+    val spacing = BouncerThemeV2.spacing
+    val items by NotificationInboxManager.items.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) { NotificationInboxManager.markAllRead() }
+
+    if (items.isEmpty()) {
+        EmptyStateV2(
+            title = stringResource(R.string.notifications_no_notifications_yet),
+            icon = Icons.Outlined.NotificationsNone,
+            subtitle = stringResource(R.string.notifications_subscribe_to_matches_with_the_bell),
+        )
+        return
+    }
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = spacing.sm)) {
+        items(items, key = { it.id }) { item ->
+            val matchId = item.matchId
+            Box(if (matchId.isNullOrBlank()) Modifier else Modifier.clickable { onOpenMatch(matchId) }) {
+                NotificationRow(item = item)
+            }
+            HorizontalDivider(color = colors.divider, modifier = Modifier.padding(start = spacing.lg + CHIP + spacing.md))
+        }
+        item { Spacer(Modifier.height(80.dp)) }
     }
 }
 

@@ -80,6 +80,7 @@ import java.util.Locale
 @Composable
 fun PlayerComparisonScreen(
     onBackClick: () -> Unit,
+    firstPlayer: String? = null,
     viewModel: PlayerComparisonViewModel = viewModel(),
 ) {
     val colors = BouncerThemeV2.colors
@@ -93,6 +94,13 @@ fun PlayerComparisonScreen(
     val player2 by viewModel.player2.collectAsStateWithLifecycle()
     val loadingPlayer1 by viewModel.loadingPlayer1.collectAsStateWithLifecycle()
     val loadingPlayer2 by viewModel.loadingPlayer2.collectAsStateWithLifecycle()
+
+    // Opened from a player's page: that player is the first of the two, not a blank slot to search.
+    LaunchedEffect(firstPlayer) {
+        if (!firstPlayer.isNullOrBlank() && viewModel.player1.value == null) {
+            viewModel.setPlayer(1, PlayerProfile(id = "", name = firstPlayer, country = "", role = ""))
+        }
+    }
 
     // Which picker is active (0 = none, 1 = player1, 2 = player2)
     var activePickerSlot by remember { mutableStateOf(0) }

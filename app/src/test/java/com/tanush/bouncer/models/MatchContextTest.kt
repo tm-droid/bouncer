@@ -108,11 +108,12 @@ class MatchContextTest {
         )
         val officials = checkNotNull(MatchContextStore.parse(withFacts)?.cricinfo)
         assertEquals(
-            listOf("Nitin Menon, Virender Sharma", "Rohan Pandit", "WI - 2 of 2, IND - 1 of 2", "Naman Dhir"),
+            // No debutants: those are on Squads.
+            listOf("Nitin Menon, Virender Sharma", "Rohan Pandit", "WI - 2 of 2, IND - 1 of 2"),
             officialRows(officials, showUmpires = true).map { it.second },
         )
         // The match already names its umpires: the pair is not listed a second time.
-        assertEquals(3, officialRows(officials, showUmpires = false).size)
+        assertEquals(2, officialRows(officials, showUmpires = false).size)
         assertEquals(emptyList<Pair<Int, String>>(), officialRows(MatchContext.Officials(), showUmpires = true))
     }
 }

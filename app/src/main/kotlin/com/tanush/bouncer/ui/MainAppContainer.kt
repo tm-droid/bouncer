@@ -1,5 +1,13 @@
 package com.tanush.bouncer.ui
 
+import androidx.compose.runtime.getValue
+
+import androidx.compose.runtime.setValue
+
+import androidx.compose.runtime.mutableStateOf
+
+import androidx.compose.runtime.LaunchedEffect
+
 import com.tanush.bouncer.data.AppJson
 import androidx.compose.runtime.saveable.Saver
 import androidx.activity.compose.BackHandler
@@ -24,7 +32,7 @@ import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.ui.components.v2.BottomNavBarV2
 import com.tanush.bouncer.ui.navigation.BouncerNavHost
 import com.tanush.bouncer.ui.navigation.BouncerScreen
-import com.tanush.bouncer.ui.navigation.LocalOpenSeries
+import com.tanush.bouncer.ui.navigation.LocalOpenRoute
 import com.tanush.bouncer.ui.navigation.navigateForward
 import com.tanush.bouncer.ui.navigation.navigateToTab
 import com.tanush.bouncer.ui.screens.*
@@ -70,7 +78,7 @@ private fun PollWhileStarted(viewModel: LiveActivityViewModel, liveListVisible: 
 }
 
 // The routes that show a list of live scores.
-private val LIVE_LIST_ROUTES = setOf(BouncerScreen.Home.route, BouncerScreen.Matches.route)
+private val LIVE_LIST_ROUTES = setOf(BouncerScreen.Home.route)
 
 /**
  * The persisted [ThemeModeV2], defaulting to [ThemeModeV2.System] for anyone who has never picked.
@@ -138,13 +146,13 @@ fun BouncerAppContent(
         )
     }
 
-    // Hoisted so the match overlay can navigate the app underneath it (a match's series link).
+    // Hoisted so the match overlay can navigate the app underneath it (its series, teams, players).
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
-    // A series opened from a match's series link, and the match to reopen when that series page
-    // is backed out of. Keyed on the back-stack entry, so leaving it any other way (a bottom tab)
-    // never matches again and the match stays closed.
-    var seriesReturn by remember { mutableStateOf<Pair<String, CricketMatch>?>(null) }
+    // A page opened from the match overlay (its series, a team, a player), and the match to reopen
+    // when that page is backed out of. Keyed on the back-stack entry, so leaving it any other way (a
+    // bottom tab) never matches again and the match stays closed.
+    var overlayReturn by remember { mutableStateOf<Pair<String, CricketMatch>?>(null) }
 
     BouncerThemeV2(themeMode = themeMode) {
         Box(
@@ -172,21 +180,21 @@ fun BouncerAppContent(
                 }
             )
             // Composed after the NavHost, so its back callback outranks the NavHost's own.
-            BackHandler(enabled = seriesReturn != null && backStackEntry?.id == seriesReturn?.first) {
-                val match = seriesReturn?.second
-                seriesReturn = null
+            BackHandler(enabled = overlayReturn != null && backStackEntry?.id == overlayReturn?.first) {
+                val match = overlayReturn?.second
+                overlayReturn = null
                 navController.popBackStack()
                 currentMatch = match
             }
             MatchOverlay(
                 match = currentMatch,
                 onClose = { currentMatch = null },
-                onSeriesClick = { seriesId ->
+                onOpenRoute = { route ->
                     val from = currentMatch
                     currentMatch = null
-                    navController.navigateForward(BouncerScreen.SeriesDetail.createRoute(seriesId))
+                    navController.navigateForward(route)
                     val entryId = navController.currentBackStackEntry?.id
-                    seriesReturn = if (from != null && entryId != null) entryId to from else null
+                    overlayReturn = if (from != null && entryId != null) entryId to from else null
                 },
             )
         }
@@ -198,7 +206,7 @@ fun BouncerAppContent(
 private fun MatchOverlay(
     match: CricketMatch?,
     onClose: () -> Unit,
-    onSeriesClick: (String) -> Unit,
+    onOpenRoute: (String) -> Unit,
 ) {
     var shown by remember { mutableStateOf(match) }
     if (match != null) shown = match
@@ -216,7 +224,7 @@ private fun MatchOverlay(
                 .background(BouncerThemeV2.colors.background)
         ) {
             key(visibleMatch.id) {
-                CompositionLocalProvider(LocalOpenSeries provides onSeriesClick) {
+                CompositionLocalProvider(LocalOpenRoute provides onOpenRoute) {
                     MatchDetailViewV2(match = visibleMatch, onBackClick = onClose)
                 }
             }
@@ -274,10 +282,12 @@ fun MainAppContainer(
 
     HandleDeepLink(externalDeepLinkUri, viewModel, navController, onMatchClick, onDeepLinkConsumed)
 
-    // Map current route to bottom nav route (for child routes like settings -> more)
-    val bottomNavRoute = remember(currentRoute) {
-        getBottomNavRouteForCurrentRoute(currentRoute)
-    }
+    // The tab the current page belongs to; a page opened from any tab (a player, a team, search,
+    // Alerts) keeps the one it was opened from.
+    var lastOwnedTab by rememberSaveable { mutableStateOf(BouncerScreen.Home.route) }
+    val owner = BouncerScreen.ownerTab(currentRoute)
+    LaunchedEffect(owner) { if (owner != null) lastOwnedTab = owner }
+    val bottomNavRoute = owner ?: lastOwnedTab
     val showBottomNav = currentRoute != BouncerScreen.Onboarding.route
 
     Box(
@@ -310,16 +320,6 @@ fun MainAppContainer(
             )
         }
     }
-}
-
-/**
- * Maps the current navigation route to the appropriate bottom nav route.
- *
- * Child routes (settings, about, devtools, news, news_detail) should highlight
- * the "more" tab, while primary routes map directly.
- */
-private fun getBottomNavRouteForCurrentRoute(route: String?): String {
-    return BouncerScreen.getParentTab(route)
 }
 
 /** The open match, as JSON. A null match saves nothing and restores to the initial null. */

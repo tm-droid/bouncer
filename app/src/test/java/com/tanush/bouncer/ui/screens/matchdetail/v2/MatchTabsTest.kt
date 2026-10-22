@@ -25,12 +25,13 @@ class MatchTabsTest {
     }
 
     @Test
-    fun `a match in play opens on Live and keeps Commentary even before a line arrives`() {
+    fun `a match in play opens on Live and keeps Scorecard and Commentary before anything arrives`() {
         assertEquals(
             listOf(LIVE, SCORECARD, COMMENTARY, GRAPHS, SQUADS, INFO, HIGHLIGHTS),
             matchTabsFor(MatchPhase.IN_PLAY, everything),
         )
-        assertEquals(listOf(LIVE, COMMENTARY, INFO), matchTabsFor(MatchPhase.IN_PLAY, nothing))
+        // Scorecard's empty state is where the retry is, so it stays.
+        assertEquals(listOf(LIVE, SCORECARD, COMMENTARY, INFO), matchTabsFor(MatchPhase.IN_PLAY, nothing))
     }
 
     @Test

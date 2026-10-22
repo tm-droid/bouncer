@@ -1,5 +1,9 @@
 package com.tanush.bouncer.ui
 
+import com.tanush.bouncer.models.CricketMatch
+
+import androidx.compose.runtime.saveable.rememberSaveable
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -31,18 +35,37 @@ import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 private const val FILTER_ALL = "All"
 private val CATEGORY_OPTIONS = listOf(FILTER_ALL, "International", "League", "Domestic")
 private val GENDER_OPTIONS = listOf(FILTER_ALL, GENDER_MEN, GENDER_WOMEN)
+private val FORMAT_OPTIONS = listOf(FILTER_ALL, "T20", "ODI", "Test", "First Class")
 
-/** Home's two list filters. [FILTER_ALL] in a slot means that filter is off. */
-internal data class HomeFilters(val competition: String = FILTER_ALL, val gender: String = FILTER_ALL) {
-    val active: Boolean get() = competition != FILTER_ALL || gender != FILTER_ALL
+/**
+ * Home's list filters. [FILTER_ALL] in a slot means that filter is off. Competition and gender are
+ * applied by the ViewModel; format and "my teams" here, by [narrowedBy]. Format came over from the
+ * All matches screen, which was Home again with that one filter added and Home's two missing.
+ */
+internal data class HomeFilters(
+    val competition: String = FILTER_ALL,
+    val gender: String = FILTER_ALL,
+    val format: String = FILTER_ALL,
+    val myTeams: Boolean = false,
+) {
+    val active: Boolean get() = competition != FILTER_ALL || gender != FILTER_ALL || format != FILTER_ALL || myTeams
 
-    /** How the empty state names what it is showing: "women's league", "international". */
+    /** How the empty state names what it is showing: "women's league T20", "your teams'". */
     val label: String
         get() = listOfNotNull(
             gender.takeIf { it != FILTER_ALL }?.let { "${it.lowercase()}'s" },
             competition.takeIf { it != FILTER_ALL }?.lowercase(),
+            format.takeIf { it != FILTER_ALL },
+            "your teams'".takeIf { myTeams },
         ).joinToString(" ")
 }
+
+/** [matches] narrowed by the filters Home applies itself. [favouriteNames] are trimmed and lowercased. */
+internal fun List<CricketMatch>.narrowedBy(filters: HomeFilters, favouriteNames: Set<String>): List<CricketMatch> =
+    filter { match ->
+        (filters.format == FILTER_ALL || match.matchType.contains(filters.format, ignoreCase = true)) &&
+            (!filters.myTeams || match.teams.any { it.name.trim().lowercase() in favouriteNames })
+    }
 
 /** A list narrowed by [HomeFilters]: what to call it, and how to clear it. */
 internal class FilteredList(val label: String, val onShowAll: () -> Unit)
@@ -63,16 +86,26 @@ internal fun rememberHomeFilters(viewModel: LiveActivityViewModel): Pair<HomeFil
     }
     val competition by viewModel.selectedCompetitionType.collectAsStateWithLifecycle()
     val gender by viewModel.selectedGender.collectAsStateWithLifecycle()
+    var format by rememberSaveable {
+        mutableStateOf(PreferencesHelper.getString(context, PreferencesHelper.KEY_PREFERRED_FORMAT, FILTER_ALL))
+    }
+    var myTeams by rememberSaveable {
+        mutableStateOf(PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HOME_MY_TEAMS, false))
+    }
     val onChanged: (HomeFilters) -> Unit = { next ->
         viewModel.setCompetitionType(next.competition)
         viewModel.setGender(next.gender)
+        format = next.format
+        myTeams = next.myTeams
         PreferencesHelper.setString(context, PreferencesHelper.KEY_PREFERRED_CATEGORY, next.competition)
         PreferencesHelper.setString(context, PreferencesHelper.KEY_PREFERRED_GENDER, next.gender)
+        PreferencesHelper.setString(context, PreferencesHelper.KEY_PREFERRED_FORMAT, next.format)
+        PreferencesHelper.setBoolean(context, PreferencesHelper.KEY_HOME_MY_TEAMS, next.myTeams)
     }
-    return HomeFilters(competition.ifBlank { FILTER_ALL }, gender.ifBlank { FILTER_ALL }) to onChanged
+    return HomeFilters(competition.ifBlank { FILTER_ALL }, gender.ifBlank { FILTER_ALL }, format, myTeams) to onChanged
 }
 
-/** Competition and gender filters. Gold when either is narrowing the list, so a hidden filter never shapes it silently. */
+/** Competition, gender, format and my-teams filters. Gold when any is narrowing the list, so a hidden filter never shapes it silently. */
 @Composable
 internal fun HomeFilterMenu(filters: HomeFilters, onFiltersChanged: (HomeFilters) -> Unit) {
     val colors = BouncerThemeV2.colors
@@ -100,6 +133,19 @@ internal fun HomeFilterMenu(filters: HomeFilters, onFiltersChanged: (HomeFilters
                     expanded = false
                     onFiltersChanged(filters.copy(gender = option))
                 }
+            }
+            HorizontalDivider(color = colors.divider)
+            FilterMenuLabel(stringResource(R.string.matches_filter_format))
+            FORMAT_OPTIONS.forEach { option ->
+                FilterMenuItem(option = option, selected = option == filters.format) {
+                    expanded = false
+                    onFiltersChanged(filters.copy(format = option))
+                }
+            }
+            HorizontalDivider(color = colors.divider)
+            FilterMenuItem(option = stringResource(R.string.home_filter_my_teams), selected = filters.myTeams) {
+                expanded = false
+                onFiltersChanged(filters.copy(myTeams = !filters.myTeams))
             }
         }
     }

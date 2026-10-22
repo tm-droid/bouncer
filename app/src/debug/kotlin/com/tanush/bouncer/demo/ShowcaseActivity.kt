@@ -139,8 +139,6 @@ internal class ShowcaseActivity : ComponentActivity() {
                         HomeScreenV2(
                             viewModel = liveVm,
                             onMatchClick = { currentMatch = it },
-                            onMoreMatchesClick = {},
-                            onAchievementsClick = {},
                         )
                     }
                 }

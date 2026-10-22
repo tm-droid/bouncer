@@ -73,7 +73,7 @@ fun MatchContextMenuSheet(
             if (onSubscribeToggle != null) {
                 LiveUpdatesItem(isSubscribed = isSubscribed, onToggle = onSubscribeToggle, onDismiss = onDismiss)
             }
-            FavouriteItem(match = match, onDismiss = onDismiss)
+            FavouriteItems(match = match, onDismiss = onDismiss)
             SheetItem(stringResource(R.string.common_set_reminder), Icons.Default.Notifications) {
                 onSetReminder()
                 onDismiss()
@@ -98,16 +98,22 @@ private fun LiveUpdatesItem(isSubscribed: Boolean, onToggle: () -> Unit, onDismi
     }
 }
 
+/**
+ * One item per side. It used to be one item that read "Remove" when either side was a favourite
+ * and always added or removed the first side, so it could remove a team the reader never chose.
+ */
 @Composable
-private fun FavouriteItem(match: CricketMatch, onDismiss: () -> Unit) {
+private fun FavouriteItems(match: CricketMatch, onDismiss: () -> Unit) {
     val favorites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
-    val isFavorite = match.teams.any { team -> favorites.contains(team.name) }
-    SheetItem(
-        label = if (isFavorite) "Remove from Favorites" else "Add to Favorites",
-        icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-    ) {
-        toggleFavourite(match, isFavorite)
-        onDismiss()
+    match.teams.map { it.name }.filter { it.isNotBlank() }.distinct().forEach { name ->
+        val isFavorite = name in favorites
+        SheetItem(
+            label = stringResource(if (isFavorite) R.string.favourite_remove_team else R.string.favourite_add_team, name),
+            icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+        ) {
+            if (isFavorite) FavouriteTeamsManager.remove(name) else FavouriteTeamsManager.add(name)
+            onDismiss()
+        }
     }
 }
 
@@ -127,9 +133,4 @@ private fun shareScore(context: Context, match: CricketMatch) {
         putExtra(Intent.EXTRA_TEXT, "$scoreText\n#cricket #bouncer")
     }
     context.startActivity(Intent.createChooser(send, "Share Score"))
-}
-
-private fun toggleFavourite(match: CricketMatch, isFavorite: Boolean) {
-    val teamName = match.teams.firstOrNull()?.name ?: return
-    if (isFavorite) FavouriteTeamsManager.remove(teamName) else FavouriteTeamsManager.add(teamName)
 }

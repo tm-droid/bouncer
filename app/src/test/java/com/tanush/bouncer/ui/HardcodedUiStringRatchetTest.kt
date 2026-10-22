@@ -32,7 +32,7 @@ class HardcodedUiStringRatchetTest {
      *
      * Raising it to make a build pass re-opens the exact hole this test exists to close.
      */
-    private val ceiling = 666
+    private val ceiling = 97
 
     private val uiParameter = Regex(
         """\b(?:text|title|subtitle|label|placeholder|contentDescription)\s*=\s*"([^"]{2,})""""
