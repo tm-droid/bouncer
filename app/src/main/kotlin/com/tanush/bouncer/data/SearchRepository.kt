@@ -1,6 +1,7 @@
 package com.tanush.bouncer.data
 
 import androidx.annotation.VisibleForTesting
+import com.tanush.bouncer.data.history.PastMatchRow
 import com.tanush.bouncer.utils.ParsedQuery
 import com.tanush.bouncer.utils.SearchScore
 import com.tanush.bouncer.utils.acronymFor
@@ -109,6 +110,12 @@ object SearchRepository {
             val endDate: String,
             override val relevanceScore: Double,
         ) : SearchResult()
+
+        /** A finished match from Cricsheet or the archive; opens through [PastMatchRow.toCricketMatch]. */
+        data class PastMatchResult(
+            val row: PastMatchRow,
+            override val relevanceScore: Double,
+        ) : SearchResult()
     }
 
     data class SearchResults(
@@ -117,14 +124,15 @@ object SearchRepository {
         val players: List<SearchResult.PlayerResult> = emptyList(),
         val news: List<SearchResult.NewsResult> = emptyList(),
         val series: List<SearchResult.SeriesResult> = emptyList(),
+        val pastMatches: List<SearchResult.PastMatchResult> = emptyList(),
         val suggestion: String? = null,
     ) {
         val isEmpty: Boolean
             get() = matches.isEmpty() && teams.isEmpty() && players.isEmpty() && news.isEmpty()
-                        && series.isEmpty()
+                        && series.isEmpty() && pastMatches.isEmpty()
 
         val totalCount: Int
-            get() = matches.size + teams.size + players.size + news.size + series.size
+            get() = matches.size + teams.size + players.size + news.size + series.size + pastMatches.size
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

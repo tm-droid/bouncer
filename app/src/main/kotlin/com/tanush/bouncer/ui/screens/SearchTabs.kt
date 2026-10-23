@@ -25,16 +25,20 @@ internal fun displayResultsFor(
         teams = emptyList(), players = emptyList(), news = emptyList(), series = emptyList()
     )
     SearchTab.PLAYERS -> results.copy(
-        matches = emptyList(), teams = emptyList(), news = emptyList(), series = emptyList()
+        matches = emptyList(), teams = emptyList(), news = emptyList(), series = emptyList(),
+        pastMatches = emptyList()
     )
     SearchTab.TEAMS -> results.copy(
-        matches = emptyList(), players = emptyList(), news = emptyList(), series = emptyList()
+        matches = emptyList(), players = emptyList(), news = emptyList(), series = emptyList(),
+        pastMatches = emptyList()
     )
     SearchTab.TOURNAMENTS -> results.copy(
-        matches = emptyList(), teams = emptyList(), players = emptyList(), news = emptyList()
+        matches = emptyList(), teams = emptyList(), players = emptyList(), news = emptyList(),
+        pastMatches = emptyList()
     )
     SearchTab.NEWS -> results.copy(
-        matches = emptyList(), teams = emptyList(), players = emptyList(), series = emptyList()
+        matches = emptyList(), teams = emptyList(), players = emptyList(), series = emptyList(),
+        pastMatches = emptyList()
     )
 }
 
@@ -96,7 +100,7 @@ internal fun SearchResultsTabRow(
 
 private fun tabCount(tab: SearchTab, results: SearchRepository.SearchResults): Int = when (tab) {
     SearchTab.ALL -> results.totalCount
-    SearchTab.MATCHES -> results.matches.size
+    SearchTab.MATCHES -> results.matches.size + results.pastMatches.size
     SearchTab.PLAYERS -> results.players.size
     SearchTab.TEAMS -> results.teams.size
     SearchTab.TOURNAMENTS -> results.series.size

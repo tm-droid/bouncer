@@ -46,6 +46,7 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.MatchCardV2
+import com.tanush.bouncer.ui.components.v2.PastMatchRow
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.viewmodels.PlayerLookupState
@@ -58,6 +59,7 @@ private const val ALL_TAB_TEAMS = 3
 private const val ALL_TAB_PLAYERS = 4
 private const val ALL_TAB_SERIES = 3
 private const val ALL_TAB_NEWS = 3
+private const val ALL_TAB_PAST = 3
 
 /** Shorter queries show suggestions, not results. */
 private const val MIN_QUERY_LENGTH = 2
@@ -356,6 +358,12 @@ private fun LazyListScope.searchResults(
             key = { it.match.id },
         ) { result ->
             MatchCardV2(match = result.match, onClick = { actions.onMatch(result.match) }, modifier = Modifier.fillMaxWidth())
+        },
+        results.pastMatches.sectionOrNull(
+            R.string.search_section_past_matches, "pm", SearchTab.MATCHES, limit(ALL_TAB_PAST), compact, actions,
+            key = { it.row.id },
+        ) { result ->
+            PastMatchRow(row = result.row, onClick = { actions.onMatch(result.row.toCricketMatch()) })
         },
         results.teams.sectionOrNull(
             R.string.search_section_teams, "t", SearchTab.TEAMS, limit(ALL_TAB_TEAMS), compact, actions,

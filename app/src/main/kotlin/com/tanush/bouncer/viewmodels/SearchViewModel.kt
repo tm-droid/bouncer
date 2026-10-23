@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.SearchRepository
+import com.tanush.bouncer.data.history.PastMatchIndex
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.managers.TeamLogoManager
@@ -17,6 +18,7 @@ import com.tanush.bouncer.utils.bouncerExceptionHandler
 import com.tanush.bouncer.utils.normalizeForSearch
 import io.sentry.Sentry
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -105,6 +108,13 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             _currentSeries.value = SearchRepository.currentSeriesSuggestions(
                 corpora.corpusFor(_matches.value).series, System.currentTimeMillis(),
             )
+        }
+        // The index is a few MB over the network on first use; a query typed before it lands is re-run.
+        viewModelScope.launch(bouncerExceptionHandler) {
+            if (PastMatchIndex.load()) {
+                PastMatchIndex.shared.first { it != null }
+                onSourcesChanged(_matches.value, _news.value)
+            }
         }
     }
 
@@ -224,8 +234,15 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             }
             val series = async { SearchRepository.searchSeries(newQuery, corpus.series) }
             val players = async { SearchRepository.searchCachedPlayers(newQuery, corpus.players) }
+            val past = async(Dispatchers.Default) {
+                PastMatchIndex.shared.value?.search(newQuery, matches, corpus.teams).orEmpty()
+            }
             live.await().let {
-                it.copy(players = mergeLocalPlayers(it.players, players.await()), series = series.await())
+                it.copy(
+                    players = mergeLocalPlayers(it.players, players.await()),
+                    series = series.await(),
+                    pastMatches = past.await(),
+                )
             }
         }
         _localResults.value = results
