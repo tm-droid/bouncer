@@ -18,6 +18,18 @@ paths:
 
 **Scorecard links and joins on ids.** Batting and bowling rows open the player with the Cricbuzz id from `profileUrl` (`CricBuzzUrls.profileIdOf`; both the server's and the device's parsers write `/profiles/{id}/{slug}`). "Yet to bat" (in play) / "Did not bat" is the batting eleven minus the card's batters, joined on that id against `SquadPlayer.id` (`yetToBat`); a batter with no id empties it rather than list someone who batted. In-play is the screen's `MatchPhase`, not `match.isLive`: after the toss the list's status reads "India opt to bowl" for the whole first innings. A bowler's wides and no-balls sit under the name, not as two more columns. Wagon wheels are on Graphs only.
 
+## Header
+
+**The header is a hero that collapses** (`MatchDetailHeader.kt`; `MatchHeroV2` in `components/v2/MatchHero.kt`): two sides with 56dp crests, the batting side's score in `scoreHero`, status or chase line, run rates, win probability and a freshness label. Scrolling shrinks it to `CollapsedScoreBar`, one line of both scores. The maths is `HeaderCollapseMath` (`HeaderCollapse.kt`, pinned by `HeaderCollapseTest`). The pager is what scrolls, so the header follows it through a `nestedScroll` connection on the pager; `onPostFling` re-expands it when a fling ends at the top, because a fling that stops there leaves the header half-collapsed. A tab change expands it too. Flat, no gradient.
+
+**A Test has its own hero lines** (`TestMatchHeroLogic.kt`, `testHeroLine`; `isTestMatch`): every innings per side ("99 & 156/4"), and the lead, trail or runs needed, never a required run rate. Pinned by `MatchHeroLogicTest`.
+
+**The chase line reads Cricbuzz's status text first.** `chaseLineFor` takes "need N runs in M balls" from `currentStatus`, then `status`, and derives it from the live situation only when neither says it (`MatchHeroLogic.kt`). The status is the source's own wording; the derivation can disagree with it by a ball.
+
+**The Summary opens on a result card** (`summaryResultOf`, `SummaryResult.kt`, pinned by `SummaryResultTest`): the winner's crest and name and the margin. There is no player of the match, because no field carries one, and the batting and bowling leaders stay in their innings sections. The winner is found with `sameTeamName` (`TeamForm.kt`), which ignores case, spacing and punctuation, because Cricbuzz spells one side "KwaZulu-Natal Inland - Tuskers" in the team row and "KwaZulu - Natal Inland - Tuskers" in the status line; an exact compare found no winner for those sides.
+
+**An upcoming match has no live data, and that is not an error.** `noLiveDataError` (`MatchDetailViewModel.kt`) returns null for an upcoming match; it raised "couldn't fetch live match data" on every fixture, online or not. For a started match with nothing it still reports. `loadErrorKind` carries the `FailureKind` (offline, server, unknown) so `FailedState` says "offline" only when the device is. Pinned by `MatchDetailNoLiveDataTest`.
+
 ## Detail state
 
 **Every `match-sync` row carries an `updated_at`, and the device reads it.** `getForMatch` and `observeMatch` return `LiveDetailSnapshot`/`ScorecardSnapshot` — payload plus the row's write time — because a row that froze when its match left `live-matches.json` and one written this minute are otherwise identical (the staleness in `eb91dcd`). `updatedAtMs` is null when the column is missing or unparseable, and **null means unknown, never old**: fall back to the prior rule, or one malformed timestamp blanks a live score. `ROW_STALE_MS`/`DETAIL_STALE_MS` are both 3 minutes: an open screen pings presence every 90s, which earns a detail-tier pass every run, so a live row is about a minute old at worst.

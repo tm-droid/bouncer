@@ -53,6 +53,17 @@ rejects the filter). Every filtered run must name a concrete variant task — `t
 **Utils** (`app/src/test/java/com/tanush/bouncer/utils/`)
 - `MatchUtilsTest` — match utility functions
 - `SearchRepositoryTest` — search logic
+- `MatchStartTimeTest` — status-line start time, list-timestamp fallback
+
+**UI logic tests** (pure logic behind the screens, no Compose rule)
+- `MatchHeroLogicTest` — chase and Test hero lines, collapsed summary
+- `HeaderCollapseTest` — header collapse maths and fling re-expand
+- `SummaryResultTest` — result card winner and margin
+- `ScreenStatesTest` — loading, failed, stale selection
+- `FreshnessTest` — "updated Ns ago" thresholds
+- `HomeFeaturedTest` — which match gets Home's top card
+- `ScoreRollTest` — which digits roll
+- `MatchDetailNoLiveDataTest` — no error for an upcoming match
 - `TimelineEventExtractorTest` — timeline parsing
 
 ## Instrumented Tests (Android)

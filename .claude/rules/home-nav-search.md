@@ -14,6 +14,12 @@ paths:
 
 **The Live list is scraped every 6 s only where a list of live scores is on screen** (`LIVE_LIST_ROUTES`: Home) and once a minute elsewhere, including under an open match, where it used to stop. The overlay reads the list's current entry (`currentListEntry`), so `MatchDetailViewModel.onMatchUpdated` runs on each emission; with a frozen entry and a stopped poll, "the matches list outranks a row that stopped being written" could not happen on the tap path.
 
+**Home's top card is the followed team's** (`featuredFor`, `ui/HomeFeatured.kt`, pinned by `HomeFeaturedTest`): a followed live match in favourites order, else a followed match starting within 24 h, else any live match, else none. The rows below leave out whatever the card shows. See `design-system.md`.
+
+**One offline banner, recorded even over fresh lists.** `pollFailureNeedsBanner` (`LiveActivityViewModel`) shows the failure when the status is on screen and either its list is not fresh or the failure is `Offline`. A server blip over fresh scores stays quiet, but offline the scores stop moving and the banner, with its saved-at time, is the only signal Home gives. Failures after a successful fetch used to be dropped.
+
+**Rows lead with the side that is batting** (`MatchCardV2`: the other side steps back), crests are 28dp, an unstarted match shows a countdown ("in 2h 15m") until 12 h out and then the day and time (`MatchStartLabel.kt`; `MatchStartTimeTest` pins the status-line-first parse), and a Test shows its innings.
+
 ## Navigation
 
 **There is no Matches tab, and no All matches screen.** The bottom bar is Home / Series / News / More. Home lists every match: its Upcoming and Recent tabs head each day (`HomeMatchRows.kt`; Recent newest first), and its filter menu holds competition, gender, format and "Only my teams" (`HomeFilters.kt`; format and my-teams are applied by Home and saved in prefs). `AllMatchesScreenV2` was Home again with a format filter and a By date tab; both moved here and the screen, its route and its link went (October 2026). `app://bouncer/matches` opens Home. `SeriesListScreen` is the Series tab; `series/…` highlights Series, `match/…` Home.

@@ -29,7 +29,7 @@ B = app/src/main/kotlin/com/tanush/bouncer · T = ./gradlew testDebugUnitTest --
 ### Wave 5
 - [x] U14: consistency pass | files: many (crests, shapes, type roles, pressed states, toggle haptic) | done when: D + full test
 - [ ] U18: shared-element row→header (experimental; drop if risky) | done when: emulator clean or dropped with reason
-- [ ] U15: docs + whatsnew | done when: rule docs updated, whatsnew ≤500 chars
+- [x] U15: docs + whatsnew | done when: rule docs updated, whatsnew ≤500 chars
 
 ## Decisions
 - Flat hero, 56dp crests, no gradient. No win-prob bar on rows. Freshness on header + Home hero only. Test layout separate. Hero = followed-team-first by favourites order.
