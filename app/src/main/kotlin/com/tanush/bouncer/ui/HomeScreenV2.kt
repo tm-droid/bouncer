@@ -47,8 +47,6 @@ import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.models.CricketMatch
-import com.tanush.bouncer.ui.components.NetworkStatusBanner
-import com.tanush.bouncer.ui.components.rememberIsOffline
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.DelayedSkeleton
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
@@ -134,7 +132,7 @@ fun HomeScreenV2(
     }
 }
 
-/** The top bar, the offline banner and the status tabs with the filter menu. */
+/** The top bar and the status tabs with the filter menu. */
 @Composable
 private fun HomeHeader(
     selectedStatus: String,
@@ -147,7 +145,6 @@ private fun HomeHeader(
     val unreadCount by NotificationInboxManager.unreadCount.collectAsStateWithLifecycle()
     Column {
         HomeTopBar(unreadCount, onNotificationsClick, onSearchClick)
-        NetworkStatusBanner(isOffline = rememberIsOffline())
         HomeFilterBar(
             selectedStatus = selectedStatus,
             filters = filters,

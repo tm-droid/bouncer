@@ -2,10 +2,29 @@ package com.tanush.bouncer.viewmodels
 
 import com.tanush.bouncer.models.CricketMatch
 import org.junit.Assert.assertEquals
+import com.tanush.bouncer.ui.components.v2.FailureKind
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LiveActivityViewModelTest {
+
+    @Test
+    fun `offline poll failure over fresh scores still raises the stale banner`() {
+        assertTrue(pollFailureNeedsBanner(statusIsFresh = true, onScreen = true, kind = FailureKind.Offline))
+    }
+
+    @Test
+    fun `server blip over fresh scores stays quiet, over disk-seeded scores it shows`() {
+        assertFalse(pollFailureNeedsBanner(statusIsFresh = true, onScreen = true, kind = FailureKind.Server))
+        assertTrue(pollFailureNeedsBanner(statusIsFresh = false, onScreen = true, kind = FailureKind.Server))
+    }
+
+    @Test
+    fun `a status off screen never raises the banner`() {
+        assertFalse(pollFailureNeedsBanner(statusIsFresh = false, onScreen = false, kind = FailureKind.Offline))
+    }
 
     // ── The home screen's "All" status chip ───────────────────────────────────
     //

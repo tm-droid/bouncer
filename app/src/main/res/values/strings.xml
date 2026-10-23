@@ -272,7 +272,6 @@
     <string name="drs_review_in_progress">REVIEW IN PROGRESS</string>
     <string name="share_key_performer">KEY PERFORMER</string>
     <string name="share_match_momentum_stream">MATCH MOMENTUM STREAM</string>
-    <string name="state_no_internet_connection">No internet connection</string>
     <string name="favorites_add">Add</string>
     <string name="favorites_add_team">Add Team</string>
     <string name="favorites_add_teams_to_quickly_access_fixtures">Add teams to quickly access fixtures and updates.</string>

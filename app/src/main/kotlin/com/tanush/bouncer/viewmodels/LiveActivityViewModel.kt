@@ -65,6 +65,15 @@ internal fun matchesForStatus(
 }
 
 /**
+ * Whether a failed background poll over a non-empty list should be surfaced as the stale-data banner.
+ * A list still seeded from disk is stale by definition. A list fetched this session is only stale
+ * when the device is offline: a one-off server blip over fresh scores stays quiet, but offline the
+ * scores stop moving and the banner (with its saved-at time) is the only offline signal Home shows.
+ */
+internal fun pollFailureNeedsBanner(statusIsFresh: Boolean, onScreen: Boolean, kind: FailureKind): Boolean =
+    onScreen && (!statusIsFresh || kind == FailureKind.Offline)
+
+/**
  * What the list says when it could not load. Never the exception's own text: that read
  * "Unable to resolve host www.cricbuzz.com" or an SSL class name to someone wanting a score.
  */
@@ -458,8 +467,7 @@ class LiveActivityViewModel(
 
         if (_currentMatches.value.isEmpty()) {
             applyOfflineFallback(status, e)
-        } else if (status !in freshStatuses && statusIsOnScreen(status)) {
-            // The list on screen is the one seeded from disk, and nothing newer has arrived.
+        } else if (pollFailureNeedsBanner(status in freshStatuses, statusIsOnScreen(status), failureKindOf(e))) {
             _loadingState.value = LoadingState.Error(CACHED_DATA_MESSAGE, failureKindOf(e))
         }
     }
