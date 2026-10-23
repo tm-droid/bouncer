@@ -4,11 +4,13 @@ import com.tanush.bouncer.data.AppJson
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.commentaryEntryOf
 import com.tanush.bouncer.models.MatchContext
+import com.tanush.bouncer.models.OverPoint
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.utils.BoundedLruCache
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.sentry.SentryLevel
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -47,9 +49,32 @@ data class ArchivedMatch(
 
     fun context(): MatchContext? = decode<MatchContext>(context)
 
+    /**
+     * The `wpe-` log's stamped overs as a card carrying only overs, oriented to its `team1Id`; null
+     * with fewer than two stamped overs or no orientation, because an unoriented arc is not drawable.
+     */
+    fun evalOvers(): Scorecard? {
+        val log = evalLog as? JsonObject ?: return null
+        val teamId = (log["team1Id"] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.content ?: return null
+        val points = (log["points"] as? JsonArray).orEmpty().mapNotNull { point ->
+            val o = point as? JsonObject ?: return@mapNotNull null
+            val num = { key: String -> (o[key] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.doubleOrNull }
+            OverPoint(
+                innings = num("innings")?.toInt() ?: return@mapNotNull null,
+                over = num("over")?.toInt() ?: return@mapNotNull null,
+                score = num("score")?.toInt(),
+                wickets = num("wickets")?.toInt(),
+                p = num("p"),
+            )
+        }
+        return points.takeIf { it.size >= MIN_EVAL_POINTS }?.let { Scorecard(overs = it, probabilityTeamId = teamId) }
+    }
+
     private inline fun <reified T> decode(element: JsonElement?): T? =
         element?.takeUnless { it is JsonNull }?.let { runCatching { AppJson.decodeFromJsonElement<T>(it) }.getOrNull() }
 }
+
+private const val MIN_EVAL_POINTS = 2
 
 // Top-level, not in a companion: a private companion object hides the serializer the plugin
 // generates there, and every decode then fails with IllegalAccessError.

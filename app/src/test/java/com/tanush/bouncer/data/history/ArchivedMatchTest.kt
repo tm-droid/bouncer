@@ -49,6 +49,22 @@ class ArchivedMatchTest {
     }
 
     @Test
+    fun `the win-probability log reads as oriented overs, and a thin or unoriented one as none`() {
+        val log = ArchiveClient.decode(
+            "1",
+            """{"id":"1","evalLog":{"team1Id":"7","points":[
+              {"innings":1,"over":1,"score":8,"wickets":0,"p":0.5},
+              {"innings":1,"over":2,"score":15,"wickets":1,"p":0.45}]}}""".toByteArray(),
+        )!!.evalOvers()!!
+        assertEquals("7", log.probabilityTeamId)
+        assertEquals(listOf(0.5, 0.45), log.overs.map { it.p })
+        assertEquals(15, log.overs.last().score)
+        assertNull(match.evalOvers()) // {"version":1}: no team, no points
+        val one = """{"id":"1","evalLog":{"team1Id":"7","points":[{"innings":1,"over":1,"p":0.5}]}}"""
+        assertNull(ArchiveClient.decode("1", one.toByteArray())!!.evalOvers())
+    }
+
+    @Test
     fun `an unreadable file is null, not a crash`() {
         assertNull(ArchiveClient.decode("1", "<html>404</html>".toByteArray()))
     }

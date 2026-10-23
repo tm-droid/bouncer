@@ -48,3 +48,19 @@ internal suspend fun MutableStateFlow<MatchDetailViewModel.UiState>.loadCricshee
         filled.copy(commentaryLoading = false, scorecardLoading = false)
     }
 }
+
+/**
+ * Fills a finished match's per-over points from the archive or Cricsheet when its card has none, so
+ * the worm and the win-probability arc draw. Needs a card already: a points-only one would close
+ * the "no scorecard" gates while the tab still read empty.
+ */
+internal suspend fun MutableStateFlow<MatchDetailViewModel.UiState>.loadPastOvers(match: CricketMatch, source: PastMatchSource) {
+    val card = value.scorecard ?: return
+    if (!match.isCompleted || card.overs.isNotEmpty()) return
+    val past = source.overs(match) ?: return
+    update { st ->
+        val current = st.scorecard
+        if (current == null || current.overs.isNotEmpty()) st
+        else st.copy(scorecard = current.copy(overs = past.overs, probabilityTeamId = past.probabilityTeamId ?: current.probabilityTeamId))
+    }
+}

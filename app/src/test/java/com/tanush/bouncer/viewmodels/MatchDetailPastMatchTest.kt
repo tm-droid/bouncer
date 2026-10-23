@@ -80,7 +80,7 @@ class MatchDetailPastMatchTest {
     private class Past(private val match: HistoryMatch?) : PastMatchSource {
         val asked = mutableListOf<String>()
         override suspend fun feed(match: com.tanush.bouncer.models.CricketMatch) = null.also { asked += "feed" }
-        override suspend fun scorecard(matchId: String): Scorecard? = null.also { asked += "scorecard" }
+        override suspend fun scorecard(match: com.tanush.bouncer.models.CricketMatch): Scorecard? = null.also { asked += "scorecard" }
         override suspend fun cricsheetMatch(id: String): HistoryMatch? = match.also { asked += id }
     }
 

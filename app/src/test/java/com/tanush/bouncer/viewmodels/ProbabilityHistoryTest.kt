@@ -1,5 +1,6 @@
 package com.tanush.bouncer.viewmodels
 
+import com.tanush.bouncer.data.history.ArchiveClient
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.OverPoint
 import com.tanush.bouncer.models.Scorecard
@@ -52,6 +53,20 @@ class ProbabilityHistoryTest {
         assertTrue(probabilityHistoryFrom(Scorecard(overs = overs), teams).isEmpty())
         assertTrue(probabilityHistoryFrom(null, teams).isEmpty())
         assertTrue(probabilityHistoryFrom(Scorecard(probabilityTeamId = "2"), teams).isEmpty())
+    }
+
+    @Test
+    fun `an archived match's win-probability log draws the arc like a live series`() {
+        val log = ArchiveClient.decode(
+            "1",
+            """{"id":"1","evalLog":{"team1Id":"10","points":[
+              {"innings":1,"over":1,"score":6,"wickets":0,"p":0.6},
+              {"innings":1,"over":2,"score":9,"wickets":1,"p":0.55}]}}""".toByteArray(),
+        )!!.evalOvers()!!
+        val points = probabilityHistoryFrom(log, teams)
+        assertEquals(listOf(1f, 2f), points.map { it.over })
+        // team1Id 10 is the screen's second side, so the first side's share is the complement.
+        assertEquals(0.4f, points.first().team1Probability, 1e-6f)
     }
 
     @Test

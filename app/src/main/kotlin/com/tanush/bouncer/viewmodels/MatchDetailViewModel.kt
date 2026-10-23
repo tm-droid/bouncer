@@ -411,7 +411,7 @@ class MatchDetailViewModel(
                 liveSource = liveSource,
                 repository = matchRepository,
                 matchIsOver = isMatchOver(match, _uiState.value.liveStatus),
-                archived = { pastSource.scorecard(match.id) },
+                archived = { pastSource.scorecard(match) },
             ) { e ->
                 sentryBreadcrumb(
                     "match_detail_v2.scorecard_fallback",
@@ -421,6 +421,7 @@ class MatchDetailViewModel(
                 // Offline and a Cricbuzz 5xx (ANDROID-5R: a 504) fall through to the stored card.
                 if (isReportableScrapeFailure(e)) Sentry.captureException(e)
             }?.let { sc -> _uiState.update { it.copy(scorecard = sc) } }
+            _uiState.loadPastOvers(match, pastSource)
             loadCommentaryFeed()
         } finally {
             _uiState.update { st ->

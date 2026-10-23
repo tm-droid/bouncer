@@ -1,3 +1,3 @@
 Pull to refresh now uses the standard Android indicator: a gold arc that fills as you pull, spins while loading, and buzzes when you pull far enough.
 
-Search is smarter: fewer junk typo matches, "ind v aus" finds that fixture, "india 2011 final" puts the final first, and recent searches save on search. It also finds past matches back to 2003 and retired players, who get career pages with figures and recent matches. Afghanistan searches note the history source has none after Nov 2024.
+Search is smarter: fewer junk typo matches, "ind v aus" finds that fixture, and recent searches save on search. It finds past matches back to 2003 and retired players, with career pages. Older matches now show fuller scorecards plus overs and win-probability graphs. Afghanistan has no history after Nov 2024.
