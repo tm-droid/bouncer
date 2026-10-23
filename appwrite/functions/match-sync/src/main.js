@@ -72,6 +72,7 @@ import {
 } from "./observability.js";
 import { deliveryAlert, milestoneAlerts, resultAlert } from "./alerts.js";
 import { runPoll } from "./poll.js";
+import { STATE_FILE as HIGHLIGHTLY_STATE_FILE, createHighlightlyFallback } from "./highlightly.js";
 import { fcmConfigured, matchTopic, sendTopicMessage } from "./fcm.js";
 import { evaluate, evaluateLong, evaluatePrematch, formatFromText, ballsRemainingFor } from "./winprob.js";
 import {
@@ -1756,6 +1757,30 @@ async function handleRun({ req, res, log, error }) {
   // what says which Cricinfo match is which. It polls at most every five minutes.
   const cricinfoReady = cricinfoStep({ storage, log, error });
   metaTally = {};
+  // Off without a key. One instance per run: its date lists are cached for the run only, its call
+  // counter is the persisted one in `highlightly-fallback`.
+  const highlightlyFor = createHighlightlyFallback({
+    loadState: async () => {
+      try {
+        return parseJsonFile(await storage.getFileDownload(BUCKET_ID, HIGHLIGHTLY_STATE_FILE));
+      } catch (e) {
+        if (e?.code === 404) return null;
+        throw e;
+      }
+    },
+    saveState: async (state) => {
+      await storage.deleteFile(BUCKET_ID, HIGHLIGHTLY_STATE_FILE).catch(() => {});
+      await storage.createFile(
+        BUCKET_ID,
+        HIGHLIGHTLY_STATE_FILE,
+        InputFile.fromBuffer(Buffer.from(JSON.stringify(state), "utf8"), `${HIGHLIGHTLY_STATE_FILE}.json`),
+        READ_ANY
+      );
+    },
+    log,
+    error,
+  });
+
   // Process matches in parallel so per-ball LLM latency doesn't serialize across matches.
   await Promise.allSettled(
     allLive.map(async (m) => {
@@ -1774,6 +1799,7 @@ async function handleRun({ req, res, log, error }) {
           // A match finalised long after it ended keeps its rows and loses its alerts.
           alerts: endingIds.has(matchId) && startMs - (lastSeenLiveAt.get(matchId) ?? 0) > RESULT_ALERT_MAX_AGE_MS ? null : alerts,
           rivalStore,
+          highlightlyFor,
           cricinfoFor: async () => {
             await cricinfoReady;
             const read = await cricinfoMatchStep({ matchId, summary: m, log, error });
@@ -3086,7 +3112,7 @@ async function activeViewerIds({ storage, log, error }) {
 
 // Exported for `finalise.test.js`: the finalisation wiring (which tier writes, and once) is
 // invisible in production until a match ends, which is the class of defect this file keeps finding.
-export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error, alerts = null, contextFor = null, onFinalised = null, rivalStore = null, cricinfoFor = null, wagonFor = null }) {
+export async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, alreadyFinalised, model, log, error, alerts = null, contextFor = null, onFinalised = null, rivalStore = null, cricinfoFor = null, wagonFor = null, highlightlyFor = null }) {
   // Queues one push to this match's topic. [alerts] is null when FCM is unconfigured or in tests
   // that do not exercise alerts, and then nothing is sent.
   const alert = (data) => {
@@ -3199,6 +3225,17 @@ export async function syncMatch({ db, matchId, title, commentaryCap, storeCommen
       detail.scorecard = parseScorecard(scoreHtml);
     } catch (e) {
       error(`Scorecard parse failed for ${matchId}: ${e?.message}`);
+    }
+  }
+  // A FINISHED match whose Cricbuzz card could not be had (blocked, unparsable, empty) is asked of
+  // Highlightly once. Never for a live match, and never when the feature is off (`highlightlyFor`
+  // is null without a key). The card has Cricbuzz's shape plus `source`, which the app ignores.
+  if (finalising && highlightlyFor && (detail.scorecard?.innings?.length || 0) === 0) {
+    try {
+      const card = await highlightlyFor({ matchId, title, metaTeams: meta.teams, startMs: meta.startMs });
+      if (card?.innings?.length) detail.scorecard = card;
+    } catch (e) {
+      error(`Highlightly scorecard fallback failed for ${matchId}: ${e?.message}`);
     }
   }
   // Skip writing a hollow snapshot: parseLiveDetail returns an all-null skeleton when the
