@@ -1,5 +1,6 @@
 package com.tanush.bouncer.network
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.tanush.bouncer.models.FormatStats
@@ -77,8 +78,10 @@ internal object PlayerProfileRsc {
      * label rather than by position.
      */
     private fun formatStats(holder: JsonObject): Map<String, FormatStats> {
-        val batting = holder.getAsJsonObject("battingStats")?.let(::readTable) ?: return emptyMap()
-        val bowling = holder.getAsJsonObject("bowlingStats")?.let(::readTable)
+        // `battingStats: null` is served for players with no recorded stats. Gson keeps that as a
+        // JsonNull member, which getAsJsonObject would hard-cast and throw on (ANDROID-5T).
+        val batting = holder.objectOrNull("battingStats")?.let(::readTable) ?: return emptyMap()
+        val bowling = holder.objectOrNull("bowlingStats")?.let(::readTable)
 
         return buildMap {
             for (header in batting.formats) {
@@ -118,12 +121,12 @@ internal object PlayerProfileRsc {
     }
 
     private fun readTable(table: JsonObject): Table? {
-        val headers = table.getAsJsonArray("headers")?.mapNotNull { it.stringOrNull() } ?: return null
+        val headers = table.arrayOrNull("headers")?.mapNotNull { it.stringOrNull() } ?: return null
         // The first header is the row-label column ("ROWHEADER"), not a format.
         if (headers.size < 2) return null
 
-        val rows = (table.getAsJsonArray("values") ?: return null).mapNotNull { row ->
-            val cells = row.asJsonObjectOrNull()?.getAsJsonArray("values")?.mapNotNull { it.stringOrNull() }
+        val rows = (table.arrayOrNull("values") ?: return null).mapNotNull { row ->
+            val cells = row.asJsonObjectOrNull()?.arrayOrNull("values")?.mapNotNull { it.stringOrNull() }
             if (cells.isNullOrEmpty()) null else cells.first() to cells.drop(1)
         }.toMap()
 
@@ -137,9 +140,9 @@ internal object PlayerProfileRsc {
      * id leads and is not displayed, so the cells are read from the end of the row backwards.
      */
     private fun recentForm(player: JsonObject): List<RecentInnings> {
-        val rows = player.getAsJsonObject("recentBatting")?.getAsJsonArray("rows") ?: return emptyList()
+        val rows = player.objectOrNull("recentBatting")?.arrayOrNull("rows") ?: return emptyList()
         return rows.take(MAX_RECENT_INNINGS).mapNotNull { row ->
-            val cells = row.asJsonObjectOrNull()?.getAsJsonArray("values")?.mapNotNull { it.stringOrNull() }
+            val cells = row.asJsonObjectOrNull()?.arrayOrNull("values")?.mapNotNull { it.stringOrNull() }
             if (cells == null || cells.size < 4) return@mapNotNull null
             val score = SCORE_CELL.find(cells[cells.size - 4]) ?: return@mapNotNull null
             RecentInnings(
@@ -173,6 +176,15 @@ internal object PlayerProfileRsc {
         if (isJsonPrimitive) runCatching { asString }.getOrNull() else null
 
     private fun JsonElement.asJsonObjectOrNull(): JsonObject? = if (isJsonObject) asJsonObject else null
+
+    /**
+     * The member as an object, or null when it is absent, JSON `null`, or another type.
+     * Gson's `getAsJsonObject` casts unconditionally and throws on a `JsonNull` member.
+     */
+    private fun JsonObject.objectOrNull(key: String): JsonObject? = get(key)?.takeIf { it.isJsonObject }?.asJsonObject
+
+    /** As [objectOrNull], for arrays. */
+    private fun JsonObject.arrayOrNull(key: String): JsonArray? = get(key)?.takeIf { it.isJsonArray }?.asJsonArray
 
     private fun String?.asInt(): Int = this?.trim()?.toIntOrNull() ?: 0
 
