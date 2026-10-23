@@ -27,11 +27,13 @@ data class PlayerCareer(
     /** Side to matches played for it, most first. */
     val teams: List<Pair<String, Int>>,
     val matches: List<CareerMatch>,
+    /** Whether the record carries 4s, 6s and five-wicket hauls; one built before they were added does not. */
+    val hasBoundaries: Boolean = false,
 )
 
 /** Turns the site's compact player records into the models the player page already renders. */
 object CareerStats {
-    // Columns of a format's 16 integers (`history-data.md`).
+    // Columns of a format's integers (`history-data.md`): 16, then 4 more on records built with boundary counts.
     private const val MATCHES = 0
     private const val INNINGS = 1
     private const val NOT_OUTS = 2
@@ -47,14 +49,18 @@ object CareerStats {
     private const val BEST_WICKETS = 12
     private const val BEST_RUNS = 13
     private const val CATCHES = 14
+    private const val FOURS = 16
+    private const val SIXES = 17
+    private const val FIVE_WICKETS = 19
     private const val COLUMNS = 16
+    private const val COLUMNS_WITH_BOUNDARIES = 20
     private const val MATCH_COLUMNS = 5
     private const val BALLS_PER_OVER = 6.0
     private const val PERCENT = 100.0
 
     /**
-     * Cricsheet has no boundary counts or five-wicket hauls, so `fours`, `sixes` and `fiveWickets`
-     * stay 0 and the page is told not to show them (`hasBoundaries = false`).
+     * A record built before the site counted boundaries has only 16 columns, so `fours`, `sixes` and
+     * `fiveWickets` stay 0 and the page is told not to show them (`hasBoundaries = false`).
      */
     fun formatStats(c: List<Int>): FormatStats? {
         if (c.size < COLUMNS) return null
@@ -69,6 +75,9 @@ object CareerStats {
             strikeRate = if (c[BALLS] > 0) c[RUNS] * PERCENT / c[BALLS] else 0.0,
             hundreds = c[HUNDREDS],
             fifties = c[FIFTIES],
+            fours = c.getOrElse(FOURS) { 0 },
+            sixes = c.getOrElse(SIXES) { 0 },
+            fiveWickets = c.getOrElse(FIVE_WICKETS) { 0 },
             wickets = c[WICKETS],
             bowlingAverage = if (c[WICKETS] > 0) c[RUNS_CONCEDED].toDouble() / c[WICKETS] else 0.0,
             economy = if (bowled > 0) c[RUNS_CONCEDED] / (bowled / BALLS_PER_OVER) else 0.0,
@@ -79,15 +88,16 @@ object CareerStats {
 
     fun parseCareer(json: String): PlayerCareer? = runCatching {
         val root = AppJson.parseToJsonElement(json) as JsonObject
-        val formats = (root["f"] as? JsonObject).orEmpty().mapNotNull { (format, cells) ->
-            val stats = formatStats((cells as JsonArray).map { (it as JsonPrimitive).intOrNull ?: 0 })
-            stats?.let { format to it }
-        }.toMap()
+        val columns = (root["f"] as? JsonObject).orEmpty().mapValues { (_, cells) ->
+            (cells as JsonArray).map { (it as JsonPrimitive).intOrNull ?: 0 }
+        }
+        val formats = columns.mapNotNull { (format, c) -> formatStats(c)?.let { format to it } }.toMap()
+        val hasBoundaries = columns.isNotEmpty() && columns.values.all { it.size >= COLUMNS_WITH_BOUNDARIES }
         val teams = (root["tm"] as? JsonObject).orEmpty()
             .map { (team, count) -> team to ((count as? JsonPrimitive)?.intOrNull ?: 0) }
             .sortedByDescending { it.second }
         val matches = (root["m"] as? JsonArray).orEmpty().mapNotNull { (it as? JsonArray)?.let(::careerMatch) }
-        PlayerCareer((root["n"] as JsonPrimitive).content, formats, teams, matches)
+        PlayerCareer((root["n"] as JsonPrimitive).content, formats, teams, matches, hasBoundaries)
     }.getOrNull()
 
     fun parseNames(json: String): List<HistoryNameRow>? = runCatching {

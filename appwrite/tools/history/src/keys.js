@@ -3,7 +3,7 @@
  * across builds (a device caches them) and safe as file names.
  */
 
-import { squash } from "../../../functions/train-win-probability/src/contextmath.js";
+import { squash } from "./names.js";
 
 /** "Sri Lanka" -> "sri-lanka". Never contains "__", which separates key parts. */
 export function slug(text) {

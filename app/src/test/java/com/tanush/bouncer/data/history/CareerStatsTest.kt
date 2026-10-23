@@ -45,6 +45,22 @@ class CareerStatsTest {
     }
 
     @Test
+    fun `boundary columns show only on a record that carries them`() {
+        val old = CareerStats.formatStats(odi)!!
+        assertEquals(0, old.fours)
+        assertEquals(0, old.fiveWickets)
+        val s = CareerStats.formatStats(odi + listOf(1311, 26, 0, 0))!!
+        assertEquals(1311, s.fours)
+        assertEquals(26, s.sixes)
+        assertEquals(0, s.fiveWickets)
+        val withHaul = CareerStats.formatStats(odi + listOf(0, 0, 3, 2))!!
+        assertEquals(2, withHaul.fiveWickets)
+        val json = { cols: String -> """{"n":"X","f":{"ODI":[$cols]},"tm":{},"m":[]}""" }
+        assertEquals(false, CareerStats.parseCareer(json("314,303,47,14987,15892,183,0,77,55,662,680,5,1,13,167,0"))!!.hasBoundaries)
+        assertEquals(true, CareerStats.parseCareer(json("314,303,47,14987,15892,183,0,77,55,662,680,5,1,13,167,0,9,1,0,0"))!!.hasBoundaries)
+    }
+
+    @Test
     fun `a short column list is not a record`() {
         assertNull(CareerStats.formatStats(listOf(1, 2, 3)))
     }

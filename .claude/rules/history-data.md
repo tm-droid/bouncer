@@ -1,19 +1,23 @@
 ---
 paths:
   - "appwrite/tools/history/**"
-  - ".github/workflows/build-history.yml"
+  - ".github/workflows/publish-history-builder.yml"
   - "app/src/main/kotlin/**/data/history/**"
 ---
 
 # Historical match data (Cricsheet, GitHub Pages)
 
-**Every past match the app shows ball-by-ball, and every record, comes from a static site, not Appwrite.** `appwrite/tools/history/build.mjs` turns Cricsheet's `all_json.zip` into JSON files. `.github/workflows/build-history.yml` publishes them weekly (Monday 03:30 UTC) to the `gh-pages` branch of the **public** repo `tm-droid/bouncer-history`, served at `https://tm-droid.github.io/bouncer-history/`. It is not on Appwrite because Free's 2 GB storage and 5 GB/month bandwidth cannot hold or serve it.
+**Every past match the app shows ball-by-ball, and every record, comes from a static site, not Appwrite.** `appwrite/tools/history/build.mjs` turns Cricsheet's `all_json.zip` into JSON files. `appwrite/tools/history/workflow/build.yml` runs **inside the public repo** `tm-droid/bouncer-history` weekly (Monday 03:30 UTC) and publishes to its `gh-pages` branch, served at `https://tm-droid.github.io/bouncer-history/`. It is not on Appwrite because Free's 2 GB storage and 5 GB/month bandwidth cannot hold or serve it.
 
 ## Rules that are not visible in the code
 
 - **The data repo is public, so only Cricsheet-derived data goes in.** Cricsheet is ODC-BY: re-hosting is allowed with attribution, which the site README and the app give. Cricbuzz and Cricinfo content must never be added.
-- **Each publish is one orphan commit force-pushed over `gh-pages`.** A rebuild rewrites most files, and keeping history would grow the repo by the whole site every week.
-  - Pushes use the deploy key whose private half is the `HISTORY_DEPLOY_KEY` secret on `tm-droid/bouncer`. There is no other copy; to rotate it, make a new key pair and replace both halves.
+- **The builder runs in the public repo, because public Actions minutes are free** and this repo's are billed (its Actions were blocked 2026-10-24 for failed payments).
+  - `publish-history-builder.yml` force-pushes `appwrite/tools/history/` as one orphan commit to that repo's `main` (with `workflow/build.yml` as `.github/workflows/build.yml`), via the `HISTORY_DEPLOY_KEY` secret here. Edit the tool here, never there: the next publish replaces `main`. While private Actions are blocked, publish by hand (same copy, orphan commit, push).
+  - `main` there must stay the **default branch**: scheduled workflows run only from it, and the repo's Actions workflow permission must be `write` (the build pushes `gh-pages` with `GITHUB_TOKEN`).
+  - The tool cannot import from elsewhere in this repo; `src/names.js` copies `squash`/`venueKey` from train-win-probability, with a test that they agree.
+  - GitHub disables scheduled workflows in a public repo after 60 days without repo activity (commits, issues, PRs). Whether the workflow's own `gh-pages` push counts is not documented; a publish to `main` surely does. If the weekly build stops, re-enable it in the Actions tab or run `gh workflow run build.yml -R tm-droid/bouncer-history`.
+- **Each build is one orphan commit force-pushed over `gh-pages`.** A rebuild rewrites most files, and keeping history would grow the repo by the whole site every week.
 - **Size.** First build (2026-10-14): 23,055 matches, 41,541 files, 343 MB, 36 s, 470 MB peak RSS.
   - The build fails over 900 MB, because Pages refuses a site over 1 GB.
   - `m/` (the match files) is 324 MB of it; `s/p/` (players) 76 MB.
@@ -44,7 +48,7 @@ paths:
 - **Keys:** a women's side is `<slug>__w`; a pair is the two slugs sorted.
 - **Players without a registry id** are left out of player records, because a bare name cannot be joined across matches.
 - **Super overs** are kept in the match file (`so: 1`) but left out of every record.
-- **Player records** (`s/p/<regId>.json`) are `{n, f:{format:[16 ints]}, tm:{side:matches}, m:[[id,date,format,team,opponent,runs,balls,out,wkts,ct]...]}`, newest match first. `m` has no result or event, so the career page joins the last 20 through `PastMatchIndex.cricsheetById` and keeps the record's own fields for a match the archive replaced. Cricsheet has no 4s/6s/5w, so `formatStatItems(hasBoundaries = false)` hides them. `names/<letter>.json` is keyed by the surname's first letter (`["V Kohli", regId, team, matches]`). Readers: `CareerStats`, `HistoryClient.names/player`.
+- **Player records** (`s/p/<regId>.json`) are `{n, f:{format:[20 ints]}, tm:{side:matches}, m:[[id,date,format,team,opponent,runs,balls,out,wkts,ct]...]}`, newest match first. `m` has no result or event, so the career page joins the last 20 through `PastMatchIndex.cricsheetById` and keeps the record's own fields for a match the archive replaced. Ints 0-15: matches, innings, not outs, runs, balls, high score, high score not out, 50s, 100s, balls bowled, runs conceded, wickets, best wickets, best runs (-1 until bowled), catches, stumpings. Ints 16-19 (appended, schema `v` stays 1 because a reader of the first 16 is unaffected): fours, sixes, innings with 4+ wickets, innings with 5+ wickets. A `non_boundary` 4 or 6 counts as neither; wickets are the bowler's own (no run out, retired, obstructing). `CareerStats` shows them only when every format has 20 ints (`PlayerCareer.hasBoundaries`); an older record keeps `formatStatItems(hasBoundaries = false)`. `names/<letter>.json` is keyed by the surname's first letter (`["V Kohli", regId, team, matches]`). Readers: `CareerStats`, `HistoryClient.names/player`.
 
 - **Team and ground records** (`HistoryRecords`). `s/team/<key>.json` `f` is `{format:[played, won, lost, tied, drawn, no result]}` and feeds the team page's Records section. A ground is found from Cricbuzz's "Name, City" through `idx/venues.json` (`VenueKey.lookup`): the exact `slug(name + " " + city)` first, else the one row whose squashed name matches and whose city agrees; two candidates give null. `s/venue` `f` is `{format:[matches, first-innings runs, first innings counted, won batting first, won chasing]}`; Tests carry no win counts. The Info tab shows this card when Cricsheet has the ground in the match's format (T20 internationals are `T20I`, league T20s `T20`), and falls back to `context.venue` otherwise, so a ground never shows two cards. Until a rebuild publishes `idx/venues.json` the lookup finds nothing and the fallback shows.
 - **Cricsheet splits one ground by city** (49 of 743 `idx/venues.json` names have a city-less row beside a city row: the MCG is `melbourne-cricket-ground` 13 Tests plus `-melbourne` 10). `VenueKey.lookup` returns every row with the same squashed name and a matching or missing city (max 3, two different cities is ambiguous), and `HistoryRecords.venue` sums their counters; one failed fetch is null, never a partial record.

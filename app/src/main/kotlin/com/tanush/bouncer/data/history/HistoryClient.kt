@@ -7,7 +7,7 @@ import kotlinx.serialization.json.JsonArray
 
 /**
  * Reads the historical-match site: every Cricsheet match, published weekly to GitHub Pages by
- * `.github/workflows/build-history.yml` (`.claude/rules/history-data.md`). Requests go through
+ * `appwrite/tools/history/workflow/build.yml` (`.claude/rules/history-data.md`). Requests go through
  * [StaticSite].
  *
  * The URL is a constant, not a `local.properties` id, because it is public and a blank template

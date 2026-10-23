@@ -150,7 +150,7 @@ function compactInnings(inning, { indexOf, teamIndex, ballsPerOver }) {
       striker.r += rb;
       if (!(x & X.WIDE)) striker.b += 1;
       if (rb === 4 && !(x & X.NON_BOUNDARY)) striker.f4 += 1;
-      if (rb === 6) striker.s6 += 1;
+      if (rb === 6 && !(x & X.NON_BOUNDARY)) striker.s6 += 1;
       batRow(ns);
 
       const bowler = bowlRow(bw);

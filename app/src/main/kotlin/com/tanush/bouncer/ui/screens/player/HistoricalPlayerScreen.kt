@@ -116,7 +116,7 @@ private fun CareerList(
                 )
             }
         }
-        formatStatItems(career.formats[selected], selected, hasBoundaries = false)
+        formatStatItems(career.formats[selected], selected, hasBoundaries = career.hasBoundaries)
         if (loaded.recent.isNotEmpty()) {
             item(key = "recent_header") { SectionHeaderV2(title = stringResource(R.string.history_career_recent)) }
             items(loaded.recent, key = { "match_${it.id}" }) { row ->

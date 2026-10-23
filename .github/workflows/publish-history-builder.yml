@@ -1,0 +1,63 @@
+# Publishes the history-site builder (appwrite/tools/history) to the `main` branch of the PUBLIC
+# repo `tm-droid/bouncer-history`, whose own workflow rebuilds the site every Monday and replaces
+# that repo's `gh-pages` (`.claude/rules/history-data.md`).
+#
+# The builder runs there because a public repo's Actions minutes are free; this repo's are spent
+# by CI. `main` there is replaced by one orphan commit of this directory each time, so this
+# directory is its only source. The site branch is never touched from here.
+#
+# Required GitHub Secret:
+#   HISTORY_DEPLOY_KEY: the private half of a deploy key with write access on bouncer-history
+
+name: Publish history builder
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'appwrite/tools/history/**'
+      - 'appwrite/functions/train-win-probability/src/contextmath.js'
+      - '.github/workflows/publish-history-builder.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: publish-history-builder
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # Here the vendored key helpers are checked against contextmath.js; in the public repo they cannot be.
+      - name: Test
+        working-directory: appwrite/tools/history
+        run: npm ci --ignore-scripts --no-audit --no-fund && npm test
+
+      - name: Publish
+        env:
+          DEPLOY_KEY: ${{ secrets.HISTORY_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # GitHub's published host key, pinned rather than trusted on first use.
+          echo 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' >> ~/.ssh/known_hosts
+          out=/tmp/builder
+          mkdir -p "$out/.github/workflows"
+          cp -R appwrite/tools/history/build.mjs appwrite/tools/history/package.json \
+            appwrite/tools/history/package-lock.json appwrite/tools/history/src appwrite/tools/history/test "$out/"
+          cp appwrite/tools/history/workflow/*.yml "$out/.github/workflows/"
+          cd "$out"
+          git init -q -b main
+          git add -A
+          git -c user.name="bouncer-history" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Builder from tm-droid/bouncer@${GITHUB_SHA::8}"
+          git push -q -f git@github.com:tm-droid/bouncer-history.git main

@@ -157,8 +157,8 @@ test("stats: team, pair, venue and player records from one match", () => {
   assert.ok([...files.keys()].some((k) => k.startsWith("s/venue/eden-gardens")));
   const a1 = files.get("s/p/0000a001.json");
   // played, innings, not outs, runs, balls, high score, not out, 50s, 100s, balls bowled,
-  // conceded, wickets, best w, best r, catches, stumpings
-  assert.deepEqual(a1.f.T20I, [1, 1, 1, 4, 8, 4, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0]);
+  // conceded, wickets, best w, best r, catches, stumpings, fours, sixes, 4w, 5w
+  assert.deepEqual(a1.f.T20I, [1, 1, 1, 4, 8, 4, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]);
   assert.deepEqual(files.get("s/p/0000000e.json").f.T20I.slice(9, 15), [6, 0, 0, 0, 0, 1]);
   const names = new Map(playerNameFiles(stats));
   assert.ok(names.get("s/p/names/a.json").some((r) => r[1] === "0000a001"));
@@ -196,4 +196,29 @@ test("a registry id that is not Cricsheet's 8-hex form never becomes a file", ()
   const paths = [...statsFiles(stats)].map(([p]) => p);
   assert.ok(paths.every((p) => !p.includes("..")));
   assert.ok(!paths.includes("s/p/../../../etc/x.json"));
+});
+
+test("career 4s, 6s and 4/5-wicket hauls: non-boundary and run outs do not count", () => {
+  const ball = (bat, bowler, extra = {}) => d("a1", bowler, "a2", bat, {}, extra);
+  const wkt = (kind) => ({ wickets: [{ player_out: "a2", kind }] });
+  const hauls = [...Array.from({ length: 4 }, () => ball(0, "z", wkt("bowled"))), ball(0, "z", wkt("run out"))];
+  const five = [...hauls, ball(0, "z", wkt("lbw"))];
+  const mk = (id, dels) => compactMatch(id, {
+    ...raw,
+    innings: [{ team: "A", overs: [{ over: 0, deliveries: dels }] }],
+  });
+  const stats = createStats();
+  // 4 boundary + 4 non-boundary (not a four) + 6 + 6 non-boundary (not a six); 4 bowled wickets plus a run out
+  addMatch(stats, mk("1", [
+    ball(4, "z"), { ...ball(4, "z"), runs: { batter: 4, extras: 0, total: 4, non_boundary: true } },
+    ball(6, "z"), { ...ball(6, "z"), runs: { batter: 6, extras: 0, total: 6, non_boundary: true } },
+    ...hauls,
+  ]));
+  addMatch(stats, mk("2", five));
+  const files = new Map(statsFiles(stats));
+  const a1 = files.get("s/p/0000a001.json").f.T20I;
+  assert.deepEqual(a1.slice(16), [1, 1, 0, 0]);
+  const z = files.get("s/p/0000000f.json").f.T20I;
+  // match 1: 4 wickets (run out excluded) -> 4w; match 2: 5 wickets (4 + lbw) -> 4w and 5w
+  assert.deepEqual([z[11], ...z.slice(16)], [9, 0, 0, 2, 1]);
 });

@@ -167,7 +167,7 @@ jobs:
         if: steps.changes.outputs.functions == 'yes'
         run: |
           set -euo pipefail
-          # appwrite/tools/history is the history-site builder (build-history.yml), not a function,
+          # appwrite/tools/history is the history-site builder (workflow/build.yml, run in the public repo), not a function,
           # but its output is published publicly and its suite guards the scorecard arithmetic.
           # appwrite/tools/archive is the match archiver (publish-archiver.yml); its suite keeps raw
           # Cricbuzz text out of a public site and its classifier identical to match-sync's.

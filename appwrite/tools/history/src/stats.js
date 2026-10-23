@@ -6,7 +6,7 @@
  * into a batting average.
  */
 
-import { venueKey } from "../../../functions/train-win-probability/src/contextmath.js";
+import { venueKey } from "./names.js";
 import { pairKey, slug, teamKey } from "./keys.js";
 
 /**
@@ -105,18 +105,20 @@ function addPlayers(stats, m, fk) {
 
   const per = new Map(); // person index -> this match's line
   const lineFor = (idx) => {
-    if (!per.has(idx)) per.set(idx, { r: 0, b: 0, outs: 0, inn: 0, wk: 0, rc: 0, bb: 0, ct: 0, st: 0, best: null, innings: [] });
+    if (!per.has(idx)) per.set(idx, { r: 0, b: 0, outs: 0, inn: 0, wk: 0, rc: 0, bb: 0, ct: 0, st: 0, f4: 0, s6: 0, w4: 0, w5: 0, best: null, innings: [] });
     return per.get(idx);
   };
   for (const idx of sideOf.keys()) lineFor(idx);
 
   for (const inn of m.inn) {
     if (inn.so) continue;
-    for (const [idx, r, b, , , how] of inn.sc.bat) {
+    for (const [idx, r, b, f4, s6, how] of inn.sc.bat) {
       const line = lineFor(idx);
       line.inn += 1;
       line.r += r;
       line.b += b;
+      line.f4 += f4;
+      line.s6 += s6;
       const out = how !== null && how !== "retired hurt" && how !== "retired not out";
       if (out) line.outs += 1;
       line.innings.push([r, out]);
@@ -126,6 +128,8 @@ function addPlayers(stats, m, fk) {
       line.bb += balls;
       line.rc += runs;
       line.wk += wk;
+      if (wk >= 4) line.w4 += 1;
+      if (wk >= 5) line.w5 += 1;
       if (!line.best || wk > line.best[0] || (wk === line.best[0] && runs < line.best[1])) line.best = [wk, runs];
     }
     for (const d of inn.b) {
@@ -150,9 +154,11 @@ function addPlayers(stats, m, fk) {
     if (!player) stats.players.set(id, (player = { n: person[0], f: {}, tm: {}, m: [] }));
     player.tm[m.t[side]] = (player.tm[m.t[side]] ?? 0) + 1;
     // [matches, innings, not outs, runs, balls faced, high score, high score not out, 50s, 100s,
-    //  balls bowled, runs conceded, wickets, best wickets, best runs, catches, stumpings]
-    // best runs is -1 until the player has bowled.
-    const a = (player.f[fk] ??= [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0]);
+    //  balls bowled, runs conceded, wickets, best wickets, best runs, catches, stumpings,
+    //  fours, sixes, innings of 4+ wickets, innings of 5+ wickets]
+    // best runs is -1 until the player has bowled. Appended after the first 16 so older readers
+    // that take the first 16 are unaffected.
+    const a = (player.f[fk] ??= [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0]);
     a[0] += 1;
     for (const [r, out] of line.innings) {
       a[1] += 1;
@@ -175,6 +181,10 @@ function addPlayers(stats, m, fk) {
     }
     a[14] += line.ct;
     a[15] += line.st;
+    a[16] += line.f4;
+    a[17] += line.s6;
+    a[18] += line.w4;
+    a[19] += line.w5;
     // [match, date, format, side, opponent, runs, balls, dismissals, wickets, runs conceded]
     player.m.push([m.id, m.d, fk, m.t[side], m.t[1 - side], line.r, line.b, line.outs, line.wk, line.rc]);
   }

@@ -120,7 +120,7 @@ internal fun LazyListScope.playerFactItems(profile: PlayerProfile) {
 /**
  * One format's figures: three that matter most, large, then the rest as rows. A specialist bowler
  * who has never batted gets no batting block, and a batter who has never bowled no bowling one.
- * A source without boundary counts or five-wicket hauls (Cricsheet) passes `hasBoundaries = false`,
+ * A source without boundary counts or five-wicket hauls (an older Cricsheet record) passes `hasBoundaries = false`,
  * which leaves those rows out rather than showing zeros.
  */
 internal fun LazyListScope.formatStatItems(stats: FormatStats?, format: String, hasBoundaries: Boolean = true) {
