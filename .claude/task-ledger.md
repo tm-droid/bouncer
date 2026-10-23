@@ -1,20 +1,45 @@
-# Goal: Archive + history in search and beyond, better search ranking, M3 refresh indicator
+# Goal: More data sources — 4s/6s/5w, register join, Wikidata bios, weather, Afghanistan backfill (free only)
 
-Plan (full specs, research, decisions): /Users/tanushmalhotra/.claude/plans/so-recently-we-made-streamed-corbato.md
-Resume: read the plan's unit spec, then find the first `[ ]` below. Previous ledger (design upgrade, complete) is in git history.
+Plan (research verdicts, unit specs): /Users/tanushmalhotra/.claude/plans/i-think-we-need-partitioned-treasure.md
+Resume: read the plan's unit spec, then find the first `[ ]` below. Previous ledger (search/history) is commit cb5a4bca.
 
-B = app/src/main/kotlin/com/tanush/bouncer · T = ./gradlew testDebugUnitTest --tests · D = detekt under JBR 21 · V = assembleDebug testDebugUnitTest lintDebug + D
-Commit per unit (no push until the end). Every commit touching app/src/main/ rewrites distribution/whatsnew/whatsnew-en-US to cover all units so far (≤500 chars).
+B = app/src/main/kotlin/com/tanush/bouncer · H = appwrite/tools/history · A = appwrite/tools/archive · D = detekt under JBR 21 · V = assembleDebug testDebugUnitTest lintDebug + D
+Commit per unit (main agent commits). One Gradle job at a time (8 GB Mac). Every commit touching app/src/main/ rewrites distribution/whatsnew/whatsnew-en-US to cover all units so far (≤500 chars).
+Actions minutes are blocked by billing (10-19 history run: "recent account payments have failed"); private-repo workflows do not run. Publish sites locally until U0 lands.
 
 ## Units
-- [x] U0 (66e39ba2): M3 refresh indicator (disc + gold arc, haptic, reduced motion), delete CricketBallPullRefresh | files: B/ui/components/v2/PullRefreshWrapper.kt, LightModeContrastTest | done when: V green, no CricketBall refs
-- [x] U1 (3a650a5e): foundations (static-site cache, models, HistoryTeams, CricsheetScorecard, PastMatches + cs- guards) | done when: V + T *CricsheetScorecardTest *PastMatchesTest *HistoryTeamsTest *MatchDetailPastMatchTest
-- [x] U2 (9a670335): search ranking (query parser, typo thresholds w/ server parity, tier ordering, precompute, recents on submit, trending) | done when: V + T *Search* + node --test appwrite/functions/api
-- [x] U3 (a97af42c): past-match search (PastMatchIndex, PastMatchRow, Past matches section) | done when: V + T *PastMatchIndexTest
-- [x] U4 (2eb11238): Afghanistan notice | done when: V + test
-- [x] U5 (b04c243d): historical players + career page + player-page link | done when: V + T *PlayerNameMatchTest *CareerStatsTest *CareerJoinTest *SearchMergeTest *BouncerScreenInitOrderTest
-- [x] U6 (6b8a17dc): fuller past matches (Cricsheet card fallback, overs/worm, evalLog win-prob) | done when: V + T *ArchivedMatchTest *ProbabilityHistoryTest
-- [x] U7 (1b12f827): head-to-head from s/h2h (match card all formats, search pair card) | done when: V + T *CricsheetH2HTest *H2HRepositoryKeyTest
-- [x] U8 (017d7e2f, db23fed8): team records + venue records (builder idx/venues.json) | done when: V + T *VenueKeyTest *TeamRecordTest + node --test appwrite/tools/history
-- [x] U9: CUT by owner 2026-10-24 ("gimmicky, not the vibe of the app") — do not build
-- [x] Final (pushed 6d834cf0; Play internal+alpha 1.0.11 versionCode 1673, notes 490 chars; history rebuilt with idx/venues.json): emulator verification (plan's Verification list), whatsnew polish, git push (CI will not run: Actions minutes exhausted 2026-10-23), LOCAL Play upload: versionCode = highest on Play + 1 (query edits API with ~/.config/bouncer/play-service-account.json), BOUNCER_VERSION_CODE=… ./gradlew bundleRelease, upload via Play Developer API to tracks internal + alpha with whatsnew notes; history rebuild for venues runs locally (build.mjs + push gh-pages) since Actions is out
+- [x] U0 (3f62fb3f): history build runs in public tm-droid/bouncer-history (free minutes) | files: .github/workflows/build-history.yml, H/workflow/ | done when: a run in the public repo succeeds
+- [x] U1 (3f62fb3f): 4s, 6s, 4w, 5w in player records + app shows them | files: H/src/stats.js, B/data/history/CareerStats.kt, B/ui/screens/player/PlayerProfileSections.kt | done when: node --test H, scorecard spot-check, V
+- [x] U1s (2df077ee): builder hardening from security review: build.mjs skips a match whose date is not /^\d{4}-\d{2}-\d{2}$/ and monthOf result is checked /^\d{4}-\d{2}$/ before any path; stats.js record maps keyed by Cricsheet strings (team.f, player.tm, venue.f, pair.f, …) become Object.create(null) or Map so '__proto__' cannot pollute | files: H/build.mjs, H/src/stats.js | done when: node --test H incl. a '__proto__' match_type and a '../x' date test
+- [x] U2 (2df077ee): Cricsheet register (people.csv/names.csv): cb/ci ids + aliases; history player opens Cricbuzz profile | files: H/build.mjs, H/src/, B/data/history/ | done when: node --test H, cb coverage %, V, emulator check
+- [x] U3 (see log): Wikidata + Commons bios (DOB, birthplace, styles, photo URL + attribution) | files: H/src/wikidata.mjs, B/ player page | done when: coverage %, site < 900 MB, V, attribution visible
+- [x] U4 (see log): venue coordinates + per-match weather (finish weather-backfill.mjs) | files: appwrite/tools/weather-backfill.mjs, H/, B/ Info tab | done when: 3 spot-checks vs Open-Meteo, cache reuse, V
+- [x] U5a: probe Cricbuzz Afghanistan match list + completed-match ball structure | done when: count, earliest year, ball-structure yes/no
+- [x] U5b (e40c5fb8; archive gh-pages 0ef78be): A/backfill-cricbuzz.mjs + run + publish to bouncer-archive gh-pages (normal commit) | done when: node --test A, count matches probe, 3 scorecards match
+- [ ] U5e (after U5b): AFG ball-by-ball (Dec 2016+) from /api/mcenter/commentary-pagination -> structured balls only (no text). Step 1: probe from GitHub Actions in public tm-droid/bouncer-archive (workflow_dispatch, ~5 requests). 200 -> crawl as scheduled workflow there over days. 403 -> run overnight on Mac (caffeinate, 1 req/3 s, stop on first 403) | files: A/src/, A/workflow/ | done when: probe result logged, crawl complete or stopped with count, balls sum to scorecard totals for 3 matches
+- [x] U5c: app shows Afghanistan archive matches; HistoryCoverage notice "scorecards only" | done when: V, "afg v ire" search lists them
+- [x] U5d: Afghanistan team/h2h records from archive aggregate | done when: V, team page shows records
+- [x] U6: Highlightly cricket API probe (≤10 calls, report only) | done when: depth report
+- [x] U7 (code; deploy in Final): Highlightly scorecard fallback (after U5b): match-sync uses it for a COMPLETED match whose Cricbuzz scorecard 403s; U5b backfill uses it when Cricbuzz has no scorecard; hard daily call cap (quota 100/day shared with hourly highlight sync) | files: appwrite/functions/match-sync/src/, A/ | done when: node --test match-sync + A, fixture from /private/tmp/claude-503/u6/ parses, cap test
+- [ ] Final: push main, local Play upload (see cb5a4bca ledger Final for the procedure), rebuild + publish history site, live-check fields
+
+## Decisions
+- 2026-10-24: free only; Afghanistan data → bouncer-archive (history repo stays Cricsheet-only); everything in scope.
+- 2026-10-24: user: integrate Highlightly as a fallback too (U7). Completed matches only, quota-capped. Ball-by-ball AFG: user 2026-10-24 — run from the Mac directly, skip the Actions probe (no Android phone; emulator only, so home-IP block risk accepted) (U5e). Deploy of match-sync + RAPIDAPI_KEY env on it happen in Final.
+
+## Log
+- U6 done: Highlightly BASIC has full scorecards (bat/bowl/FoW/partnerships/XIs w/ styles) for AFG, women, associates, domestic; no ball-by-ball/toss/umpires; UUID player ids, join by team+date; 9 calls. Samples /private/tmp/claude-503/u6/. Candidate Cricbuzz-403 fallback + backfill; integration needs user OK.
+- U0 done: public repo main created (default branch main, Actions perms write), run 40005366671 green; squash/venueKey vendored to H/src/names.js. Public main holds a pre-final copy: republish source locally after U1s-U4 (private Actions blocked). HISTORY_DEPLOY_KEY untested. 60-day schedule rule: gh-pages push may not count; check run list.
+- U1 done: f[16..19] = 4s, 6s, 4w inns, 5w inns; v stays 1; node 15/15, V green (agent), Dhoni 8x4 2x6 in 433606 record.
+- U5a done: 345+ AFG men's internationals (ODI 172, T20I 154, Test 16, +6) + APL 2018 23, earliest 2009-04-19; route = /cricket-scorecard-archives/{year} -> series matches filtered team 96; match-sync parseScorecard/parseMatchMeta work on 2015/2019/2025; ball-level via /api/mcenter/commentary-pagination/{matchId}/{inningsId}/{ts} from ~Dec 2016 (~20 items/req); 136 requests, no 403. Findings /private/tmp/claude-503/u5a/findings.md. U5b launched (scorecards only).
+- U1s+U2 done: date/month path guards, null-proto maps, hostile tests bite; register: ci 13,695/13,696 (100%), cb 50 (0.37%) so name join stays primary; +466 alias rows, site +0.2 MB (343.9->344.1); V + detekt green (agent); no emulator check (none running).
+- U5e script ready (uncommitted): A/src/balls.js, src/ball-outcome.js (vendored parseBallOutcome + parity test), backfill-balls.mjs, workflow/backfill-balls.yml, test/balls.test.js + fixtures; node --test A 32/32. Weak spots: non-striker inferred, non-striker run-out recorded as striker, dismissal kind by regex. Next: after U5b, pilot 2 matches and compare per-batter runs vs scorecard, then overnight Mac run.
+- U5b done: 391 AFG found, 387 written (187 ODI, 185 T20 incl 23 APL, 15 Test), 4 unfinished skipped; 783 req no 403; 3 cards match live; 11297 off by Cricbuzz's own numbers; archiver merges (no republish needed). Ball crawler committed 465fad23, workflow manual-only.
+- U5e pilot (80 req, no 403) on copy: all 3 matches PARTIAL; inn2 of 17685 has 15 dup over.ball keys and starts at 17.4 (paging overlap), inn1 1-8 runs short. Debug agent running (pilot2-site).
+- U3 done: bio 52.3% (7,162/13,696), photo 10.0%; P569/P19/P18/enwiki, no styles (P2545 on 1,159 only); no age (no death date); site 345.0 MB; node 30/30, V + detekt green (agent); no emulator.
+- U5e fix 05348c59: innings filter + timestamp dedupe, run-out runs, striker from line lead, per-batter check; 43/43. Replay: 4/6 pilot innings complete, rest = Cricbuzz stream drops balls (kept partial). Overnight crawl started: /private/tmp/claude-503/run-balls.sh (log balls-run.log), site /private/tmp/claude-503/u5b-site, commits+pushes gh-pages at end (also on exit 2).
+- U7 done: fallback on finalising run only, exact-one join (date, teams, 36 h, Finished), totals cross-checked, cap 20/day (highlights max 42/day from planDates), counter highlightly-fallback in cricket-stats; 472/472. One attempt per match (no later retry). Final: set RAPIDAPI_KEY on bouncer-match-sync, `node appwrite/tools/deploy-function.mjs bouncer-match-sync --with-node-modules`, rebuild deployment.
+- U4 done: coords 663/743 (Wikidata 214, geocode 449); w=[tmax C, rain mm (1 dp), hum%, wind kmh, cloud%]; self-cache from published idx/weather.json, WEATHER_LIMIT 4,500/run (5k/h cap), workflow timeout 120 min; full fill 8,527 req ~2 weekly runs; 3 spot-checks exact (wind rounded); node 44/44, V + detekt green (agent); weather shown for cs- matches only; weather-backfill.mjs not run.
+- U5c+U5d done: final:1 decode fix, deliveries() maps balls to Cricsheet model, partial = note + no worm, squads labelled; afg-records 378 matches -> 6 team + 36 h2h (archive gh-pages 0a7ceab); player records skipped (no fielding join); node 47/47, V + detekt green (agent); no emulator.
+- U5e initials fix 02a9999e: "J Mohammed" -> roster "Jason Mohammed" (11/14 first partials were name misses); test bites; crawl stopped, 14 partial matches reset (balls + state) on u5b-site, crawl restarted (log appended).
+- Final (in progress): builder republished to public main a92e8718; site run 40030646358 green, gh-pages daa8fc3d live: Dhoni ci+bio+photo, f[16..19], venues 663/743 coords, idx/weather 14,008/23,107 (cap 4,500; rest over next weekly runs). main pushed 02a9999e + 5e7785de (1.0.12 notes); CI not started (Actions budget). RAPIDAPI_KEY set on bouncer-match-sync, deployment match-sync-mvliqrgc ready, 22:44 schedule run completed 200 (deploy tool's 120 s check assumes per-minute schedule; live is hourly :44). AAB 1674 built; Play upload after emulator check.

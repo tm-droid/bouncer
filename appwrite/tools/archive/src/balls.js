@@ -81,6 +81,7 @@ export function recordOf(item, parseOutcome = parseBallOutcome) {
     ev,
     bat: ["", lead ? lead[1].trim() : ""],
     nx: item.batsmanDetails?.playerId ? String(item.batsmanDetails.playerId) : "",
+    nxName: String(item.batsmanDetails?.playerName ?? ""),
     bowl: who(item.bowlerDetails),
     runs,
     kind,
@@ -176,22 +177,28 @@ const rosterOf = (card) =>
  * A commentary name ("Shahzad", "Asghar Stanikzai", "J Mohammed") -> the roster batsman: the exact name,
  * else the one name it prefixes or suffixes or abbreviates to initials. When several fit ("Shahzad" in a
  * side with two), `hintId` breaks the tie: the previous ball's `nx`, the batter Cricbuzz put at the
- * crease after it.
+ * crease after it. `known` (normalized name -> ids, from `batsmanDetails`) comes before the fuzzy rules:
+ * Cricbuzz names a batter there as in the commentary lead, with the id, so it settles nicknames and
+ * short forms no name rule can ("Andy Balbirnie" for "Andrew Balbirnie", "U Yadav" for "Umesh").
  */
-function resolveBatter(pair, roster, hintId = "") {
+function resolveBatter(pair, roster, hintId = "", known = null) {
   if (pair[0] || !pair[1] || !roster?.length) return pair;
   const n = normName(pair[1]);
   const exact = roster.filter((r) => normName(r.name) === n);
+  const ids = known?.get(n);
+  const byId = exact.length === 0 && ids?.size === 1 ? roster.filter((r) => ids.has(r.id)) : [];
   const pool =
     exact.length > 0
       ? exact
-      : roster.filter((r) => {
-          const rn = normName(r.name);
-          return (
-            rn.endsWith(` ${n}`) || n.endsWith(` ${rn}`) || rn.startsWith(`${n} `) || n.startsWith(`${rn} `) ||
-            initialled(rn).includes(n)
-          );
-        });
+      : byId.length === 1
+        ? byId
+        : roster.filter((r) => {
+            const rn = normName(r.name);
+            return (
+              rn.endsWith(` ${n}`) || n.endsWith(` ${rn}`) || rn.startsWith(`${n} `) || n.startsWith(`${rn} `) ||
+              initialled(rn).includes(n)
+            );
+          });
   const hit = pool.length === 1 ? pool[0] : (pool.find((r) => hintId && r.id === hintId) ?? null);
   return hit ? [hit.id, hit.name] : pair;
 }
@@ -209,13 +216,20 @@ export function deliveriesOf(recs, people, roster = null) {
     return people.get(k);
   };
   const sorted = [...recs].sort((a, b) => a.ts - b.ts || a.t - b.t);
+  const known = new Map();
+  for (const r of sorted) {
+    if (!r.nx || !r.nxName) continue;
+    const k = normName(r.nxName);
+    if (!known.has(k)) known.set(k, new Set());
+    known.get(k).add(r.nx);
+  }
   const out = [];
   let last = -1;
   let partner = -1;
   let lastWicket = false;
   let hint = "";
   for (const r of sorted) {
-    const s = idx(resolveBatter(r.bat, roster, hint));
+    const s = idx(resolveBatter(r.bat, roster, hint, known));
     if (last !== -1 && s !== last) {
       if (s === partner) partner = last;
       else if (!lastWicket) partner = last;
