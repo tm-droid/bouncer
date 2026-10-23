@@ -39,7 +39,11 @@ class BouncerScreenInitOrderTest {
 
     @Test
     fun `a page opened from any tab belongs to none, so the bar keeps the tab it came from`() {
-        for (route in listOf("player/Virat%20Kohli?cbId=1413", "team/India", "search?tab=NEWS", "notifications", "compare-players")) {
+        val routes = listOf(
+            "player/Virat%20Kohli?cbId=1413", "history-player/ba607b88?name=V%20Kohli", "team/India",
+            "search?tab=NEWS", "notifications", "compare-players",
+        )
+        for (route in routes) {
             assertEquals(null, BouncerScreen.ownerTab(route))
         }
         assertEquals("series", BouncerScreen.ownerTab("series/123"))

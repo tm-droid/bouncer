@@ -102,3 +102,7 @@ internal fun NavGraphBuilder.sharedDestinations(
         )
     }
 }
+
+/** Opens a player's Cricsheet career page. */
+internal fun NavHostController.navigateToHistoryPlayer(id: String, name: String) =
+    navigateForward(BouncerScreen.HistoryPlayer.createRoute(id, name))

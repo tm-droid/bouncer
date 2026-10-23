@@ -1,8 +1,11 @@
 package com.tanush.bouncer.viewmodels
 
+import com.tanush.bouncer.data.SearchRepository
 import com.tanush.bouncer.data.SearchRepository.SearchResult.PlayerResult
+import com.tanush.bouncer.data.history.HistoryNameRow
 import com.tanush.bouncer.network.PlayerSearchResult
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -75,5 +78,32 @@ class SearchMergeTest {
         val live = PlayerResult("José Buttler", "England", "Batsman", 0.9)
         val cached = PlayerResult("Jose Buttler", "England", "Keeper", 0.97)
         assertEquals(listOf(cached), mergeLocalPlayers(listOf(live), listOf(cached)))
+    }
+
+    private val histKohli = SearchRepository.SearchResult.PastPlayerResult(
+        HistoryNameRow("V Kohli", "ba607b88", "India", 837), 0.5,
+    )
+    private val cricbuzzKohli = PlayerResult("Virat Kohli", "India", "Batter", 0.8, cricbuzzId = "1413")
+
+    @Test
+    fun `one Cricbuzz row for the same person hides the history player`() {
+        assertTrue(attachHistory(listOf(histKohli), listOf(cricbuzzKohli)).isEmpty())
+    }
+
+    @Test
+    fun `no Cricbuzz row, a different side, or two candidates keep the history player`() {
+        assertEquals(listOf(histKohli), attachHistory(listOf(histKohli), emptyList()))
+        assertEquals(listOf(histKohli), attachHistory(listOf(histKohli), listOf(cricbuzzKohli.copy(teamName = "Germany"))))
+        val twin = cricbuzzKohli.copy(cricbuzzId = "9")
+        assertEquals(listOf(histKohli), attachHistory(listOf(histKohli), listOf(cricbuzzKohli, twin)))
+    }
+
+    @Test
+    fun `a perfect history player never makes the Cricbuzz lookup redundant`() {
+        val results = SearchRepository.SearchResults(pastPlayers = listOf(histKohli.copy(relevanceScore = 1.0)))
+        assertFalse(hasConfidentPlayer(results.players))
+        assertFalse(results.isEmpty)
+        assertTrue(hasConfidentPlayer(listOf(cricbuzzKohli.copy(relevanceScore = 0.95))))
+        assertEquals(listOf(cricbuzzKohli), mergeLocalPlayers(listOf(cricbuzzKohli)))
     }
 }

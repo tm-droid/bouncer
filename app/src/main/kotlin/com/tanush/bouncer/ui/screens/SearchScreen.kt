@@ -36,6 +36,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,6 +47,7 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.MatchCardV2
+import com.tanush.bouncer.ui.components.v2.HistoryCoverageNotice
 import com.tanush.bouncer.ui.components.v2.PastMatchRow
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -65,10 +67,11 @@ private const val ALL_TAB_PAST = 3
 private const val MIN_QUERY_LENGTH = 2
 
 /** Everything a result row can do, bundled so the list builders stay readable. */
-private class SearchActions(
+internal class SearchActions(
     val onMatch: (CricketMatch) -> Unit,
     val onTeam: (String) -> Unit,
     val onPlayer: (String, String?) -> Unit,
+    val onHistoryPlayer: (id: String, name: String) -> Unit,
     val onNews: (NewsArticleData) -> Unit,
     val onSeries: (String) -> Unit,
     val onSeeAll: (SearchTab) -> Unit,
@@ -100,6 +103,7 @@ fun SearchScreen(
     news: List<NewsArticleData>,
     onMatchClick: (CricketMatch) -> Unit,
     onPlayerClick: (name: String, cricbuzzId: String?) -> Unit,
+    onHistoryPlayerClick: (id: String, name: String) -> Unit,
     onTeamClick: (String) -> Unit,
     onSeriesClick: (String) -> Unit,
     onNewsClick: (NewsArticleData) -> Unit,
@@ -138,6 +142,7 @@ fun SearchScreen(
     val actions = SearchActions(
         onMatch = { leave { onMatchClick(it) } }, onTeam = { leave { onTeamClick(it) } },
         onPlayer = { name, id -> leave { onPlayerClick(name, id) } },
+        onHistoryPlayer = { id, name -> leave { onHistoryPlayerClick(id, name) } },
         onNews = { leave { onNewsClick(it) } }, onSeries = { leave { onSeriesClick(it) } },
         onSeeAll = viewModel::onTabSelected,
     )
@@ -334,7 +339,7 @@ private fun SuggestionIcon(icon: ImageVector) {
 }
 
 /** A result section, paired with the relevance of its strongest member. */
-private class SearchSection(val score: Double, val emit: LazyListScope.() -> Unit)
+internal class SearchSection(val score: Double, val emit: LazyListScope.() -> Unit)
 
 /**
  * Emits the result sections ordered by their best member's relevance.
@@ -379,6 +384,7 @@ private fun LazyListScope.searchResults(
             )
         },
         playersSection(results.players, limit(ALL_TAB_PLAYERS), compact, query, playerLookup, actions),
+        pastPlayersSection(results.pastPlayers, limit(ALL_TAB_PAST), compact, query, actions),
         results.news.sectionOrNull(
             R.string.search_section_news, "n", SearchTab.NEWS, limit(ALL_TAB_NEWS), compact, actions,
             key = { it.article.id },
@@ -404,7 +410,7 @@ private fun LazyListScope.searchResults(
             )
         },
     ).sortedByDescending { it.score }.forEach { it.emit(this) }
-    results.coverageNotice?.let { notice -> item(key = "coverage_notice") { PlayerLookupRow(notice) } }
+    results.coverageNotice?.let { item(key = "coverage_notice") { HistoryCoverageNotice(it) } }
 }
 
 /**
@@ -461,7 +467,7 @@ private fun playersSection(
  * from [titleRes] because the heading is translated and a key built from it would change identity
  * with the locale; row keys carry the index because [key] can be scraped text, which is not unique.
  */
-private fun <T : SearchRepository.SearchResult> List<T>.sectionOrNull(
+internal fun <T : SearchRepository.SearchResult> List<T>.sectionOrNull(
     @StringRes titleRes: Int,
     keyPrefix: String,
     tab: SearchTab,

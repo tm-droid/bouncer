@@ -48,6 +48,11 @@ class PastMatchIndex private constructor(
 
     val size: Int get() = entries.size
 
+    /** Cricsheet rows by match id; a match the archive also holds is missing, its archive row stands in. */
+    val cricsheetById: Map<String, PastMatchRow> by lazy {
+        entries.map { it.row }.filter { it.source == PastSource.CRICSHEET }.associateBy { it.id }
+    }
+
     init {
         val words = HashMap<String, MutableList<Int>>()
         val teams = HashMap<String, MutableList<Int>>()

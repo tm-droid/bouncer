@@ -43,3 +43,4 @@ paths:
 - **Keys:** a women's side is `<slug>__w`; a pair is the two slugs sorted.
 - **Players without a registry id** are left out of player records, because a bare name cannot be joined across matches.
 - **Super overs** are kept in the match file (`so: 1`) but left out of every record.
+- **Player records** (`s/p/<regId>.json`) are `{n, f:{format:[16 ints]}, tm:{side:matches}, m:[[id,date,format,team,opponent,runs,balls,out,wkts,ct]...]}`, newest match first. `m` has no result or event, so the career page joins the last 20 through `PastMatchIndex.cricsheetById` and keeps the record's own fields for a match the archive replaced. Cricsheet has no 4s/6s/5w, so `formatStatItems(hasBoundaries = false)` hides them. `names/<letter>.json` is keyed by the surname's first letter (`["V Kohli", regId, team, matches]`). Readers: `CareerStats`, `HistoryClient.names/player`.

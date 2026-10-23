@@ -23,6 +23,7 @@ object HistoryClient {
     // request-side max-age is a day.
     private const val MATCH_MAX_AGE_SECONDS = 24 * 60 * 60
     private const val INDEX_MAX_AGE_SECONDS = 24 * 60 * 60
+    private const val INDEX_MAX_STALE_SECONDS = 7 * 24 * 60 * 60
 
     suspend fun match(id: String): HistoryMatch? {
         if (!id.all(Char::isDigit)) return null
@@ -42,6 +43,29 @@ object HistoryClient {
         }.getOrNull()
     }
 
+    /**
+     * The players whose surname starts with [letter] (`s/p/names/<letter>.json`, ~43 KB). Weekly data,
+     * so a success is kept for the process and a copy up to 7 days stale stands in offline; a failure
+     * is null and not remembered.
+     */
+    suspend fun names(letter: Char): List<HistoryNameRow>? {
+        val key = letter.lowercaseChar()
+        if (key !in 'a'..'z') return null
+        names[key]?.let { return it }
+        val bytes = StaticSite.fetch(BASE_URL, "s/p/names/$key.json", INDEX_MAX_AGE_SECONDS, INDEX_MAX_STALE_SECONDS)
+            ?: return null
+        return CareerStats.parseNames(bytes.decodeToString())?.also { names[key] = it }
+    }
+
+    /** A player's Cricsheet record by registry id; null when there is none or it cannot be read. */
+    suspend fun player(id: String): PlayerCareer? {
+        if (!id.all { it.isLetterOrDigit() }) return null
+        val bytes = fetch("s/p/$id.json", INDEX_MAX_AGE_SECONDS) ?: return null
+        return CareerStats.parseCareer(bytes.decodeToString())
+            ?: null.also { sentryBreadcrumb("history", "Unreadable player $id", SentryLevel.WARNING) }
+    }
+
+    private val names = java.util.concurrent.ConcurrentHashMap<Char, List<HistoryNameRow>>()
     private val MONTH = Regex("""\d{4}-\d{2}""")
 
     private suspend fun fetch(path: String, maxAgeSeconds: Int): ByteArray? =

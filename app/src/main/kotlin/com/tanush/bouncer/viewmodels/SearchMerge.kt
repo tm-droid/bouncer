@@ -1,9 +1,13 @@
 package com.tanush.bouncer.viewmodels
 
+import com.tanush.bouncer.data.SearchRepository.SearchResult.PastPlayerResult
 import com.tanush.bouncer.data.SearchRepository.SearchResult.PlayerResult
+import com.tanush.bouncer.data.history.HistoryClient
 import com.tanush.bouncer.network.PlayerSearchResult
+import com.tanush.bouncer.utils.PlayerNameMatch
 import com.tanush.bouncer.utils.SearchScore
 import com.tanush.bouncer.utils.normalizeForSearch
+import com.tanush.bouncer.utils.parseQuery
 
 /** State of the billed online player lookup, shown inline in the Players section. */
 enum class PlayerLookupState { IDLE, SEARCHING, UNAVAILABLE }
@@ -13,6 +17,14 @@ enum class PlayerLookupState { IDLE, SEARCHING, UNAVAILABLE }
  * fuzzy tier caught. Just above the entity threshold: it is a real hit, and a weak one.
  */
 internal const val NETWORK_TYPO_FLOOR = 0.45
+
+/** A local player hit at least this good makes the network lookup redundant. */
+private const val CONFIDENT_PLAYER_SCORE = 0.95
+
+/** Past players rank below current ones in the same query, as past matches do. */
+private const val PAST_PLAYER_WEIGHT = 0.5
+private const val MAX_PAST_PLAYERS = 10
+private const val MIN_PAST_QUERY_LENGTH = 3
 
 private const val RELEVANT = 0.4
 private const val MAX_PLAYER_RESULTS = 10
@@ -79,3 +91,27 @@ internal fun mergeLocalPlayers(vararg sources: List<PlayerResult>): List<PlayerR
         .sortedByDescending { it.relevanceScore }
         .distinctBy { normalizeForSearch(it.playerName) }
         .take(MAX_PLAYER_RESULTS)
+
+/**
+ * Whether the Cricbuzz lookup can be skipped. Reads [PlayerResult]s only: a perfect Cricsheet name
+ * ([PastPlayerResult]) says nothing about a current player's profile, so it never counts.
+ */
+internal fun hasConfidentPlayer(players: List<PlayerResult>): Boolean =
+    players.any { it.relevanceScore >= CONFIDENT_PLAYER_SCORE }
+
+/**
+ * The Cricsheet players that [players] (Cricbuzz) do not already stand for. A history player is hidden
+ * when exactly one Cricbuzz row has its surname, first initial and side: that row's page links to the
+ * career. With none, or two (an ambiguous name), the player keeps a row of their own.
+ */
+internal fun attachHistory(history: List<PastPlayerResult>, players: List<PlayerResult>): List<PastPlayerResult> =
+    history.filter { h -> players.count { PlayerNameMatch.samePlayer(it.playerName, it.teamName, h.row) } != 1 }
+
+/** Cricsheet players for the query's surname letters; empty for a team pair or a facet-only query. */
+internal suspend fun searchPastPlayers(query: String): List<PastPlayerResult> {
+    val parsed = parseQuery(normalizeForSearch(query))
+    if (parsed.pair != null || parsed.words.isEmpty() || query.trim().length < MIN_PAST_QUERY_LENGTH) return emptyList()
+    val name = parsed.words.joinToString(" ")
+    val rows = PlayerNameMatch.letters(name).flatMap { HistoryClient.names(it).orEmpty() }
+    return PlayerNameMatch.search(name, rows, MAX_PAST_PLAYERS).map { PastPlayerResult(it.row, it.score * PAST_PLAYER_WEIGHT) }
+}

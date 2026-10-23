@@ -48,9 +48,6 @@ private const val MIN_NETWORK_QUERY_LENGTH = 3
 /** Shorter queries show suggestions, not results. */
 private const val MIN_QUERY_LENGTH = 2
 
-/** A local player hit at least this good makes the network lookup redundant. */
-private const val CONFIDENT_PLAYER_SCORE = 0.95
-
 class SearchViewModel(application: Application) : AndroidViewModel(application) {
 
     private val corpora = SearchCorpusLoader(BouncerDatabase.getInstance(application), SeriesScraper())
@@ -66,8 +63,9 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
 
     val results: StateFlow<SearchRepository.SearchResults> =
         combine(_localResults, _networkPlayers) { local, network ->
-            if (network == null) local
+            val merged = if (network == null) local
             else local.copy(players = mergePlayers(_query.value, local.players, network.second, network.first))
+            merged.copy(pastPlayers = attachHistory(local.pastPlayers, merged.players))
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SearchRepository.SearchResults())
 
     private val _selectedTab = MutableStateFlow(SearchTab.ALL)
@@ -201,7 +199,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
         localResults: SearchRepository.SearchResults,
     ) {
         // A confident local hit already answers the question; no need to spend an execution.
-        if (localResults.players.any { it.relevanceScore >= CONFIDENT_PLAYER_SCORE } ||
+        if (hasConfidentPlayer(localResults.players) ||
             newQuery.trim().length < MIN_NETWORK_QUERY_LENGTH
         ) {
             _playerLookup.value = PlayerLookupState.IDLE
@@ -239,11 +237,13 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             val past = async(Dispatchers.Default) {
                 PastMatchIndex.shared.value?.search(newQuery, matches, corpus.teams).orEmpty()
             }
+            val history = async { searchPastPlayers(newQuery) }
             live.await().let {
                 it.copy(
                     players = mergeLocalPlayers(it.players, players.await()),
                     series = series.await(),
                     pastMatches = past.await(),
+                    pastPlayers = history.await(),
                     coverageNotice = HistoryCoverage.missingAfghanistan(
                         newQuery, corpus.teams, getApplication<Application>().getString(R.string.history_missing_afghanistan),
                     ),

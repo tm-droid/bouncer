@@ -23,6 +23,7 @@ import com.tanush.bouncer.ui.MatchDetailViewV2
 import com.tanush.bouncer.ui.devtools.DevToolsScreen
 import com.tanush.bouncer.ui.screens.*
 import com.tanush.bouncer.ui.screens.news.NewsDetailScreenV2
+import com.tanush.bouncer.ui.screens.player.HistoricalPlayerScreen
 import com.tanush.bouncer.ui.screens.news.NewsScreenV2
 import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.v2.ThemeModeV2
@@ -206,6 +207,7 @@ private fun NavGraphBuilder.moreChildDestinations(
                     BouncerScreen.PlayerDetail.createRoute(playerName, cricbuzzId)
                 )
             },
+            onHistoryPlayerClick = { id, name -> navController.navigateToHistoryPlayer(id, name) },
             onTeamClick = { teamName ->
                 navController.navigateForward(
                     BouncerScreen.TeamDetail.createRoute(teamName)
@@ -311,6 +313,7 @@ private fun NavGraphBuilder.detailDestinations(
             onBackClick = { navController.popBackStack() },
             onCompareClick = { navController.navigateForward(BouncerScreen.PlayerComparison.createRoute(playerId)) },
             cricbuzzId = cricbuzzId,
+            onHistoryCareerClick = { id, name -> navController.navigateToHistoryPlayer(id, name) },
         )
     }
 
@@ -375,6 +378,22 @@ private fun NavGraphBuilder.entityDestinations(
     liveActivityViewModel: LiveActivityViewModel,
     onMatchClick: (com.tanush.bouncer.models.CricketMatch) -> Unit,
 ) {
+    // Cricsheet career page, for players Cricbuzz does not list
+    composable(
+        route = BouncerScreen.HistoryPlayer.ROUTE_PATTERN,
+        arguments = BouncerScreen.HistoryPlayer.arguments,
+    ) { backStackEntry ->
+        val id = backStackEntry.arguments?.getString(BouncerScreen.HistoryPlayer.ARG_ID)
+            ?.decodeUrlSafe() ?: return@composable
+        val name = backStackEntry.arguments?.getString(BouncerScreen.HistoryPlayer.ARG_NAME)?.decodeUrlSafe()
+        HistoricalPlayerScreen(
+            playerId = id,
+            displayName = name,
+            onBackClick = { navController.popBackStack() },
+            onMatchClick = onMatchClick,
+        )
+    }
+
     // Series Detail with series ID
     composable(
         route = BouncerScreen.SeriesDetail.ROUTE_PATTERN,

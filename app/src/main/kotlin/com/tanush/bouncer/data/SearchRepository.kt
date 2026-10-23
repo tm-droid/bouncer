@@ -1,6 +1,7 @@
 package com.tanush.bouncer.data
 
 import androidx.annotation.VisibleForTesting
+import com.tanush.bouncer.data.history.HistoryNameRow
 import com.tanush.bouncer.data.history.PastMatchRow
 import com.tanush.bouncer.utils.ParsedQuery
 import com.tanush.bouncer.utils.SearchScore
@@ -116,6 +117,12 @@ object SearchRepository {
             val row: PastMatchRow,
             override val relevanceScore: Double,
         ) : SearchResult()
+
+        /** A player only Cricsheet holds (mostly retired); opens the career page. */
+        data class PastPlayerResult(
+            val row: HistoryNameRow,
+            override val relevanceScore: Double,
+        ) : SearchResult()
     }
 
     data class SearchResults(
@@ -125,16 +132,18 @@ object SearchRepository {
         val news: List<SearchResult.NewsResult> = emptyList(),
         val series: List<SearchResult.SeriesResult> = emptyList(),
         val pastMatches: List<SearchResult.PastMatchResult> = emptyList(),
+        /** Kept apart from [players]: it must not count toward the confident-hit gate on the Cricbuzz lookup. */
+        val pastPlayers: List<SearchResult.PastPlayerResult> = emptyList(),
         val suggestion: String? = null,
         /** Set when the query names a side Cricsheet withholds (`HistoryCoverage`); shown as one neutral row. */
         val coverageNotice: String? = null,
     ) {
         val isEmpty: Boolean
             get() = matches.isEmpty() && teams.isEmpty() && players.isEmpty() && news.isEmpty()
-                        && series.isEmpty() && pastMatches.isEmpty()
+                        && series.isEmpty() && pastMatches.isEmpty() && pastPlayers.isEmpty()
 
         val totalCount: Int
-            get() = matches.size + teams.size + players.size + news.size + series.size + pastMatches.size
+            get() = matches.size + teams.size + players.size + news.size + series.size + pastMatches.size + pastPlayers.size
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

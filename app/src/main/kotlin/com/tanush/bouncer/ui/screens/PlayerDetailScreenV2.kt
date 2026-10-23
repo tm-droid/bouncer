@@ -2,7 +2,12 @@ package com.tanush.bouncer.ui.screens
 
 import com.tanush.bouncer.ui.components.v2.TextTabBarV2
 import com.tanush.bouncer.ui.screens.player.formatsWithStats
+import com.tanush.bouncer.data.history.HistoryClient
+import com.tanush.bouncer.data.history.HistoryNameRow
 import com.tanush.bouncer.ui.screens.player.formatStatItems
+import com.tanush.bouncer.utils.CareerJoin
+import com.tanush.bouncer.utils.PlayerNameMatch
+import androidx.compose.foundation.clickable
 import com.tanush.bouncer.ui.screens.player.playerFactItems
 import com.tanush.bouncer.ui.screens.player.PlayerHeader
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -36,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -80,6 +86,8 @@ fun PlayerDetailScreenV2(
     onCompareClick: (() -> Unit)? = null,
     /** Cricbuzz profile id when the caller has one (search does); opens that exact player. */
     cricbuzzId: String? = null,
+    /** Opens a player's Cricsheet career (registry id, name); null leaves the link out. */
+    onHistoryCareerClick: ((id: String, name: String) -> Unit)? = null,
 ) {
     val colors = BouncerThemeV2.colors
     val context = LocalContext.current
@@ -88,6 +96,7 @@ fun PlayerDetailScreenV2(
     var profile by remember { mutableStateOf<PlayerProfile?>(null) }
     var loadState by remember { mutableStateOf(LoadState.Loading) }
     var retryCount by remember { mutableIntStateOf(0) }
+    val careerRow = careerRowFor(profile)
 
     LaunchedEffect(playerName, cricbuzzId, retryCount) {
         loadState = LoadState.Loading
@@ -128,6 +137,7 @@ fun PlayerDetailScreenV2(
                 header = PlayerHeaderInfo(playerRole, playerImageUrl, isCaptain, isWicketKeeper),
                 selectedFormat = selectedFormat,
                 onFormatSelected = { selectedFormat = it },
+                careerLink = careerRow?.let { row -> onHistoryCareerClick?.let { open -> { open(row.id, loaded.name) } } },
             )
         }
     }
@@ -165,6 +175,19 @@ private suspend fun loadPlayerProfile(
         Sentry.captureException(e)
     }
 }
+
+/**
+ * The player's Cricsheet record, only on a certain join (surname, first initial, side). A miss, an
+ * ambiguous name or a failed load leaves it null and the page without the link.
+ */
+@Composable
+private fun careerRowFor(profile: PlayerProfile?): HistoryNameRow? = produceState<HistoryNameRow?>(null, profile) {
+    value = null
+    val loaded = profile ?: return@produceState
+    val letter = PlayerNameMatch.letters(loaded.name).firstOrNull() ?: return@produceState
+    val names = HistoryClient.names(letter) ?: return@produceState
+    value = CareerJoin.link(loaded.name, loaded.country.ifBlank { loaded.teams.firstOrNull().orEmpty() }, names)
+}.value
 
 @Composable
 private fun PlayerLoading(padding: PaddingValues) {
@@ -210,6 +233,7 @@ private fun PlayerProfileList(
     header: PlayerHeaderInfo,
     selectedFormat: String,
     onFormatSelected: (String) -> Unit,
+    careerLink: (() -> Unit)?,
 ) {
     val spacing = BouncerThemeV2.spacing
     val formats = formatsWithStats(profile, PROFILE_FORMATS)
@@ -241,6 +265,17 @@ private fun PlayerProfileList(
             }
         }
         formatStatItems(profile.stats[selectedFormat], selectedFormat)
+        careerLink?.let { open ->
+            item(key = "history_career") {
+                Text(
+                    stringResource(R.string.history_career_link),
+                    style = BouncerThemeV2.typography.bodyMedium,
+                    color = BouncerThemeV2.colors.primaryText,
+                    modifier = Modifier.fillMaxWidth().clickable(onClick = open)
+                        .padding(horizontal = spacing.lg, vertical = spacing.md),
+                )
+            }
+        }
 
         playerRecentFormItems(profile)
         playerBioItems(profile)

@@ -120,8 +120,10 @@ internal fun LazyListScope.playerFactItems(profile: PlayerProfile) {
 /**
  * One format's figures: three that matter most, large, then the rest as rows. A specialist bowler
  * who has never batted gets no batting block, and a batter who has never bowled no bowling one.
+ * A source without boundary counts or five-wicket hauls (Cricsheet) passes `hasBoundaries = false`,
+ * which leaves those rows out rather than showing zeros.
  */
-internal fun LazyListScope.formatStatItems(stats: FormatStats?, format: String) {
+internal fun LazyListScope.formatStatItems(stats: FormatStats?, format: String, hasBoundaries: Boolean = true) {
     if (stats == null) {
         item(key = "no_stats") {
             Text(
@@ -135,16 +137,16 @@ internal fun LazyListScope.formatStatItems(stats: FormatStats?, format: String) 
     }
     if (stats.innings > 0 || stats.runs > 0) {
         item(key = "batting_header") { SectionHeaderV2(title = stringResource(R.string.player_batting_in, format)) }
-        item(key = "batting") { BattingFigures(stats) }
+        item(key = "batting") { BattingFigures(stats, hasBoundaries) }
     }
     if (stats.wickets > 0 || stats.bowlingAverage > 0) {
         item(key = "bowling_header") { SectionHeaderV2(title = stringResource(R.string.player_bowling_in, format)) }
-        item(key = "bowling") { BowlingFigures(stats) }
+        item(key = "bowling") { BowlingFigures(stats, hasBoundaries) }
     }
 }
 
 @Composable
-private fun BattingFigures(stats: FormatStats) {
+private fun BattingFigures(stats: FormatStats, hasBoundaries: Boolean) {
     Column {
         HeadlineFigures(
             stats.runs.toString() to stringResource(R.string.player_runs),
@@ -155,22 +157,26 @@ private fun BattingFigures(stats: FormatStats) {
         StatRowV2(label = stringResource(R.string.player_innings), value = stats.innings.toString())
         StatRowV2(label = stringResource(R.string.player_highest_score), value = stats.highScore)
         StatRowV2(label = stringResource(R.string.player_hundreds_fifties), value = "${stats.hundreds} / ${stats.fifties}")
-        StatRowV2(label = stringResource(R.string.player_fours_sixes), value = "${stats.fours} / ${stats.sixes}")
+        if (hasBoundaries) {
+            StatRowV2(label = stringResource(R.string.player_fours_sixes), value = "${stats.fours} / ${stats.sixes}")
+        }
         // Catches are fielding, not bowling: they used to show only for players who bowled.
         StatRowV2(label = stringResource(R.string.player_catches), value = stats.catches.toString(), showDivider = false)
     }
 }
 
 @Composable
-private fun BowlingFigures(stats: FormatStats) {
+private fun BowlingFigures(stats: FormatStats, hasBoundaries: Boolean) {
     Column {
         HeadlineFigures(
             stats.wickets.toString() to stringResource(R.string.player_wickets),
             oneDecimal(stats.bowlingAverage) to stringResource(R.string.player_average),
             oneDecimal(stats.economy) to stringResource(R.string.player_economy),
         )
-        StatRowV2(label = stringResource(R.string.player_best_bowling), value = stats.bestBowling)
-        StatRowV2(label = stringResource(R.string.player_five_wickets), value = stats.fiveWickets.toString(), showDivider = false)
+        StatRowV2(label = stringResource(R.string.player_best_bowling), value = stats.bestBowling, showDivider = hasBoundaries)
+        if (hasBoundaries) {
+            StatRowV2(label = stringResource(R.string.player_five_wickets), value = stats.fiveWickets.toString(), showDivider = false)
+        }
     }
 }
 

@@ -192,6 +192,28 @@ sealed class BouncerScreen(val route: String) {
     }
 
     /**
+     * A player's Cricsheet career (`s/p/<registryId>.json`), for people Cricbuzz does not list.
+     * [name] is only the heading until the record loads.
+     */
+    data class HistoryPlayer(val id: String) : BouncerScreen("history-player/$id") {
+        companion object {
+            const val ROUTE_PATTERN = "history-player/{id}?name={name}"
+            const val ARG_ID = "id"
+            const val ARG_NAME = "name"
+
+            fun createRoute(id: String, name: String? = null): String {
+                val base = "history-player/${id.encodeUrlSafe()}"
+                return if (name.isNullOrBlank()) base else "$base?name=${name.encodeUrlSafe()}"
+            }
+
+            val arguments = listOf(
+                navArgument(ARG_ID) { type = NavType.StringType; nullable = false },
+                navArgument(ARG_NAME) { type = NavType.StringType; nullable = true; defaultValue = null },
+            )
+        }
+    }
+
+    /**
      * Team detail screen with team name argument.
      */
     data class TeamDetail(val teamName: String) : BouncerScreen("team/$teamName") {
@@ -247,7 +269,8 @@ sealed class BouncerScreen(val route: String) {
         }
 
         fun isSharedRoute(route: String): Boolean =
-            route.substringBefore('?') in sharedRoutes || route.startsWith("player/") || route.startsWith("team/")
+            route.substringBefore('?') in sharedRoutes || route.startsWith("player/") || route.startsWith("history-player/") ||
+                route.startsWith("team/")
 
         /**
          * Check if a route is a child of the "More" tab.
