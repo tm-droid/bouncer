@@ -24,17 +24,14 @@ import com.tanush.bouncer.models.MatchFlowData
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
-import com.tanush.bouncer.models.WinProbabilityPoint
 import com.tanush.bouncer.ui.components.premium.DRSReviewCard
-import com.tanush.bouncer.ui.components.premium.PremiumWinProbabilityHero
-import com.tanush.bouncer.ui.components.premium.winProbabilityStateFor
 import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * The state of play, while there is play: who is in, the stand, the last wicket, who is bowling,
- * the forecast and the latest lines. Everything else has its own tab — the charts are on Graphs,
+ * and the latest lines (the forecast lives in the fixed header). Everything else has its own tab — the charts are on Graphs,
  * the fall of wickets on Scorecard, the preview and head to head on Info — and nothing here
  * restates the fixed header above the pager (score, status, CRR/RRR, this over).
  */
@@ -46,7 +43,6 @@ internal fun LiveTabV2(
     scorecard: Scorecard?,
     matchFlow: MatchFlowData?,
     derived: OverviewDerivedData,
-    probabilityHistory: List<WinProbabilityPoint>,
     streamingCommentary: String,
     onOpenCommentary: () -> Unit,
 ) {
@@ -66,7 +62,6 @@ internal fun LiveTabV2(
         overviewLiveSituation(match, isMatchActive = true)
         overviewBowler(bowler, isMatchActive = true, isCompleted = false, scorecard)
         liveLatestReview(matchFlow)
-        liveWinProbability(match, probabilityHistory)
         liveRecentCommentary(match, streamingCommentary, derived.meaningfulCommentary, onOpenCommentary)
         item(key = "bottom") { Spacer(Modifier.height(spacing.xxl)) }
     }
@@ -110,47 +105,6 @@ private fun LazyListScope.liveLatestReview(matchFlow: MatchFlowData?) {
             ),
         )
     }
-}
-
-/**
- * The forecast bar and how far the last reading moved it. No CRR/RRR line under it any more: the
- * header shows both. The arc over the whole match is on Graphs.
- */
-private fun LazyListScope.liveWinProbability(match: CricketMatch, probabilityHistory: List<WinProbabilityPoint>) {
-    // Null means the server has no probability for this match. The previous `!= 50.0` test also
-    // suppressed the hero for a genuinely even match, since 50 was both the sentinel and a value.
-    val winProb = match.winProbability ?: return
-    if (match.teams.size < 2) return
-    item(key = "win_prob") {
-        PremiumWinProbabilityHero(
-            team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
-            team2Name = match.teams[1].acronym.ifBlank { match.teams[1].name.take(3).uppercase() },
-            // Not clamped: the server already clamps to 0.03..0.97.
-            team1Probability = (winProb / 100.0).toFloat(),
-            drawProbability = match.winProbabilityDraw?.let { (it / 100.0).toFloat() },
-            state = winProbabilityStateFor(
-                isCompleted = match.isCompleted,
-                isPrematch = match.winProbabilityIsPrematch,
-                isUpcoming = match.isUpcoming,
-            ),
-            delta = probabilitySwing(probabilityHistory),
-            // Full names, not the acronyms above: the registry's alias table and its fuzzy
-            // match both work on names, and a three-letter code resolves to neither.
-            team1ColorKey = match.teams[0].name,
-            team2ColorKey = match.teams[1].name,
-        )
-    }
-}
-
-/**
- * How far the first team's probability has moved since the previous reading.
- *
- * Two points, not a window: the bar is answering "what just changed", and averaging over several
- * overs would smear a wicket into the balls either side of it.
- */
-private fun probabilitySwing(history: List<WinProbabilityPoint>): Float? {
-    if (history.size < 2) return null
-    return history.last().team1Probability - history[history.size - 2].team1Probability
 }
 
 /** The newest few lines, with the way to the whole feed. Three, not five: the feed is one swipe away. */

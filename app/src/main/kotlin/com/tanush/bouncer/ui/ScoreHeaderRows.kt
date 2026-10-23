@@ -1,13 +1,8 @@
 package com.tanush.bouncer.ui
 
-import com.tanush.bouncer.R
-
-import androidx.compose.ui.res.stringResource
-
 import androidx.compose.foundation.clickable
-
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -23,19 +19,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
-import com.tanush.bouncer.ui.components.v2.AnimatedScoreText
 import com.tanush.bouncer.ui.components.v2.RowResult
-import com.tanush.bouncer.ui.components.v2.TeamCrest
 import com.tanush.bouncer.ui.components.v2.rowResultFor
+import com.tanush.bouncer.ui.navigation.BouncerScreen
 import com.tanush.bouncer.ui.theme.rememberTeamInk
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
-// The fixed score header's rows: one per side, the run rates, and the result plate.
+private val SERIES_LINK_TOUCH_PADDING = 8.dp
+
+// The fixed score header's result plate and context line.
 
 /**
  * The result, as the last thing seen of a match. A neutral plate with the trophy in the winner's
@@ -72,93 +69,61 @@ internal fun MatchResultBanner(match: CricketMatch) {
     }
 }
 
-@Composable
-internal fun HeaderRunRate(label: String, value: String) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(text = label, style = typography.labelMedium, color = colors.textSecondary)
-        Text(text = value, style = typography.numericSmall, fontWeight = FontWeight.SemiBold, color = colors.onSurface)
-    }
-}
-
 /**
- * One side in the fixed header: crest, code in team colour, score. The batting side's score is the
- * largest thing on screen and takes its team's colour; the other side steps back to secondary.
- * Before the first ball (no one batting) both read at full weight.
+ * Context line. The teams are already the top bar's title, so this names what the top bar cannot:
+ * the series (a link to it, when the match knows its series id) and which match of it this is.
  */
 @Composable
-internal fun TeamScoreRow(
-    teamName: String,
-    acronym: String,
-    logoUrl: String?,
-    score: String,
-    overs: String,
-    isBatting: Boolean,
-    anyBatting: Boolean,
-    onTeamClick: (() -> Unit)? = null,
+internal fun MatchContextLine(
+    match: CricketMatch,
+    onSeriesClick: ((String) -> Unit)?,
+    modifier: Modifier = Modifier,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-    val ink = rememberTeamInk(teamName)
-    val resting = anyBatting && !isBatting
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // The crest and code open the team, where the app has a page for it. The score stays a score.
-        val openTeam = stringResource(R.string.cd_open_team, teamName)
+    val seriesLink = onSeriesClick?.takeIf { match.seriesId.isNotBlank() && match.seriesName.isNotBlank() }
+    if (seriesLink == null) {
+        Text(
+            text = "${match.matchTitle} • ${match.matchType}",
+            style = typography.bodySmall,
+            color = colors.textSecondary,
+            modifier = modifier,
+        )
+        return
+    }
+    Column(modifier = modifier) {
         Row(
+            // Padded inside the click area: the text alone was a 16dp-tall target.
             modifier = Modifier
-                .weight(1f)
-                .then(if (onTeamClick != null) Modifier.clickable(onClickLabel = openTeam, onClick = onTeamClick) else Modifier),
+                .clickable(role = Role.Button) { seriesLink(match.seriesId) }
+                .padding(vertical = SERIES_LINK_TOUCH_PADDING),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TeamCrest(teamName = teamName, logoUrl = logoUrl, size = 28.dp, acronym = acronym.ifBlank { null })
-            Spacer(Modifier.width(spacing.md))
             Text(
-                text = acronym.ifBlank { teamName },
-                style = typography.titleMedium,
-                color = ink,
-                fontWeight = if (isBatting) FontWeight.Bold else FontWeight.SemiBold,
+                text = match.seriesName,
+                style = typography.bodySmall,
+                color = colors.primaryText,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = colors.primaryText,
+                modifier = Modifier.size(16.dp),
             )
         }
-        if (score.isNotBlank()) {
-            HeaderScore(
-                score = score,
-                overs = overs,
-                resting = resting,
-                color = when {
-                    isBatting -> ink
-                    resting -> colors.textSecondary
-                    else -> colors.onSurface
-                },
-            )
-        }
-    }
-}
-
-
-@Composable
-private fun HeaderScore(score: String, overs: String, resting: Boolean, color: Color) {
-    val typography = BouncerThemeV2.typography
-    AnimatedScoreText(
-        text = score,
-        style = if (resting) typography.scoreMedium else typography.scoreLarge,
-        color = color,
-        fontWeight = FontWeight.Bold,
-    )
-    if (overs.isNotBlank()) {
-        Spacer(Modifier.width(BouncerThemeV2.spacing.xs))
         Text(
-            text = "($overs)",
-            style = typography.numericSmall,
-            color = BouncerThemeV2.colors.textSecondary,
-            maxLines = 1,
+            text = listOf(match.matchDesc, match.matchType).filter { it.isNotBlank() }.joinToString(" • "),
+            style = typography.bodySmall,
+            color = colors.textSecondary,
         )
     }
 }
+
+internal fun seriesRoute(seriesId: String): String = BouncerScreen.SeriesDetail.createRoute(seriesId)
+
+/** The team page route, or null for a side with no name. */
+internal fun teamRoute(teamName: String): String? =
+    teamName.takeIf { it.isNotBlank() }?.let { BouncerScreen.TeamDetail.createRoute(it) }

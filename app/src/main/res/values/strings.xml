@@ -517,7 +517,6 @@
     <string name="hero_trail_by">%1$s trail by %2$s</string>
     <string name="hero_scores_level">Scores level</string>
     <string name="hero_expand_score">Expand score</string>
-    <string name="hero_collapse_score">Collapse score</string>
     <string name="hero_vs">vs</string>
     <string name="hero_next_up">Next up</string>
     <plurals name="freshness_updated_min_ago">

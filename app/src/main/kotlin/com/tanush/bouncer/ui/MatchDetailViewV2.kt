@@ -2,31 +2,21 @@ package com.tanush.bouncer.ui
 
 import androidx.core.content.res.ResourcesCompat
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import com.tanush.bouncer.data.history.PastFeedSource
-import com.tanush.bouncer.ui.navigation.BouncerScreen
-import com.tanush.bouncer.ui.navigation.LocalOpenRoute
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.filled.Share
@@ -41,7 +31,6 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -52,23 +41,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.models.CricketMatch
-import com.tanush.bouncer.models.MatchStatus
 import com.tanush.bouncer.ui.components.v2.MatchFollowSheet
-import com.tanush.bouncer.ui.components.v2.MatchStatusType
-import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
+import com.tanush.bouncer.ui.components.v2.FailureKind
+import com.tanush.bouncer.ui.components.v2.StaleDataBanner
 import com.tanush.bouncer.ui.components.v2.ReminderBottomSheet
-import com.tanush.bouncer.ui.components.v2.StatusBadgeV2
-import com.tanush.bouncer.ui.components.v2.determineMatchStatus
 import com.tanush.bouncer.ui.components.premium.ScorecardTab
 import com.tanush.bouncer.ui.screens.matchdetail.v2.CommentaryTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.HighlightsTabV2
@@ -84,6 +67,7 @@ import com.tanush.bouncer.ui.screens.matchdetail.v2.hasGraphs
 import com.tanush.bouncer.ui.screens.matchdetail.v2.matchPhaseOf
 import com.tanush.bouncer.ui.screens.matchdetail.v2.matchTabsFor
 import com.tanush.bouncer.ui.screens.matchdetail.v2.pageFor
+import com.tanush.bouncer.ui.screens.matchdetail.v2.rememberHeaderCollapse
 import com.tanush.bouncer.ui.screens.matchdetail.v2.rememberOverviewDerivedData
 import com.tanush.bouncer.ui.screens.matchdetail.v2.titleRes
 import com.tanush.bouncer.viewmodels.mergedProbabilityHistory
@@ -95,13 +79,9 @@ import com.tanush.bouncer.ui.screens.matchdetail.v2.buildOverStrip
 import com.tanush.bouncer.viewmodels.HighlightsViewModel
 import com.tanush.bouncer.viewmodels.MatchDetailViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.TeamColorRegistry
 import com.tanush.bouncer.ui.theme.rememberTeamInk
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import com.tanush.bouncer.ui.theme.v2.CricketEventColors
-import com.tanush.bouncer.utils.PreferencesHelper
-import kotlinx.coroutines.delay
 import com.tanush.bouncer.ui.theme.v2.bouncerScreenBackground
 import com.tanush.bouncer.ui.components.BatsmanMilestoneCard
 import com.tanush.bouncer.ui.components.ShareCardData
@@ -110,10 +90,6 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.screens.matchdetail.v2.meaningfulRequiredRunRate
-import androidx.compose.ui.semantics.Role
-
-private const val EVENT_FLASH_MILLIS = 1500L
-private val SERIES_LINK_TOUCH_PADDING = 8.dp
 
 /**
  * The match screen: the fixed score header, then the tabs [matchTabsFor] offers for the match's
@@ -247,6 +223,9 @@ fun MatchDetailViewV2(
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.settledPage }.collect { page -> tabs.getOrNull(page)?.let { selectedTab = it } }
     }
+    val collapse = rememberHeaderCollapse()
+    // A new tab starts with the hero showing: its own list is at the top.
+    LaunchedEffect(pagerState.currentPage) { collapse.expand() }
     val openCommentary: () -> Unit = {
         val page = tabs.indexOf(MatchTab.COMMENTARY)
         if (page >= 0) scope.launch { pagerState.animateScrollToPage(page) }
@@ -348,7 +327,7 @@ fun MatchDetailViewV2(
         containerColor = colors.background,
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().nestedScroll(collapse.connection)) {
             // The score header is a sibling of the pager, so its strip is on screen for every tab.
             // The commentary tab does not repeat it: the over card at the head of the feed already
             // states the same over, with the same chips.
@@ -356,23 +335,21 @@ fun MatchDetailViewV2(
                 buildOverStrip(uiState.commentary, uiState.recentBalls, uiState.recentBallsOver)
             }
 
-            // ── Score Header ──
-            ScoreHeaderV2(
+            MatchDetailHeader(
                 match = liveMatch,
-                team1 = team1,
-                team2 = team2,
-                score1 = score1,
-                score2 = score2,
-                overs1 = overs1,
-                overs2 = overs2,
-                currentRunRate = uiState.liveCurrentRunRate,
-                requiredRunRate = meaningfulRequiredRunRate(uiState.liveRequiredRunRate),
+                situation = uiState.situation,
+                lastUpdatedMs = uiState.lastUpdatedMs,
                 recentBalls = overStrip?.balls.orEmpty(),
+                collapse = collapse,
             )
 
             // Live-data failure: static match info below still renders; this offers the retry.
-            uiState.loadError?.let { message ->
-                LiveDataErrorBanner(message = message, onRetry = vm::retryInitialLoad)
+            if (uiState.loadError != null) {
+                StaleDataBanner(
+                    kind = uiState.commentaryErrorKind.takeIf { it != FailureKind.Unknown } ?: FailureKind.Offline,
+                    savedAtMs = null,
+                    onRetry = vm::retryInitialLoad,
+                )
             }
 
             // ── Tab Row ──
@@ -424,7 +401,6 @@ fun MatchDetailViewV2(
                         scorecard = uiState.scorecard,
                         matchFlow = uiState.matchFlow,
                         derived = derived,
-                        probabilityHistory = probabilityHistory,
                         streamingCommentary = streamingCommentary,
                         onOpenCommentary = openCommentary,
                     )
@@ -512,258 +488,4 @@ fun MatchDetailViewV2(
             )
         }
     }
-}
-
-// ── Score Header ──
-
-@Composable
-private fun ScoreHeaderV2(
-    match: CricketMatch,
-    team1: CricketMatch.Team?,
-    team2: CricketMatch.Team?,
-    score1: String,
-    score2: String,
-    overs1: String,
-    overs2: String,
-    currentRunRate: String?,
-    requiredRunRate: String?,
-    recentBalls: List<String>,
-) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-
-    // Flat. The header used to be a three-stop horizontal gradient tinted with both teams'
-    // brand colours at 13% alpha — a wash faint enough to read as nothing in particular and
-    // loud enough to make the scores sit on an uneven ground. The scores are the header.
-
-    val statusType = determineMatchStatus(match)
-    val openRoute = LocalOpenRoute.current
-
-    val flashOverlay = rememberEventFlashOverlay(recentBalls)
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colors.surface)
-            .background(flashOverlay)
-            .padding(horizontal = spacing.lg, vertical = spacing.md),
-    ) {
-        // Context line. The teams are already the top bar's title, so this names what the top
-        // bar cannot: the series (a link to it, when the match knows its series id) and which match
-        // of it this is.
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            MatchContextLine(
-                match = match,
-                onSeriesClick = openRoute?.let { open -> { id: String -> open(BouncerScreen.SeriesDetail.createRoute(id)) } },
-                modifier = Modifier.weight(1f),
-            )
-            StatusBadgeV2(statusType)
-        }
-        Spacer(Modifier.height(spacing.md))
-
-        // Team 1
-        TeamScoreRow(
-            teamName = team1?.name ?: "Team 1",
-            acronym = team1?.acronym.orEmpty(),
-            logoUrl = team1?.logoUrl,
-            score = score1,
-            overs = overs1,
-            isBatting = team1?.isBatting == true,
-            anyBatting = match.teams.any { it.isBatting },
-            onTeamClick = teamOpener(openRoute, team1?.name),
-        )
-        Spacer(Modifier.height(spacing.sm))
-
-        // Team 2
-        TeamScoreRow(
-            teamName = team2?.name ?: "Team 2",
-            acronym = team2?.acronym.orEmpty(),
-            logoUrl = team2?.logoUrl,
-            score = score2,
-            overs = overs2,
-            isBatting = team2?.isBatting == true,
-            anyBatting = match.teams.any { it.isBatting },
-            onTeamClick = teamOpener(openRoute, team2?.name),
-        )
-        Spacer(Modifier.height(spacing.sm))
-
-        // Status line — a decided match gets a designed end moment (Peak-End:
-        // the last thing seen of a match is its result, not a stale score).
-        MatchStatusLine(match = match)
-
-        // Run rates
-        if (currentRunRate != null || requiredRunRate != null) {
-            Spacer(Modifier.height(spacing.xs))
-            Row(horizontalArrangement = Arrangement.spacedBy(spacing.lg)) {
-                currentRunRate?.let { HeaderRunRate(label = stringResource(R.string.stat_crr), value = it) }
-                requiredRunRate?.let { HeaderRunRate(label = stringResource(R.string.stat_rrr), value = it) }
-            }
-        }
-
-        // Recent balls
-        if (recentBalls.isNotEmpty()) {
-            Spacer(Modifier.height(spacing.sm))
-            RecentBallsStripV2(balls = recentBalls)
-        }
-    }
-    HorizontalDivider(color = colors.divider)
-}
-
-/**
- * Peak moment: a wicket / four / six briefly tints the score header in that
- * event's semantic color and fires one haptic — the update should be felt,
- * not just read. Flash is skipped entirely under reduced motion; haptics
- * follow the user's existing haptic setting.
- */
-@Composable
-private fun rememberEventFlashOverlay(recentBalls: List<String>): Color {
-    val context = LocalContext.current
-    val haptic = LocalHapticFeedback.current
-    val hapticEnabled = remember { PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true) }
-    val cricket = BouncerThemeV2.colors.cricket
-    var flashTint by remember { mutableStateOf(Color.Unspecified) }
-    var prevBalls by remember { mutableStateOf<List<String>?>(null) }
-    LaunchedEffect(recentBalls) {
-        val prev = prevBalls
-        prevBalls = recentBalls
-        if (!isNewBall(prev, recentBalls)) return@LaunchedEffect
-        val ball = recentBalls.last().trim().uppercase()
-        val eventColor = eventFlashColor(ball, cricket) ?: return@LaunchedEffect
-        if (hapticEnabled) {
-            haptic.performHapticFeedback(
-                if (ball.contains("W")) HapticFeedbackType.LongPress else HapticFeedbackType.TextHandleMove
-            )
-        }
-        if (!BouncerMotion.reducedMotionEnabled) {
-            flashTint = eventColor
-            delay(EVENT_FLASH_MILLIS)
-            flashTint = Color.Unspecified
-        }
-    }
-    val flashOverlay by animateColorAsState(
-        targetValue = if (flashTint == Color.Unspecified) Color.Transparent else flashTint.copy(alpha = 0.15f),
-        animationSpec = tween(300),
-        label = "eventFlash",
-    )
-    return flashOverlay
-}
-
-/** prev == null is the first composition — never flash on screen open. */
-private fun isNewBall(prev: List<String>?, current: List<String>): Boolean =
-    prev != null && current.isNotEmpty() && current != prev
-
-private fun eventFlashColor(ball: String, cricket: CricketEventColors): Color? = when {
-    ball.contains("W") && !ball.startsWith("WD") -> cricket.wicket
-    ball == "6" -> cricket.six
-    ball == "4" -> cricket.four
-    else -> null
-}
-
-@Composable
-private fun MatchContextLine(
-    match: CricketMatch,
-    onSeriesClick: ((String) -> Unit)?,
-    modifier: Modifier = Modifier,
-) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val seriesLink = onSeriesClick?.takeIf { match.seriesId.isNotBlank() && match.seriesName.isNotBlank() }
-    if (seriesLink == null) {
-        Text(
-            text = "${match.matchTitle} • ${match.matchType}",
-            style = typography.bodySmall,
-            color = colors.textSecondary,
-            modifier = modifier,
-        )
-        return
-    }
-    Column(modifier = modifier) {
-        Row(
-            // Padded inside the click area: the text alone was a 16dp-tall target.
-            modifier = Modifier
-                .clickable(role = Role.Button) { seriesLink(match.seriesId) }
-                .padding(vertical = SERIES_LINK_TOUCH_PADDING),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = match.seriesName,
-                style = typography.bodySmall,
-                color = colors.primaryText,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = colors.primaryText,
-                modifier = Modifier.size(16.dp),
-            )
-        }
-        Text(
-            text = listOf(match.matchDesc, match.matchType).filter { it.isNotBlank() }.joinToString(" • "),
-            style = typography.bodySmall,
-            color = colors.textSecondary,
-        )
-    }
-}
-
-@Composable
-private fun MatchStatusLine(match: CricketMatch) {
-    if (match.currentStatus.isBlank()) return
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    if (match.matchStatus == MatchStatus.Completed) {
-        MatchResultBanner(match = match)
-    } else {
-        Text(
-            text = match.currentStatus,
-            style = typography.bodyMedium,
-            color = colors.onSurface,
-            fontWeight = FontWeight.Medium,
-        )
-    }
-}
-
-/**
- * Slim inline banner for live-data failure: static match info below stays usable,
- * this row owns the retry affordance.
- */
-@Composable
-private fun LiveDataErrorBanner(message: String, onRetry: () -> Unit) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colors.surfaceVariant)
-            .padding(horizontal = spacing.lg, vertical = spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.CloudOff,
-            contentDescription = null,
-            tint = colors.textSecondary,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(Modifier.width(spacing.sm))
-        Text(
-            text = message,
-            style = typography.bodySmall,
-            color = colors.textSecondary,
-            modifier = Modifier.weight(1f),
-        )
-        TextButton(onClick = onRetry) {
-            Text(stringResource(R.string.action_retry), color = colors.primaryText)
-        }
-    }
-}
-
-/** Opens a side's team page, or null when nothing can navigate or the side has no name. */
-private fun teamOpener(openRoute: ((String) -> Unit)?, teamName: String?): (() -> Unit)? {
-    val name = teamName?.takeIf { it.isNotBlank() } ?: return null
-    val open = openRoute ?: return null
-    return { open(BouncerScreen.TeamDetail.createRoute(name)) }
 }

@@ -113,6 +113,15 @@ class MatchHeroLogicTest {
     }
 
     @Test
+    fun `hero test line yields to a status that already states it`() {
+        val a = team("India", "312 & 145/3")
+        val b = team("Australia", "250")
+        assertEquals(HeroLine.Lead("India", 207), testHeroLine(match("Day 2: Stumps", "Test", a = a, b = b)))
+        assertNull(testHeroLine(match("Day 2: Stumps - India lead by 207 runs", "Test", a = a, b = b)))
+        assertNull(testHeroLine(match("Day 4: Australia need 120 runs", "Test", a = a, b = b)))
+    }
+
+    @Test
     fun `lead counts a side that has not batted yet as zero`() {
         val m = match(a = team("India", "312/9d"), b = team("Australia"), type = "Test")
         assertEquals(HeroLine.Lead("India", 312), testLeadLine(m))

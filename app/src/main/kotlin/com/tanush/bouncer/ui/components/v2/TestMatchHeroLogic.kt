@@ -47,6 +47,15 @@ fun testLeadLine(match: CricketMatch): HeroLine? {
     }
 }
 
+private val STATED_LEAD = Regex("""lead by|trail by|\bneeds?\b""", RegexOption.IGNORE_CASE)
+
+/**
+ * The hero's Test line, or null when the status text already states a lead, trail or target: the
+ * status ("Day 2: Stumps - India lead by 207") is shown in full, so the sentence appears once.
+ */
+fun testHeroLine(match: CricketMatch): HeroLine? =
+    if (STATED_LEAD.containsMatchIn(match.currentStatus)) null else testLeadLine(match)
+
 /** `"Day 2: Stumps"` → day 2, Stumps. Null when the status names no day. */
 fun testDayFor(match: CricketMatch): TestDay? {
     val found = listOf(match.currentStatus, match.status).firstNotNullOfOrNull { DAY_STATUS.find(it) } ?: return null

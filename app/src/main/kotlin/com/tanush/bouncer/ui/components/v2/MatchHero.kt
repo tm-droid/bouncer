@@ -69,7 +69,7 @@ fun MatchHeroV2(
             HeroCentre(match, situation, lastUpdatedMs, isTest, Modifier.align(Alignment.CenterVertically))
             HeroTeamColumn(context, match.teams[1], alignEnd = true)
         }
-        val line = if (!match.isLive) null else if (isTest) testLeadLine(match) else chaseLineFor(match, situation)
+        val line = if (!match.isLive) null else if (isTest) testHeroLine(match) else chaseLineFor(match, situation)
         if (line != null) {
             Spacer(Modifier.height(BouncerThemeV2.spacing.sm))
             HeroLineText(line, Modifier.fillMaxWidth())
