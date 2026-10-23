@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.homeCrestShared
 import com.tanush.bouncer.ui.screens.FormResult
 import com.tanush.bouncer.ui.screens.formResult
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -70,6 +71,8 @@ fun MatchCardV2(
     followable: Boolean = false,
     onSetReminder: () -> Unit = {},
     isFavouriteTeam: Boolean = false,
+    /** Home rows only: the crests morph into the match header's when this match opens. */
+    shareCrests: Boolean = false,
 ) {
     val colors = BouncerThemeV2.colors
     val spacing = BouncerThemeV2.spacing
@@ -115,7 +118,7 @@ fun MatchCardV2(
                 onSubscribeToggle = openFollow,
             )
             Spacer(Modifier.height(spacing.sm))
-            MatchTeamRows(match = match, isLive = statusType == MatchStatusType.Live)
+            MatchTeamRows(match, statusType == MatchStatusType.Live, shareCrests = shareCrests)
             MatchCardStatusLine(match = match)
         }
         // Full-bleed: the hairline runs edge to edge so the list reads as one surface rather
@@ -244,6 +247,7 @@ internal fun MatchTeamRows(
     isLive: Boolean,
     crestSize: Dp = 28.dp,
     inkScores: Boolean = false,
+    shareCrests: Boolean = false,
 ) {
     if (match.teams.size < 2) return
     val spacing = BouncerThemeV2.spacing
@@ -266,6 +270,7 @@ internal fun MatchTeamRows(
                     crestSize = crestSize,
                     inkScore = inkScores,
                     steppedBack = anyBatting && !team.isBatting,
+                    crestModifier = Modifier.homeCrestShared(match.id, index, shareCrests),
                 )
             }
         }

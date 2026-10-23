@@ -42,6 +42,7 @@ internal fun LazyListScope.matchRows(rows: List<CricketMatch>, group: String, ct
             isFollowing = match.id in ctx.following,
             followable = true,
             isFavouriteTeam = match.hasFavouriteTeam(ctx.favouriteNames),
+            shareCrests = true,
         )
     }
 }

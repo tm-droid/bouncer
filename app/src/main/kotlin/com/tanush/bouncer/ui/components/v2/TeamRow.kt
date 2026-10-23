@@ -56,6 +56,7 @@ fun TeamRowV2(
     crestSize: Dp = CREST_SIZE,
     inkScore: Boolean = false,
     steppedBack: Boolean = false,
+    crestModifier: Modifier = Modifier,
 ) {
     val colors = BouncerThemeV2.colors
     val teamInk = rememberTeamInk(teamName)
@@ -68,7 +69,7 @@ fun TeamRowV2(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(modifier = Modifier.size(slot), contentAlignment = Alignment.Center) {
+        Box(modifier = crestModifier.size(slot), contentAlignment = Alignment.Center) {
             TeamCrest(
                 teamName = teamName,
                 logoUrl = logoUrl,

@@ -28,7 +28,7 @@ B = app/src/main/kotlin/com/tanush/bouncer · T = ./gradlew testDebugUnitTest --
 - [x] U10: Home rows | files: TeamRow.kt, MatchCardV2.kt | done when: D + 4 matches/screen
 ### Wave 5
 - [x] U14: consistency pass | files: many (crests, shapes, type roles, pressed states, toggle haptic) | done when: D + full test
-- [ ] U18: shared-element row→header (experimental; drop if risky) | done when: emulator clean or dropped with reason
+- [x] U18: shared-element row→header (experimental; drop if risky) | done when: emulator clean or dropped with reason
 - [x] U15: docs + whatsnew | done when: rule docs updated, whatsnew ≤500 chars
 
 ## Decisions
@@ -67,3 +67,4 @@ B = app/src/main/kotlin/com/tanush/bouncer · T = ./gradlew testDebugUnitTest --
 - 2026-10-23: Wave 4 emulator pass -> fixes 672..8f63 (summary winner name match via sameTeamName; Home one offline banner, old NetworkStatusBanner deleted; header onPostFling + no settle cancel on pager frames; fixtures no false offline; score a11y uses full names). Garbled series text: no code cause found, recheck on emulator.
 - 2026-10-23: U14 done: H2H/HistoricalStats crests via TeamCrest; 62 shape literals -> BouncerThemeV2.shapes; team-star haptic. fontSize->roles skipped (276 legacy literals, no matching roles). Unreferenced, not deleted: BowlingPerformanceCard.kt, premium/EliteMomentumTracker.kt, premium/InsightGridCard.kt, premium/PremiumWinProbabilityHero.kt (winProbabilityStateFor used by a test), widgets/EnhancedWidgetStyles.kt; PremiumComponents.kt nearly dead (SectionDivider only), EliteShareCard preview/button unused.
 - 2026-10-23: Play upload will be local (Actions minutes out): versionCode 1672 (Play max 1668; CI next run >=673), versionName 1.0.10.
+- 2026-10-23: U18 done: crest morph Home row -> expanded match hero (SharedTransitionLayout in MainAppContainer, locals in ui/MatchSharedElements.kt); rows only, off when collapsed/open-route/deep link/reduced motion.

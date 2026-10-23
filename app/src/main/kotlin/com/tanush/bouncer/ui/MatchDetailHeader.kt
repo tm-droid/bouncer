@@ -95,6 +95,8 @@ internal fun MatchDetailHeader(
     val barPx = with(LocalDensity.current) { COLLAPSED_BAR_HEIGHT.toPx() }
     val flashOverlay = rememberEventFlashOverlay(recentBalls)
     val showBar by remember(collapse) { derivedStateOf { collapse.fraction > 0f } }
+    // Only an expanded header owns the crests: a collapsed one clips and fades the hero.
+    val expanded by remember(collapse) { derivedStateOf { collapse.fraction == 0f } }
     val barTouchable by remember(collapse) { derivedStateOf { collapse.fraction > BAR_TOUCH_FRACTION } }
     Box(
         modifier = Modifier
@@ -109,6 +111,7 @@ internal fun MatchDetailHeader(
             situation = situation,
             lastUpdatedMs = lastUpdatedMs,
             recentBalls = recentBalls,
+            shareCrests = expanded,
             modifier = Modifier
                 .then(if (barTouchable) Modifier.clearAndSetSemantics {} else Modifier)
                 .graphicsLayer { alpha = 1f - collapse.fraction }
@@ -141,6 +144,7 @@ private fun ExpandedHeader(
     situation: LiveSituation?,
     lastUpdatedMs: Long?,
     recentBalls: List<String>,
+    shareCrests: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val spacing = BouncerThemeV2.spacing
@@ -155,6 +159,7 @@ private fun ExpandedHeader(
             situation = situation,
             lastUpdatedMs = lastUpdatedMs,
             size = HeroSize.Large,
+            shareCrests = shareCrests,
             onTeamClick = openRoute?.let { open -> { team: CricketMatch.Team -> teamRoute(team.name)?.let(open) } },
         )
         HeaderStatus(match, situation)

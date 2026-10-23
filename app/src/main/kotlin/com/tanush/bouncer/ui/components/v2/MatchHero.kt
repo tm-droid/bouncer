@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.R
 import com.tanush.bouncer.data.remote.LiveSituation
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.detailCrestShared
 import com.tanush.bouncer.ui.theme.rememberTeamInk
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.displayOvers
@@ -44,6 +45,7 @@ private class HeroContext(
     val size: HeroSize,
     val isTest: Boolean,
     val onTeamClick: ((CricketMatch.Team) -> Unit)?,
+    val shareCrests: Boolean,
 )
 
 /**
@@ -59,10 +61,12 @@ fun MatchHeroV2(
     size: HeroSize,
     modifier: Modifier = Modifier,
     onTeamClick: ((CricketMatch.Team) -> Unit)? = null,
+    /** Match header only: the crests morph from and back to the Home row of this match. */
+    shareCrests: Boolean = false,
 ) {
     if (match.teams.size < 2) return
     val isTest = isTestMatch(match, situation)
-    val context = HeroContext(match, size, isTest, onTeamClick)
+    val context = HeroContext(match, size, isTest, onTeamClick, shareCrests)
     Column(modifier = modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             HeroTeamColumn(context, match.teams[0], alignEnd = false)
@@ -85,6 +89,7 @@ private fun RowScope.HeroTeamColumn(context: HeroContext, team: CricketMatch.Tea
     val result = if (match.isCompleted) rowResultFor(match, team.name) else RowResult.Undecided
     val nameInk = if (result == RowResult.Lost) colors.textSecondary else rememberTeamInk(team.name)
     val click = context.onTeamClick
+    val crestShare = Modifier.detailCrestShared(match.id, if (alignEnd) 1 else 0, context.shareCrests)
     Column(
         modifier = Modifier
             .weight(1f)
@@ -96,6 +101,7 @@ private fun RowScope.HeroTeamColumn(context: HeroContext, team: CricketMatch.Tea
             logoUrl = team.logoUrl,
             size = context.size.crest,
             acronym = team.acronym.ifBlank { null },
+            modifier = crestShare,
         )
         Spacer(Modifier.height(BouncerThemeV2.spacing.xs))
         Text(

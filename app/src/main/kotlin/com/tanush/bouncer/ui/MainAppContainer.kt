@@ -136,15 +136,7 @@ fun BouncerAppContent(
     // read a few lines below for onboarding state, so this costs an in-memory map lookup.
     var themeMode by rememberSaveable { mutableStateOf(loadThemeMode(context)) }
 
-    LaunchedEffect(Unit) {
-        BouncerMotion.applyReducedMotionPreference(
-            PreferencesHelper.getBoolean(
-                context,
-                PreferencesHelper.KEY_REDUCED_MOTION,
-                false
-            )
-        )
-    }
+    ReducedMotionPreference()
 
     // Hoisted so the match overlay can navigate the app underneath it (its series, teams, players).
     val navController = rememberNavController()
@@ -153,51 +145,81 @@ fun BouncerAppContent(
     // when that page is backed out of. Keyed on the back-stack entry, so leaving it any other way (a
     // bottom tab) never matches again and the match stays closed.
     var overlayReturn by remember { mutableStateOf<Pair<String, CricketMatch>?>(null) }
+    // Off while a match closes into another page: its crests must not fly back into a Home sliding away.
+    var crestMorph by remember { mutableStateOf(true) }
 
     BouncerThemeV2(themeMode = themeMode) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(BouncerThemeV2.colors.background)
-        ) {
-            // The app stays composed under an open match. It used to be swapped out for the match
-            // screen, which disposed the NavHost and its back stack: closing a match opened from a
-            // series, a search or a team landed on Home instead of where the reader was.
-            MainAppContainer(
-                navController = navController,
-                onMatchClick = { currentMatch = it },
-                isCovered = currentMatch != null,
-                externalDeepLinkUri = externalDeepLinkUri,
-                onDeepLinkConsumed = onDeepLinkConsumed,
-                themeMode = themeMode,
-                onThemeModeChanged = {
-                    themeMode = it
-                    PreferencesHelper.setString(
-                        context,
-                        PreferencesHelper.KEY_THEME_VARIANT,
-                        it.name,
-                    )
+        MatchShareHost(openMatchId = currentMatch?.id, morph = crestMorph) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(BouncerThemeV2.colors.background)
+            ) {
+                // The app stays composed under an open match. It used to be swapped out for the match
+                // screen, which disposed the NavHost and its back stack: closing a match opened from a
+                // series, a search or a team landed on Home instead of where the reader was.
+                MainAppContainer(
+                    navController = navController,
+                    onMatchClick = {
+                        crestMorph = true
+                        currentMatch = it
+                    },
+                    isCovered = currentMatch != null,
+                    externalDeepLinkUri = externalDeepLinkUri,
+                    onDeepLinkConsumed = onDeepLinkConsumed,
+                    themeMode = themeMode,
+                    onThemeModeChanged = {
+                        themeMode = it
+                        PreferencesHelper.setString(
+                            context,
+                            PreferencesHelper.KEY_THEME_VARIANT,
+                            it.name,
+                        )
+                    }
+                )
+                // Composed after the NavHost, so its back callback outranks the NavHost's own.
+                BackHandler(enabled = overlayReturn != null && backStackEntry?.id == overlayReturn?.first) {
+                    val match = overlayReturn?.second
+                    overlayReturn = null
+                    navController.popBackStack()
+                    crestMorph = true
+                    currentMatch = match
                 }
-            )
-            // Composed after the NavHost, so its back callback outranks the NavHost's own.
-            BackHandler(enabled = overlayReturn != null && backStackEntry?.id == overlayReturn?.first) {
-                val match = overlayReturn?.second
-                overlayReturn = null
-                navController.popBackStack()
-                currentMatch = match
+                MatchOverlay(
+                    match = currentMatch,
+                    onClose = { currentMatch = null },
+                    onOpenRoute = { route ->
+                        val from = currentMatch
+                        crestMorph = false
+                        currentMatch = null
+                        navController.navigateForward(route)
+                        val entryId = navController.currentBackStackEntry?.id
+                        overlayReturn = if (from != null && entryId != null) entryId to from else null
+                    },
+                )
             }
-            MatchOverlay(
-                match = currentMatch,
-                onClose = { currentMatch = null },
-                onOpenRoute = { route ->
-                    val from = currentMatch
-                    currentMatch = null
-                    navController.navigateForward(route)
-                    val entryId = navController.currentBackStackEntry?.id
-                    overlayReturn = if (from != null && entryId != null) entryId to from else null
-                },
-            )
         }
+    }
+}
+
+/** Applies the saved reduced-motion preference to [BouncerMotion]. */
+@Composable
+private fun ReducedMotionPreference() {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        BouncerMotion.applyReducedMotionPreference(
+            PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_REDUCED_MOTION, false)
+        )
+    }
+}
+
+/** Hosts the shared-element scope the Home rows and the match header pair their crests through. */
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun MatchShareHost(openMatchId: String?, morph: Boolean, content: @Composable () -> Unit) {
+    SharedTransitionLayout {
+        val share = remember(this, openMatchId, morph) { MatchShare(this, openMatchId, morph) }
+        CompositionLocalProvider(LocalMatchShare provides share, content = content)
     }
 }
 
@@ -215,6 +237,7 @@ private fun MatchOverlay(
         enter = BouncerMotion.Transitions.verticalEnter(offsetDivisor = 10),
         exit = BouncerMotion.Transitions.verticalExit(offsetDivisor = 10),
     ) {
+        val overlayScope = this
         val visibleMatch = currentListEntry(shown ?: return@AnimatedVisibility)
         // Registered after the NavHost's own back callback, so back closes the match first.
         BackHandler(enabled = match != null, onBack = onClose)
@@ -224,7 +247,10 @@ private fun MatchOverlay(
                 .background(BouncerThemeV2.colors.background)
         ) {
             key(visibleMatch.id) {
-                CompositionLocalProvider(LocalOpenRoute provides onOpenRoute) {
+                CompositionLocalProvider(
+                    LocalOpenRoute provides onOpenRoute,
+                    LocalMatchOverlayScope provides overlayScope,
+                ) {
                     MatchDetailViewV2(match = visibleMatch, onBackClick = onClose)
                 }
             }
