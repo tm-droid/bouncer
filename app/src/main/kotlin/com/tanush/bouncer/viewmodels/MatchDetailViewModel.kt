@@ -23,6 +23,7 @@ import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
 import com.tanush.bouncer.data.remote.LiveDetailSnapshot
 import com.tanush.bouncer.data.remote.LiveMatchDetailSource
+import com.tanush.bouncer.data.remote.LiveSituation
 import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
 import com.tanush.bouncer.data.remote.ProductionLiveDetailSource
 import com.tanush.bouncer.data.remote.H2HPair
@@ -93,6 +94,18 @@ class MatchDetailViewModel(
         val liveTeam2Score: String = "",
         val liveTeam1Overs: String = "",
         val liveTeam2Overs: String = "",
+        /**
+         * Who is batting and the chase arithmetic, from the live-detail row, in this screen's team
+         * order. Null with no row, or a row written before the server sent one.
+         */
+        val situation: LiveSituation? = null,
+        /**
+         * Wall-clock ms at which a score or overs figure last CHANGED as received, from the detail
+         * row or the list poll. Not the row's `updated_at` (match-sync rewrites that every minute
+         * whatever happens) and not the last poll, either of which would make a frozen upstream
+         * look fresh. Null until a change has been seen on this screen.
+         */
+        val lastUpdatedMs: Long? = null,
         val liveCurrentRunRate: String? = null,
         val liveRequiredRunRate: String? = null,
         /** Latest server status line ("... won by ...", innings break, etc.); drives the header. */
@@ -172,6 +185,7 @@ class MatchDetailViewModel(
                 liveTeam2Score = pick(p.team2Score, this.liveTeam2Score),
                 liveTeam1Overs = pick(p.team1Overs, this.liveTeam1Overs),
                 liveTeam2Overs = pick(p.team2Overs, this.liveTeam2Overs),
+                situation = p.situation,
                 liveCurrentRunRate = pick(p.currentRunRate, this.liveCurrentRunRate),
                 liveRequiredRunRate = pick(p.requiredRunRate, this.liveRequiredRunRate),
                 liveStatus = pick(p.status?.takeIf { it.isNotBlank() }, this.liveStatus),
@@ -514,7 +528,7 @@ class MatchDetailViewModel(
         if (updated.id != match.id) return
         match = updated
         if (!listLeadsDetail(updated, hasAppliedDetail, detailUpdatedAtMs)) return
-        _uiState.update { it.seededFrom(updated) }
+        _uiState.update { it.seededFrom(updated).withScoreStamp(it, System.currentTimeMillis()) }
     }
 
     /** Clears errors and re-runs the initial load (retry from the error state). */
@@ -543,7 +557,7 @@ class MatchDetailViewModel(
         // Judged from the state BEFORE this payload, so the update that finishes the match still
         // lands and only the re-reads of that frozen row afterwards are ignored. See [UiState.merge].
         val alreadyOver = isMatchOver(match, _uiState.value.liveStatus)
-        _uiState.update { st -> st.merge(p, alreadyOver) }
+        _uiState.update { st -> st.merge(p, alreadyOver).withScoreStamp(st, System.currentTimeMillis()) }
         if (alreadyOver) return
         p.batsmen.forEach { handleBatsmanMilestone(it) }
     }

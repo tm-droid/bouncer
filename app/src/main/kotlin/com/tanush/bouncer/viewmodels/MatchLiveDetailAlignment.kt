@@ -57,6 +57,7 @@ internal fun MatchLiveDetailPayload.alignedTo(teams: List<CricketMatch.Team>): M
         // Factors exist only where there are two outcomes, so what favoured one side by `d`
         // counted against the other by exactly `d`.
         winProbabilityFactors = winProbabilityFactors.map { it.copy(d = -it.d) },
+        situation = situation?.copy(battingTeamIsTeam1 = situation.battingTeamIsTeam1?.not()),
     )
 }
 
@@ -69,4 +70,24 @@ internal fun WinProbabilityStore.Probability.alignedTo(
         team1Percent = (PERCENT_TOTAL - (drawPercent ?: 0.0) - team1Percent)
             .coerceIn(0.0, PERCENT_TOTAL),
     )
+}
+
+/**
+ * [this] stamped with the time its score first differed from [before]'s, else carrying [before]'s.
+ *
+ * The first non-blank score seeds the stamp; after that only a changed score or overs figure
+ * moves it: the detail row is rewritten every minute and the list polled every few seconds, so
+ * stamping each arrival would make a frozen upstream look fresh.
+ */
+internal fun MatchDetailViewModel.UiState.withScoreStamp(
+    before: MatchDetailViewModel.UiState,
+    nowMs: Long,
+): MatchDetailViewModel.UiState {
+    val changed = liveTeam1Score != before.liveTeam1Score || liveTeam2Score != before.liveTeam2Score ||
+        liveTeam1Overs != before.liveTeam1Overs || liveTeam2Overs != before.liveTeam2Overs
+    // First sighting of a score starts the clock, so a score frozen from the moment the screen
+    // opens still ages instead of reading as "unknown".
+    val firstSight = before.lastUpdatedMs == null &&
+        (liveTeam1Score.isNotBlank() || liveTeam2Score.isNotBlank())
+    return copy(lastUpdatedMs = if (changed || firstSight) nowMs else before.lastUpdatedMs)
 }
