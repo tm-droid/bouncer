@@ -13,7 +13,6 @@
     <ID>CognitiveComplexMethod:CountdownWidget.kt$CountdownWidget$@Composable private fun CountdownLayout( team1Name: String, team2Name: String, matchTitle: String, venue: String, timeRemainingMillis: Long, matchType: String )</ID>
     <ID>CognitiveComplexMethod:CricBuzzScraper.kt$CricBuzzScraper$suspend fun fetchBallByBallAndBatsmen(matchId: String): ScrapedMatchDetails</ID>
     <ID>CognitiveComplexMethod:CricBuzzScraper.kt$CricBuzzScraper$suspend fun fetchLiveMatches(url: String, matchState: String): List&lt;CricketMatch&gt;</ID>
-    <ID>CognitiveComplexMethod:CricketBallPullRefresh.kt$@Composable fun CricketBallPullRefreshIndicator( isRefreshing: Boolean, pullProgress: Float, modifier: Modifier = Modifier )</ID>
     <ID>CognitiveComplexMethod:FallOfWicketsCard.kt$@Composable private fun WicketTimeline( wickets: List&lt;FallOfWicket&gt;, currentScore: Int, currentOvers: Float, teamColor: Color )</ID>
     <ID>CognitiveComplexMethod:FavoritesScreen.kt$@Composable fun FavoritesScreen( onBackClick: () -&gt; Unit, onTeamClick: (String) -&gt; Unit )</ID>
     <ID>CognitiveComplexMethod:FavoritesScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AddTeamBottomSheet( currentFavorites: List&lt;String&gt;, onDismiss: () -&gt; Unit, onTeamSelected: (String) -&gt; Unit )</ID>
@@ -78,7 +77,6 @@
     <ID>CyclomaticComplexMethod:CricBuzzScraper.kt$CricBuzzScraper$private fun parseMatchScoreFields(obj: JsonObject, info: JsonObject): MatchScoreFields</ID>
     <ID>CyclomaticComplexMethod:CricBuzzScraper.kt$private fun findMatchingParenEnd(html: String, openParenIdx: Int): Int</ID>
     <ID>CyclomaticComplexMethod:CricInfoScraper.kt$CricInfoScraper$private fun parsePreMatchData(doc: Document): PreMatchData?</ID>
-    <ID>CyclomaticComplexMethod:CricketBallPullRefresh.kt$@Composable fun CricketBallPullRefreshIndicator( isRefreshing: Boolean, pullProgress: Float, modifier: Modifier = Modifier )</ID>
     <ID>CyclomaticComplexMethod:DynamicTheming.kt$TeamThemeProvider$fun getTeamColors(teamName: String): TeamColorScheme</ID>
     <ID>CyclomaticComplexMethod:DynamicTheming.kt$TeamThemeProvider$suspend fun extractColorsFromBitmap(bitmap: Bitmap): TeamColorScheme</ID>
     <ID>CyclomaticComplexMethod:DynamicTheming.kt$fun getTeamNotificationColor(teamName: String): Int</ID>
@@ -181,7 +179,6 @@
     <ID>LongMethod:ConditionsCard.kt$@Composable fun ConditionsCard( weather: CurrentWeatherInfo, pitch: PitchCondition, venue: String, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:CountdownWidget.kt$CountdownWidget$@Composable private fun CountdownLayout( team1Name: String, team2Name: String, matchTitle: String, venue: String, timeRemainingMillis: Long, matchType: String )</ID>
     <ID>LongMethod:CricInfoScraper.kt$CricInfoScraper$suspend fun findClosestLiveMatchUrlAndId(matchName: String): Pair&lt;String, String&gt;?</ID>
-    <ID>LongMethod:CricketBallPullRefresh.kt$@Composable fun CricketBallPullRefreshIndicator( isRefreshing: Boolean, pullProgress: Float, modifier: Modifier = Modifier )</ID>
     <ID>LongMethod:DRSReviewCard.kt$@Composable fun DRSReviewCard( review: DRSReviewData, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:EliteMomentumTracker.kt$@Composable private fun MomentumItem(event: MomentumEvent)</ID>
     <ID>LongMethod:EliteShareCard.kt$@Composable fun EliteShareCardPreview( data: ShareCardData, modifier: Modifier = Modifier, onShareClick: () -&gt; Unit = {} )</ID>
@@ -392,8 +389,6 @@
     <ID>UnusedParameter:RichNotificationBuilder.kt$RichNotificationBuilder$totalSixes: Int</ID>
     <ID>UnusedParameter:SeriesStandingsCard.kt$isQualified: Boolean</ID>
     <ID>UnusedParameter:SettingsScreenV2.kt$onAchievementsClick: () -&gt; Unit = {}</ID>
-    <ID>UnusedPrivateMember:CricketBallPullRefresh.kt$@Preview(name = "Pull 50%", showBackground = true, backgroundColor = 0xFF121212) @Composable private fun PreviewPullHalf()</ID>
-    <ID>UnusedPrivateMember:CricketBallPullRefresh.kt$@Preview(name = "Refreshing", showBackground = true, backgroundColor = 0xFF121212) @Composable private fun PreviewRefreshing()</ID>
     <ID>UnusedPrivateMember:MatchPredictionCard.kt$@androidx.compose.ui.tooling.preview.Preview(showBackground = true, backgroundColor = 0xFF121212) @Composable private fun MatchPredictionCardPreview()</ID>
     <ID>UnusedPrivateMember:OverviewTabV2.kt$@Composable private fun QuickStatCard( label: String, value: String, modifier: Modifier = Modifier, )</ID>
     <ID>UnusedPrivateMember:OverviewTabV2.kt$@Composable private fun WinProbRow(teamName: String, probability: Float)</ID>

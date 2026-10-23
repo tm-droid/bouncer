@@ -4,6 +4,8 @@ import androidx.compose.ui.graphics.Color
 import com.tanush.bouncer.ui.components.v2.ballChipInk
 import com.tanush.bouncer.ui.theme.v2.BouncerColorsV2
 import com.tanush.bouncer.ui.theme.v2.DarkColors
+import com.tanush.bouncer.ui.theme.v2.DarkSurfaceVariant
+import com.tanush.bouncer.ui.theme.v2.Gray200
 import com.tanush.bouncer.ui.theme.v2.LightColors
 import java.util.Locale
 import org.junit.Assert.assertTrue
@@ -147,6 +149,17 @@ class LightModeContrastTest {
         assertContrast(LightColors.divider, LightColors.surface, VISIBLE_HAIRLINE, "light divider on surface")
         assertContrast(LightColors.border, LightColors.surface, VISIBLE_HAIRLINE, "light border on surface")
         assertContrast(LightColors.border, LightColors.background, VISIBLE_HAIRLINE, "light border on background")
+    }
+
+    /**
+     * The pull-to-refresh arc is `primaryText` drawn on the M3 indicator disc, which is the
+     * scheme's `surfaceContainerHigh` (Gray200 in light, DarkSurfaceVariant in dark — see
+     * `BouncerThemeV2`). A non-text graphic needs 3:1 (WCAG 1.4.11).
+     */
+    @Test
+    fun `refresh arc is visible on the indicator disc`() {
+        assertContrast(LightColors.primaryText, Gray200, AA_LARGE, "light primaryText on surfaceContainerHigh")
+        assertContrast(DarkColors.primaryText, DarkSurfaceVariant, AA_LARGE, "dark primaryText on surfaceContainerHigh")
     }
 
     /**
