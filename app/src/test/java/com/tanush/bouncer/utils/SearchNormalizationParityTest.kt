@@ -31,6 +31,17 @@ class SearchNormalizationParityTest {
         }
     }
 
+    @Test
+    fun `editTolerance produces exactly what the shared fixture says`() {
+        val cases = AppJson.parseToJsonElement(locate(fixturePath).readText(Charsets.UTF_8)) as JsonObject
+        val rows = cases.getValue("tolerance").jsonArray
+        assertTrue("the fixture must not be empty", rows.isNotEmpty())
+        rows.forEach { row ->
+            val (word, expected) = row.jsonArray.map { it.jsonPrimitive.content }
+            assertEquals("editTolerance(\"$word\")", expected.toInt(), SearchScore.editTolerance(word))
+        }
+    }
+
     /** Walks up from the module directory; a missing file is a hard failure, never a skip. */
     private fun locate(relativePath: String): File {
         var dir: File? = File(System.getProperty("user.dir") ?: ".").absoluteFile

@@ -1,5 +1,5 @@
 {
-  "_comment": "Input -> normalizeForSearch output. Read by playerIndex.test.js AND the app's SearchNormalizationParityTest; both sides must produce exactly these. Edit only together with both implementations.",
+  "_comment": "Input -> normalizeForSearch output; tolerance: word -> permitted edit distance. Read by playerIndex.test.js AND the app's SearchNormalizationParityTest; both sides must produce exactly these. Edit only together with both implementations.",
   "cases": [
     ["Virat Kohli", "virat kohli"],
     ["  VIRAT   KOHLI  ", "virat kohli"],
@@ -15,5 +15,8 @@
     ["SA20, 2026", "sa20 2026"],
     ["Mohammed_Siraj", "mohammed siraj"],
     ["", ""]
+  ],
+  "tolerance": [
+    ["a", 0], ["in", 0], ["ind", 0], ["kohl", 1], ["kohli", 1], ["pollard", 1], ["pollards", 2], ["sunrisers", 2]
   ]
 }

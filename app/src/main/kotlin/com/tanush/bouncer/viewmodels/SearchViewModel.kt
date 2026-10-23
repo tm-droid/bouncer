@@ -26,7 +26,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -85,10 +84,13 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     private val _matches = MutableStateFlow<List<CricketMatch>>(emptyList())
     private val _news = MutableStateFlow<List<NewsArticleData>>(emptyList())
 
-    /** What is live right now, falling back to a fixed list when nothing is. */
-    val suggestions: StateFlow<List<String>> = _matches
-        .map { matches -> SearchRepository.liveSuggestions(matches).ifEmpty { SearchRepository.getTrendingSearches() } }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SearchRepository.getTrendingSearches())
+    /** Series still running, from `series_cache`; the idle suggestions when nothing is live. */
+    private val _currentSeries = MutableStateFlow<List<String>>(emptyList())
+
+    /** What is live right now, else the current series, else a fixed list. */
+    val suggestions: StateFlow<List<String>> = combine(_matches, _currentSeries) { matches, series ->
+        SearchRepository.liveSuggestions(matches).ifEmpty { series }.ifEmpty { SearchRepository.getTrendingSearches() }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, SearchRepository.getTrendingSearches())
 
     private val _liveNow = MutableStateFlow(false)
     val suggestionsAreLive: StateFlow<Boolean> = _liveNow.asStateFlow()
@@ -97,6 +99,14 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     private var refreshJob: Job? = null
     private var initialTabApplied = false
 
+
+    init {
+        viewModelScope.launch(bouncerExceptionHandler) {
+            _currentSeries.value = SearchRepository.currentSeriesSuggestions(
+                corpora.corpusFor(_matches.value).series, System.currentTimeMillis(),
+            )
+        }
+    }
 
     fun loadRecentQueries() {
         _recentQueries.value = SearchRepository.getRecentQueries(getApplication())

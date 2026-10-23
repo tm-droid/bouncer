@@ -304,15 +304,14 @@ class SearchRepositoryTest {
     @Test
     fun `a short query does not suggest a distant candidate`() {
         // The flat `dist <= 3` accepted three edits on a four-character query — that is a different
-        // word, not a typo. The tolerance is now proportional to query length.
+        // word, not a typo. The tolerance now steps with query length: 0 to 3 chars, 1 to 7, 2 from 8.
         assertNull(suggestionFor("zzzz", "zzzaaa"))
     }
 
     @Test
-    fun `a near-miss is still suggested`() {
-        // Three edits on a six-character query stays inside the proportional tolerance, and scores
-        // too low to surface as a team result, so the suggestion path is what answers.
-        assertEquals("zzzaaa", suggestionFor("zzzzzz", "zzzaaa"))
+    fun `three edits on a six-character query is a different word`() {
+        // Inside the old proportional tolerance (3); outside the stepped one (1 for 4 to 7 chars).
+        assertNull(suggestionFor("zzzzzz", "zzzaaa"))
     }
 
     @Test
@@ -321,6 +320,6 @@ class SearchRepositoryTest {
         // keystroke. A candidate whose length differs by more than the tolerance cannot be within
         // it, so skipping it changes nothing but the cost.
         val many = (1..5_000).map { "team-name-number-$it" }.toTypedArray()
-        assertEquals("zzzaaa", suggestionFor("zzzzzz", "zzzaaa", *many))
+        assertNull(suggestionFor("zzzzzz", "zzzaaa", *many))
     }
 }

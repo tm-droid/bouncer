@@ -1,10 +1,15 @@
 package com.tanush.bouncer.data
 
 import androidx.annotation.VisibleForTesting
+import com.tanush.bouncer.utils.ParsedQuery
 import com.tanush.bouncer.utils.SearchScore
 import com.tanush.bouncer.utils.acronymFor
 import com.tanush.bouncer.utils.expandedSearchQueries
 import com.tanush.bouncer.utils.normalizeForSearch
+import com.tanush.bouncer.utils.parseQuery
+import com.tanush.bouncer.utils.resolveSide
+import java.time.Instant
+import java.time.ZoneOffset
 import android.content.Context
 import android.content.SharedPreferences
 import com.tanush.bouncer.models.CricketMatch
@@ -44,6 +49,11 @@ object SearchRepository {
     private const val NEWS_CONTEXT_WEIGHT = 0.8
     private const val NEWS_INTRO_WEIGHT = 0.7
     private const val STATUS_HIT_SCORE = 0.3
+
+    /** Per facet (format, stage, year) a match satisfies. Orders within a band, never across one. */
+    private const val FACET_BOOST = 0.02
+    private const val BAND_MARGIN = 0.001
+    private val FINAL_WORD = Regex("""(^| )final""")
 
     /**
      * A series matched on its category alone ("international", "league"). Real, but it says
@@ -307,6 +317,32 @@ object SearchRepository {
             }.sortedByDescending { it.relevanceScore }.take(MAX_PLAYERS)
         }
 
+    /**
+     * A loaded match with every searchable field normalised once. Scores repoll every few seconds
+     * but a query is re-scored on every keystroke, so normalising per keystroke was most of the cost.
+     */
+    internal class MatchSearchEntry(val match: CricketMatch) {
+        val teamNames = match.teams.map { normalizeForSearch(it.name) }
+        val teamAcronyms = match.teams.map { normalizeForSearch(it.acronym) }
+        val title = normalizeForSearch(match.matchTitle)
+        val series = normalizeForSearch(match.seriesName)
+        val desc = normalizeForSearch(match.matchDesc)
+        val venue = normalizeForSearch(match.venue)
+        val status = normalizeForSearch(match.currentStatus)
+        val year: Int? = match.startDateMs?.let { Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).year }
+    }
+
+    /** The last list's entries, keyed by list identity so a keystroke reuses them and a repoll rebuilds. */
+    @Volatile
+    private var entryCache: Pair<List<CricketMatch>, List<MatchSearchEntry>>? = null
+
+    private fun entriesFor(matches: List<CricketMatch>): List<MatchSearchEntry> {
+        entryCache?.takeIf { it.first === matches }?.let { return it.second }
+        val built = matches.distinctBy { it.id }.map(::MatchSearchEntry)
+        entryCache = matches to built
+        return built
+    }
+
     private fun searchMatches(
         q: String,
         queries: List<String>,
@@ -315,28 +351,113 @@ object SearchRepository {
         allowFuzzy: Boolean,
         favourites: Set<String>,
     ): List<SearchResult.MatchResult> {
-        val acronymByName = teams.associate { it.normalized to it.normalizedAcronym }
-        return matches.distinctBy { it.id }.mapNotNull { match ->
-            val teamScore = match.teams.maxOfOrNull { team ->
-                val name = normalizeForSearch(team.name)
-                val acronym = acronymByName[name] ?: normalizeForSearch(team.acronym)
-                if (acronym == q) SearchScore.ACRONYM else SearchScore.of(q, name, allowFuzzy)
-            } ?: 0.0
-            val titleScore = SearchScore.of(q, normalizeForSearch(match.matchTitle), allowFuzzy)
-            // Alias-expanded, so "ipl" finds every IPL fixture by its series name.
-            val seriesName = normalizeForSearch(match.seriesName)
-            val seriesScore = queries.maxOf { SearchScore.of(it, seriesName, allowFuzzy) } * SERIES_NAME_WEIGHT
-            val descScore = SearchScore.of(q, normalizeForSearch(match.matchDesc), allowFuzzy) * MATCH_DESC_WEIGHT
-            val venueScore = SearchScore.of(q, normalizeForSearch(match.venue), allowFuzzy) * VENUE_WEIGHT
-            val statusScore = if (normalizeForSearch(match.currentStatus).contains(q)) STATUS_HIT_SCORE else 0.0
-
-            val best = maxOf(teamScore, titleScore, seriesScore, descScore, venueScore, statusScore)
-            if (best > MATCH_THRESHOLD) SearchResult.MatchResult(match, best) else null
+        val scorer = MatchScorer(q, queries, teams, allowFuzzy)
+        return entriesFor(matches).mapNotNull { entry ->
+            scorer.score(entry)?.let { SearchResult.MatchResult(entry.match, it) }
         }.sortedWith(
             compareByDescending<SearchResult.MatchResult> { it.relevanceScore }
                 .thenBy { stateRank(it.match) }
+                .thenBy { recencyRank(it.match) }
                 .thenByDescending { r -> r.match.teams.any { it.name in favourites } }
         )
+    }
+
+    /** Scores [MatchSearchEntry]s against one query: names, series and venue, then pair and facets. */
+    private class MatchScorer(
+        private val q: String,
+        queries: List<String>,
+        teams: List<TeamEntry>,
+        private val allowFuzzy: Boolean,
+    ) {
+        private val acronymByName = teams.associate { it.normalized to it.normalizedAcronym }
+        private val parsed = parseQuery(q)
+
+        // A facet-laden query ("india 2011 final") would score zero against a title with no "2011"
+        // in it, so names are scored on the entity words as well as the full text.
+        private val entityQ = parsed.entityText
+        private val entityQueries =
+            if (entityQ == q) queries else (queries + expandedSearchQueries(entityQ)).distinct()
+
+        /** Both sides of "a v b" as normalised team names, or null when either resolves to no team. */
+        private val sides = parsed.pair
+            ?.let { (a, b) -> resolveSide(a, teams) to resolveSide(b, teams) }
+            ?.takeIf { it.first.isNotEmpty() && it.second.isNotEmpty() }
+            ?.let { (a, b) -> a.mapTo(HashSet(), ::normalizeForSearch) to b.mapTo(HashSet(), ::normalizeForSearch) }
+
+        private fun of(target: String): Double {
+            val full = SearchScore.of(q, target, allowFuzzy)
+            return if (entityQ == q) full else maxOf(full, SearchScore.of(entityQ, target, allowFuzzy))
+        }
+
+        /** The match's score, or null when it is not a result. */
+        fun score(entry: MatchSearchEntry): Double? {
+            val pairHit = sides != null && entry.teamNames.hasBothSides(sides.first, sides.second)
+            // A resolved pair is required: "ind v aus" is that fixture, not anything mentioning India.
+            if (sides != null && !pairHit) return null
+            var best = maxOf(teamScore(entry), nameScore(entry))
+            if (pairHit) best = maxOf(best, SearchScore.WORD_PREFIX_MIN)
+            if (best <= MATCH_THRESHOLD) return null
+            return withinBand(best, FACET_BOOST * facetHits(parsed, entry))
+        }
+
+        private fun teamScore(entry: MatchSearchEntry): Double =
+            entry.teamNames.indices.maxOfOrNull { i ->
+                val name = entry.teamNames[i]
+                val acronym = acronymByName[name] ?: entry.teamAcronyms[i]
+                if (acronym == q || acronym == entityQ) SearchScore.ACRONYM else of(name)
+            } ?: 0.0
+
+        private fun nameScore(entry: MatchSearchEntry): Double {
+            // Alias-expanded, so "ipl" finds every IPL fixture by its series name.
+            val series = entityQueries.maxOf { SearchScore.of(it, entry.series, allowFuzzy) } * SERIES_NAME_WEIGHT
+            val statusScore = if (entry.status.contains(q)) STATUS_HIT_SCORE else 0.0
+            return maxOf(
+                of(entry.title), series, of(entry.desc) * MATCH_DESC_WEIGHT,
+                of(entry.venue) * VENUE_WEIGHT, statusScore,
+            )
+        }
+    }
+
+    private fun List<String>.hasBothSides(a: Set<String>, b: Set<String>): Boolean =
+        indices.any { i -> this[i] in a && indices.any { j -> j != i && this[j] in b } }
+
+    /** How many of the query's facets (format, stage, year) this match satisfies. */
+    private fun facetHits(parsed: ParsedQuery, entry: MatchSearchEntry): Int =
+        listOf(formatHit(parsed.format, entry.match), stageHit(parsed.stage, entry), yearHit(parsed.year, entry))
+            .count { it }
+
+    private fun formatHit(format: String?, match: CricketMatch): Boolean {
+        val type = match.matchType.uppercase()
+        return when (format) {
+            null -> false
+            "T20I" -> type == "T20" && match.competitionType.equals("International", ignoreCase = true)
+            else -> type == format
+        }
+    }
+
+    private fun stageHit(stage: String?, entry: MatchSearchEntry): Boolean {
+        val text = "${entry.desc} ${entry.title}"
+        return when (stage) {
+            null -> false
+            "FINAL" -> FINAL_WORD.containsMatchIn(text) && "semi" !in text && "quarter" !in text
+            "SEMI" -> "semi" in text
+            else -> "qualifier" in text || "eliminator" in text
+        }
+    }
+
+    private fun yearHit(year: Int?, entry: MatchSearchEntry): Boolean =
+        year != null && (entry.year == year || entry.series.split(' ').any { it == year.toString() })
+
+    /** [score] plus [boost], held below the next band's floor so a facet never changes a match's kind. */
+    private fun withinBand(score: Double, boost: Double): Double {
+        if (boost == 0.0) return score
+        val ceiling = when {
+            score >= SearchScore.PREFIX_MIN -> 1.0
+            score >= SearchScore.WORD_PREFIX_MIN -> SearchScore.PREFIX_MIN - BAND_MARGIN
+            score >= SearchScore.SUBSTRING_MIN -> SearchScore.WORD_PREFIX_MIN - BAND_MARGIN
+            else -> SearchScore.SUBSTRING_MIN - BAND_MARGIN
+        }
+        return maxOf(score, minOf(score + boost, ceiling))
     }
 
     /** Live before upcoming before finished, among equally relevant matches. */
@@ -344,6 +465,12 @@ object SearchRepository {
         match.isLive -> 0
         match.isUpcoming -> 1
         else -> 2
+    }
+
+    /** Within a state: finished newest first, upcoming soonest first. Unknown start times sort last. */
+    private fun recencyRank(match: CricketMatch): Long {
+        val start = match.startDateMs ?: return Long.MAX_VALUE
+        return if (match.isUpcoming) start else -start
     }
 
     private fun searchTeams(
@@ -357,6 +484,8 @@ object SearchRepository {
         val fixtures = loadedTeams.groupingBy { normalizeForSearch(it.name) }.eachCount()
         val matchLogos = loadedTeams.filter { it.logoUrl != null }
             .associate { normalizeForSearch(it.name) to it.logoUrl }
+        // The corpus lists loaded sides first, then the curated asset, so its order stands in for popularity.
+        val order = HashMap<String, Int>().also { map -> teams.forEachIndexed { i, t -> map.putIfAbsent(t.name, i) } }
         return teams.mapNotNull { team ->
             val nameScore = SearchScore.of(q, team.normalized)
             val score = if (team.normalizedAcronym == q) maxOf(nameScore, SearchScore.ACRONYM) else nameScore
@@ -374,6 +503,7 @@ object SearchRepository {
             compareByDescending<SearchResult.TeamResult> { it.relevanceScore }
                 .thenByDescending { it.teamName in favourites }
                 .thenByDescending { it.fixtureCount }
+                .thenBy { order[it.teamName] ?: Int.MAX_VALUE }
         )
     }
 
@@ -529,6 +659,17 @@ object SearchRepository {
             .distinctBy { normalizeForSearch(it) }
             .take(MAX_LIVE_SUGGESTIONS)
     }
+
+    private const val MAX_SERIES_SUGGESTIONS = 6
+
+    /** Names of the newest-started series still running at [nowMs]; the idle suggestions when nothing is live. */
+    fun currentSeriesSuggestions(series: List<SeriesEntry>, nowMs: Long): List<String> =
+        series.filter { s -> s.endDate.toLongOrNull()?.let { it >= nowMs } ?: true }
+            .sortedByDescending { it.startDate.toLongOrNull() ?: 0L }
+            .map { it.name }
+            .filter { it.isNotBlank() }
+            .distinctBy { normalizeForSearch(it) }
+            .take(MAX_SERIES_SUGGESTIONS)
 
     fun getTrendingSearches(): List<String> = listOf(
         "India", "Australia", "IPL", "World Cup", "Virat Kohli",

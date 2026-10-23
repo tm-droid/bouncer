@@ -43,8 +43,8 @@ object SearchScore {
      */
     const val ACRONYM = 0.97
 
-    /** Permitted edit distance as a fraction of query length — roughly one typo per three chars. */
-    private const val FUZZY_EDIT_RATIO = 0.34
+    private const val SHORT_QUERY_MAX = 3
+    private const val MEDIUM_QUERY_MAX = 7
 
     /**
      * Agreement between an already-normalised [query] and [target], 0–1.
@@ -120,9 +120,8 @@ object SearchScore {
     /**
      * Edit-distance tier for a one-word query.
      *
-     * The tolerance is proportional to the query length rather than a flat 3 edits: three edits on
-     * a two-character query is not a typo, it is a different word, and `"in"` used to fuzzy-match
-     * `"won"`.
+     * The tolerance steps up with the query length ([editTolerance]): a short query is a different
+     * word after one edit, and `"in"` used to fuzzy-match `"won"`.
      */
     private fun fuzzyWordScore(query: String, words: List<String>): Double {
         val minDistance = words.minOfOrNull { editDistance(query, it) } ?: return 0.0
@@ -131,9 +130,15 @@ object SearchScore {
         return (ratio * FUZZY_MAX).coerceIn(0.0, FUZZY_MAX)
     }
 
-    /** Permitted edit distance for [query], proportional to its length with a floor of one. */
-    fun editTolerance(query: String): Int =
-        maxOf(1, kotlin.math.ceil(query.length * FUZZY_EDIT_RATIO).toInt())
+    /**
+     * Permitted edit distance for [query]: none up to 3 characters, one up to 7, two from 8.
+     * Mirrored by `editTolerance` in `playerIndex.js` and pinned by the shared fixture.
+     */
+    fun editTolerance(query: String): Int = when {
+        query.length <= SHORT_QUERY_MAX -> 0
+        query.length <= MEDIUM_QUERY_MAX -> 1
+        else -> 2
+    }
 
     /**
      * Optimal-string-alignment distance: Levenshtein plus adjacent transposition as one edit.

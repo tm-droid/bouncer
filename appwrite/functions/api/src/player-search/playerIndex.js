@@ -191,8 +191,8 @@ export function editDistance(a, b) {
   return prev[b.length];
 }
 
-/** Permitted edits for a query word: roughly one per three characters, at least one. */
-const editTolerance = (word) => Math.max(1, Math.ceil(word.length * 0.34));
+/** Permitted edits for a query word: none up to 3 characters, one up to 7, two from 8. */
+export const editTolerance = (word) => (word.length <= 3 ? 0 : word.length <= 7 ? 1 : 2);
 
 /**
  * Every query word prefixes some name word ("kohli virat"), or — when [allowFuzzy] — is within its

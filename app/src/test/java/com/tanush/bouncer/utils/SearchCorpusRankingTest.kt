@@ -191,4 +191,78 @@ class SearchCorpusRankingTest {
         assertEquals(listOf(5..6), matchRanges("West Indies", "in"))
         assertEquals(emptyList<IntRange>(), matchRanges("Virat Kohli", "x"))
     }
+
+    private fun finished(id: String, home: String, away: String, desc: String, start: Long, series: String = "") =
+        match(id, home, away, series, status = "Complete").copy(
+            currentStatus = "$home won", matchDesc = desc, startDateMs = start,
+        )
+
+    private fun matchSearch(query: String, matches: List<CricketMatch>) = runBlocking {
+        SearchRepository.search(query, matches, emptyList(), teams).matches.map { it.match.id }
+    }
+
+    private val day = 86_400_000L
+    private val y2011 = 1_300_000_000_000L // March 2011
+
+    @Test
+    fun `in does not fuzzy-match won`() {
+        assertEquals(0.0, SearchScore.of("in", "won"), 0.0)
+        assertEquals(0.0, SearchScore.of("ind", "inn"), 0.0)
+    }
+
+    @Test
+    fun `a transposed name still matches under the new tolerance`() {
+        assertTrue(SearchScore.of("kolhi", "virat kohli") > 0.4)
+        assertTrue(SearchScore.of("virat kolhi", "virat kohli") > 0.4)
+        assertEquals(0.0, SearchScore.of("kohx", "virat kohli"), 0.0)
+    }
+
+    @Test
+    fun `a pair query returns only that fixture first`() {
+        val all = listOf(
+            match("ind-eng", "India", "England"),
+            match("ind-aus", "India", "Australia"),
+            match("aus-eng", "Australia", "England"),
+        )
+        assertEquals(listOf("ind-aus"), matchSearch("ind v aus", all))
+    }
+
+    @Test
+    fun `a stage and year facet orders a final above a league match`() {
+        val league = finished("league", "India", "Australia", "12th Match", y2011, "World Cup 2011")
+        val final = finished("final", "India", "Australia", "Final", y2011 + day, "World Cup 2011")
+        val older = finished("older", "India", "Australia", "Final", 1_100_000_000_000L, "World Cup 2004")
+        assertEquals(listOf("final", "league", "older"), matchSearch("india 2011 final", listOf(league, older, final)).take(3))
+    }
+
+    @Test
+    fun `a facet never lifts a match across a band`() {
+        val best = finished("a", "India", "Australia", "12th Match", y2011)
+        val boosted = SearchRepository.MatchSearchEntry(best)
+        assertTrue(boosted.year == 2011)
+        val results = runBlocking { SearchRepository.search("india 2011 final", listOf(best), emptyList(), teams).matches }
+        assertTrue(results.all { it.relevanceScore < 1.0 + 1e-9 })
+    }
+
+    @Test
+    fun `equal matches order by recency, newest finished first and soonest upcoming first`() {
+        val old = finished("old", "India", "Australia", "1st ODI", y2011)
+        val recent = finished("recent", "India", "Australia", "2nd ODI", y2011 + 30 * day)
+        assertEquals(listOf("recent", "old"), matchSearch("india australia", listOf(old, recent)))
+        val soon = match("soon", "India", "Australia", status = "Upcoming").copy(startDateMs = y2011)
+        val later = match("later", "India", "Australia", status = "Upcoming").copy(startDateMs = y2011 + 30 * day)
+        assertEquals(listOf("soon", "later"), matchSearch("india australia", listOf(later, soon)))
+    }
+
+    @Test
+    fun `idle suggestions are the newest series still running`() {
+        val now = 2_000_000_000_000L
+        val series = listOf(
+            SeriesEntry("1", "Old Cup", "LEAGUE", "1000", (now - day).toString()),
+            SeriesEntry("2", "Asia Cup", "LEAGUE", (now - 5 * day).toString(), (now + day).toString()),
+            SeriesEntry("3", "Ashes", "TEST", (now - day).toString(), (now + 9 * day).toString()),
+        )
+        assertEquals(listOf("Ashes", "Asia Cup"), SearchRepository.currentSeriesSuggestions(series, now))
+        assertTrue(SearchRepository.currentSeriesSuggestions(emptyList(), now).isEmpty())
+    }
 }

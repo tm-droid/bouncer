@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   countryFromSlug,
   editDistance,
+  editTolerance,
   INDEX_TTL_MS,
   indexPlan,
   mergePlayers,
@@ -109,6 +110,16 @@ test("normalizeForSearch agrees with the shared fixture the app also pins", asyn
   }
 });
 
+test("editTolerance agrees with the shared fixture the app also pins", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const fixture = JSON.parse(
+    await readFile(new URL("./fixtures/search-normalization.json", import.meta.url), "utf8"),
+  );
+  for (const [word, expected] of fixture.tolerance) {
+    assert.equal(editTolerance(word), expected, `editTolerance(${JSON.stringify(word)})`);
+  }
+});
+
 test("rankPlayers matches a name typed surname-first", () => {
   const players = [
     { id: "1413", name: "Virat Kohli", country: "India" },
@@ -128,7 +139,7 @@ test("rankPlayers tolerates a transposed surname", () => {
 
 test("rankPlayers ranks every exact tier above any typo match", () => {
   const players = [
-    { id: "1", name: "Kohler Test", country: "" },   // "kohli" is 2 edits from "kohler"
+    { id: "1", name: "Kholi Test", country: "" },    // "kohli" is 1 edit (a swap) from "kholi"
     { id: "2", name: "Kohli Mark", country: "" },    // exact word prefix
   ];
   assert.deepEqual(rankPlayers(players, "kohli", 5).map((p) => p.id), ["2", "1"]);
