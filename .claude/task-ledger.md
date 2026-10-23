@@ -7,17 +7,17 @@ B = app/src/main/kotlin/com/tanush/bouncer · T = ./gradlew testDebugUnitTest --
 
 ## Units
 ### Wave 1
-- [ ] U0: foundations (scoreHero, motion tokens, all strings) | files: B/ui/theme/v2/TypographyV2.kt, res/values/strings.xml | done when: compileDebugKotlin + T *HardcodedUiStringRatchetTest green
+- [x] U0: foundations (scoreHero, motion tokens, all strings) | files: B/ui/theme/v2/TypographyV2.kt, res/values/strings.xml | done when: compileDebugKotlin + T *HardcodedUiStringRatchetTest green
 ### Wave 2
-- [ ] U1: hero logic (chase line, innings split, Test lead/trail, collapsed summary) | files: B/ui/components/v2/MatchHeroLogic.kt + test | done when: T *MatchHeroLogicTest
-- [ ] U2: thread LiveSituation + lastUpdatedMs into MatchDetail UiState | files: B/viewmodels/MatchDetailViewModel.kt, MatchLiveDetailAlignment.kt | done when: T *MatchLiveDetailAlignmentTest *MatchDetail*
-- [ ] U3: header collapse math | files: B/ui/screens/matchdetail/v2/HeaderCollapse.kt + test | done when: T *HeaderCollapseTest
-- [ ] U4: start countdown | files: B/ui/components/v2/MatchStartLabel.kt + test | done when: T *MatchStartTimeTest
-- [ ] U5: result summary logic | files: B/ui/screens/matchdetail/v2/SummaryResult.kt + test | done when: T *SummaryResultTest
-- [ ] U6: one failure pattern | files: B/ui/components/v2/ScreenStates.kt, StaleDataBanner.kt, EmptyState.kt, B/ui/components/ErrorComponents.kt | done when: T *ScreenStatesTest *LightModeContrastTest
-- [ ] U13: live motion + score a11y | files: AnimatedScoreText.kt, RecentBallsStrip.kt, PremiumWinProbabilityHero.kt, LiveScoringGraphCard.kt | done when: T *ScoreRollTest; rememberInfiniteTransition only in CricketBallPullRefresh.kt
-- [ ] U16: freshness logic | files: B/ui/components/v2/Freshness.kt + test | done when: T *FreshnessTest
-- [ ] U17: Home hero selection (multi followed teams) | files: B/ui/HomeFeatured.kt + test, HomeScreenV2.kt (splitFeatured call) | done when: T *HomeFeaturedTest
+- [x] U1: hero logic (chase line, innings split, Test lead/trail, collapsed summary) | files: B/ui/components/v2/MatchHeroLogic.kt + test | done when: T *MatchHeroLogicTest
+- [x] U2: thread LiveSituation + lastUpdatedMs into MatchDetail UiState | files: B/viewmodels/MatchDetailViewModel.kt, MatchLiveDetailAlignment.kt | done when: T *MatchLiveDetailAlignmentTest *MatchDetail*
+- [x] U3: header collapse math | files: B/ui/screens/matchdetail/v2/HeaderCollapse.kt + test | done when: T *HeaderCollapseTest
+- [x] U4: start countdown | files: B/ui/components/v2/MatchStartLabel.kt + test | done when: T *MatchStartTimeTest
+- [x] U5: result summary logic | files: B/ui/screens/matchdetail/v2/SummaryResult.kt + test | done when: T *SummaryResultTest
+- [x] U6: one failure pattern | files: B/ui/components/v2/ScreenStates.kt, StaleDataBanner.kt, EmptyState.kt, B/ui/components/ErrorComponents.kt | done when: T *ScreenStatesTest *LightModeContrastTest
+- [x] U13: live motion + score a11y | files: AnimatedScoreText.kt, RecentBallsStrip.kt, PremiumWinProbabilityHero.kt, LiveScoringGraphCard.kt | done when: T *ScoreRollTest; rememberInfiniteTransition only in CricketBallPullRefresh.kt
+- [x] U16: freshness logic | files: B/ui/components/v2/Freshness.kt + test | done when: T *FreshnessTest
+- [x] U17: Home hero selection (multi followed teams) | files: B/ui/HomeFeatured.kt + test, HomeScreenV2.kt (splitFeatured call) | done when: T *HomeFeaturedTest
 ### Wave 3
 - [ ] U7: shared MatchHeroV2 + WinProbabilityBarV2 | files: B/ui/components/v2/MatchHero.kt, WinProbabilityBar.kt | done when: compile + D + no gradients
 - [ ] U11: Summary result card | files: SummaryResultCard.kt, SummaryTabV2.kt | done when: T *SummaryResultTest *LiveAndSummaryDerivationTest
@@ -41,3 +41,15 @@ B = app/src/main/kotlin/com/tanush/bouncer · T = ./gradlew testDebugUnitTest --
 ## Log
 - 2026-10-23: research done (15 tracks), plan approved, ledger written.
 - 2026-10-23: baseline HEAD 2752492e green (assembleDebug + testDebugUnitTest cached UP-TO-DATE; detekt clean).
+- 2026-10-23: U0 done (21c7d978): scoreHero; BouncerMotion Duration.Brisk/Medium/Measured + Springs.noBounce(); strings block. UnusedResources is an error (warningsAsErrors) — every new string must be consumed by the end.
+- 2026-10-23: Wave 2 done, batch-verified (compile, 93 tests in 10 classes, detekt clean). Notes for later units:
+  - U1 MatchHeroLogic.kt (HeroLine, chaseLineFor, ballsFromOvers, isTestMatch, collapsedSummary) + TestMatchHeroLogic.kt (splitInningsScore, testLeadLine, testDayFor). oversRemaining = decimal overs (server code only, unconfirmed on a live payload). chaseLineFor returns null when status text already states the requirement → UI shows status.
+  - U2 UiState.situation, UiState.lastUpdatedMs (seeded on first score seen, moves only on score/overs change).
+  - U3 rememberHeaderCollapse(): connection, offsetPx, fraction, setRange(px), expand().
+  - U4 startLabelOf + MatchStartLabel(startMs, style, color) in existing MatchStartLabel.kt.
+  - U5 summaryResultOf(match, scorecard) incl. ResultKind.Drawn (needs a string in U11).
+  - U6 EmptyStateV2 kept as is (8 callers); FailedState, StaleDataBanner, DelayedSkeleton, failureKindOf, screenStateOf. Timeout = Server.
+  - U13 AnimatedScoreText(describedByParent=false default) + Modifier.scoreSemantics + scoreSentence; infinite transitions only in CricketBallPullRefresh.kt.
+  - U16 rememberFreshness + FreshnessLabel; caller swaps LIVE for "Last seen live" when Stale.
+  - U17 featuredFor(...allowUpcoming = HERO_SHOWS_UPCOMING const false) — U9 flips it and passes kind.
+

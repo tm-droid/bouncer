@@ -238,7 +238,15 @@ private fun HomeMatchList(
     onSeeUpcoming: (() -> Unit)?,
 ) {
     val spacing = BouncerThemeV2.spacing
-    val (featured, rows) = remember(matches, favouriteNames) { splitFeatured(matches, favouriteNames) }
+    val favourites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
+    val (featured, rows) = remember(matches, favourites) {
+        featuredFor(
+            matches,
+            favourites.map { it.trim().lowercase() },
+            System.currentTimeMillis(),
+            allowUpcoming = HERO_SHOWS_UPCOMING,
+        )
+    }
     val subscriptions by MatchSubscriptionManager.subscriptions.collectAsStateWithLifecycle()
     val alertPrefs by MatchSubscriptionManager.alertPrefs.collectAsStateWithLifecycle()
     val rowContext = RowContext(
@@ -258,7 +266,7 @@ private fun HomeMatchList(
             }
             matches.isEmpty() -> homeEmptyItems(loadError, filtered, onRetry, onSeeUpcoming)
             else -> {
-                featured?.let { fm ->
+                featured?.match?.let { fm ->
                     item(key = "hero_${fm.id}", contentType = "hero") {
                         HeroMatchCard(match = fm, onClick = { onMatchClick(fm) }, modifier = Modifier.animateItem())
                     }
@@ -338,22 +346,6 @@ private fun RefreshFailureSnackbarEffect(
             snackbarHostState.showSnackbar(errorState.message)
         }
     }
-}
-
-/**
- * The featured match is a live one — a followed team's first, then any. Upcoming and finished lists
- * have no hero. The rest of the list puts followed teams on top ("your cricket" is what it opens with).
- */
-private fun splitFeatured(
-    matches: List<CricketMatch>,
-    favouriteNames: Set<String>,
-): Pair<CricketMatch?, List<CricketMatch>> {
-    val featured = matches.firstOrNull { it.isLive && it.hasFavouriteTeam(favouriteNames) }
-        ?: matches.firstOrNull { it.isLive }
-    val (followed, others) = matches
-        .filterNot { it.id == featured?.id }
-        .partition { it.hasFavouriteTeam(favouriteNames) }
-    return featured to followed + others
 }
 
 internal fun CricketMatch.hasFavouriteTeam(favouriteNames: Set<String>): Boolean =
