@@ -209,7 +209,7 @@ export function venueIndex(stats) {
 }
 
 /** Every stats file, as [path, object]. Match lists newest first. Player records get the register's ids. */
-export function* statsFiles(stats, register = null) {
+export function* statsFiles(stats, register = null, bios = null) {
   for (const [key, team] of stats.teams) {
     team.m.sort(byDateDesc);
     yield [`s/team/${key}.json`, team];
@@ -228,6 +228,8 @@ export function* statsFiles(stats, register = null) {
     const known = register?.ids.get(id);
     if (known?.cb) player.cb = known.cb;
     if (known?.ci) player.ci = known.ci;
+    const bio = bios?.get(id);
+    if (bio) player.bio = bio;
     yield [`s/p/${id}.json`, player];
   }
 }

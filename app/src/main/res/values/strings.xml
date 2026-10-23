@@ -70,6 +70,12 @@
     <string name="search_section_past_matches">Past matches</string>
     <string name="history_career_caption">Figures from Cricsheet</string>
     <string name="history_live_profile_link">Profile, photo and bio</string>
+    <string name="history_bio_born">Born %1$s</string>
+    <string name="history_bio_born_place">Born %1$s, %2$s</string>
+    <string name="history_bio_born_in">Born in %1$s</string>
+    <string name="history_bio_wikipedia">Wikipedia</string>
+    <string name="history_bio_photo_credit">Photo: %1$s, %2$s</string>
+    <string name="history_bio_photo_credit_licence">Photo: %1$s</string>
     <string name="history_career_link">Match-by-match career (Cricsheet)</string>
     <string name="history_career_recent">Recent matches</string>
     <string name="history_missing_afghanistan">Cricsheet has no Afghanistan matches after 14 Nov 2024; matches Bouncer followed are still listed.</string>

@@ -21,6 +21,7 @@ import AdmZip from "adm-zip";
 import { compactMatch, SCHEMA_VERSION } from "./src/match.js";
 import { addMatch, createStats, formatKey, playerNameFiles, statsFiles, venueIndex } from "./src/stats.js";
 import { parseRegister } from "./src/register.js";
+import { biosByRegId, loadWikidata } from "./src/wikidata.mjs";
 import { monthOf, teamKey } from "./src/keys.js";
 
 export const SIZE_LIMIT_BYTES = 900 * 1024 * 1024;
@@ -71,6 +72,18 @@ async function loadRegister() {
   }
 }
 const register = await loadRegister();
+
+// Bios (birth date, birthplace, photo credit, Wikipedia) from Wikidata and Commons, joined on the
+// register's Cricinfo id. Cached beside the archive for under a week; a failure builds without.
+const bios = register
+  ? biosByRegId(
+      register,
+      await loadWikidata({
+        cacheDir: path.dirname(path.resolve(zipPath)),
+        wanted: new Set([...register.ids.values()].map((v) => v.ci).filter(Boolean)),
+      })
+    )
+  : new Map();
 
 fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
@@ -148,7 +161,7 @@ write(
   [...teams].map(([key, t]) => [t.n, t.g, key, t.c]).sort((a, b) => b[3] - a[3])
 );
 
-for (const [rel, obj] of statsFiles(stats, register)) write(rel, obj);
+for (const [rel, obj] of statsFiles(stats, register, bios)) write(rel, obj);
 write("idx/venues.json", venueIndex(stats));
 for (const [rel, obj] of playerNameFiles(stats, register)) write(rel, obj);
 

@@ -23,6 +23,34 @@ data class CareerMatch(val id: String, val date: LocalDate?, val format: String,
     )
 }
 
+/**
+ * What Wikidata and Wikimedia Commons know of a player (`bio` in the record, `history-data.md`). Every
+ * field is optional. [born] is `YYYY-MM-DD`, `YYYY-MM` or `YYYY` by how exactly Wikidata knows it.
+ * The photo is a thumbnail URL with the credit Commons records for it.
+ */
+data class PlayerBio(
+    val born: String? = null,
+    val birthplace: String? = null,
+    val wikipediaUrl: String? = null,
+    val photoUrl: String? = null,
+    val photoArtist: String? = null,
+    val photoLicense: String? = null,
+    /** Where the credit lives: the licence text, else the Commons file page. */
+    val photoCreditUrl: String? = null,
+) {
+    /** The birth date when Wikidata knows the day; null for a month or year alone. */
+    val birthDate: LocalDate? get() = born?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+
+    /** The year of a partial date, for display when [birthDate] is null. */
+    val birthYear: String? get() = born?.takeIf { YEAR.matches(it) || YEAR_MONTH.matches(it) }?.take(YEAR_LENGTH)
+
+    private companion object {
+        const val YEAR_LENGTH = 4
+        val YEAR = Regex("""\d{4}""")
+        val YEAR_MONTH = Regex("""\d{4}-\d{2}""")
+    }
+}
+
 /** A player's Cricsheet record (`s/p/<regId>.json`): figures by format, sides played for, and every match. */
 data class PlayerCareer(
     val name: String,
@@ -35,6 +63,8 @@ data class PlayerCareer(
     /** The player's Cricbuzz and Cricinfo ids from Cricsheet's register; null where it has none. */
     val cricbuzzId: String? = null,
     val cricinfoId: String? = null,
+    /** Birth date, birthplace, photo and Wikipedia link, where Wikidata has them; null on a record built before bios. */
+    val bio: PlayerBio? = null,
 )
 
 /** Turns the site's compact player records into the models the player page already renders. */
@@ -104,8 +134,25 @@ object CareerStats {
             .sortedByDescending { it.second }
         val matches = (root["m"] as? JsonArray).orEmpty().mapNotNull { (it as? JsonArray)?.let(::careerMatch) }
         val id = { key: String -> (root[key] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } }
-        PlayerCareer((root["n"] as JsonPrimitive).content, formats, teams, matches, hasBoundaries, id("cb"), id("ci"))
+        val bio = (root["bio"] as? JsonObject)?.let(::playerBio)
+        PlayerCareer((root["n"] as JsonPrimitive).content, formats, teams, matches, hasBoundaries, id("cb"), id("ci"), bio)
     }.getOrNull()
+
+    /** Text fields only; a link must be https, because the record is third-party text the app will open. */
+    private fun playerBio(o: JsonObject): PlayerBio? {
+        val text = { key: String -> (o[key] as? JsonPrimitive)?.content?.trim()?.takeIf { it.isNotEmpty() } }
+        val link = { key: String -> text(key)?.takeIf { it.startsWith("https://") } }
+        val bio = PlayerBio(
+            born = text("b"),
+            birthplace = text("bp"),
+            wikipediaUrl = link("wp"),
+            photoUrl = link("img"),
+            photoArtist = text("ia"),
+            photoLicense = text("il"),
+            photoCreditUrl = link("ilu") ?: link("ip"),
+        )
+        return bio.takeIf { it != PlayerBio() }
+    }
 
     fun parseNames(json: String): List<HistoryNameRow>? = runCatching {
         (AppJson.parseToJsonElement(json) as JsonArray).mapNotNull { row ->

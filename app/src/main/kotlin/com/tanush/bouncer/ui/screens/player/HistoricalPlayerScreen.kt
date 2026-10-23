@@ -18,10 +18,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tanush.bouncer.R
 import com.tanush.bouncer.data.history.HistoryCoverage
+import com.tanush.bouncer.data.history.PlayerBio
 import com.tanush.bouncer.data.history.PlayerCareer
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
@@ -38,6 +41,8 @@ import com.tanush.bouncer.ui.components.v2.screenStateOf
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.viewmodels.HistoricalPlayerState
 import com.tanush.bouncer.viewmodels.HistoricalPlayerViewModel
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 // Usual order first; any other format Cricsheet has (a league's own) follows.
 private val FORMAT_ORDER = listOf("Test", "ODI", "T20I", "T20")
@@ -100,7 +105,7 @@ private fun CareerList(
             Column(Modifier.padding(spacing.lg)) {
                 PlayerHeader(
                     name = displayName?.takeIf { it.isNotBlank() } ?: career.name,
-                    country = career.teams.firstOrNull()?.first.orEmpty(), role = "", imageUrl = null,
+                    country = career.teams.firstOrNull()?.first.orEmpty(), role = "", imageUrl = career.bio?.photoUrl,
                     isCaptain = false, isKeeper = false,
                 )
                 Text(
@@ -111,6 +116,7 @@ private fun CareerList(
                 )
             }
         }
+        career.bio?.let { bio -> item(key = "bio") { BioBlock(bio) } }
         val liveId = career.cricbuzzId
         if (liveId != null && onLiveProfileClick != null) {
             item(key = "live_profile") {
@@ -141,6 +147,56 @@ private fun CareerList(
             }
         }
     }
+}
+
+/** Birth line, Wikipedia link and photo credit; each is left out when Wikidata or Commons had nothing. */
+@Composable
+private fun BioBlock(bio: PlayerBio) {
+    val spacing = BouncerThemeV2.spacing
+    val uriHandler = LocalUriHandler.current
+    // A device with no browser throws from openUri; there is nothing to open it in.
+    val open = { url: String -> runCatching { uriHandler.openUri(url) }; Unit }
+    Column(Modifier.fillMaxWidth().padding(horizontal = spacing.lg)) {
+        bornText(bio)?.let { Text(it, style = BouncerThemeV2.typography.bodyMedium, color = BouncerThemeV2.colors.textSecondary) }
+        bio.wikipediaUrl?.let { url ->
+            Text(
+                stringResource(R.string.history_bio_wikipedia),
+                style = BouncerThemeV2.typography.bodyMedium,
+                color = BouncerThemeV2.colors.primaryText,
+                modifier = Modifier.clickable { open(url) }.padding(vertical = spacing.sm),
+            )
+        }
+        PhotoCredit(bio, open)
+    }
+}
+
+@Composable
+private fun bornText(bio: PlayerBio): String? {
+    val date = bio.birthDate?.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)) ?: bio.birthYear
+    val place = bio.birthplace
+    return when {
+        date != null && place != null -> stringResource(R.string.history_bio_born_place, date, place)
+        date != null -> stringResource(R.string.history_bio_born, date)
+        place != null -> stringResource(R.string.history_bio_born_in, place)
+        else -> null
+    }
+}
+
+@Composable
+private fun PhotoCredit(bio: PlayerBio, open: (String) -> Unit) {
+    val licence = bio.photoLicense
+    if (bio.photoUrl == null || licence == null) return
+    val artist = bio.photoArtist
+    val credit = if (artist != null) stringResource(R.string.history_bio_photo_credit, artist, licence)
+    else stringResource(R.string.history_bio_photo_credit_licence, licence)
+    val link = bio.photoCreditUrl
+    Text(
+        credit,
+        style = BouncerThemeV2.typography.bodySmall,
+        color = BouncerThemeV2.colors.textSecondary,
+        textDecoration = TextDecoration.Underline.takeIf { link != null },
+        modifier = if (link != null) Modifier.clickable { open(link) } else Modifier,
+    )
 }
 
 private fun orderedFormats(career: PlayerCareer): List<String> =

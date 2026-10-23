@@ -97,4 +97,27 @@ class CareerStatsTest {
         assertEquals("450860", career.cricinfoId)
         assertNull(CareerStats.parseCareer("""{"n":"X","f":{},"tm":{},"m":[]}""")!!.cricbuzzId)
     }
+
+    @Test
+    fun `a bio parses, keeps https links only and is absent on an older record`() {
+        val json = """{"n":"X","f":{},"tm":{},"m":[],"bio":{"b":"1988-11-05","bp":"Delhi","wp":"https://en.wikipedia.org/wiki/X",
+            "img":"http://insecure/x.jpg","ia":"Jane","il":"CC BY 3.0","ilu":"javascript:alert(1)",
+            "ip":"https://commons.wikimedia.org/wiki/File:X.jpg","new":1}}"""
+        val bio = CareerStats.parseCareer(json)!!.bio!!
+        assertEquals(LocalDate.of(1988, 11, 5), bio.birthDate)
+        assertEquals("Delhi", bio.birthplace)
+        assertEquals("https://en.wikipedia.org/wiki/X", bio.wikipediaUrl)
+        assertNull(bio.photoUrl)
+        assertEquals("Jane", bio.photoArtist)
+        assertEquals("https://commons.wikimedia.org/wiki/File:X.jpg", bio.photoCreditUrl)
+        assertNull(CareerStats.parseCareer("""{"n":"X","f":{},"tm":{},"m":[]}""")!!.bio)
+        assertNull(CareerStats.parseCareer("""{"n":"X","f":{},"tm":{},"m":[],"bio":{}}""")!!.bio)
+    }
+
+    @Test
+    fun `a partial birth date has a year but no day`() {
+        val bio = CareerStats.parseCareer("""{"n":"X","f":{},"tm":{},"m":[],"bio":{"b":"1877-11"}}""")!!.bio!!
+        assertNull(bio.birthDate)
+        assertEquals("1877", bio.birthYear)
+    }
 }
