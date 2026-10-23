@@ -99,7 +99,10 @@ private fun CareerList(
     val career = loaded.career
     val formats = remember(career) { orderedFormats(career) }
     var selected by rememberSaveable(career.name) { mutableStateOf(formats.firstOrNull().orEmpty()) }
-    val notice = HistoryCoverage.missingAfghanistan(career.teams.map { it.first }, stringResource(R.string.history_missing_afghanistan))
+    val notice = HistoryCoverage.afghanistanNotice(
+        career.teams.map { it.first },
+        stringResource(R.string.history_career_missing_afghanistan),
+    )
     LazyColumn(modifier = Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(bottom = spacing.xl)) {
         item(key = "header") {
             Column(Modifier.padding(spacing.lg)) {

@@ -1,10 +1,12 @@
 package com.tanush.bouncer.data.remote
 
 import com.tanush.bouncer.data.AppJson
+import com.tanush.bouncer.data.history.ArchiveClient
 import com.tanush.bouncer.data.history.HistoryClient
 import com.tanush.bouncer.data.history.HistoryMatchLinker
 import com.tanush.bouncer.data.history.HistoryTeams
 import com.tanush.bouncer.data.history.StaticSite
+import com.tanush.bouncer.data.history.archiveKey
 import com.tanush.bouncer.ui.components.FormatStats
 import com.tanush.bouncer.ui.components.HeadToHeadHistory
 import com.tanush.bouncer.ui.components.HeadToHeadStats
@@ -18,6 +20,8 @@ import kotlinx.serialization.json.intOrNull
 data class H2HPair(
     val stats: HeadToHeadStats,
     val history: HeadToHeadHistory,
+    /** True when the record was counted from Bouncer's own archive, because Cricsheet holds none for a side. */
+    val fromArchive: Boolean = false,
 )
 
 private val WOMEN_SUFFIX = Regex("""\s+Women(?:'s)?$""", RegexOption.IGNORE_CASE)
@@ -59,16 +63,23 @@ object H2HRepository {
      */
     suspend fun getH2H(team1: String, team2: String, matchType: String? = null): H2HPair? {
         val women = isWomensPair(team1, team2)
-        val key1 = HistoryTeams.keyFor(archiveSideName(team1), women) ?: return null
-        val key2 = HistoryTeams.keyFor(archiveSideName(team2), women) ?: return null
+        val known = listOf(team1, team2).map { HistoryTeams.keyFor(archiveSideName(it), women) }
+        // A side Cricsheet has no record of (Afghanistan): the archive's own pair file instead.
+        val fromArchive = known.any { it == null }
+        if (fromArchive && (women || HistoryTeams.load() == null)) return null
+        val (key1, key2) = pairKeys(team1, team2, known)
         if (key1 == key2) return null
         val path = h2hPath(key1, key2)
-        val json = files[path] ?: fetch(path).also { files[path] = it }
-        return json.takeIf { it.isNotEmpty() }?.let { cricsheetH2H(it, team1, team2, matchType) }
+        val base = if (fromArchive) ArchiveClient.BASE_URL else HistoryClient.BASE_URL
+        val json = files[base + path] ?: fetch(base, path).also { files[base + path] = it }
+        return json.takeIf { it.isNotEmpty() }?.let { cricsheetH2H(it, team1, team2, matchType) }?.copy(fromArchive = fromArchive)
     }
 
-    private suspend fun fetch(path: String): String =
-        StaticSite.fetch(HistoryClient.BASE_URL, path, MAX_AGE_SECONDS, MAX_STALE_SECONDS)?.decodeToString().orEmpty()
+    private fun pairKeys(team1: String, team2: String, known: List<String?>): Pair<String, String> =
+        (known[0] ?: archiveKey(archiveSideName(team1))) to (known[1] ?: archiveKey(archiveSideName(team2)))
+
+    private suspend fun fetch(base: String, path: String): String =
+        StaticSite.fetch(base, path, MAX_AGE_SECONDS, MAX_STALE_SECONDS)?.decodeToString().orEmpty()
 }
 
 private class Counters(val played: Int, val wins1: Int, val wins2: Int, val ties: Int, val draws: Int, val noResults: Int)

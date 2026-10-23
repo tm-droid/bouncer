@@ -21,6 +21,7 @@ import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricBuzzMatchRepository
 import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.data.history.HistoryRepository
+import com.tanush.bouncer.data.history.ArchivedInfo
 import com.tanush.bouncer.data.history.PastFeedSource
 import com.tanush.bouncer.data.history.PastMatchSource
 import com.tanush.bouncer.data.history.isCricsheetOnly
@@ -95,6 +96,10 @@ class MatchDetailViewModel(
          * for it, and labels Cricsheet's. Null for the table's feed.
          */
         val pastFeedSource: PastFeedSource? = null,
+        /** Innings (1-based) of a backfilled match whose source lacks some deliveries; empty otherwise. */
+        val pastFeedPartial: List<Int> = emptyList(),
+        /** Toss, officials, player of the match and squads of a backfilled match; null otherwise. */
+        val pastInfo: ArchivedInfo? = null,
         /** The ground of a match the list row did not name (a Cricsheet-only past match); null otherwise. */
         val liveVenue: String? = null,
         val liveTeam1Score: String = "",
@@ -424,6 +429,7 @@ class MatchDetailViewModel(
                 if (isReportableScrapeFailure(e)) Sentry.captureException(e)
             }?.let { sc -> _uiState.update { it.copy(scorecard = sc) } }
             _uiState.loadPastOvers(match, pastSource)
+            pastSource.info(match)?.let { info -> _uiState.update { it.copy(pastInfo = info) } }
             loadCommentaryFeed()
         } finally {
             _uiState.update { st ->
@@ -477,7 +483,13 @@ class MatchDetailViewModel(
         // the archive and Cricsheet have every ball.
         pastSource.feed(match)?.let { past ->
             _uiState.update {
-                it.copy(commentary = past.entries, commentaryError = null, pastFeedSource = past.source, hasOlderCommentary = false)
+                it.copy(
+                    commentary = past.entries,
+                    commentaryError = null,
+                    pastFeedSource = past.source,
+                    pastFeedPartial = past.partialInnings,
+                    hasOlderCommentary = false,
+                )
             }
             return
         }

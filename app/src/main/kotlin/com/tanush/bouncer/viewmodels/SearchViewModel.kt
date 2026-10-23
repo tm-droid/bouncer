@@ -246,7 +246,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                     pastMatches = past.await(),
                     pastPlayers = history.await(),
                     headToHead = h2h.await(),
-                    coverageNotice = HistoryCoverage.missingAfghanistan(
+                    coverageNotice = HistoryCoverage.afghanistanNotice(
                         newQuery, corpus.teams, getApplication<Application>().getString(R.string.history_missing_afghanistan),
                     ),
                 )

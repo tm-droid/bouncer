@@ -12,10 +12,17 @@ enum class PastFeedSource {
 
     /** Cricsheet's deliveries, written out as plain lines. */
     CRICSHEET,
+
+    /** The archive's own deliveries of a backfilled match, written out as plain lines. */
+    ARCHIVE_DELIVERIES,
 }
 
-/** A finished match's whole feed, newest first. */
-data class PastFeed(val entries: List<CommentaryEntry>, val source: PastFeedSource)
+/** A finished match's whole feed, newest first; [partialInnings] are the innings whose source lacks some deliveries. */
+data class PastFeed(
+    val entries: List<CommentaryEntry>,
+    val source: PastFeedSource,
+    val partialInnings: List<Int> = emptyList(),
+)
 
 /**
  * What a finished match's screen reads once Appwrite has pruned it. An interface so a ViewModel
@@ -35,6 +42,9 @@ interface PastMatchSource {
     /** A Cricsheet match by its own id (no `cs-` prefix), for a match that exists nowhere else. */
     suspend fun cricsheetMatch(id: String): HistoryMatch? = null
 
+    /** Toss, officials, player of the match and squads of a backfilled match; null for any other. */
+    suspend fun info(match: CricketMatch): ArchivedInfo? = null
+
     object None : PastMatchSource {
         override suspend fun feed(match: CricketMatch): PastFeed? = null
 
@@ -51,13 +61,21 @@ object HistoryRepository : PastMatchSource {
      */
     override suspend fun feed(match: CricketMatch): PastFeed? {
         if (!match.isCompleted) return null
-        ArchiveClient.match(match.id)?.commentary()?.takeIf { it.isNotEmpty() }?.let {
+        val archived = ArchiveClient.match(match.id)
+        archived?.commentary()?.takeIf { it.isNotEmpty() }?.let {
             return PastFeed(it, PastFeedSource.ARCHIVE)
+        }
+        archived?.deliveries()?.let { d ->
+            HistoryCommentary.entries(d.match).takeIf { it.isNotEmpty() }
+                ?.let { return PastFeed(it, PastFeedSource.ARCHIVE_DELIVERIES, d.partial) }
         }
         return ballByBall(match)?.let { PastFeed(it, PastFeedSource.CRICSHEET) }
     }
 
     override suspend fun cricsheetMatch(id: String): HistoryMatch? = HistoryClient.match(id)
+
+    override suspend fun info(match: CricketMatch): ArchivedInfo? =
+        if (match.isCompleted) ArchiveClient.match(match.id)?.archivedInfo() else null
 
     /** The archive's final card, else the card of the Cricsheet match this is. */
     override suspend fun scorecard(match: CricketMatch): Scorecard? =
@@ -71,6 +89,9 @@ object HistoryRepository : PastMatchSource {
         archived?.scorecard()?.takeIf { it.overs.isNotEmpty() }
             ?.let { return Scorecard(overs = it.overs, probabilityTeamId = it.probabilityTeamId) }
         archived?.evalOvers()?.let { return it }
+        // Complete innings only: `deliveries` leaves a partial innings' overs out.
+        archived?.deliveries()?.let { scorecardOf(it.match).overs }?.takeIf { it.isNotEmpty() }
+            ?.let { return Scorecard(overs = it) }
         return linked(match)?.let(::scorecardOf)?.overs?.takeIf { it.isNotEmpty() }?.let { Scorecard(overs = it) }
     }
 

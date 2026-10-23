@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
+import com.tanush.bouncer.data.history.ArchivedInfo
 import com.tanush.bouncer.data.history.PastFeedSource
 import com.tanush.bouncer.data.history.isCricsheetOnly
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -153,7 +154,7 @@ fun MatchDetailViewV2(
     val liveDrawProbability = uiState.liveDrawProbability ?: match.winProbabilityDraw
     val prematch = uiState.liveWinProbabilityIsPrematch || match.winProbabilityIsPrematch
     val liveMatch = if (match.teams.size >= 2) {
-        match.copy(
+        match.withArchivedInfo(uiState.pastInfo).copy(
             currentStatus = liveStatus,
             venue = match.venue.ifBlank { uiState.liveVenue.orEmpty() },
             winProbability = liveWinProbability,
@@ -439,10 +440,10 @@ fun MatchDetailViewV2(
                         eventPages = if (uiState.pastFeedSource != null) emptyMap() else commentaryEventPages,
                         onOpenEvents = vm.commentaryEvents::open.takeIf { uiState.pastFeedSource == null },
                         onLoadOlderEvents = vm.commentaryEvents::loadOlder.takeIf { uiState.pastFeedSource == null },
-                        sourceCaption = if (uiState.pastFeedSource == PastFeedSource.CRICSHEET) {
-                            stringResource(R.string.commentary_source_cricsheet)
-                        } else {
-                            null
+                        sourceCaption = when (uiState.pastFeedSource) {
+                            PastFeedSource.CRICSHEET -> stringResource(R.string.commentary_source_cricsheet)
+                            PastFeedSource.ARCHIVE_DELIVERIES -> archiveDeliveriesCaption(uiState.pastFeedPartial)
+                            else -> null
                         },
                     )
                     MatchTab.GRAPHS -> GraphsTabV2(
@@ -460,7 +461,12 @@ fun MatchDetailViewV2(
                     )
                     // The live entry, not the one this screen opened with: Info's Test day and toss
                     // rows read the status line.
-                    MatchTab.INFO -> InfoTabV2(match = liveMatch, preMatchData = uiState.preMatchData, headToHead = uiState.headToHead)
+                    MatchTab.INFO -> InfoTabV2(
+                        match = liveMatch,
+                        preMatchData = uiState.preMatchData,
+                        headToHead = uiState.headToHead,
+                        archivedInfo = uiState.pastInfo,
+                    )
                     MatchTab.HIGHLIGHTS -> HighlightsTabV2(highlights = highlights)
                 }
             }
@@ -494,4 +500,23 @@ fun MatchDetailViewV2(
             )
         }
     }
+}
+
+/** The caption under a backfilled match's ball-by-ball lines, with a note for an innings the source only partly has. */
+@Composable
+private fun archiveDeliveriesCaption(partial: List<Int>): String {
+    val base = stringResource(R.string.commentary_source_archive_deliveries)
+    if (partial.isEmpty()) return base
+    return base + " " + stringResource(R.string.commentary_source_partial, partial.joinToString(", "))
+}
+
+/** The match with the toss and umpires a backfilled card knows, where the list entry had none. */
+private fun CricketMatch.withArchivedInfo(info: ArchivedInfo?): CricketMatch {
+    if (info == null) return this
+    return copy(
+        tossWinner = tossWinner ?: info.tossWinner,
+        tossDecision = tossDecision ?: info.tossDecision.takeIf { info.tossWinner != null },
+        umpire1 = umpire1 ?: info.umpires.getOrNull(0),
+        umpire2 = umpire2 ?: info.umpires.getOrNull(1),
+    )
 }

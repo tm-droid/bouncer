@@ -45,7 +45,7 @@ class ArchivedMatchTest {
     fun `the final card decodes, an absent context is null, unknown keys are ignored`() {
         assertEquals("PAK 1st Innings", match.scorecard()?.innings?.single()?.teamName)
         assertNull(match.context())
-        assertTrue(match.final)
+        assertTrue(match.isFinal)
     }
 
     @Test

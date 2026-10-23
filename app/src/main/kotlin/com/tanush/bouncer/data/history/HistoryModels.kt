@@ -108,11 +108,14 @@ data class HistoryDelivery(
         const val LEGBYE = 8
         const val NON_BOUNDARY = 32
 
+        /** Where a delivery's wickets sit in its array. */
+        const val WICKET_AT = 8
+
         /** Null for an array too short to be a delivery: a malformed row is skipped, not guessed. */
         fun of(row: JsonArray): HistoryDelivery? {
             if (row.size < DELIVERY_FIELDS) return null
             val ints = (0 until DELIVERY_FIELDS).map { row[it].asInt() ?: return null }
-            val wickets = (row.getOrNull(DELIVERY_FIELDS) as? JsonArray).orEmpty().mapNotNull { w ->
+            val wickets = (row.getOrNull(WICKET_AT) as? JsonArray).orEmpty().mapNotNull { w ->
                 val wicket = w as? JsonArray ?: return@mapNotNull null
                 val kind = (wicket.getOrNull(0) as? JsonPrimitive)?.content ?: return@mapNotNull null
                 val out = wicket.getOrNull(1)?.asInt() ?: return@mapNotNull null

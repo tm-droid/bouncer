@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
 import com.tanush.bouncer.R
+import com.tanush.bouncer.data.history.ArchivedInfo
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.MatchContext
 
@@ -30,6 +31,13 @@ internal fun officialRows(officials: MatchContext.Officials, showUmpires: Boolea
     if (officials.referees.isNotEmpty()) add(R.string.match_info_referee to officials.referees.joinToString(", "))
     officials.reviews?.takeIf { it.isNotBlank() }?.let { add(R.string.match_info_reviews to it) }
     // Debutants are on Squads now, beside the elevens they are part of.
+}
+
+/** Referee, third umpire and player of the match from a backfilled card; the on-field umpires are on the match. */
+internal fun archivedOfficialRows(info: ArchivedInfo): List<Pair<Int, String>> = buildList {
+    info.thirdUmpire?.let { add(R.string.match_info_tv_umpire to it) }
+    info.referee?.let { add(R.string.match_info_referee to it) }
+    if (info.playersOfTheMatch.isNotEmpty()) add(R.string.match_info_player_of_match to info.playersOfTheMatch.joinToString(", "))
 }
 
 internal fun extractTossInfo(info: String, status: String): String {

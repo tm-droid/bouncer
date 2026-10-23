@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import com.tanush.bouncer.data.history.HistoryCoverage
+import com.tanush.bouncer.data.history.ArchivedInfo
 import com.tanush.bouncer.data.history.HistoryRecords
 import com.tanush.bouncer.data.history.PastWeather
 import com.tanush.bouncer.data.history.pastWeatherOf
@@ -57,6 +57,8 @@ fun InfoTabV2(
     match: CricketMatch,
     preMatchData: PreMatchData? = null,
     headToHead: H2HPair? = null,
+    /** Officials, player of the match and squads of a backfilled match, which has no match context. */
+    archivedInfo: ArchivedInfo? = null,
 ) {
     val spacing = BouncerThemeV2.spacing
     // The ground, the forecast and the preview, from the context file match-sync keeps for this
@@ -87,7 +89,8 @@ fun InfoTabV2(
         if (!match.isCompleted) overviewMatchSurface(matchSurfaceFor(context, isCompleted = false))
         infoDetailsItems(match)
         infoTossItems(match)
-        infoOfficialsItems(match, context?.cricinfo)
+        infoOfficialsItems(match, context?.cricinfo, archivedInfo)
+        infoSquadsItems(archivedInfo)
         infoPastWeatherItems(pastWeather)
         if (forecast != null) {
             item(key = "forecast_header") { SectionHeaderV2(title = stringResource(R.string.match_info_forecast)) }
@@ -158,11 +161,12 @@ private fun LazyListScope.infoTossItems(match: CricketMatch) {
  * The umpires from the match listing, then Cricinfo's officials where it covers the match. The
  * on-field pair comes from Cricinfo only when the listing carried none, so no name is listed twice.
  */
-private fun LazyListScope.infoOfficialsItems(match: CricketMatch, officials: MatchContext.Officials?) {
+private fun LazyListScope.infoOfficialsItems(match: CricketMatch, officials: MatchContext.Officials?, archived: ArchivedInfo?) {
     val rows = buildList {
         match.umpire1?.let { add(R.string.match_info_umpire_1 to it) }
         match.umpire2?.let { add(R.string.match_info_umpire_2 to it) }
         officials?.let { addAll(officialRows(it, showUmpires = match.umpire1 == null && match.umpire2 == null)) }
+        archived?.let { addAll(archivedOfficialRows(it)) }
     }
     if (rows.isEmpty()) return
     item(key = "officials_header") { SectionHeaderV2(title = stringResource(R.string.match_info_officials)) }
@@ -184,8 +188,8 @@ private fun LazyListScope.infoOfficialsItems(match: CricketMatch, officials: Mat
 private fun LazyListScope.infoHeadToHeadItems(match: CricketMatch, headToHead: H2HPair?, context: MatchContext?) {
     if (headToHead != null) {
         item(key = "h2h_header") { SectionHeaderV2(title = stringResource(R.string.match_info_head_to_head)) }
-        if (HistoryCoverage.missingAfghanistan(match.teams.map { it.name }, "") != null) {
-            item(key = "h2h_coverage") { HistoryCoverageNotice(stringResource(R.string.history_missing_afghanistan)) }
+        if (headToHead.fromArchive) {
+            item(key = "h2h_coverage") { HistoryCoverageNotice(stringResource(R.string.history_records_from_archive)) }
         }
         item(key = "h2h_card") {
             val (team1Color, team2Color) = rememberMatchChartColors(match)

@@ -17,10 +17,15 @@ data class FormatRecord(
     val lost: Int,
     val tied: Int,
     val drawn: Int,
+    /** True when the record was counted from Bouncer's own archive, because Cricsheet holds none for the side. */
+    val fromArchive: Boolean = false,
 )
 
 /** One ground in `idx/venues.json`: `[key, name, city, matches]`. */
 data class VenueRow(val key: String, val name: String, val city: String, val matches: Int)
+
+/** The archive's `s/team` and `s/h2h` file key for a side: its name's slug, as the Cricsheet builder writes it. */
+internal fun archiveKey(name: String): String = VenueKey.squash(name).replace(' ', '-').ifEmpty { "unknown" }
 
 /** What Cricsheet holds on a ground in one format (`s/venue/<key>.json` `f`). */
 data class VenueRecord(
@@ -83,12 +88,23 @@ object HistoryRecords {
     private val mutex = Mutex()
     @Volatile private var venues: List<VenueRow>? = null
 
-    /** The side's results by format, busiest first; [name] is Cricbuzz's, with any "Women" suffix. */
+    /**
+     * The side's results by format, busiest first; [name] is Cricbuzz's, with any "Women" suffix.
+     * A side Cricsheet has no record of (Afghanistan) falls back to the archive's own `s/team`.
+     */
     suspend fun team(name: String, women: Boolean): List<FormatRecord>? {
-        val key = HistoryTeams.keyFor(name, women) ?: return null
+        val key = HistoryTeams.keyFor(name, women) ?: return archiveTeam(name, women)
         val bytes = StaticSite.fetch(HistoryClient.BASE_URL, "s/team/$key.json", MAX_AGE_SECONDS, MAX_STALE_SECONDS)
             ?: return null
         return parseTeam(bytes.decodeToString())
+    }
+
+    private suspend fun archiveTeam(name: String, women: Boolean): List<FormatRecord>? {
+        // Only when the Cricsheet list loaded: offline, a missing key says nothing about the side.
+        if (women || HistoryTeams.load() == null) return null
+        val bytes = StaticSite.fetch(ArchiveClient.BASE_URL, "s/team/${archiveKey(name)}.json", MAX_AGE_SECONDS, MAX_STALE_SECONDS)
+            ?: return null
+        return parseTeam(bytes.decodeToString())?.map { it.copy(fromArchive = true) }
     }
 
     /** The ground's record in [format]'s Cricsheet key, for a Cricbuzz venue text. */

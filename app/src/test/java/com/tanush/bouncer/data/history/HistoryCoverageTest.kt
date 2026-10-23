@@ -12,7 +12,7 @@ class HistoryCoverageTest {
         TeamEntry("India", "IND"), TeamEntry("Australia", "AUS"), TeamEntry("Ireland", "IRE"),
     )
 
-    private fun query(q: String) = HistoryCoverage.missingAfghanistan(q, teams, notice)
+    private fun query(q: String) = HistoryCoverage.afghanistanNotice(q, teams, notice)
 
     @Test
     fun `a query naming Afghanistan by name, prefix or code gets the notice`() {
@@ -28,7 +28,7 @@ class HistoryCoverageTest {
 
     @Test
     fun `team names are matched case-insensitively with suffixes`() {
-        assertEquals(notice, HistoryCoverage.missingAfghanistan(listOf("India", "AFGHANISTAN Women"), notice))
-        assertNull(HistoryCoverage.missingAfghanistan(listOf("India", "Australia"), notice))
+        assertEquals(notice, HistoryCoverage.afghanistanNotice(listOf("India", "AFGHANISTAN Women"), notice))
+        assertNull(HistoryCoverage.afghanistanNotice(listOf("India", "Australia"), notice))
     }
 }

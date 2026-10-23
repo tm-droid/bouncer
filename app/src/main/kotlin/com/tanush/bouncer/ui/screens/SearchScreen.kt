@@ -47,7 +47,6 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.MatchCardV2
-import com.tanush.bouncer.ui.components.HistoricalStatsCard
 import com.tanush.bouncer.ui.components.v2.HistoryCoverageNotice
 import com.tanush.bouncer.ui.components.v2.PastMatchRow
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
@@ -358,7 +357,7 @@ private fun LazyListScope.searchResults(
     actions: SearchActions,
 ) {
     fun limit(all: Int) = if (compact) all else Int.MAX_VALUE
-    results.headToHead?.let { item(key = "head_to_head") { HistoricalStatsCard(data = it.history) } }
+    results.headToHead?.let { headToHeadItems(it) }
     listOfNotNull(
         results.matches.sectionOrNull(
             R.string.section_matches, "m", SearchTab.MATCHES, limit(ALL_TAB_MATCHES), compact, actions,

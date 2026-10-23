@@ -31,7 +31,8 @@ import kotlinx.serialization.json.longOrNull
 data class ArchivedMatch(
     val v: Int = 0,
     val id: String = "",
-    val final: Boolean = false,
+    /** `true` from the archiver, `1` from the backfill: kept as JSON because a Boolean property rejects the number. */
+    val final: JsonElement? = null,
     val rows: List<JsonObject> = emptyList(),
     val scorecard: JsonElement? = null,
     val context: JsonElement? = null,
@@ -39,7 +40,15 @@ data class ArchivedMatch(
     val meta: JsonElement? = null,
     /** The `wpe-` win-probability log; kept as JSON, read by the graphs. */
     val evalLog: JsonElement? = null,
+    /** `cricbuzz-backfill` for a match written from Cricbuzz's pages after the fact (scorecard, no commentary rows). */
+    val source: String? = null,
+    /** A backfilled match's toss, officials, player of the match and squads; read by [archivedInfo]. */
+    val info: JsonElement? = null,
+    /** A backfilled match's deliveries; read by [deliveries]. */
+    val balls: JsonElement? = null,
 ) {
+    val isFinal: Boolean get() = (final as? JsonPrimitive)?.let { it.content == "true" || it.content == "1" } == true
+
     /** The feed, newest first, the order the commentary tab reads. */
     fun commentary(): List<CommentaryEntry> =
         rows.asReversed().mapNotNull { row -> commentaryEntryOf(row.mapValues { (_, v) -> plain(v) }) }

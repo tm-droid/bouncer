@@ -25,7 +25,7 @@ paths:
 - **Verified against a real scorecard** (2011 World Cup final, `m/433606.json`): totals, overs, top scores and bowling figures match.
   - Archive-wide, batter runs plus extras equal the innings total in every innings.
   - About 0.3% of chase targets (52 of 17,421) differ from the first-innings total + 1. These are reduced-overs targets that Cricsheet does not tag with a method; it is the data, not the builder.
-- **Afghanistan is missing on purpose** (the Cricsheet maintainer has withheld its matches since 2024-11-14). No rebuild will bring them back; the app must say so rather than look empty.
+- **Afghanistan is missing on purpose** (the Cricsheet maintainer has withheld its matches since 2024-11-14). No rebuild will bring them back; the app says so rather than look empty, and takes Afghanistan scorecards, ball-by-ball and records from the match archive (`archive-data.md`).
 
 ## Layout (schema `v` 1, short keys because the files are the payload)
 

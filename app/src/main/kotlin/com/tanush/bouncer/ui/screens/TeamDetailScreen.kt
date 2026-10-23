@@ -63,6 +63,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tanush.bouncer.R
 import com.tanush.bouncer.data.history.FormatRecord
 import com.tanush.bouncer.data.history.HistoryRecords
+import com.tanush.bouncer.ui.components.v2.HistoryCoverageNotice
 import com.tanush.bouncer.data.remote.archiveSideName
 import com.tanush.bouncer.data.remote.isWomensPair
 import com.tanush.bouncer.ui.components.v2.BouncerCard
@@ -223,6 +224,9 @@ private fun LazyListScope.teamMatchSections(
 private fun LazyListScope.teamRecordItems(records: List<FormatRecord>) {
     if (records.isEmpty()) return
     item(key = "records_header") { SectionHeaderV2(title = stringResource(R.string.teams_records)) }
+    if (records.any { it.fromArchive }) {
+        item(key = "records_source") { HistoryCoverageNotice(stringResource(R.string.history_records_from_archive)) }
+    }
     item(key = "records_card") {
         BouncerCard(modifier = Modifier.padding(horizontal = BouncerThemeV2.spacing.lg)) {
             records.forEachIndexed { i, r ->

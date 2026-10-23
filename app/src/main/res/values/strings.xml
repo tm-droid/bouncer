@@ -78,7 +78,9 @@
     <string name="history_bio_photo_credit_licence">Photo: %1$s</string>
     <string name="history_career_link">Match-by-match career (Cricsheet)</string>
     <string name="history_career_recent">Recent matches</string>
-    <string name="history_missing_afghanistan">Cricsheet has no Afghanistan matches after 14 Nov 2024; matches Bouncer followed are still listed.</string>
+    <string name="history_missing_afghanistan">Afghanistan matches come from Bouncer\'s own archive (scorecards from 2009, ball-by-ball where available), not Cricsheet, which withholds them. Their records are counted from those scorecards.</string>
+    <string name="history_career_missing_afghanistan">Cricsheet withholds Afghanistan matches, so this career leaves out the games played for Afghanistan.</string>
+    <string name="history_records_from_archive">Counted from Bouncer\'s own archive of scorecards, not Cricsheet.</string>
     <string name="search_section_past_players">Past players</string>
     <plurals name="search_past_player_matches">
         <item quantity="one">%1$d match</item>
@@ -162,6 +164,9 @@
     <string name="match_info_officials">Officials</string>
     <string name="match_info_head_to_head">Head to head</string>
     <string name="match_info_tv_umpire">TV umpire</string>
+    <string name="match_info_player_of_match">Player of the match</string>
+    <string name="match_info_squad_lists">Squad lists</string>
+    <string name="match_info_squad_lists_note">Squad lists can include players who did not play; they are not the playing elevens.</string>
     <string name="match_info_referee">Match referee</string>
     <string name="match_info_reviews">Reviews left</string>
     <string name="match_info_day">Day</string>
@@ -250,6 +255,8 @@
     <string name="about_changelog">What\'s new</string>
     <string name="about_changelog_on_play">On Google Play</string>
     <string name="about_privacy_policy">Privacy policy</string>
+    <string name="commentary_source_archive_deliveries">Lines are built from the ball-by-ball record in Bouncer\'s archive, not written commentary.</string>
+    <string name="commentary_source_partial">The source is missing some deliveries in innings %1$s.</string>
     <string name="commentary_source_cricsheet">Ball-by-ball from Cricsheet (cricsheet.org)</string>
     <string name="update_required_title">Update Bouncer</string>
     <string name="update_required_body">This version no longer works with Bouncer\'s servers. Update to keep following matches.</string>
