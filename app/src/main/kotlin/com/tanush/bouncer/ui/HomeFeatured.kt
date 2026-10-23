@@ -9,12 +9,6 @@ data class Featured(val match: CricketMatch, val kind: FeaturedKind)
 
 data class FeaturedSplit(val featured: Featured?, val rows: List<CricketMatch>)
 
-/**
- * Flip once the hero card can draw an Upcoming match (unit U9). Until then an Upcoming pick would
- * render as a live card, so [featuredFor] is asked not to make one.
- */
-internal const val HERO_SHOWS_UPCOMING = false
-
 private val UPCOMING_WINDOW_MS = TimeUnit.HOURS.toMillis(24)
 
 /**

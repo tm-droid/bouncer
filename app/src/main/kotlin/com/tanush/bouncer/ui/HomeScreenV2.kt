@@ -256,7 +256,6 @@ private fun HomeMatchList(
             matches,
             favourites.map { it.trim().lowercase() },
             System.currentTimeMillis(),
-            allowUpcoming = HERO_SHOWS_UPCOMING,
         )
     }
     val subscriptions by MatchSubscriptionManager.subscriptions.collectAsStateWithLifecycle()
@@ -289,9 +288,16 @@ private fun HomeMatchList(
                 if (state is ScreenState.ContentWithBanner) {
                     item(key = "stale", contentType = "stale") { StaleDataBanner(state.kind, state.savedAtMs, onRetry) }
                 }
-                featured?.match?.let { fm ->
+                featured?.let { hero ->
+                    val fm = hero.match
                     item(key = "hero_${fm.id}", contentType = "hero") {
-                        HeroMatchCard(match = fm, onClick = { onMatchClick(fm) }, modifier = Modifier.animateItem())
+                        HeroMatchCard(
+                            match = fm,
+                            kind = hero.kind,
+                            lastFetchedMs = { MatchCacheService.savedAtMs(listOf(MatchCacheService.LIVE)) },
+                            onClick = { onMatchClick(fm) },
+                            modifier = Modifier.animateItem(),
+                        )
                     }
                 }
                 if (byDay == DayOrder.NONE) {
