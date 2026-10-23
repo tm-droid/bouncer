@@ -242,12 +242,13 @@ private fun SubscribeBellButton(isSubscribed: Boolean, onToggle: () -> Unit) {
 internal fun MatchTeamRows(
     match: CricketMatch,
     isLive: Boolean,
-    crestSize: Dp = 24.dp,
+    crestSize: Dp = 28.dp,
     inkScores: Boolean = false,
 ) {
     if (match.teams.size < 2) return
     val spacing = BouncerThemeV2.spacing
     val yetToBat = isLive && match.teams.any { it.score.isNotBlank() }
+    val anyBatting = isLive && match.teams.any { it.isBatting }
     val start = if (!isLive && match.teams.all { it.score.isBlank() }) rememberMatchStartParts(match) else null
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
@@ -264,23 +265,31 @@ internal fun MatchTeamRows(
                     result = rowResultFor(match, team.name),
                     crestSize = crestSize,
                     inkScore = inkScores,
+                    steppedBack = anyBatting && !team.isBatting,
                 )
             }
         }
         if (start != null) {
             Spacer(Modifier.width(spacing.md))
-            MatchStartBlock(start)
+            MatchStartBlock(start, match.startDateMs)
         }
     }
 }
 
 @Composable
-private fun MatchStartBlock(start: MatchStartParts) {
+private fun MatchStartBlock(start: MatchStartParts, startMs: Long?) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
+    // Inside 12 h a countdown beats a clock time; the clock time drops to the small line beneath it.
+    val countdown = startMs != null && startLabelOf(startMs, System.currentTimeMillis()) != StartLabel.Absolute
     Column(horizontalAlignment = Alignment.End) {
-        Text(text = start.time, style = typography.scoreMedium, color = colors.onSurface, maxLines = 1)
-        Text(text = start.day, style = typography.numericSmall, color = colors.textSecondary, maxLines = 1)
+        if (countdown && startMs != null) {
+            MatchStartLabel(startMs = startMs, style = typography.scoreMedium, color = colors.onSurface)
+            Text(text = start.time, style = typography.numericSmall, color = colors.textSecondary, maxLines = 1)
+        } else {
+            Text(text = start.time, style = typography.scoreMedium, color = colors.onSurface, maxLines = 1)
+            Text(text = start.day, style = typography.numericSmall, color = colors.textSecondary, maxLines = 1)
+        }
     }
 }
 
@@ -304,9 +313,9 @@ private fun MatchCardStatusLine(match: CricketMatch) {
         text = matchStatusText(match.currentStatus),
         // A result is the row's headline once the match is over; a live line is detail under scores.
         style = if (decided) BouncerThemeV2.typography.bodyMedium else BouncerThemeV2.typography.bodySmall,
-        // Neutral for every state. A result used to be win green, which on the Recent tab made every
-        // row the same green and so said nothing; the words carry the result.
-        color = if (decided) colors.onSurface else colors.textSecondary,
+        // onSurface for every state: a chase line is the news of a live row, not muted detail. A result
+        // used to be win green, which on the Recent tab made every row the same green; the words carry it.
+        color = colors.onSurface,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
     )

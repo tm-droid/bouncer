@@ -23,9 +23,9 @@ B = app/src/main/kotlin/com/tanush/bouncer · T = ./gradlew testDebugUnitTest --
 - [x] U11: Summary result card | files: SummaryResultCard.kt, SummaryTabV2.kt | done when: T *SummaryResultTest *LiveAndSummaryDerivationTest
 - [x] U12: apply failure pattern app-wide | files: Home, Scorecard, Commentary, Series, News, Player, Comparison, Search, PointsTable, TeamDetail | done when: action_retry only in shared components
 ### Wave 4
-- [ ] U8: match-detail hero + collapse | files: B/ui/MatchDetailViewV2.kt, ScoreHeaderRows.kt, MatchDetailHeader.kt, LiveTabV2.kt | done when: D + T *MatchTabsTest + emulator pass
-- [ ] U9: Home hero | files: B/ui/components/v2/HeroMatchCard.kt | done when: D + HeroWinProbability gone + ≤240dp
-- [ ] U10: Home rows | files: TeamRow.kt, MatchCardV2.kt | done when: D + 4 matches/screen
+- [x] U8: match-detail hero + collapse | files: B/ui/MatchDetailViewV2.kt, ScoreHeaderRows.kt, MatchDetailHeader.kt, LiveTabV2.kt | done when: D + T *MatchTabsTest + emulator pass
+- [x] U9: Home hero | files: B/ui/components/v2/HeroMatchCard.kt | done when: D + HeroWinProbability gone + ≤240dp
+- [x] U10: Home rows | files: TeamRow.kt, MatchCardV2.kt | done when: D + 4 matches/screen
 ### Wave 5
 - [ ] U14: consistency pass | files: many (crests, shapes, type roles, pressed states, toggle haptic) | done when: D + full test
 - [ ] U18: shared-element row→header (experimental; drop if risky) | done when: emulator clean or dropped with reason
@@ -37,6 +37,8 @@ B = app/src/main/kotlin/com/tanush/bouncer · T = ./gradlew testDebugUnitTest --
 - Commit per unit locally; ONE push at the end after full verification.
 - Per-unit commits use SKIP_RELEASE_NOTES=1 (nothing ships until the final push); U15 writes whatsnew before that push.
 - New strings live in one block in strings.xml headed `<!-- Design upgrade 2026-10 -->`; later units grep it and reuse names.
+
+- U15 must update design-system.md: Home hero now also shows a followed team's upcoming match (<24h, user decision), replacing "its hero appears only for a live match"; and "Don't restate the fixed header" now refers to the collapsing hero, not ScoreHeaderV2.
 
 ## Log
 - 2026-10-23: research done (15 tracks), plan approved, ledger written.
@@ -56,4 +58,9 @@ B = app/src/main/kotlin/com/tanush/bouncer · T = ./gradlew testDebugUnitTest --
   - U7 MatchHeroV2(match, situation, lastUpdatedMs, size: HeroSize.Large|Compact, modifier, onTeamClick), HeroLineText, WinProbabilityBarV2(match) (shown pre-match too); parts in MatchHeroParts.kt, HeroRunRates.kt.
   - U11 SummaryResultCard: crest + winner + margin only; performer rows dropped (already in per-innings sections) — told user, plan had them.
   - U12 Home/Scorecard/Commentary/Series use screenStateOf/FailedState/StaleDataBanner/DelayedSkeleton (MatchCacheService.savedAtMs); News/Player/Comparison/Search/PointsTable/Team use EmptyStateV2 (VMs expose only a message). action_retry left in MatchDetailViewV2 LiveDataErrorBanner → U8.
+- 2026-10-23: Wave 4 written + batch-verified (compile, unit tests, lint clean vs lint-baseline.xml, detekt clean after TeamRow helper split). Emulator pass pending.
+  - U8 MatchDetailHeader.kt (hero + CollapsedScoreBar + collapsedBy); ScoreHeaderV2/TeamScoreRow/HeaderScore/LiveDataErrorBanner deleted; win-prob bar moved from LiveTabV2 (PremiumWinProbabilityHero now unreferenced — list in U14, don't delete). Test status always shown; testHeroLine hides lead/trail when status states it. Semantics: hero cleared at fraction ≥0.5, bar below.
+  - U9 HeroMatchCard on MatchHeroV2 Compact; Upcoming via featured.kind; freshness = last list fetch (MatchCacheService.savedAtMs, re-read every 10s) — weaker than detail's score-change stamp. Recent balls dropped from Home hero (height ≤240dp est. 215–235).
+  - U10 crest 28dp in 24dp slot (no height change), non-batting side dimmed, countdown <12h, Test rows "312 & 145/3"; row score semantics cleared (card describes the match).
+  - Emulator risks: collapse on Scorecard (own scroll?), taps on series link/crests when expanded, setRange settling, 4 rows/screen.
 
