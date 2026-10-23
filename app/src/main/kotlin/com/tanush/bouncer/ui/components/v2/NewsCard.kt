@@ -114,7 +114,7 @@ fun NewsRowV2(
 fun NewsRowSkeleton(modifier: Modifier = Modifier) {
     val colors = BouncerThemeV2.colors
     val spacing = BouncerThemeV2.spacing
-    val bar = Modifier.clip(RoundedCornerShape(4.dp)).background(colors.surfaceVariant)
+    val bar = Modifier.clip(BouncerThemeV2.shapes.extraSmall).background(colors.surfaceVariant)
 
     Row(
         modifier = modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.md),

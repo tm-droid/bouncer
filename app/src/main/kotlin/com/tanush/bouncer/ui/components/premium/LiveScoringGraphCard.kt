@@ -82,7 +82,7 @@ fun LiveScoringGraphCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = BouncerThemeV2.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = BouncerThemeV2.colors.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
@@ -125,7 +125,7 @@ fun LiveScoringGraphCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(BouncerThemeV2.shapes.medium)
                     .background(BouncerThemeV2.colors.surfaceVariant)
                     .padding(16.dp),
             ) {

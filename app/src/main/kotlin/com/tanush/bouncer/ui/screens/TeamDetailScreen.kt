@@ -70,6 +70,8 @@ import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.utils.PreferencesHelper
+import com.tanush.bouncer.utils.rememberHapticFeedback
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 
 private const val MAX_RESULTS = 10
@@ -289,8 +291,11 @@ private fun FavouriteAction(teamName: String) {
     val favourites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val isFavourite = teamName in favourites
+    val hapticEnabled = remember { PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true) }
+    val haptics = rememberHapticFeedback()
     IconButton(
         onClick = {
+            if (hapticEnabled) haptics.toggle(turningOn = !isFavourite)
             if (FavouriteTeamsManager.toggle(teamName) == null) {
                 Toast.makeText(context, R.string.teams_favourites_full, Toast.LENGTH_SHORT).show()
             }

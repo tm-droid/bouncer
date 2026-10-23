@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.widgets
 
 import android.appwidget.AppWidgetManager
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -170,7 +171,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
                             disabledContainerColor = colors.goldSubtle,
                             disabledContentColor = colors.textSecondary
                         ),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = BouncerThemeV2.shapes.medium,
                         enabled = selectedMatchId != null
                     ) {
                         Text(
@@ -252,7 +253,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onSelect() },
-            shape = RoundedCornerShape(12.dp),
+            shape = BouncerThemeV2.shapes.medium,
             useGoldBorder = isSelected,
             contentPadding = PaddingValues(16.dp)
         ) {
@@ -264,8 +265,8 @@ class WidgetConfigurationActivity : ComponentActivity() {
                 if (match.isLive) {
                     Box(
                         modifier = Modifier
-                            .background(colors.statusLive.copy(alpha = 0.18f), RoundedCornerShape(4.dp))
-                            .border(1.dp, colors.statusLive.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
+                            .background(colors.statusLive.copy(alpha = 0.18f), BouncerThemeV2.shapes.extraSmall)
+                            .border(1.dp, colors.statusLive.copy(alpha = 0.35f), BouncerThemeV2.shapes.extraSmall)
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
@@ -332,7 +333,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
                     Box(
                         modifier = Modifier
                             .size(24.dp)
-                            .background(colors.goldPrimary, RoundedCornerShape(12.dp)),
+                            .background(colors.goldPrimary, BouncerThemeV2.shapes.medium),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

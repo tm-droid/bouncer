@@ -28,7 +28,7 @@ internal fun BallLabel(label: String) {
     Box(
         modifier = Modifier
             .defaultMinSize(minWidth = 36.dp, minHeight = 24.dp)
-            .clip(RoundedCornerShape(4.dp))
+            .clip(BouncerThemeV2.shapes.extraSmall)
             .background(colors.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {

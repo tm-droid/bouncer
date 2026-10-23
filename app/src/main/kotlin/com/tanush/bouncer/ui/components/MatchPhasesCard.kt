@@ -68,11 +68,11 @@ fun MatchPhasesCard(
             .fillMaxWidth()
             .shadow(
                 elevation = 0.dp,
-                shape = RoundedCornerShape(12.dp),
+                shape = BouncerThemeV2.shapes.medium,
                 spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = GlassSurface),
-        shape = RoundedCornerShape(12.dp),
+        shape = BouncerThemeV2.shapes.medium,
         border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -277,7 +277,7 @@ private fun PhaseRow(
                             )
                             if (phase.isActive) {
                                 Surface(
-                                    shape = RoundedCornerShape(4.dp),
+                                    shape = BouncerThemeV2.shapes.extraSmall,
                                     color = colors.statusSuccess.copy(alpha = 0.2f)
                                 ) {
                                     Text(
@@ -444,7 +444,7 @@ private fun MomentumSummary(
     }
     
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = BouncerThemeV2.shapes.medium,
         color = BouncerThemeV2.colors.highlight.copy(alpha = 0.08f),
         border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
@@ -463,7 +463,7 @@ private fun MomentumSummary(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
+                    .clip(BouncerThemeV2.shapes.extraSmall)
             ) {
                 if (team1Phases > 0) {
                     Box(

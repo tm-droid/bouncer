@@ -134,7 +134,7 @@ private fun FormatPlate(format: String) {
     Box(
         modifier = Modifier
             .size(44.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(BouncerThemeV2.shapes.small)
             .background(colors.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {

@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.components.premium
 
 import androidx.compose.animation.core.*
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -57,7 +58,7 @@ fun DRSReviewCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(260.dp)
-                .clip(RoundedCornerShape(24.dp))
+                .clip(BouncerThemeV2.shapes.extraLarge)
                 .background(Color.Black)
                 .border(1.dp, GlassBorderLight),
             contentAlignment = Alignment.Center
@@ -74,9 +75,9 @@ fun DRSReviewCard(
                 modifier = Modifier
                     .padding(16.dp)
                     .align(Alignment.TopStart)
-                    .clip(RoundedCornerShape(4.dp))
+                    .clip(BouncerThemeV2.shapes.extraSmall)
                     .background(Color.Black.copy(alpha = 0.6f))
-                    .border(1.dp, ChartCyan.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                    .border(1.dp, ChartCyan.copy(alpha = 0.3f), BouncerThemeV2.shapes.extraSmall)
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -171,7 +172,7 @@ private fun MetricGlassCard(label: String, value: String, icon: androidx.compose
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.height(100.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = BouncerThemeV2.shapes.large,
         color = colors.textPrimary.copy(alpha = 0.03f),
         border = BorderStroke(1.dp, colors.textPrimary.copy(alpha = 0.05f))
     ) {

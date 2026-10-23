@@ -49,7 +49,7 @@ internal fun MatchResultBanner(match: CricketMatch) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(BouncerThemeV2.shapes.small)
             .background(colors.surfaceVariant)
             .padding(horizontal = spacing.md, vertical = spacing.sm),
     ) {

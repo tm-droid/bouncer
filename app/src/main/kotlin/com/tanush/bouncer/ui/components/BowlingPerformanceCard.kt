@@ -79,11 +79,11 @@ fun BowlingPerformanceCard(
             .fillMaxWidth()
             .shadow(
                 elevation = 0.dp,
-                shape = RoundedCornerShape(12.dp),
+                shape = BouncerThemeV2.shapes.medium,
                 spotColor = teamColor.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
-        shape = RoundedCornerShape(12.dp),
+        shape = BouncerThemeV2.shapes.medium,
         border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -113,7 +113,7 @@ fun BowlingPerformanceCard(
                 }
                 
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = BouncerThemeV2.shapes.small,
                     color = teamColor.copy(alpha = 0.15f),
                     border = BorderStroke(0.5.dp, teamColor.copy(alpha = 0.3f))
                 ) {
@@ -160,7 +160,7 @@ private fun BowlerRow(
     val pulseAlpha = 0.55f
     
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = BouncerThemeV2.shapes.large,
         color = if (bowler.isBowling) teamColor.copy(alpha = 0.1f) else BouncerThemeV2.colors.surfaceVariant,
         border = BorderStroke(
             0.5.dp,
@@ -221,7 +221,7 @@ private fun BowlerRow(
                             )
                             if (bowler.isBowling) {
                                 Surface(
-                                    shape = RoundedCornerShape(4.dp),
+                                    shape = BouncerThemeV2.shapes.extraSmall,
                                     color = colors.statusSuccess.copy(alpha = 0.2f)
                                 ) {
                                     Text(
@@ -341,7 +341,7 @@ private fun EconomyGauge(
                     fontWeight = FontWeight.Bold
                 )
                 Surface(
-                    shape = RoundedCornerShape(4.dp),
+                    shape = BouncerThemeV2.shapes.extraSmall,
                     color = category.color.copy(alpha = 0.15f)
                 ) {
                     Text(
@@ -448,7 +448,7 @@ private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
     val colors = BouncerDesignSystem.colors
     
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = BouncerThemeV2.shapes.medium,
         color = BouncerThemeV2.colors.surfaceVariant,
         border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()

@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.components
 
 import androidx.compose.animation.core.*
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -94,7 +95,7 @@ fun HighlightMomentsCard(
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF0D1117)
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = BouncerThemeV2.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
         Column(
@@ -124,7 +125,7 @@ fun HighlightMomentsCard(
                 
                 Surface(
                     color = hierarchy.secondary.primary.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = BouncerThemeV2.shapes.medium
                 ) {
                     Text(
                         text = "${moments.size} MOMENTS",
@@ -244,7 +245,7 @@ private fun MomentRow(
     Surface(
         onClick = onClick,
         color = moment.type.color.copy(alpha = 0.1f),
-        shape = RoundedCornerShape(12.dp),
+        shape = BouncerThemeV2.shapes.medium,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -415,7 +416,7 @@ fun FeaturedMomentCard(
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF0D1117)
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = BouncerThemeV2.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box {

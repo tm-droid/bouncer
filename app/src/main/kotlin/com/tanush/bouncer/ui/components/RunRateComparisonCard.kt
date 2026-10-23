@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.components
 
 import androidx.compose.animation.core.*
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -76,11 +77,11 @@ fun RunRateComparisonCard(
             .fillMaxWidth()
             .shadow(
                 elevation = 0.dp,
-                shape = RoundedCornerShape(12.dp),
+                shape = BouncerThemeV2.shapes.medium,
                 spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
-        shape = RoundedCornerShape(12.dp),
+        shape = BouncerThemeV2.shapes.medium,
         border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(
@@ -423,7 +424,7 @@ private fun RunRateIndicator(
         )
         Surface(
             color = color.copy(alpha = 0.12f),
-            shape = RoundedCornerShape(8.dp),
+            shape = BouncerThemeV2.shapes.small,
             border = BorderStroke(0.5.dp, color.copy(alpha = 0.3f))
         ) {
             Text(

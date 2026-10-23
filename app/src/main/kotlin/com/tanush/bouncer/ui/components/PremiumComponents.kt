@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.components
 
 import androidx.compose.animation.core.*
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -156,11 +157,11 @@ fun LiveBadge(
         modifier = modifier
             .shadow(
                 elevation = 16.dp,
-                shape = RoundedCornerShape(12.dp),
+                shape = BouncerThemeV2.shapes.medium,
                 spotColor = colors.statusLive.copy(alpha = glowAlpha)
             ),
         color = colors.statusLive,
-        shape = RoundedCornerShape(12.dp)
+        shape = BouncerThemeV2.shapes.medium
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),

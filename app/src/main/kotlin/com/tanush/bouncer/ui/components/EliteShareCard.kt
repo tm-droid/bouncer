@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.components
 
 import android.content.Context
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -147,7 +148,7 @@ fun EliteShareCardPreview(
                 if (data.isLive) {
                     Box(
                         modifier = Modifier
-                            .background(colors.statusLive, RoundedCornerShape(8.dp))
+                            .background(colors.statusLive, BouncerThemeV2.shapes.small)
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -339,9 +340,9 @@ fun EliteShareCardPreview(
                                     GoldPrimary.copy(alpha = 0.1f)
                                 )
                             ),
-                            RoundedCornerShape(12.dp)
+                            BouncerThemeV2.shapes.medium
                         )
-                        .border(1.dp, GoldPrimary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                        .border(1.dp, GoldPrimary.copy(alpha = 0.3f), BouncerThemeV2.shapes.medium)
                         .padding(16.dp)
                 ) {
                     Column(
@@ -424,7 +425,7 @@ fun EliteShareCardPreview(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.goldPrimary
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = BouncerThemeV2.shapes.medium
             ) {
                 Icon(
                     imageVector = Icons.Default.Share,

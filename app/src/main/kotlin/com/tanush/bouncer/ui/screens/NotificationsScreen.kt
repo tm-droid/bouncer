@@ -147,7 +147,7 @@ private fun EventChip(type: String) {
     val (fill, glyph, icon) = eventChipSpec(type, colors)
     val ink = if (fill == colors.surfaceVariant) colors.textSecondary else ballChipInk(fill)
     Box(
-        modifier = Modifier.size(CHIP).clip(RoundedCornerShape(8.dp)).background(fill),
+        modifier = Modifier.size(CHIP).clip(BouncerThemeV2.shapes.small).background(fill),
         contentAlignment = Alignment.Center,
     ) {
         if (glyph != null) {

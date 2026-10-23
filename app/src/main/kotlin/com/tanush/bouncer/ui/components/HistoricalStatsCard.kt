@@ -21,8 +21,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -30,10 +28,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.R
-import com.tanush.bouncer.ui.components.CoilImage
-import coil.request.ImageRequest
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import com.tanush.bouncer.ui.components.v2.TeamCrest
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
@@ -100,10 +97,10 @@ fun HistoricalStatsCard(
             .fillMaxWidth()
             .shadow(
                 elevation = 0.dp,
-                shape = RoundedCornerShape(12.dp),
+                shape = BouncerThemeV2.shapes.medium,
                 spotColor = Color.Transparent
             ),
-        shape = RoundedCornerShape(12.dp),
+        shape = BouncerThemeV2.shapes.medium,
         color = BouncerThemeV2.colors.highlight.copy(alpha = 0.05f)
     ) {
         Column(
@@ -243,48 +240,7 @@ private fun TeamHistoryInfo(
                 )
             }
             
-            if (logoUrl != null) {
-                CoilImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(logoUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = name,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(colors.glassBorder.copy(alpha = 0.1f))
-                        .border(
-                            width = if (isLeading) 2.dp else 1.dp,
-                            color = if (isLeading) BouncerThemeV2.colors.onSurface else colors.glassBorder.copy(alpha = 0.3f),
-                            shape = CircleShape
-                        )
-                        .padding(4.dp),
-                    contentScale = ContentScale.Fit
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            color = if (isLeading) BouncerThemeV2.colors.surfaceVariant else colors.glassBorder.copy(alpha = 0.1f),
-                            shape = CircleShape
-                        )
-                        .border(
-                            width = if (isLeading) 2.dp else 1.dp,
-                            color = if (isLeading) BouncerThemeV2.colors.onSurface else colors.glassBorder.copy(alpha = 0.3f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = name.take(2).uppercase(),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isLeading) BouncerThemeV2.colors.onSurface else colors.textSecondary
-                    )
-                }
-            }
+            TeamCrest(teamName = name, logoUrl = logoUrl, size = 48.dp, ring = isLeading)
         }
         
         Text(
@@ -349,7 +305,7 @@ private fun WinRatioBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(16.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(BouncerThemeV2.shapes.small)
                 .background(colors.glassBorder.copy(alpha = 0.2f))
         ) {
             // Team 1 section
@@ -465,7 +421,7 @@ private fun RecentMatchChip(
     
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
+        shape = BouncerThemeV2.shapes.medium,
         color = chipColor.copy(alpha = 0.1f)
     ) {
         Column(
@@ -473,7 +429,7 @@ private fun RecentMatchChip(
                 .border(
                     width = 1.dp,
                     color = chipColor.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = BouncerThemeV2.shapes.medium
                 )
                 .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -563,7 +519,7 @@ private fun FormatStatItem(
     
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
+        shape = BouncerThemeV2.shapes.medium,
         color = colors.glassBorder.copy(alpha = 0.1f)
     ) {
         Column(
@@ -627,7 +583,7 @@ private fun VenueHistorySection(
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = BouncerThemeV2.shapes.medium,
         color = BouncerThemeV2.colors.onSurface.copy(alpha = 0.05f)
     ) {
         Row(
@@ -636,7 +592,7 @@ private fun VenueHistorySection(
                 .border(
                     width = 1.dp,
                     color = Color.Transparent,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = BouncerThemeV2.shapes.medium
                 )
                 .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,

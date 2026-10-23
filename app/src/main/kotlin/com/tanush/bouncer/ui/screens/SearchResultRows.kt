@@ -187,7 +187,7 @@ private fun SearchQueryField(
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(BouncerThemeV2.shapes.medium)
             .background(colors.surfaceVariant)
             .padding(horizontal = spacing.md, vertical = spacing.sm),
     ) {
@@ -415,7 +415,7 @@ internal fun SeriesSearchRow(
         Box(
             modifier = Modifier
                 .size(AVATAR)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(BouncerThemeV2.shapes.small)
                 .background(colors.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {

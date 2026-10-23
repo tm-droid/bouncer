@@ -18,8 +18,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -27,13 +25,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.R
-import com.tanush.bouncer.ui.components.CoilImage
-import coil.request.ImageRequest
-import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.GoldPrimary
-import com.tanush.bouncer.ui.components.v2.rememberCrestTint
+import com.tanush.bouncer.ui.components.v2.TeamCrest
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
@@ -65,7 +60,6 @@ fun HeadToHeadCard(
     team2Color: Color = BouncerDesignSystem.colors.statusInfo,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
     val team1 = match.teams.firstOrNull()
@@ -80,11 +74,11 @@ fun HeadToHeadCard(
             .fillMaxWidth()
             .shadow(
                 elevation = 0.dp,
-                shape = RoundedCornerShape(12.dp),
+                shape = BouncerThemeV2.shapes.medium,
                 spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f)
             ),
         colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
-        shape = RoundedCornerShape(12.dp),
+        shape = BouncerThemeV2.shapes.medium,
         border = BorderStroke(
             0.5.dp,
             Brush.linearGradient(
@@ -132,7 +126,6 @@ fun HeadToHeadCard(
                 totalMatches = stats.totalMatches,
                 team1Color = team1Color,
                 team2Color = team2Color,
-                context = context
             )
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -222,7 +215,6 @@ private fun TeamWinsComparison(
     totalMatches: Int,
     team1Color: Color,
     team2Color: Color,
-    context: android.content.Context
 ) {
     val colors = BouncerDesignSystem.colors
     Row(
@@ -235,7 +227,6 @@ private fun TeamWinsComparison(
             team = team1,
             wins = team1Wins,
             color = team1Color,
-            context = context,
             alignment = Alignment.Start
         )
         
@@ -268,7 +259,6 @@ private fun TeamWinsComparison(
             team = team2,
             wins = team2Wins,
             color = team2Color,
-            context = context,
             alignment = Alignment.End
         )
     }
@@ -279,7 +269,6 @@ private fun TeamWinColumn(
     team: CricketMatch.Team?,
     wins: Int,
     color: Color,
-    context: android.content.Context,
     alignment: Alignment.Horizontal
 ) {
     val colors = BouncerDesignSystem.colors
@@ -287,35 +276,7 @@ private fun TeamWinColumn(
         horizontalAlignment = alignment,
         modifier = Modifier.width(100.dp)
     ) {
-        // Logo
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(64.dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            color.copy(alpha = 0.15f),
-                            color.copy(alpha = 0.05f),
-                            Color.Transparent
-                        )
-                    ),
-                    CircleShape
-                )
-                .border(1.dp, color.copy(alpha = 0.2f), CircleShape)
-        ) {
-            val url = TeamLogoManager.getBestLogoUrl(team?.name, team?.logoUrl, 128, 128)
-            CoilImage(
-                model = if (url == null) null else ImageRequest.Builder(context)
-                    .data(url)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = team?.name,
-                modifier = Modifier.size(40.dp),
-                contentScale = ContentScale.Fit,
-                colorFilter = rememberCrestTint(url),
-            )
-        }
+        TeamCrest(teamName = team?.name.orEmpty(), logoUrl = team?.logoUrl, size = 56.dp, ring = true, acronym = team?.acronym)
         
         Spacer(modifier = Modifier.height(12.dp))
         
@@ -492,8 +453,8 @@ private fun LastFiveResults(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .background(color.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
-                    .border(1.dp, color.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
+                    .background(color.copy(alpha = 0.15f), BouncerThemeV2.shapes.medium)
+                    .border(1.dp, color.copy(alpha = 0.3f), BouncerThemeV2.shapes.medium),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -510,8 +471,8 @@ private fun LastFiveResults(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .background(colors.surface1, RoundedCornerShape(12.dp))
-                    .border(0.5.dp, colors.glassBorder.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                    .background(colors.surface1, BouncerThemeV2.shapes.medium)
+                    .border(0.5.dp, colors.glassBorder.copy(alpha = 0.2f), BouncerThemeV2.shapes.medium),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -625,7 +586,7 @@ fun HeadToHeadChip(
     Surface(
         modifier = modifier,
         color = BouncerThemeV2.colors.surfaceVariant,
-        shape = RoundedCornerShape(8.dp),
+        shape = BouncerThemeV2.shapes.small,
         border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Row(

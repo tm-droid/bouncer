@@ -32,7 +32,7 @@ internal fun SummaryResultCard(result: SummaryResult, match: CricketMatch, modif
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(colors.surface, RoundedCornerShape(12.dp))
+            .background(colors.surface, BouncerThemeV2.shapes.medium)
             .padding(spacing.lg),
     ) {
         ResultHeadline(result, match)

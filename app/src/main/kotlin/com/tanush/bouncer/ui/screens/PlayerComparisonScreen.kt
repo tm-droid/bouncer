@@ -368,7 +368,7 @@ private fun PlayerSearchBox(
                 focusedPlaceholderColor = colors.textSecondary,
                 unfocusedPlaceholderColor = colors.textSecondary,
             ),
-            shape = RoundedCornerShape(12.dp),
+            shape = BouncerThemeV2.shapes.medium,
         )
 
         if (searching) {

@@ -100,7 +100,7 @@ fun NotificationsOffNotice(access: NotificationAccess, modifier: Modifier = Modi
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(colors.surfaceVariant, RoundedCornerShape(12.dp))
+            .background(colors.surfaceVariant, BouncerThemeV2.shapes.medium)
             .padding(start = spacing.md, end = spacing.xs, top = spacing.xs, bottom = spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
