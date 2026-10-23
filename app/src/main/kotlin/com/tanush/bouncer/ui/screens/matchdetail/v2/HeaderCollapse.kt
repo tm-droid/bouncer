@@ -123,6 +123,7 @@ internal class HeaderCollapseState(private val scope: CoroutineScope) {
             Offset(0f, math.consumePost(available.y).also { publish() })
 
         override suspend fun onPreFling(available: Velocity): Velocity {
+            if (pagerFlingDuringSettle(available)) return Velocity.Zero
             if (math.offset != 0f && math.offset != -math.range) animateTo(math.settleTarget(available.y))
             return Velocity.Zero
         }
@@ -130,10 +131,16 @@ internal class HeaderCollapseState(private val scope: CoroutineScope) {
         // A fling that scrolls the list to its top ends with velocity left over; without this the
         // header stayed collapsed after a long list (Commentary) was flung back up.
         override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+            if (pagerFlingDuringSettle(available)) return Velocity.Zero
             math.settleAfterFling(available.y)?.let { animateTo(it) }
             return Velocity.Zero
         }
     }
+
+    // A tab swipe changes page mid-drag, which starts expand(); the pager's release then flings here
+    // with y = 0 while the header is part open, and settling to the nearer end collapsed it again.
+    private fun pagerFlingDuringSettle(available: Velocity): Boolean =
+        available.y == 0f && settleJob?.isActive == true
 
     private fun animateTo(target: Float) {
         settleJob?.cancel()
