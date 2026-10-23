@@ -51,7 +51,7 @@ private fun HeroInningsScore(
 ) {
     val current = innings.last()
     val overs = team.overs.takeIf { it.isNotBlank() && it != NOT_STARTED_OVERS }?.let { displayOvers(it) }
-    val sentence = scoreSentence(team.name.ifBlank { team.acronym }, current.runs, current.wickets, overs)
+    val sentence = scoreSentence(team.name.ifBlank { team.acronym }, current.runs, spokenWickets(current, isTest), overs)
     Column(
         modifier = Modifier.scoreSemantics(sentence),
         horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start,

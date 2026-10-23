@@ -30,6 +30,7 @@ internal fun MatchDetailViewModel.UiState.withCricsheet(match: CricketMatch, his
         commentaryError = null,
         pastFeedSource = PastFeedSource.CRICSHEET,
         hasOlderCommentary = false,
+        liveVenue = venueOf(history),
         liveTeam1Score = score1,
         liveTeam1Overs = overs1,
         liveTeam2Score = score2,
@@ -37,6 +38,13 @@ internal fun MatchDetailViewModel.UiState.withCricsheet(match: CricketMatch, his
         liveStatus = resultText(history),
         loadError = null,
     )
+}
+
+/** "Melbourne Cricket Ground", or "Wankhede Stadium, Mumbai" when the file names a city the ground's name lacks. */
+internal fun venueOf(history: HistoryMatch): String? {
+    val ground = history.ven?.takeIf { it.isNotBlank() } ?: return null
+    val city = history.city?.takeIf { it.isNotBlank() && !ground.contains(it, ignoreCase = true) }
+    return if (city == null) ground else "$ground, $city"
 }
 
 /** Reads the match's one Cricsheet file and fills the screen from it, or says it could not be read. */

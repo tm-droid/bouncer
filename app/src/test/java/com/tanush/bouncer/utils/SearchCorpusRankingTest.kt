@@ -44,6 +44,25 @@ class SearchCorpusRankingTest {
         )
 
     @Test
+    fun `a country name finds the senior side before its A, age-group and women's sides`() {
+        // The loaded list is full of the other sides: more fixtures must not push the country down.
+        val loaded = listOf(
+            match("1", "India A", "Australia A"), match("2", "India A", "Australia A"),
+            match("3", "India Women", "Australia Women"), match("4", "India Under-19", "Australia Under-19"),
+            match("5", "India", "Australia"),
+        )
+        val corpus = SearchRepository.buildTeamCorpus(loaded, curated + ("Australia" to "AUS"))
+        val ranked = { q: String ->
+            runBlocking { SearchRepository.search(q, loaded, emptyList(), corpus).teams.map { it.teamName } }
+        }
+        assertEquals("India", ranked("india").first())
+        assertEquals("Australia", ranked("australia").first())
+        assertEquals("India", ranked("ind").first())
+        assertTrue("India" in ranked("ind v aus 2011 final"))
+        assertTrue("Australia" in ranked("ind v aus 2011 final"))
+    }
+
+    @Test
     fun `a curated team code finds its team first`() {
         assertEquals("Royal Challengers Bengaluru", teamSearch("rcb").first())
         assertEquals("Chennai Super Kings", teamSearch("CSK").first())

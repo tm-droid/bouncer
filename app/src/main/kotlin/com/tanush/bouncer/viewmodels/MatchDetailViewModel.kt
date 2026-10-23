@@ -95,6 +95,8 @@ class MatchDetailViewModel(
          * for it, and labels Cricsheet's. Null for the table's feed.
          */
         val pastFeedSource: PastFeedSource? = null,
+        /** The ground of a match the list row did not name (a Cricsheet-only past match); null otherwise. */
+        val liveVenue: String? = null,
         val liveTeam1Score: String = "",
         val liveTeam2Score: String = "",
         val liveTeam1Overs: String = "",

@@ -55,4 +55,30 @@ class VenueKeyTest {
         assertEquals("Test", HistoryRecords.venueFormat("Test", true, all))
         assertNull(HistoryRecords.venueFormat("Hundred", false, all))
     }
+
+    /** Rows copied from the live `idx/venues.json`: a ground appears with and without a city. */
+    private val live = HistoryRecords.parseVenues(
+        """
+        [["wankhede-stadium-mumbai","Wankhede Stadium","Mumbai",182],["wankhede-stadium","Wankhede Stadium",null,31],
+         ["melbourne-cricket-ground-melbourne","Melbourne Cricket Ground","Melbourne",102],
+         ["melbourne-cricket-ground","Melbourne Cricket Ground",null,90],
+         ["eden-gardens-kolkata","Eden Gardens","Kolkata",159],["eden-gardens","Eden Gardens",null,17],
+         ["m-chinnaswamy-stadium-bangalore","M Chinnaswamy Stadium","Bangalore",90],
+         ["m-chinnaswamy-stadium-bengaluru","M Chinnaswamy Stadium","Bengaluru",83],
+         ["ma-chidambaram-stadium-chennai","MA Chidambaram Stadium, Chepauk","Chennai",141]]
+        """.trimIndent(),
+    )!!
+
+    @Test fun `Cricbuzz's ground text resolves to the row with its city`() {
+        fun live(text: String) = VenueKey.lookup(live, text)?.key
+        assertEquals("wankhede-stadium-mumbai", live("Wankhede Stadium, Mumbai"))
+        assertEquals("melbourne-cricket-ground-melbourne", live("Melbourne Cricket Ground, Melbourne"))
+        assertEquals("eden-gardens-kolkata", live("Eden Gardens, Kolkata"))
+        assertEquals("m-chinnaswamy-stadium-bengaluru", live("M Chinnaswamy Stadium, Bengaluru"))
+        assertEquals("ma-chidambaram-stadium-chennai", live("MA Chidambaram Stadium, Chennai"))
+    }
+
+    @Test fun `a Cricsheet ground with no city resolves to its own row`() {
+        assertEquals("melbourne-cricket-ground", VenueKey.lookup(live, "Melbourne Cricket Ground")?.key)
+    }
 }

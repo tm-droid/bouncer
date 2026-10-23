@@ -36,6 +36,13 @@ fun scoreSentenceSpec(team: String, runs: Int?, wickets: Int?, overs: String?): 
     return ScoreSentenceSpec(res, args)
 }
 
+/**
+ * The wickets to speak for [innings]. A Test innings that omits its count is a completed one
+ * ("333 & 240": Cricbuzz's and Cricsheet's way of writing ten down), so it is all out, not "240 for 0".
+ */
+fun spokenWickets(innings: InningsScore, isTest: Boolean): Int? =
+    innings.wickets ?: if (isTest) ALL_OUT_WICKETS else null
+
 @Composable
 fun scoreSentence(team: String, runs: Int?, wickets: Int?, overs: String?): String {
     val spec = scoreSentenceSpec(team, runs, wickets, overs)

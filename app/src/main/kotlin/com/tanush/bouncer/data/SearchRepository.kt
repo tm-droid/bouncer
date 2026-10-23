@@ -495,6 +495,21 @@ object SearchRepository {
         return if (match.isUpcoming) start else -start
     }
 
+    /**
+     * What a team can be matched on. Facets and "v" name no team: "ind v aus 2011 final" scored
+     * whole matched only India A, Under-19 and Women, whose extra words happened to fit. Each side
+     * of a pair is a needle of its own.
+     */
+    private fun teamNeedles(q: String): List<String> {
+        val parsed = parseQuery(q)
+        return (listOf(q) + (parsed.pair?.toList() ?: listOf(parsed.entityText))).distinct()
+    }
+
+    private fun teamScore(needle: String, team: TeamEntry): Double {
+        val nameScore = SearchScore.of(needle, team.normalized)
+        return if (team.normalizedAcronym == needle) maxOf(nameScore, SearchScore.ACRONYM) else nameScore
+    }
+
     private fun searchTeams(
         q: String,
         teams: List<TeamEntry>,
@@ -508,9 +523,9 @@ object SearchRepository {
             .associate { normalizeForSearch(it.name) to it.logoUrl }
         // The corpus lists loaded sides first, then the curated asset, so its order stands in for popularity.
         val order = HashMap<String, Int>().also { map -> teams.forEachIndexed { i, t -> map.putIfAbsent(t.name, i) } }
+        val needles = teamNeedles(q)
         return teams.mapNotNull { team ->
-            val nameScore = SearchScore.of(q, team.normalized)
-            val score = if (team.normalizedAcronym == q) maxOf(nameScore, SearchScore.ACRONYM) else nameScore
+            val score = needles.maxOf { teamScore(it, team) }
             if (score <= ENTITY_THRESHOLD) return@mapNotNull null
             SearchResult.TeamResult(
                 teamName = team.name,

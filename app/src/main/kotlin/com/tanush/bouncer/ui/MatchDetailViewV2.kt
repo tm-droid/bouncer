@@ -155,6 +155,7 @@ fun MatchDetailViewV2(
     val liveMatch = if (match.teams.size >= 2) {
         match.copy(
             currentStatus = liveStatus,
+            venue = match.venue.ifBlank { uiState.liveVenue.orEmpty() },
             winProbability = liveWinProbability,
             winProbabilityDraw = liveDrawProbability,
             winProbabilityIsPrematch = prematch,

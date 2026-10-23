@@ -57,13 +57,20 @@ class PastMatchIndex private constructor(
         val words = HashMap<String, MutableList<Int>>()
         val teams = HashMap<String, MutableList<Int>>()
         val lastDay = HashMap<String, LocalDate>()
+        val eventSides = HashMap<String, MutableSet<String>>()
         entries.forEachIndexed { i, entry ->
             entry.words.forEach { words.getOrPut(it) { mutableListOf() } += i }
             listOf(entry.team1, entry.team2).distinct().forEach { teams.getOrPut(it) { mutableListOf() } += i }
             val date = entry.row.date
-            if (entry.eventKey != null && date != null) lastDay.merge(entry.eventKey, date) { a, b -> maxOf(a, b) }
+            if (entry.eventKey != null && date != null) {
+                lastDay.merge(entry.eventKey, date) { a, b -> maxOf(a, b) }
+                eventSides.getOrPut(entry.eventKey) { HashSet() }.apply { add(entry.team1); add(entry.team2) }
+            }
         }
-        entries.forEach { it.endsEvent = it.eventKey != null && lastDay[it.eventKey] == it.row.date }
+        entries.forEach {
+            it.endsEvent = it.eventKey != null && lastDay[it.eventKey] == it.row.date &&
+                (eventSides[it.eventKey]?.size ?: 0) >= TOURNAMENT_SIDES
+        }
         wordIndex = WordPostings(words.mapValues { it.value.toIntArray() })
         byTeam = teams.mapValues { it.value.toIntArray() }
     }
@@ -78,7 +85,10 @@ class PastMatchIndex private constructor(
         val eventKey: String? = row.date?.let { d -> event.takeIf { it.isNotEmpty() }?.let { "$it|${d.year}" } }
         val mentionsFinal = Regex("""(^| )final""").containsMatchIn(event)
 
-        /** Last match of its event that year: a tournament's final, as far as the index can tell. */
+        /**
+         * Last match of its event that year, in an event of three or more sides: a tournament's
+         * final, as far as the index can tell. A two-side series has a last match, not a final.
+         */
         var endsEvent = false
     }
 
@@ -101,7 +111,7 @@ class PastMatchIndex private constructor(
             .filter { (entry, _) -> visible(entry.row, loadedIds, linked) }
             .map { (entry, base) ->
                 SearchRepository.SearchResult.PastMatchResult(
-                    entry.row, minOf(1.0, base + FACET_BOOST * facetHits(parsed, entry)) * SECTION_WEIGHT,
+                    entry.row, minOf(1.0, base + facetBoost(parsed, entry)) * SECTION_WEIGHT,
                 )
             }
             .sortedWith(
@@ -129,7 +139,7 @@ class PastMatchIndex private constructor(
     private fun nearby(match: CricketMatch): List<HistoryIndexRow> = nearby(csByDate, match)
 
     private fun candidates(parsed: ParsedQuery, teams: List<SearchRepository.TeamEntry>): Map<Int, Double> {
-        pairSides(parsed, teams)?.let { (a, b) -> return pairCandidates(a, b) }
+        pairSides(parsed, teams)?.let { (a, b) -> return pairCandidates(a, b, wantsWomen(parsed, teams)) }
         if (parsed.words.isEmpty()) return facetCandidates(parsed)
         val merged = HashMap<Int, Double>()
         for (variant in expandedSearchQueries(parsed.entityText)) {
@@ -149,11 +159,12 @@ class PastMatchIndex private constructor(
         return if (first.isEmpty() || second.isEmpty()) null else first to second
     }
 
-    private fun pairCandidates(a: Set<String>, b: Set<String>): Map<Int, Double> {
+    private fun pairCandidates(a: Set<String>, b: Set<String>, women: Boolean): Map<Int, Double> {
         val out = HashMap<Int, Double>()
         for (team in a) {
             byTeam[team]?.forEach { i ->
                 val e = entries[i]
+                if (e.row.women != women) return@forEach
                 val other = if (e.team1 == team) e.team2 else e.team1
                 if (other in b || (e.team1 in b && e.team2 in a)) out[i] = PAIR_SCORE
             }
@@ -170,6 +181,19 @@ class PastMatchIndex private constructor(
         return out
     }
 
+    /**
+     * Year outweighs format outweighs stage, and the three together stay under the 0.05 between a
+     * pair's score and 1.0, so a boost is never clamped away and always beats recency.
+     */
+    private fun facetBoost(parsed: ParsedQuery, entry: Entry): Double {
+        val row = entry.row
+        var boost = 0.0
+        if (parsed.year != null && row.date?.year == parsed.year) boost += YEAR_BOOST
+        if (parsed.format != null && formatMatches(parsed.format, row.format)) boost += FORMAT_BOOST
+        if (parsed.stage == "FINAL" && (entry.mentionsFinal || entry.endsEvent)) boost += STAGE_BOOST
+        return boost
+    }
+
     private fun facetHits(parsed: ParsedQuery, entry: Entry): Int {
         val row = entry.row
         var hits = 0
@@ -177,11 +201,6 @@ class PastMatchIndex private constructor(
         if (parsed.format != null && formatMatches(parsed.format, row.format)) hits++
         if (parsed.stage == "FINAL" && (entry.mentionsFinal || entry.endsEvent)) hits++
         return hits
-    }
-
-    private fun formatMatches(wanted: String, format: String?): Boolean = when (wanted) {
-        "T20I" -> format.equals("T20I", true) || format.equals("IT20", true)
-        else -> format.equals(wanted, true)
     }
 
     companion object {
@@ -192,7 +211,10 @@ class PastMatchIndex private constructor(
         private const val MAX_RESULTS = 50
         private const val PAIR_SCORE = 0.95
         private const val FACET_ONLY_SCORE = 0.5
-        private const val FACET_BOOST = 0.02
+        private const val YEAR_BOOST = 0.02
+        private const val FORMAT_BOOST = 0.015
+        private const val STAGE_BOOST = 0.01
+        private const val TOURNAMENT_SIDES = 3
 
         /** Past matches rank below anything current in the same query, which the search screen sorts by score. */
         private const val SECTION_WEIGHT = 0.5
@@ -265,6 +287,19 @@ class PastMatchIndex private constructor(
     }
 }
 
+/** "India" is the men's side; the women's match needs "women" typed, or a side that resolves to one. */
+private fun wantsWomen(parsed: ParsedQuery, teams: List<SearchRepository.TeamEntry>): Boolean {
+    if (parsed.words.any { it in WOMEN_WORDS }) return true
+    val (a, b) = parsed.pair ?: return false
+    return (resolveSide(a, teams) + resolveSide(b, teams)).all { normalizeForSearch(it).split(' ').any { w -> w in WOMEN_WORDS } }
+}
+
+private fun formatMatches(wanted: String, format: String?): Boolean = when (wanted) {
+    "T20I" -> format.equals("T20I", true) || format.equals("IT20", true)
+    else -> format.equals(wanted, true)
+}
+
+private val WOMEN_WORDS = setOf("women", "womens", "woman", "ladies")
 private const val MIN_PREFIX_LENGTH = 2
 private const val TYPO_BELOW = 10
 private const val EXACT_SCORE = 1.0
