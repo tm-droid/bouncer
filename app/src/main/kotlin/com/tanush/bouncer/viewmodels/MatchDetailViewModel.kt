@@ -23,6 +23,7 @@ import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.data.history.HistoryRepository
 import com.tanush.bouncer.data.history.PastFeedSource
 import com.tanush.bouncer.data.history.PastMatchSource
+import com.tanush.bouncer.data.history.isCricsheetOnly
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
 import com.tanush.bouncer.data.remote.LiveDetailSnapshot
@@ -258,7 +259,11 @@ class MatchDetailViewModel(
     val commentaryEvents = CommentaryEventPager(match.id, liveSource, viewModelScope)
 
     init {
-        viewModelScope.launch(bouncerExceptionHandler) { loadInitial() }
+        // A Cricsheet-only match has one source, read once: branching before loadInitial is what
+        // keeps every Appwrite, Cricbuzz and Cricinfo call in it off a `cs-` id.
+        viewModelScope.launch(bouncerExceptionHandler) {
+            if (match.isCricsheetOnly) _uiState.loadCricsheet(match, pastSource) else loadInitial()
+        }
         // Per-match subscriptions: collection IS the subscription lifetime, and viewModelScope's
         // cancellation in onCleared() is the release boundary — so leaving the screen drops the
         // Realtime claim without any Compose-side plumbing. No client-side filter any more; the
@@ -365,7 +370,8 @@ class MatchDetailViewModel(
         // The team sheet: one Cricbuzz page, no Appwrite. Asked again while only the squads are
         // out, because the elevens replace them at the toss (the source keeps a squad that long).
         // Held here, not fetched by the tab, because whether there is a Squads tab depends on it.
-        viewModelScope.launch(bouncerExceptionHandler) {
+        // Not for a Cricsheet-only match: Cricbuzz has no page for a `cs-` id.
+        if (!match.isCricsheetOnly) viewModelScope.launch(bouncerExceptionHandler) {
             while (isActive) {
                 RealtimeLifecycleController.foreground.first { it }
                 val sheet = MatchSquadsSource.get(match.id)
@@ -553,7 +559,9 @@ class MatchDetailViewModel(
             scorecardLoading = true,
             commentaryLoading = true,
         )}
-        viewModelScope.launch(bouncerExceptionHandler) { loadInitial() }
+        viewModelScope.launch(bouncerExceptionHandler) {
+            if (match.isCricsheetOnly) _uiState.loadCricsheet(match, pastSource) else loadInitial()
+        }
     }
 
     // Live snapshot updates (one-shot + Realtime) flow through here. Null fields keep prior values.

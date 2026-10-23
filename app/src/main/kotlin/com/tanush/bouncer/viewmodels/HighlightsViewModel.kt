@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.AppResult
+import com.tanush.bouncer.data.history.CRICSHEET_PREFIX
 import com.tanush.bouncer.data.local.BouncerDatabase
 import io.sentry.Sentry
 import com.tanush.bouncer.data.local.entities.HighlightEntity
@@ -42,6 +43,8 @@ class HighlightsViewModel(
 
     // One-shot trigger that refreshes Room from Appwrite; results surface via the [highlights] Flow.
     private fun refresh() {
+        // No Appwrite row exists for a Cricsheet-only match, so there is nothing to ask for.
+        if (bouncerMatchId.startsWith(CRICSHEET_PREFIX)) return
         viewModelScope.launch(bouncerExceptionHandler) {
             val result = repo.fetchForMatch(bouncerMatchId)
             if (result is AppResult.Error) Sentry.captureException(result.exception)

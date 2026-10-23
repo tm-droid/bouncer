@@ -2,6 +2,7 @@ package com.tanush.bouncer.data.remote
 
 import com.tanush.bouncer.data.AppJson
 import com.tanush.bouncer.data.history.ArchiveClient
+import com.tanush.bouncer.data.history.CRICSHEET_PREFIX
 import com.tanush.bouncer.models.MatchContext
 import com.tanush.bouncer.utils.BoundedLruCache
 
@@ -32,6 +33,8 @@ object MatchContextStore {
      *   for a finished match the archive's copy (`ArchiveClient`) answers after that.
      */
     suspend fun get(matchId: String, finished: Boolean = false, nowMs: Long = System.currentTimeMillis()): MatchContext? {
+        // A Cricsheet-only match has no context file anywhere.
+        if (matchId.startsWith(CRICSHEET_PREFIX)) return null
         synchronized(cache) { cache[matchId] }?.let { (at, context) ->
             if (nowMs - at < MEMORY_TTL_MS) return context
         }

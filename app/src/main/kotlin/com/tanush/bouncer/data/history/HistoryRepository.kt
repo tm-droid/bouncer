@@ -25,6 +25,9 @@ interface PastMatchSource {
 
     suspend fun scorecard(matchId: String): Scorecard?
 
+    /** A Cricsheet match by its own id (no `cs-` prefix), for a match that exists nowhere else. */
+    suspend fun cricsheetMatch(id: String): HistoryMatch? = null
+
     object None : PastMatchSource {
         override suspend fun feed(match: CricketMatch): PastFeed? = null
 
@@ -46,6 +49,8 @@ object HistoryRepository : PastMatchSource {
         }
         return ballByBall(match)?.let { PastFeed(it, PastFeedSource.CRICSHEET) }
     }
+
+    override suspend fun cricsheetMatch(id: String): HistoryMatch? = HistoryClient.match(id)
 
     /** The archive's final card. */
     override suspend fun scorecard(matchId: String): Scorecard? = ArchiveClient.match(matchId)?.scorecard()

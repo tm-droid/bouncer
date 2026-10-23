@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit
 object HttpClientProvider {
     private const val TAG = "HttpClientProvider"
     private const val CACHE_SIZE_BYTES = 10L * 1024 * 1024
+    private const val STATIC_SITE_CACHE_SIZE_BYTES = 32L * 1024 * 1024
     // A conditional GET that found nothing new. Not successful by OkHttp's 2xx test, and not a failure.
     private const val HTTP_NOT_MODIFIED = 304
 
@@ -172,6 +173,16 @@ object HttpClientProvider {
             }
             .addInterceptor(sentryBreadcrumbInterceptor)
             .addInterceptor(loggingInterceptor)
+            .build()
+    }
+
+    /**
+     * [sharedClient] with a disk cache of its own for the GitHub Pages sites (`StaticSite`), so the
+     * weekly indexes cannot be evicted by Cricbuzz pages and images filling the 10 MB shared one.
+     */
+    val staticSiteClient: OkHttpClient by lazy {
+        sharedClient.newBuilder()
+            .cache(cacheDir?.let { okhttp3.Cache(java.io.File(it, "static-sites"), STATIC_SITE_CACHE_SIZE_BYTES) })
             .build()
     }
 }

@@ -24,13 +24,27 @@ internal object StaticSite {
     private const val TAG = "StaticSite"
     private const val HTTP_NOT_FOUND = 404
 
-    suspend fun fetch(baseUrl: String, path: String, maxAgeSeconds: Int): ByteArray? = withContext(Dispatchers.IO) {
+    /**
+     * [maxStaleSeconds] lets a cached copy up to that much past its freshness stand in without a
+     * request, which also serves it offline: the weekly indexes pass seven days.
+     */
+    suspend fun fetch(
+        baseUrl: String,
+        path: String,
+        maxAgeSeconds: Int,
+        maxStaleSeconds: Int = 0,
+    ): ByteArray? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url(baseUrl + path)
-            .cacheControl(CacheControl.Builder().maxAge(maxAgeSeconds, TimeUnit.SECONDS).build())
+            .cacheControl(
+                CacheControl.Builder()
+                    .maxAge(maxAgeSeconds, TimeUnit.SECONDS)
+                    .apply { if (maxStaleSeconds > 0) maxStale(maxStaleSeconds, TimeUnit.SECONDS) }
+                    .build(),
+            )
             .build()
         try {
-            HttpClientProvider.sharedClient.newCall(request).execute().use { response ->
+            HttpClientProvider.staticSiteClient.newCall(request).execute().use { response ->
                 when {
                     response.isSuccessful -> response.body?.bytes()
                     response.code == HTTP_NOT_FOUND -> null

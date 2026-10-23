@@ -33,6 +33,10 @@ data class ArchivedMatch(
     val rows: List<JsonObject> = emptyList(),
     val scorecard: JsonElement? = null,
     val context: JsonElement? = null,
+    /** The match-list entry it was seen under; kept as JSON, read by the surface that needs it. */
+    val meta: JsonElement? = null,
+    /** The `wpe-` win-probability log; kept as JSON, read by the graphs. */
+    val evalLog: JsonElement? = null,
 ) {
     /** The feed, newest first, the order the commentary tab reads. */
     fun commentary(): List<CommentaryEntry> =

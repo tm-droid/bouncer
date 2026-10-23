@@ -77,7 +77,7 @@ object HistoryMatchLinker {
         return QUALIFIERS.filterTo(mutableSetOf()) { q -> q.split(" ").all { it in words } }
     }
 
-    private fun sameOrRenamed(a: String, b: String): Boolean {
+    internal fun sameOrRenamed(a: String, b: String): Boolean {
         if (canonical(a) == canonical(b)) return true
         if (qualifiers(a) != qualifiers(b)) return false
         val wa = canonical(a).split(" ").filter { it.isNotBlank() && it !in NOISE && it !in QUALIFIERS }.toSet()

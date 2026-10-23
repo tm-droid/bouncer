@@ -13,6 +13,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import com.tanush.bouncer.data.history.PastFeedSource
+import com.tanush.bouncer.data.history.isCricsheetOnly
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Notifications
@@ -304,17 +305,20 @@ fun MatchDetailViewV2(
                             Icon(Icons.Default.Share, "Share", tint = colors.onSurface)
                         }
                     }
-                    IconButton(onClick = { showReminderSheet = true }) {
-                        Icon(Icons.Default.Alarm, "Reminder", tint = colors.onSurface)
-                    }
-                    IconButton(onClick = { showNotifPrefsSheet = true }) {
-                        Icon(
-                            imageVector = if (isFollowing) Icons.Filled.Notifications else Icons.Outlined.Notifications,
-                            contentDescription = stringResource(
-                                if (isFollowing) R.string.match_stop_live_updates else R.string.match_follow_live_updates
-                            ),
-                            tint = if (isFollowing) colors.primaryText else colors.onSurface,
-                        )
+                    // A Cricsheet-only match is long over and has no id any alert could name.
+                    if (!match.isCricsheetOnly) {
+                        IconButton(onClick = { showReminderSheet = true }) {
+                            Icon(Icons.Default.Alarm, "Reminder", tint = colors.onSurface)
+                        }
+                        IconButton(onClick = { showNotifPrefsSheet = true }) {
+                            Icon(
+                                imageVector = if (isFollowing) Icons.Filled.Notifications else Icons.Outlined.Notifications,
+                                contentDescription = stringResource(
+                                    if (isFollowing) R.string.match_stop_live_updates else R.string.match_follow_live_updates
+                                ),
+                                tint = if (isFollowing) colors.primaryText else colors.onSurface,
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
