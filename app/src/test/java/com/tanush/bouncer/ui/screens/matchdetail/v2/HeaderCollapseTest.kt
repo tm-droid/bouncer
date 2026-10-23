@@ -96,4 +96,31 @@ class HeaderCollapseTest {
         assertEquals(-50f, m.offset, 0f)
         assertEquals(0.25f, m.fraction, 0.001f)
     }
+
+    @Test
+    fun `a fling that ends at the list top with leftover downward speed expands a collapsed header`() {
+        val m = math()
+        m.consumePre(-100f)
+        assertEquals(0f, m.settleAfterFling(150f)!!, 0f)
+    }
+
+    @Test
+    fun `a fling with no leftover or an upward one leaves a collapsed header alone`() {
+        val m = math()
+        m.consumePre(-100f)
+        assertEquals(null, m.settleAfterFling(0f))
+        assertEquals(null, m.settleAfterFling(-900f))
+    }
+
+    @Test
+    fun `an expanded header needs no settle after a fling`() {
+        assertEquals(null, math().settleAfterFling(800f))
+    }
+
+    @Test
+    fun `a half open header settles like a release when the fling left nothing over`() {
+        val m = math()
+        m.consumePre(-70f)
+        assertEquals(-100f, m.settleAfterFling(0f)!!, 0f)
+    }
 }

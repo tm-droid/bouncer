@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -209,6 +210,11 @@ private fun CollapsedScoreBar(
     val spacing = BouncerThemeV2.spacing
     val summary = remember(match) { collapsedSummary(match) }
     val expandLabel = stringResource(R.string.hero_expand_score)
+    // The bar shows codes; TalkBack spells a code letter by letter, so it reads the full names.
+    val spoken = summary.teams.mapIndexed { i, t ->
+        listOfNotNull(match.teams.getOrNull(i)?.name?.ifBlank { null } ?: t.label, t.score?.replace("/", " for "))
+            .joinToString(" ")
+    }.joinToString(", ")
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -226,7 +232,10 @@ private fun CollapsedScoreBar(
             color = colors.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f, fill = false).semantics { liveRegion = LiveRegionMode.Polite },
+            modifier = Modifier.weight(1f, fill = false).semantics {
+                liveRegion = LiveRegionMode.Polite
+                contentDescription = spoken
+            },
         )
         if (summary.isLive) StatusBadgeV2(MatchStatusType.Live)
         Icon(

@@ -1,6 +1,8 @@
 package com.tanush.bouncer.viewmodels
 
 import com.tanush.bouncer.ui.components.v2.FailureKind
+import com.tanush.bouncer.ui.screens.matchdetail.v2.MatchPhase
+import com.tanush.bouncer.ui.screens.matchdetail.v2.matchPhaseOf
 import com.tanush.bouncer.ui.components.v2.failureKindOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -144,6 +146,8 @@ class MatchDetailViewModel(
         val squads: MatchSquads? = null,
         /** Non-null when the initial load produced no live data at all (network-level failure). */
         val loadError: String? = null,
+        /** Why [loadError] is set: the real throwable's kind where one was seen, else Unknown. */
+        val loadErrorKind: FailureKind = FailureKind.Unknown,
         /** Non-null when the commentary feed failed and no lines are available. */
         val commentaryError: String? = null,
         /** Why [commentaryError] is set, so the tab can say offline versus server. */
@@ -419,7 +423,8 @@ class MatchDetailViewModel(
                     scorecardLoading = false,
                     // Nothing usable arrived from any source: surface it instead of a blank screen.
                     // Realtime events or a retry clear this.
-                    loadError = noLiveDataError(st),
+                    loadError = noLiveDataError(st, upcoming = matchPhaseOf(match) == MatchPhase.UPCOMING),
+                    loadErrorKind = st.commentaryErrorKind,
                 )
             }
         }
@@ -706,8 +711,12 @@ private fun milestoneTypeFor(runs: Int): MilestoneType? = when {
     else -> null
 }
 
-private fun noLiveDataError(st: MatchDetailViewModel.UiState): String? =
-    if (st.scorecard == null && st.batsmen.isEmpty() && st.commentary.isEmpty()) {
+/**
+ * An upcoming match has no scorecard, batters or commentary yet, so "nothing arrived" is the normal
+ * state and not a failure (it used to raise "offline" on every fixture, online or not).
+ */
+internal fun noLiveDataError(st: MatchDetailViewModel.UiState, upcoming: Boolean): String? =
+    if (!upcoming && st.scorecard == null && st.batsmen.isEmpty() && st.commentary.isEmpty()) {
         "Rain delay — couldn't fetch live match data. Check your connection and retry."
     } else {
         null

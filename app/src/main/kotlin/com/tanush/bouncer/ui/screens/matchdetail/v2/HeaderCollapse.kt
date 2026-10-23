@@ -21,6 +21,9 @@ import kotlin.math.abs
 /** Below this fling speed (px/s) a release settles to the nearer end; above it, to the end the fling points at. */
 internal const val SETTLE_VELOCITY_PX_PER_S = 400f
 
+/** Downward speed left after the list reached its top that is read as "bring the header back". */
+internal const val POST_FLING_EXPAND_PX_PER_S = 100f
+
 /**
  * The collapse arithmetic, free of Compose so a JVM test can drive it.
  *
@@ -54,6 +57,18 @@ internal class HeaderCollapseMath(range: Float = 0f) {
 
     fun expand() {
         offset = 0f
+    }
+
+    /**
+     * Where the header should go once a fling has ended, or null to leave it. A fling that carried
+     * on downward after the list hit its top has velocity left over: that is the reader pulling the
+     * header back, however short the leftover. Otherwise a half-open header settles like a release.
+     */
+    fun settleAfterFling(leftoverVelocityY: Float): Float? = when {
+        offset == 0f -> null
+        leftoverVelocityY > POST_FLING_EXPAND_PX_PER_S -> 0f
+        offset == -range -> null
+        else -> settleTarget(leftoverVelocityY)
     }
 
     /** Where a release should come to rest: `-range` or 0. */
@@ -98,7 +113,9 @@ internal class HeaderCollapseState(private val scope: CoroutineScope) {
     val connection = object : NestedScrollConnection {
         // Only y is read, and only y is returned, so the pager's horizontal swipes pass through.
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-            settleJob?.cancel()
+            // Horizontal pager drags and settles pass through here with y = 0; cancelling then killed the
+            // expand() a page change had just started.
+            if (available.y != 0f) settleJob?.cancel()
             return Offset(0f, math.consumePre(available.y).also { publish() })
         }
 
@@ -107,6 +124,13 @@ internal class HeaderCollapseState(private val scope: CoroutineScope) {
 
         override suspend fun onPreFling(available: Velocity): Velocity {
             if (math.offset != 0f && math.offset != -math.range) animateTo(math.settleTarget(available.y))
+            return Velocity.Zero
+        }
+
+        // A fling that scrolls the list to its top ends with velocity left over; without this the
+        // header stayed collapsed after a long list (Commentary) was flung back up.
+        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+            math.settleAfterFling(available.y)?.let { animateTo(it) }
             return Velocity.Zero
         }
     }

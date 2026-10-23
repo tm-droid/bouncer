@@ -346,7 +346,8 @@ fun MatchDetailViewV2(
             // Live-data failure: static match info below still renders; this offers the retry.
             if (uiState.loadError != null) {
                 StaleDataBanner(
-                    kind = uiState.commentaryErrorKind.takeIf { it != FailureKind.Unknown } ?: FailureKind.Offline,
+                    // Unknown claims nothing: "offline" is only said when a throwable proved it.
+                    kind = uiState.loadErrorKind.takeIf { it != FailureKind.Unknown } ?: FailureKind.Server,
                     savedAtMs = null,
                     onRetry = vm::retryInitialLoad,
                 )
