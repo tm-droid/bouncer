@@ -126,6 +126,8 @@ object SearchRepository {
         val series: List<SearchResult.SeriesResult> = emptyList(),
         val pastMatches: List<SearchResult.PastMatchResult> = emptyList(),
         val suggestion: String? = null,
+        /** Set when the query names a side Cricsheet withholds (`HistoryCoverage`); shown as one neutral row. */
+        val coverageNotice: String? = null,
     ) {
         val isEmpty: Boolean
             get() = matches.isEmpty() && teams.isEmpty() && players.isEmpty() && news.isEmpty()

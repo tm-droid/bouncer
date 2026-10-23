@@ -404,6 +404,7 @@ private fun LazyListScope.searchResults(
             )
         },
     ).sortedByDescending { it.score }.forEach { it.emit(this) }
+    results.coverageNotice?.let { notice -> item(key = "coverage_notice") { PlayerLookupRow(notice) } }
 }
 
 /**

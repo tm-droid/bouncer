@@ -3,7 +3,9 @@ package com.tanush.bouncer.viewmodels
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.tanush.bouncer.R
 import com.tanush.bouncer.data.SearchRepository
+import com.tanush.bouncer.data.history.HistoryCoverage
 import com.tanush.bouncer.data.history.PastMatchIndex
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.managers.FavouriteTeamsManager
@@ -242,6 +244,9 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                     players = mergeLocalPlayers(it.players, players.await()),
                     series = series.await(),
                     pastMatches = past.await(),
+                    coverageNotice = HistoryCoverage.missingAfghanistan(
+                        newQuery, corpus.teams, getApplication<Application>().getString(R.string.history_missing_afghanistan),
+                    ),
                 )
             }
         }
