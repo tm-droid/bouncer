@@ -45,6 +45,19 @@ class SummaryResultTest {
     )
 
     @Test
+    fun `hyphen and spacing differences between status and team name still find the winner`() {
+        val m = match("KwaZulu - Natal Inland - Tuskers won by 5 wkts").let {
+            it.copy(teams = listOf("Eastern Storm", "KwaZulu-Natal Inland - Tuskers").map { n ->
+                CricketMatch.Team(name = n, score = "", status = "", isBatting = false, logoUrl = null)
+            })
+        }
+        val r = summaryResultOf(m, card)!!
+        assertEquals(ResultKind.Won, r.kind)
+        assertEquals("KwaZulu-Natal Inland - Tuskers", r.winner)
+        assertEquals("5 wkts", r.margin)
+    }
+
+    @Test
     fun `wickets margin`() {
         val r = summaryResultOf(match("India won by 6 wkts"), card)!!
         assertEquals(ResultKind.Won, r.kind)

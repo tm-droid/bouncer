@@ -12,14 +12,23 @@ private val WON_BY = Regex("""^(.+?)\s+won\b""", RegexOption.IGNORE_CASE)
  * it — a short code, a sponsor name — because a guessed W/L is worse than a missing one.
  */
 internal fun formResult(match: CricketMatch, team: String): FormResult? {
-    if (!match.isCompleted || match.teams.none { it.name.equals(team, ignoreCase = true) }) return null
+    if (!match.isCompleted || match.teams.none { sameTeamName(it.name, team) }) return null
     val status = match.currentStatus.ifBlank { match.status }.trim()
     val winner = WON_BY.find(status)?.groupValues?.get(1)?.trim() ?: return undecidedResult(status.lowercase())
     return when {
-        winner.equals(team, ignoreCase = true) -> FormResult.WON
-        match.teams.any { it.name.equals(winner, ignoreCase = true) } -> FormResult.LOST
+        sameTeamName(winner, team) -> FormResult.WON
+        match.teams.any { sameTeamName(it.name, winner) } -> FormResult.LOST
         else -> null
     }
+}
+
+/**
+ * Case, spacing and punctuation blind: Cricbuzz spells one side "KwaZulu-Natal Inland - Tuskers" in
+ * the team row and "KwaZulu - Natal Inland - Tuskers" in the status line.
+ */
+internal fun sameTeamName(a: String, b: String): Boolean {
+    fun key(s: String) = s.filter { it.isLetterOrDigit() }.lowercase()
+    return key(a).let { it.isNotEmpty() && it == key(b) }
 }
 
 private fun undecidedResult(lower: String): FormResult? = when {
