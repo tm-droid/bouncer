@@ -32,6 +32,7 @@ paths:
 | `idx/m/YYYY-MM.json` | rows `[id, date, format, gender, team1, team2, winnerIdx, result, event, venue]` |
 | `idx/search.json` | the same rows without the venue, every match |
 | `idx/teams.json` | `[name, gender, key, matches]` |
+| `idx/venues.json` | `[key, name, city, matches]`, most played first; `key` is the `s/venue` file name |
 | `m/<id>.json` | one match: `t` teams, `p` people `[name, registryId?]`, `xi`, `o` outcome, `inn[]` with `b` deliveries, `sc` scorecard, `ov` per-over `[runs, wkts]` |
 | `s/team/<key>.json`, `s/h2h/<a>__<b>.json`, `s/venue/<key>.json`, `s/p/<registryId>.json`, `s/p/names/<letter>.json` | records |
 
@@ -44,3 +45,5 @@ paths:
 - **Players without a registry id** are left out of player records, because a bare name cannot be joined across matches.
 - **Super overs** are kept in the match file (`so: 1`) but left out of every record.
 - **Player records** (`s/p/<regId>.json`) are `{n, f:{format:[16 ints]}, tm:{side:matches}, m:[[id,date,format,team,opponent,runs,balls,out,wkts,ct]...]}`, newest match first. `m` has no result or event, so the career page joins the last 20 through `PastMatchIndex.cricsheetById` and keeps the record's own fields for a match the archive replaced. Cricsheet has no 4s/6s/5w, so `formatStatItems(hasBoundaries = false)` hides them. `names/<letter>.json` is keyed by the surname's first letter (`["V Kohli", regId, team, matches]`). Readers: `CareerStats`, `HistoryClient.names/player`.
+
+- **Team and ground records** (`HistoryRecords`). `s/team/<key>.json` `f` is `{format:[played, won, lost, tied, drawn, no result]}` and feeds the team page's Records section. A ground is found from Cricbuzz's "Name, City" through `idx/venues.json` (`VenueKey.lookup`): the exact `slug(name + " " + city)` first, else the one row whose squashed name matches and whose city agrees; two candidates give null. `s/venue` `f` is `{format:[matches, first-innings runs, first innings counted, won batting first, won chasing]}`; Tests carry no win counts. The Info tab shows this card when Cricsheet has the ground in the match's format (T20 internationals are `T20I`, league T20s `T20`), and falls back to `context.venue` otherwise, so a ground never shows two cards. Until a rebuild publishes `idx/venues.json` the lookup finds nothing and the fallback shows.

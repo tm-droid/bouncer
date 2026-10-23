@@ -61,6 +61,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tanush.bouncer.R
+import com.tanush.bouncer.data.history.FormatRecord
+import com.tanush.bouncer.data.history.HistoryRecords
+import com.tanush.bouncer.data.remote.archiveSideName
+import com.tanush.bouncer.data.remote.isWomensPair
+import com.tanush.bouncer.ui.components.v2.BouncerCard
+import com.tanush.bouncer.ui.components.v2.StatRowV2
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.v2.DelayedSkeleton
@@ -110,6 +116,11 @@ fun TeamDetailScreen(
         value = lastMatch?.let { lastElevenOf(it, teamName, MatchSquadsSource.get(it.id)) }.orEmpty()
     }
 
+    // Cricsheet's results by format; empty when it has none for the side or cannot be reached.
+    val records by produceState(initialValue = emptyList<FormatRecord>(), teamName) {
+        value = HistoryRecords.team(archiveSideName(teamName), isWomensPair(teamName, "")).orEmpty()
+    }
+
     Scaffold(
         containerColor = colors.background,
         topBar = { TeamTopBar(teamName = teamName, onBackClick = onBackClick) },
@@ -126,6 +137,7 @@ fun TeamDetailScreen(
                 teamName = teamName,
                 logoUrl = logoUrl,
                 acronym = acronym,
+                records = records,
                 onMatchClick = onMatchClick,
                 lastXi = { teamLastXiItems(lastMatch, teamName, lastXi, onPlayerClick) },
             )
@@ -141,6 +153,7 @@ private fun TeamDetailContent(
     teamName: String,
     logoUrl: String?,
     acronym: String,
+    records: List<FormatRecord>,
     onMatchClick: (CricketMatch) -> Unit,
     lastXi: LazyListScope.() -> Unit,
 ) {
@@ -179,6 +192,7 @@ private fun TeamDetailContent(
         } else {
             teamMatchSections(teamMatches, results, onMatchClick)
         }
+        teamRecordItems(records)
         lastXi()
 
         item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
@@ -202,6 +216,24 @@ private fun LazyListScope.teamMatchSections(
     item(key = "results_header") { SectionHeaderV2(title = stringResource(R.string.teams_results)) }
     items(results, key = { "r_${it.id}" }) { match ->
         MatchCardV2(match = match, onClick = { onMatchClick(match) }, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+/** "Records": one row per format, played · won · lost, with tied and drawn only when there were any. */
+private fun LazyListScope.teamRecordItems(records: List<FormatRecord>) {
+    if (records.isEmpty()) return
+    item(key = "records_header") { SectionHeaderV2(title = stringResource(R.string.teams_records)) }
+    item(key = "records_card") {
+        BouncerCard(modifier = Modifier.padding(horizontal = BouncerThemeV2.spacing.lg)) {
+            records.forEachIndexed { i, r ->
+                val parts = buildList {
+                    add(stringResource(R.string.teams_record_played_won_lost, r.played, r.won, r.lost))
+                    if (r.tied > 0) add(stringResource(R.string.teams_record_tied, r.tied))
+                    if (r.drawn > 0) add(stringResource(R.string.teams_record_drawn, r.drawn))
+                }
+                StatRowV2(label = r.format, value = parts.joinToString(" · "), showDivider = i < records.lastIndex)
+            }
+        }
     }
 }
 

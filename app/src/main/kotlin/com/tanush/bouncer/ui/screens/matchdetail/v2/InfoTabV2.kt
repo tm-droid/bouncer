@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import com.tanush.bouncer.data.history.HistoryCoverage
+import com.tanush.bouncer.data.history.HistoryRecords
+import com.tanush.bouncer.data.history.VenueRecord
 import com.tanush.bouncer.data.remote.H2HPair
 import com.tanush.bouncer.ui.components.HeadToHeadCard
 import com.tanush.bouncer.ui.components.HistoricalStatsCard
@@ -60,6 +62,15 @@ fun InfoTabV2(
     }
     val forecast = context?.forecast?.summary(System.currentTimeMillis())
     val ground = context?.venue?.takeIf { it.known && it.matches >= GROUND_MIN_MATCHES }
+    // Cricsheet's record for the ground in this format. The context's ground is the fallback, so a
+    // ground never shows two cards.
+    val record by produceState<VenueRecord?>(initialValue = null, match.venue, match.matchType) {
+        value = HistoryRecords.venue(
+            match.venue,
+            match.matchType,
+            international = match.competitionType.equals("International", ignoreCase = true),
+        )?.takeIf { it.matches >= GROUND_MIN_MATCHES }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -91,9 +102,9 @@ fun InfoTabV2(
             }
         }
         infoHeadToHeadItems(match, headToHead, context)
-        if (ground != null) {
+        if (record != null || ground != null) {
             item(key = "ground_header") { SectionHeaderV2(title = stringResource(R.string.match_info_ground_record)) }
-            item(key = "ground_card") { GroundCard(ground) }
+            item(key = "ground_card") { record?.let { CricsheetGroundCard(it) } ?: GroundCard(ground!!) }
         }
         item(key = "bottom") { Spacer(Modifier.height(spacing.xxl)) }
     }
@@ -239,6 +250,28 @@ private fun ForecastCard(forecast: ForecastSummary) {
             color = colors.textSecondary,
             modifier = Modifier.padding(spacing.md),
         )
+    }
+}
+
+/** Cricsheet's record of this ground in the format being played. */
+@Composable
+private fun CricsheetGroundCard(record: VenueRecord) {
+    val spacing = BouncerThemeV2.spacing
+    val rows = buildList {
+        add(R.string.match_info_ground_matches to record.matches.toString())
+        record.averageFirstInnings?.let { add(R.string.match_info_ground_average to it.toString()) }
+        // Tests carry no batting-first or chasing wins.
+        if (record.wonBattingFirst + record.wonChasing > 0) {
+            add(R.string.match_info_ground_bat_first to record.wonBattingFirst.toString())
+            add(R.string.match_info_ground_chasing to record.wonChasing.toString())
+        }
+    }
+    BouncerCard {
+        Spacer(Modifier.height(spacing.sm))
+        rows.forEachIndexed { i, (label, value) ->
+            StatRowV2(label = stringResource(label), value = value, showDivider = i < rows.lastIndex)
+        }
+        Spacer(Modifier.height(spacing.sm))
     }
 }
 
