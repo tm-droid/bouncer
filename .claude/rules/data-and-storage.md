@@ -38,7 +38,7 @@ Read-only from Android via `AppwriteClient.downloadFile(bucketId, fileId)`; writ
 
 | File | Owner | What it is |
 |---|---|---|
-| `team-stats`, `h2h-stats` | `train-win-probability` | the last **v5** model, no longer rewritten (the fallback when there is no manifest); H2H for 1,700+ team pairs, T20 only, read by the device |
+| `team-stats`, `h2h-stats` | `train-win-probability` | the last **v5** model, no longer rewritten (the fallback when there is no manifest); `h2h-stats` is T20-only H2H for 1,700+ pairs, **no longer read by the device** (head-to-head comes from Cricsheet's `s/h2h`, `H2HRepository`) |
 | `active-series` | match-list poll | active **and archived** series, read by `SeriesSyncWorker` |
 | `live-matches`, `recent-matches`, `upcoming-matches`, `live-count`, `poll-state` | match-list poll | the lists `match-sync` runs off, plus its cursor/hash state |
 | `live-winprob`, `slow-sync-state`, `rewrite-backlog` | `match-sync` | published probabilities; the per-match slow-tier clock; deliveries held until a line passes the checker |

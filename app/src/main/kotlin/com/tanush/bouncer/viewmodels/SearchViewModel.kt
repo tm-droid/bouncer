@@ -238,12 +238,14 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                 PastMatchIndex.shared.value?.search(newQuery, matches, corpus.teams).orEmpty()
             }
             val history = async { searchPastPlayers(newQuery) }
+            val h2h = async { searchHeadToHead(newQuery, corpus.teams) }
             live.await().let {
                 it.copy(
                     players = mergeLocalPlayers(it.players, players.await()),
                     series = series.await(),
                     pastMatches = past.await(),
                     pastPlayers = history.await(),
+                    headToHead = h2h.await(),
                     coverageNotice = HistoryCoverage.missingAfghanistan(
                         newQuery, corpus.teams, getApplication<Application>().getString(R.string.history_missing_afghanistan),
                     ),

@@ -103,7 +103,7 @@ class MatchDetailPastMatchTest {
         verify { repository wasNot Called }
         coVerify(exactly = 0) { MatchPresenceReporter.ping(any()) }
         coVerify(exactly = 0) { MatchSquadsSource.get(any(), any()) }
-        coVerify(exactly = 0) { H2HRepository.getH2H(any(), any()) }
+        coVerify(exactly = 0) { H2HRepository.getH2H(any(), any(), any()) }
         coVerify(exactly = 0) { WinProbabilityStore.refresh(any()) }
 
         val ui = vm.uiState.value

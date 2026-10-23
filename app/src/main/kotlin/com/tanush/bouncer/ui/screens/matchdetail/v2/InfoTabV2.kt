@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import com.tanush.bouncer.data.history.HistoryCoverage
 import com.tanush.bouncer.data.remote.H2HPair
 import com.tanush.bouncer.ui.components.HeadToHeadCard
 import com.tanush.bouncer.ui.components.HistoricalStatsCard
@@ -31,6 +32,7 @@ import com.tanush.bouncer.models.PreMatchData
 import com.tanush.bouncer.ui.components.premium.TossDetails
 import com.tanush.bouncer.ui.components.premium.TossResultCard
 import com.tanush.bouncer.ui.components.v2.BouncerCard
+import com.tanush.bouncer.ui.components.v2.HistoryCoverageNotice
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.StatRowV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -158,13 +160,15 @@ private fun LazyListScope.infoOfficialsItems(match: CricketMatch, officials: Mat
 }
 
 /**
- * The two sides against each other, in one section. A T20 reads the head-to-head file (with its
- * history card); every other format reads its own record, right format and gender, from the
- * match context. Both used to show on a T20, on two different tabs.
+ * The two sides against each other, in one section. Cricsheet's pair file gives the record in the
+ * match's format (with its history card); where it has none, the record comes from the match context.
  */
 private fun LazyListScope.infoHeadToHeadItems(match: CricketMatch, headToHead: H2HPair?, context: MatchContext?) {
     if (headToHead != null) {
         item(key = "h2h_header") { SectionHeaderV2(title = stringResource(R.string.match_info_head_to_head)) }
+        if (HistoryCoverage.missingAfghanistan(match.teams.map { it.name }, "") != null) {
+            item(key = "h2h_coverage") { HistoryCoverageNotice(stringResource(R.string.history_missing_afghanistan)) }
+        }
         item(key = "h2h_card") {
             val (team1Color, team2Color) = rememberMatchChartColors(match)
             HeadToHeadCard(match = match, stats = headToHead.stats, team1Color = team1Color, team2Color = team2Color)

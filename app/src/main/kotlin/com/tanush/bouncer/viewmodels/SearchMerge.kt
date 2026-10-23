@@ -1,13 +1,17 @@
 package com.tanush.bouncer.viewmodels
 
+import com.tanush.bouncer.data.SearchRepository
 import com.tanush.bouncer.data.SearchRepository.SearchResult.PastPlayerResult
 import com.tanush.bouncer.data.SearchRepository.SearchResult.PlayerResult
 import com.tanush.bouncer.data.history.HistoryClient
+import com.tanush.bouncer.data.remote.H2HPair
+import com.tanush.bouncer.data.remote.H2HRepository
 import com.tanush.bouncer.network.PlayerSearchResult
 import com.tanush.bouncer.utils.PlayerNameMatch
 import com.tanush.bouncer.utils.SearchScore
 import com.tanush.bouncer.utils.normalizeForSearch
 import com.tanush.bouncer.utils.parseQuery
+import com.tanush.bouncer.utils.resolveSide
 
 /** State of the billed online player lookup, shown inline in the Players section. */
 enum class PlayerLookupState { IDLE, SEARCHING, UNAVAILABLE }
@@ -114,4 +118,12 @@ internal suspend fun searchPastPlayers(query: String): List<PastPlayerResult> {
     val name = parsed.words.joinToString(" ")
     val rows = PlayerNameMatch.letters(name).flatMap { HistoryClient.names(it).orEmpty() }
     return PlayerNameMatch.search(name, rows, MAX_PAST_PLAYERS).map { PastPlayerResult(it.row, it.score * PAST_PLAYER_WEIGHT) }
+}
+
+/** Cricsheet's record of "a v b" when each side is certainly one team; null for any other query. */
+internal suspend fun searchHeadToHead(query: String, teams: List<SearchRepository.TeamEntry>): H2HPair? {
+    val (a, b) = parseQuery(normalizeForSearch(query)).pair ?: return null
+    val first = resolveSide(a, teams).singleOrNull() ?: return null
+    val second = resolveSide(b, teams).singleOrNull() ?: return null
+    return if (first == second) null else H2HRepository.getH2H(first, second)
 }

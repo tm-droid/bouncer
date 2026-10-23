@@ -9,6 +9,7 @@ import com.tanush.bouncer.utils.acronymFor
 import com.tanush.bouncer.utils.expandedSearchQueries
 import com.tanush.bouncer.utils.normalizeForSearch
 import com.tanush.bouncer.utils.parseQuery
+import com.tanush.bouncer.data.remote.H2HPair
 import com.tanush.bouncer.utils.resolveSide
 import java.time.Instant
 import java.time.ZoneOffset
@@ -137,6 +138,8 @@ object SearchRepository {
         val suggestion: String? = null,
         /** Set when the query names a side Cricsheet withholds (`HistoryCoverage`); shown as one neutral row. */
         val coverageNotice: String? = null,
+        /** The record of a resolved "a v b" pair, shown above the results. */
+        val headToHead: H2HPair? = null,
     ) {
         val isEmpty: Boolean
             get() = matches.isEmpty() && teams.isEmpty() && players.isEmpty() && news.isEmpty()

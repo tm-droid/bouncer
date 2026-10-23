@@ -1,52 +1,43 @@
 package com.tanush.bouncer.data.remote
 
-import org.json.JSONObject
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * The trainer keys `h2h-stats` in the sides' original case; the lookup must find a pair whatever
- * case and order the app's own team names arrive in. Keys below are copied from the live file.
- */
+/** The pair file is found from `idx/teams.json` keys, whatever order or gender the app names the sides in. */
 class H2HRepositoryKeyTest {
 
-    private val file = JSONObject(
-        """
-        {
-          "Australia|||Sri Lanka": {"team1": "Australia", "team2": "Sri Lanka", "totalMatches": 35},
-          "North-West Warriors|||Northern Knights": {"team1": "North-West Warriors", "team2": "Northern Knights", "totalMatches": 12},
-          "Australia|||Sri Lanka|female": {"team1": "Australia", "team2": "Sri Lanka", "totalMatches": 9}
-        }
-        """.trimIndent()
-    )
-
     @Test
-    fun `a pair is found in the case the trainer wrote it`() {
-        val index = indexH2HPairs(file)
-        assertEquals(3, index.size)
-        assertEquals(35, index[h2hPairKey("Australia", "Sri Lanka")]?.optInt("totalMatches"))
+    fun `a pair's path sorts the slugs, so either order finds the same file`() {
+        assertEquals("s/h2h/australia__india.json", h2hPath("india", "australia"))
+        assertEquals("s/h2h/australia__india.json", h2hPath("australia", "india"))
+        assertEquals("s/h2h/sri-lanka__west-indies.json", h2hPath("west-indies", "sri-lanka"))
     }
 
     @Test
-    fun `order and case of the query do not matter`() {
-        val index = indexH2HPairs(file)
-        assertNotNull(index[h2hPairKey("sri lanka", "AUSTRALIA")])
-        assertNotNull(index[h2hPairKey(" Northern Knights ", "North-West Warriors")])
+    fun `a women's pair has its own file, marked once at the end`() {
+        assertEquals("s/h2h/australia__india__w.json", h2hPath("india__w", "australia__w"))
     }
 
     @Test
-    fun `a pair the file does not hold is absent`() {
-        assertNull(indexH2HPairs(file)[h2hPairKey("Australia", "India")])
+    fun `a women's side is the plain name with the gender apart`() {
+        assertTrue(isWomensPair("Australia Women", "Sri Lanka Women"))
+        assertTrue(isWomensPair("India", "England Women's"))
+        assertFalse(isWomensPair("Australia", "Sri Lanka"))
+        assertEquals("Australia", archiveSideName(" Australia Women "))
+        assertEquals("West Indies", archiveSideName("West Indies Women's"))
     }
 
     @Test
-    fun `a women's pair has its own record, found from the names the app shows`() {
-        val index = indexH2HPairs(file)
-        val women = h2hPairKey("Australia Women", "Sri Lanka Women", isWomensPair("Australia Women", "Sri Lanka Women"))
-        assertEquals(9, index[women]?.optInt("totalMatches"))
-        assertEquals(35, index[h2hPairKey("Australia", "Sri Lanka")]?.optInt("totalMatches"))
-        assertEquals("Australia", archiveSideName("Australia Women"))
+    fun `a match type reads as the format whose counters exist, never another`() {
+        val all = setOf("Test", "ODI", "T20I")
+        assertEquals("Test", h2hFormat("TEST", all))
+        assertEquals("ODI", h2hFormat("ODI", all))
+        assertEquals("T20I", h2hFormat("T20", all))
+        assertEquals("T20", h2hFormat("T20", setOf("T20", "ODI")))
+        assertNull(h2hFormat("ODI", setOf("Test", "T20I")))
+        assertNull(h2hFormat("FC", all))
     }
 }

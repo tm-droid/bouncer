@@ -46,7 +46,9 @@ data class HeadToHeadStats(
     val team2HighestScore: String,
     val team1LowestScore: String,
     val team2LowestScore: String,
-    val lastWinner: String?
+    val lastWinner: String?,
+    val noResults: Int = 0,
+    val ties: Int = 0,
 )
 
 /**
@@ -158,9 +160,10 @@ fun HeadToHeadCard(
                     value = stats.draws.toString(),
                     icon = Icons.Default.Remove
                 )
+                TiesColumn(stats.ties)
                 StatColumn(
                     label = stringResource(R.string.h2h_no_result),
-                    value = "0",
+                    value = stats.noResults.toString(),
                     icon = Icons.Default.Cloud
                 )
             }
@@ -187,23 +190,47 @@ fun HeadToHeadCard(
                 team2Color = team2Color
             )
             
-            Spacer(modifier = Modifier.height(24.dp))
-            HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.2f))
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            // Score records
-            ScoreRecords(
+            OptionalScoreRecords(
+                stats = stats,
                 team1Name = team1?.acronym ?: team1?.name?.take(3)?.uppercase() ?: "T1",
                 team2Name = team2?.acronym ?: team2?.name?.take(3)?.uppercase() ?: "T2",
-                team1Highest = stats.team1HighestScore,
-                team2Highest = stats.team2HighestScore,
-                team1Lowest = stats.team1LowestScore,
-                team2Lowest = stats.team2LowestScore,
                 team1Color = team1Color,
-                team2Color = team2Color
+                team2Color = team2Color,
             )
         }
     }
+}
+
+/** A column for ties, which only limited-overs pairs have; nothing at zero. */
+@Composable
+private fun TiesColumn(ties: Int) {
+    if (ties > 0) StatColumn(label = stringResource(R.string.h2h_ties), value = ties.toString(), icon = Icons.Default.Remove)
+}
+
+/** The score records under a divider; nothing when the source (Cricsheet's pair files) has no scores. */
+@Composable
+private fun OptionalScoreRecords(
+    stats: HeadToHeadStats,
+    team1Name: String,
+    team2Name: String,
+    team1Color: Color,
+    team2Color: Color,
+) {
+    val records = listOf(stats.team1HighestScore, stats.team2HighestScore, stats.team1LowestScore, stats.team2LowestScore)
+    if (records.none { it.isNotBlank() }) return
+    Spacer(modifier = Modifier.height(24.dp))
+    HorizontalDivider(color = BouncerDesignSystem.colors.glassBorder.copy(alpha = 0.2f))
+    Spacer(modifier = Modifier.height(20.dp))
+    ScoreRecords(
+        team1Name = team1Name,
+        team2Name = team2Name,
+        team1Highest = stats.team1HighestScore,
+        team2Highest = stats.team2HighestScore,
+        team1Lowest = stats.team1LowestScore,
+        team2Lowest = stats.team2LowestScore,
+        team1Color = team1Color,
+        team2Color = team2Color,
+    )
 }
 
 @Composable

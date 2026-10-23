@@ -293,6 +293,7 @@
     <string name="favorites_remove_team">Remove Team</string>
     <string name="favorites_search_teams">Search teams...</string>
     <string name="h2h_draws">Draws</string>
+    <string name="h2h_ties">Ties</string>
     <string name="h2h_no_result">No Result</string>
     <string name="h2h_total">Total</string>
     <string name="historical_at_this_venue">AT THIS VENUE</string>

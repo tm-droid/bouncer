@@ -27,19 +27,19 @@ internal fun displayResultsFor(
     )
     SearchTab.PLAYERS -> results.copy(
         matches = emptyList(), teams = emptyList(), news = emptyList(), series = emptyList(),
-        pastMatches = emptyList(), coverageNotice = null
+        pastMatches = emptyList(), coverageNotice = null, headToHead = null
     )
     SearchTab.TEAMS -> results.copy(
         matches = emptyList(), players = emptyList(), news = emptyList(), series = emptyList(),
-        pastMatches = emptyList(), coverageNotice = null, pastPlayers = emptyList()
+        pastMatches = emptyList(), coverageNotice = null, headToHead = null, pastPlayers = emptyList()
     )
     SearchTab.TOURNAMENTS -> results.copy(
         matches = emptyList(), teams = emptyList(), players = emptyList(), news = emptyList(),
-        pastMatches = emptyList(), coverageNotice = null, pastPlayers = emptyList()
+        pastMatches = emptyList(), coverageNotice = null, headToHead = null, pastPlayers = emptyList()
     )
     SearchTab.NEWS -> results.copy(
         matches = emptyList(), teams = emptyList(), players = emptyList(), series = emptyList(),
-        pastMatches = emptyList(), coverageNotice = null, pastPlayers = emptyList()
+        pastMatches = emptyList(), coverageNotice = null, headToHead = null, pastPlayers = emptyList()
     )
 }
 
