@@ -1,71 +1,20 @@
-# Goal: Design upgrade — big-crest match hero (collapsing), richer Home, premium failure/empty states, live motion, result card, consistency
+# Goal: Archive + history in search and beyond, better search ranking, M3 refresh indicator
 
-Plan (full specs, research, decisions): /Users/tanushmalhotra/.claude/plans/https-youtu-be-8eayze6y3i8-si-bv7shoahbe-pure-firefly.md
-Resume: read the plan's unit spec, then find the first `[ ]` below. Previous ledger (June 2026 refactor, complete) is in git history.
+Plan (full specs, research, decisions): /Users/tanushmalhotra/.claude/plans/so-recently-we-made-streamed-corbato.md
+Resume: read the plan's unit spec, then find the first `[ ]` below. Previous ledger (design upgrade, complete) is in git history.
 
-B = app/src/main/kotlin/com/tanush/bouncer · T = ./gradlew testDebugUnitTest --tests · D = detekt under JBR 21
+B = app/src/main/kotlin/com/tanush/bouncer · T = ./gradlew testDebugUnitTest --tests · D = detekt under JBR 21 · V = assembleDebug testDebugUnitTest lintDebug + D
+Commit per unit (no push until the end). Every commit touching app/src/main/ rewrites distribution/whatsnew/whatsnew-en-US to cover all units so far (≤500 chars).
 
 ## Units
-### Wave 1
-- [x] U0: foundations (scoreHero, motion tokens, all strings) | files: B/ui/theme/v2/TypographyV2.kt, res/values/strings.xml | done when: compileDebugKotlin + T *HardcodedUiStringRatchetTest green
-### Wave 2
-- [x] U1: hero logic (chase line, innings split, Test lead/trail, collapsed summary) | files: B/ui/components/v2/MatchHeroLogic.kt + test | done when: T *MatchHeroLogicTest
-- [x] U2: thread LiveSituation + lastUpdatedMs into MatchDetail UiState | files: B/viewmodels/MatchDetailViewModel.kt, MatchLiveDetailAlignment.kt | done when: T *MatchLiveDetailAlignmentTest *MatchDetail*
-- [x] U3: header collapse math | files: B/ui/screens/matchdetail/v2/HeaderCollapse.kt + test | done when: T *HeaderCollapseTest
-- [x] U4: start countdown | files: B/ui/components/v2/MatchStartLabel.kt + test | done when: T *MatchStartTimeTest
-- [x] U5: result summary logic | files: B/ui/screens/matchdetail/v2/SummaryResult.kt + test | done when: T *SummaryResultTest
-- [x] U6: one failure pattern | files: B/ui/components/v2/ScreenStates.kt, StaleDataBanner.kt, EmptyState.kt, B/ui/components/ErrorComponents.kt | done when: T *ScreenStatesTest *LightModeContrastTest
-- [x] U13: live motion + score a11y | files: AnimatedScoreText.kt, RecentBallsStrip.kt, PremiumWinProbabilityHero.kt, LiveScoringGraphCard.kt | done when: T *ScoreRollTest; rememberInfiniteTransition only in CricketBallPullRefresh.kt
-- [x] U16: freshness logic | files: B/ui/components/v2/Freshness.kt + test | done when: T *FreshnessTest
-- [x] U17: Home hero selection (multi followed teams) | files: B/ui/HomeFeatured.kt + test, HomeScreenV2.kt (splitFeatured call) | done when: T *HomeFeaturedTest
-### Wave 3
-- [x] U7: shared MatchHeroV2 + WinProbabilityBarV2 | files: B/ui/components/v2/MatchHero.kt, WinProbabilityBar.kt | done when: compile + D + no gradients
-- [x] U11: Summary result card | files: SummaryResultCard.kt, SummaryTabV2.kt | done when: T *SummaryResultTest *LiveAndSummaryDerivationTest
-- [x] U12: apply failure pattern app-wide | files: Home, Scorecard, Commentary, Series, News, Player, Comparison, Search, PointsTable, TeamDetail | done when: action_retry only in shared components
-### Wave 4
-- [x] U8: match-detail hero + collapse | files: B/ui/MatchDetailViewV2.kt, ScoreHeaderRows.kt, MatchDetailHeader.kt, LiveTabV2.kt | done when: D + T *MatchTabsTest + emulator pass
-- [x] U9: Home hero | files: B/ui/components/v2/HeroMatchCard.kt | done when: D + HeroWinProbability gone + ≤240dp
-- [x] U10: Home rows | files: TeamRow.kt, MatchCardV2.kt | done when: D + 4 matches/screen
-### Wave 5
-- [x] U14: consistency pass | files: many (crests, shapes, type roles, pressed states, toggle haptic) | done when: D + full test
-- [x] U18: shared-element row→header (experimental; drop if risky) | done when: emulator clean or dropped with reason
-- [x] U15: docs + whatsnew | done when: rule docs updated, whatsnew ≤500 chars
-
-## Decisions
-- Flat hero, 56dp crests, no gradient. No win-prob bar on rows. Freshness on header + Home hero only. Test layout separate. Hero = followed-team-first by favourites order.
-- Plex digits are already 600 units wide in every weight; no tnum font swap.
-- Commit per unit locally; ONE push at the end after full verification.
-- Per-unit commits use SKIP_RELEASE_NOTES=1 (nothing ships until the final push); U15 writes whatsnew before that push.
-- New strings live in one block in strings.xml headed `<!-- Design upgrade 2026-10 -->`; later units grep it and reuse names.
-
-- U15 must update design-system.md: Home hero now also shows a followed team's upcoming match (<24h, user decision), replacing "its hero appears only for a live match"; and "Don't restate the fixed header" now refers to the collapsing hero, not ScoreHeaderV2.
-
-## Log
-- 2026-10-23: research done (15 tracks), plan approved, ledger written.
-- 2026-10-23: baseline HEAD 2752492e green (assembleDebug + testDebugUnitTest cached UP-TO-DATE; detekt clean).
-- 2026-10-23: U0 done (21c7d978): scoreHero; BouncerMotion Duration.Brisk/Medium/Measured + Springs.noBounce(); strings block. UnusedResources is an error (warningsAsErrors) — every new string must be consumed by the end.
-- 2026-10-23: Wave 2 done, batch-verified (compile, 93 tests in 10 classes, detekt clean). Notes for later units:
-  - U1 MatchHeroLogic.kt (HeroLine, chaseLineFor, ballsFromOvers, isTestMatch, collapsedSummary) + TestMatchHeroLogic.kt (splitInningsScore, testLeadLine, testDayFor). oversRemaining = decimal overs (server code only, unconfirmed on a live payload). chaseLineFor returns null when status text already states the requirement → UI shows status.
-  - U2 UiState.situation, UiState.lastUpdatedMs (seeded on first score seen, moves only on score/overs change).
-  - U3 rememberHeaderCollapse(): connection, offsetPx, fraction, setRange(px), expand().
-  - U4 startLabelOf + MatchStartLabel(startMs, style, color) in existing MatchStartLabel.kt.
-  - U5 summaryResultOf(match, scorecard) incl. ResultKind.Drawn (needs a string in U11).
-  - U6 EmptyStateV2 kept as is (8 callers); FailedState, StaleDataBanner, DelayedSkeleton, failureKindOf, screenStateOf. Timeout = Server.
-  - U13 AnimatedScoreText(describedByParent=false default) + Modifier.scoreSemantics + scoreSentence; infinite transitions only in CricketBallPullRefresh.kt.
-  - U16 rememberFreshness + FreshnessLabel; caller swaps LIVE for "Last seen live" when Stale.
-  - U17 featuredFor(...allowUpcoming = HERO_SHOWS_UPCOMING const false) — U9 flips it and passes kind.
-- 2026-10-23: Wave 3 done, batch-verified (compile, full unit tests, detekt clean; lint only flags hero_expand_score/hero_collapse_score/hero_next_up, consumed in Wave 4).
-  - U7 MatchHeroV2(match, situation, lastUpdatedMs, size: HeroSize.Large|Compact, modifier, onTeamClick), HeroLineText, WinProbabilityBarV2(match) (shown pre-match too); parts in MatchHeroParts.kt, HeroRunRates.kt.
-  - U11 SummaryResultCard: crest + winner + margin only; performer rows dropped (already in per-innings sections) — told user, plan had them.
-  - U12 Home/Scorecard/Commentary/Series use screenStateOf/FailedState/StaleDataBanner/DelayedSkeleton (MatchCacheService.savedAtMs); News/Player/Comparison/Search/PointsTable/Team use EmptyStateV2 (VMs expose only a message). action_retry left in MatchDetailViewV2 LiveDataErrorBanner → U8.
-- 2026-10-23: Wave 4 written + batch-verified (compile, unit tests, lint clean vs lint-baseline.xml, detekt clean after TeamRow helper split). Emulator pass pending.
-  - U8 MatchDetailHeader.kt (hero + CollapsedScoreBar + collapsedBy); ScoreHeaderV2/TeamScoreRow/HeaderScore/LiveDataErrorBanner deleted; win-prob bar moved from LiveTabV2 (PremiumWinProbabilityHero now unreferenced — list in U14, don't delete). Test status always shown; testHeroLine hides lead/trail when status states it. Semantics: hero cleared at fraction ≥0.5, bar below.
-  - U9 HeroMatchCard on MatchHeroV2 Compact; Upcoming via featured.kind; freshness = last list fetch (MatchCacheService.savedAtMs, re-read every 10s) — weaker than detail's score-change stamp. Recent balls dropped from Home hero (height ≤240dp est. 215–235).
-  - U10 crest 28dp in 24dp slot (no height change), non-batting side dimmed, countdown <12h, Test rows "312 & 145/3"; row score semantics cleared (card describes the match).
-  - Emulator risks: collapse on Scorecard (own scroll?), taps on series link/crests when expanded, setRange settling, 4 rows/screen.
-
-- 2026-10-23: Wave 4 emulator pass -> fixes 672..8f63 (summary winner name match via sameTeamName; Home one offline banner, old NetworkStatusBanner deleted; header onPostFling + no settle cancel on pager frames; fixtures no false offline; score a11y uses full names). Garbled series text: no code cause found, recheck on emulator.
-- 2026-10-23: U14 done: H2H/HistoricalStats crests via TeamCrest; 62 shape literals -> BouncerThemeV2.shapes; team-star haptic. fontSize->roles skipped (276 legacy literals, no matching roles). Unreferenced, not deleted: BowlingPerformanceCard.kt, premium/EliteMomentumTracker.kt, premium/InsightGridCard.kt, premium/PremiumWinProbabilityHero.kt (winProbabilityStateFor used by a test), widgets/EnhancedWidgetStyles.kt; PremiumComponents.kt nearly dead (SectionDivider only), EliteShareCard preview/button unused.
-- 2026-10-23: Play upload will be local (Actions minutes out): versionCode 1672 (Play max 1668; CI next run >=673), versionName 1.0.10.
-- 2026-10-23: U18 done: crest morph Home row -> expanded match hero (SharedTransitionLayout in MainAppContainer, locals in ui/MatchSharedElements.kt); rows only, off when collapsed/open-route/deep link/reduced motion.
-- 2026-10-23: final verify green; emulator pass 8/8; uploaded 1.0.10 (1672) to Play internal + alpha locally; pushed 7158b5cc.
+- [x] U0 (66e39ba2): M3 refresh indicator (disc + gold arc, haptic, reduced motion), delete CricketBallPullRefresh | files: B/ui/components/v2/PullRefreshWrapper.kt, LightModeContrastTest | done when: V green, no CricketBall refs
+- [x] U1 (3a650a5e): foundations (static-site cache, models, HistoryTeams, CricsheetScorecard, PastMatches + cs- guards) | done when: V + T *CricsheetScorecardTest *PastMatchesTest *HistoryTeamsTest *MatchDetailPastMatchTest
+- [x] U2 (9a670335): search ranking (query parser, typo thresholds w/ server parity, tier ordering, precompute, recents on submit, trending) | done when: V + T *Search* + node --test appwrite/functions/api
+- [x] U3 (a97af42c): past-match search (PastMatchIndex, PastMatchRow, Past matches section) | done when: V + T *PastMatchIndexTest
+- [x] U4 (2eb11238): Afghanistan notice | done when: V + test
+- [x] U5 (b04c243d): historical players + career page + player-page link | done when: V + T *PlayerNameMatchTest *CareerStatsTest *CareerJoinTest *SearchMergeTest *BouncerScreenInitOrderTest
+- [x] U6 (6b8a17dc): fuller past matches (Cricsheet card fallback, overs/worm, evalLog win-prob) | done when: V + T *ArchivedMatchTest *ProbabilityHistoryTest
+- [x] U7 (1b12f827): head-to-head from s/h2h (match card all formats, search pair card) | done when: V + T *CricsheetH2HTest *H2HRepositoryKeyTest
+- [x] U8 (017d7e2f, db23fed8): team records + venue records (builder idx/venues.json) | done when: V + T *VenueKeyTest *TeamRecordTest + node --test appwrite/tools/history
+- [x] U9: CUT by owner 2026-10-24 ("gimmicky, not the vibe of the app") — do not build
+- [x] Final (pushed 6d834cf0; Play internal+alpha 1.0.11 versionCode 1673, notes 490 chars; history rebuilt with idx/venues.json): emulator verification (plan's Verification list), whatsnew polish, git push (CI will not run: Actions minutes exhausted 2026-10-23), LOCAL Play upload: versionCode = highest on Play + 1 (query edits API with ~/.config/bouncer/play-service-account.json), BOUNCER_VERSION_CODE=… ./gradlew bundleRelease, upload via Play Developer API to tracks internal + alpha with whatsnew notes; history rebuild for venues runs locally (build.mjs + push gh-pages) since Actions is out
