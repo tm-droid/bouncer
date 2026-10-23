@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { compactMatch, howOut, X } from "../src/match.js";
-import { addMatch, createStats, formatKey, playerNameFiles, resultFor, statsFiles } from "../src/stats.js";
+import { addMatch, createStats, formatKey, playerNameFiles, resultFor, statsFiles, venueIndex } from "../src/stats.js";
 import { pairKey, teamKey } from "../src/keys.js";
 
 const d = (batter, bowler, nonStriker, bat, extras = {}, extra = {}) => ({
@@ -162,6 +162,16 @@ test("stats: team, pair, venue and player records from one match", () => {
   assert.deepEqual(files.get("s/p/0000000e.json").f.T20I.slice(9, 15), [6, 0, 0, 0, 0, 1]);
   const names = new Map(playerNameFiles(stats));
   assert.ok(names.get("s/p/names/a.json").some((r) => r[1] === "0000a001"));
+});
+
+test("venue index lists each ground once with its file key, name, city and match count", () => {
+  const stats = createStats();
+  addMatch(stats, m);
+  const rows = venueIndex(stats);
+  assert.equal(rows.length, 1);
+  const [key, name, city, matches] = rows[0];
+  assert.ok(new Map(statsFiles(stats)).has(`s/venue/${key}.json`));
+  assert.deepEqual([name, city, matches], [m.ven, "Kolkata", 1]);
 });
 
 test("results from one side's view", () => {

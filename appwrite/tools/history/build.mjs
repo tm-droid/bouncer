@@ -19,7 +19,7 @@ import fs from "node:fs";
 import path from "node:path";
 import AdmZip from "adm-zip";
 import { compactMatch, SCHEMA_VERSION } from "./src/match.js";
-import { addMatch, createStats, formatKey, playerNameFiles, statsFiles } from "./src/stats.js";
+import { addMatch, createStats, formatKey, playerNameFiles, statsFiles, venueIndex } from "./src/stats.js";
 import { monthOf, teamKey } from "./src/keys.js";
 
 export const SIZE_LIMIT_BYTES = 900 * 1024 * 1024;
@@ -114,6 +114,7 @@ write(
 );
 
 for (const [rel, obj] of statsFiles(stats)) write(rel, obj);
+write("idx/venues.json", venueIndex(stats));
 for (const [rel, obj] of playerNameFiles(stats)) write(rel, obj);
 
 // Last, so a reader that sees this build's manifest sees every file it describes.

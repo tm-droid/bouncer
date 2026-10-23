@@ -182,6 +182,16 @@ function addPlayers(stats, m, fk) {
 
 const byDateDesc = (a, b) => String(b[1]).localeCompare(String(a[1])) || String(b[0]).localeCompare(String(a[0]));
 
+/**
+ * `[key, name, city, matches]` for every ground, most-played first. The app looks a ground up by
+ * name here because Cricbuzz's venue text is not Cricsheet's, then reads `s/venue/<key>.json`.
+ */
+export function venueIndex(stats) {
+  return [...stats.venues]
+    .map(([key, v]) => [key, v.n, v.city ?? null, v.m.length])
+    .sort((a, b) => b[3] - a[3] || a[0].localeCompare(b[0]));
+}
+
 /** Every stats file, as [path, object]. Match lists newest first. */
 export function* statsFiles(stats) {
   for (const [key, team] of stats.teams) {
