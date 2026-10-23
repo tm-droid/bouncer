@@ -1,3 +1,3 @@
-Pull to refresh now uses the standard Android indicator: a gold arc that fills as you pull, spins while loading and buzzes when you pull far enough.
+Pull to refresh uses the standard Android indicator: a gold arc that fills as you pull, spins while loading and buzzes at the threshold.
 
-Search is smarter: fewer junk typo matches, "ind v aus" shows that pair's head-to-head, recent searches save. It finds past matches back to 2003 and retired players with career pages. Old matches get fuller scorecards. Head-to-head covers Tests, ODIs, T20s. Teams show records; Info shows the ground's. No Afghanistan history after Nov 2024.
+Search is smarter, with fewer junk typo matches, and saves recent searches. It finds past matches back to 2003 and retired players, with career pages. "ind v aus" shows head-to-head in Tests, ODIs and T20s. Old matches get fuller scorecards and graphs. Teams show records, and Info shows the ground's. History has no Afghanistan matches after Nov 2024.
