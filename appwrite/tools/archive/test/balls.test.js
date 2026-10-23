@@ -292,6 +292,17 @@ test("an ambiguous short name is settled by who Cricbuzz put at the crease after
   assert.deepEqual(balls.inn[0].b.map((d) => balls.p[d[2]][1]), ["11568", "10042"]);
 });
 
+test("a commentary name in initials resolves to the scorecard batter it abbreviates", () => {
+  const batsmen = [
+    { name: "Jason Mohammed", runs: "4", profileUrl: "https://x/profiles/8603/j" },
+    { name: "Mahendra Singh Dhoni", runs: "1", profileUrl: "https://x/profiles/265/m" },
+  ];
+  const recs = [item(0.1, "A to J Mohammed, FOUR"), item(0.2, "A to MS Dhoni, 1 run"), item(0.3, "A to J Smith, no run")].map((i) => recordOf(i));
+  const { balls, problems } = ballsBlock([{ id: 1, recs }], [{ score: "5", overs: "0.3", batsmen }]);
+  assert.deepEqual(problems, []);
+  assert.deepEqual(balls.inn[0].b.map((d) => balls.p[d[2]]), [["Jason Mohammed", "8603"], ["Mahendra Singh Dhoni", "265"], ["J Smith", ""]]);
+});
+
 test("one player under two people entries (bowler 'Nabi' and batter 'Mohammad Nabi') is summed by id", () => {
   const people = [["Nabi", "3007"], ["Mohammad Nabi", "3007"]];
   const ds = [{ d: [0, 1, 0, -1, -1, 4, 0, 0] }, { d: [0, 2, 1, -1, -1, 9, 0, 0] }];

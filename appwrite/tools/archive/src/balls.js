@@ -158,14 +158,25 @@ const normName = (n) =>
   String(n ?? "").toLowerCase().replace(/\([^)]*\)/g, "").replace(/[^a-z ]/g, "").replace(/\s+/g, " ").trim();
 const profileId = (url) => String(url ?? "").match(/\/profiles\/(\d+)/)?.[1] ?? "";
 
+// Commentary on some (mostly associate) matches gives initials: "J Mohammed" for the scorecard's
+// "Jason Mohammed" (measured on 18284/18286), "S Thompson" for "Stuart Thompson" (16940).
+const initialled = (rn) => {
+  const t = rn.split(" ");
+  if (t.length < 2) return [];
+  const last = t.at(-1);
+  const ini = t.slice(0, -1).map((w) => w[0]);
+  return [`${ini.join("")} ${last}`, `${ini.join(" ")} ${last}`, `${ini[0]} ${last}`];
+};
+
 /** The scorecard's batsmen as [{id, name}], ids from their profile links. */
 const rosterOf = (card) =>
   (card?.batsmen ?? []).map((b) => ({ id: profileId(b.profileUrl), name: String(b.name ?? "").replace(/\s*\([^)]*\)/g, "").trim() }));
 
 /**
- * A commentary name ("Shahzad", "Asghar Stanikzai") -> the roster batsman: the exact name, else the one
- * name it prefixes or suffixes. When several fit ("Shahzad" in a side with two), `hintId` breaks the
- * tie: the previous ball's `nx`, the batter Cricbuzz put at the crease after it.
+ * A commentary name ("Shahzad", "Asghar Stanikzai", "J Mohammed") -> the roster batsman: the exact name,
+ * else the one name it prefixes or suffixes or abbreviates to initials. When several fit ("Shahzad" in a
+ * side with two), `hintId` breaks the tie: the previous ball's `nx`, the batter Cricbuzz put at the
+ * crease after it.
  */
 function resolveBatter(pair, roster, hintId = "") {
   if (pair[0] || !pair[1] || !roster?.length) return pair;
@@ -176,7 +187,10 @@ function resolveBatter(pair, roster, hintId = "") {
       ? exact
       : roster.filter((r) => {
           const rn = normName(r.name);
-          return rn.endsWith(` ${n}`) || n.endsWith(` ${rn}`) || rn.startsWith(`${n} `) || n.startsWith(`${rn} `);
+          return (
+            rn.endsWith(` ${n}`) || n.endsWith(` ${rn}`) || rn.startsWith(`${n} `) || n.startsWith(`${rn} `) ||
+            initialled(rn).includes(n)
+          );
         });
   const hit = pool.length === 1 ? pool[0] : (pool.find((r) => hintId && r.id === hintId) ?? null);
   return hit ? [hit.id, hit.name] : pair;
