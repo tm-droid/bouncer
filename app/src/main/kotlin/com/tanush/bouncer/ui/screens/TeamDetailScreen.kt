@@ -63,6 +63,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tanush.bouncer.R
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.components.v2.DelayedSkeleton
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.MatchCardV2
 import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
@@ -154,10 +155,16 @@ private fun TeamDetailContent(
         }
 
         if (isLoading && teamMatches.isEmpty() && results.isEmpty()) {
-            items(3, key = { "shimmer_$it" }) {
-                ShimmerMatchCard(
-                    modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
-                )
+            item(key = "shimmer") {
+                DelayedSkeleton(isLoading = true) {
+                    Column {
+                        repeat(3) {
+                            ShimmerMatchCard(
+                                modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
+                            )
+                        }
+                    }
+                }
             }
         } else if (teamMatches.isEmpty() && results.isEmpty()) {
             item(key = "no_matches") {

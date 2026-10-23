@@ -234,7 +234,12 @@ private fun LazyListScope.searchBody(state: SearchListState, viewModel: SearchVi
             )
         }
         displayResults.isEmpty && !state.showPlayerLookup && !state.isLoading -> item(key = "no_results") {
-            NoResultsMessage(state.results.suggestion, viewModel::onQueryChange)
+            NoResultsMessage(
+                query = state.query,
+                suggestion = state.results.suggestion,
+                onSuggestion = viewModel::onQueryChange,
+                onClear = { viewModel.onQueryChange("") },
+            )
         }
         else -> {
             displayResults.suggestion?.let { suggestion ->

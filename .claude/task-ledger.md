@@ -19,9 +19,9 @@ B = app/src/main/kotlin/com/tanush/bouncer · T = ./gradlew testDebugUnitTest --
 - [x] U16: freshness logic | files: B/ui/components/v2/Freshness.kt + test | done when: T *FreshnessTest
 - [x] U17: Home hero selection (multi followed teams) | files: B/ui/HomeFeatured.kt + test, HomeScreenV2.kt (splitFeatured call) | done when: T *HomeFeaturedTest
 ### Wave 3
-- [ ] U7: shared MatchHeroV2 + WinProbabilityBarV2 | files: B/ui/components/v2/MatchHero.kt, WinProbabilityBar.kt | done when: compile + D + no gradients
-- [ ] U11: Summary result card | files: SummaryResultCard.kt, SummaryTabV2.kt | done when: T *SummaryResultTest *LiveAndSummaryDerivationTest
-- [ ] U12: apply failure pattern app-wide | files: Home, Scorecard, Commentary, Series, News, Player, Comparison, Search, PointsTable, TeamDetail | done when: action_retry only in shared components
+- [x] U7: shared MatchHeroV2 + WinProbabilityBarV2 | files: B/ui/components/v2/MatchHero.kt, WinProbabilityBar.kt | done when: compile + D + no gradients
+- [x] U11: Summary result card | files: SummaryResultCard.kt, SummaryTabV2.kt | done when: T *SummaryResultTest *LiveAndSummaryDerivationTest
+- [x] U12: apply failure pattern app-wide | files: Home, Scorecard, Commentary, Series, News, Player, Comparison, Search, PointsTable, TeamDetail | done when: action_retry only in shared components
 ### Wave 4
 - [ ] U8: match-detail hero + collapse | files: B/ui/MatchDetailViewV2.kt, ScoreHeaderRows.kt, MatchDetailHeader.kt, LiveTabV2.kt | done when: D + T *MatchTabsTest + emulator pass
 - [ ] U9: Home hero | files: B/ui/components/v2/HeroMatchCard.kt | done when: D + HeroWinProbability gone + ≤240dp
@@ -52,4 +52,8 @@ B = app/src/main/kotlin/com/tanush/bouncer · T = ./gradlew testDebugUnitTest --
   - U13 AnimatedScoreText(describedByParent=false default) + Modifier.scoreSemantics + scoreSentence; infinite transitions only in CricketBallPullRefresh.kt.
   - U16 rememberFreshness + FreshnessLabel; caller swaps LIVE for "Last seen live" when Stale.
   - U17 featuredFor(...allowUpcoming = HERO_SHOWS_UPCOMING const false) — U9 flips it and passes kind.
+- 2026-10-23: Wave 3 done, batch-verified (compile, full unit tests, detekt clean; lint only flags hero_expand_score/hero_collapse_score/hero_next_up, consumed in Wave 4).
+  - U7 MatchHeroV2(match, situation, lastUpdatedMs, size: HeroSize.Large|Compact, modifier, onTeamClick), HeroLineText, WinProbabilityBarV2(match) (shown pre-match too); parts in MatchHeroParts.kt, HeroRunRates.kt.
+  - U11 SummaryResultCard: crest + winner + margin only; performer rows dropped (already in per-innings sections) — told user, plan had them.
+  - U12 Home/Scorecard/Commentary/Series use screenStateOf/FailedState/StaleDataBanner/DelayedSkeleton (MatchCacheService.savedAtMs); News/Player/Comparison/Search/PointsTable/Team use EmptyStateV2 (VMs expose only a message). action_retry left in MatchDetailViewV2 LiveDataErrorBanner → U8.
 

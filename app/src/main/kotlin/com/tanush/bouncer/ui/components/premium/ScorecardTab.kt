@@ -4,13 +4,12 @@ import com.tanush.bouncer.network.MatchSquads
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.CompositionLocalProvider
-import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import androidx.compose.material3.TextButton
-import androidx.compose.foundation.layout.Column
+import com.tanush.bouncer.ui.components.v2.EmptyStateV2
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Scoreboard
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,7 +17,6 @@ import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
-import com.tanush.bouncer.ui.theme.TextSecondary
 
 // Terminal-state wrapper around PremiumScorecardTab: spinner only while a load is in flight; once
 // it finishes, a null/empty scorecard shows "No scorecard available" instead of spinning forever
@@ -28,7 +26,6 @@ fun ScorecardTab(
     scorecard: Scorecard?,
     isLoading: Boolean,
     modifier: Modifier = Modifier,
-    onRetry: (() -> Unit)? = null,
     isLive: Boolean = false,
     squads: MatchSquads? = null,
 ) {
@@ -37,18 +34,13 @@ fun ScorecardTab(
         isLoading && scorecard == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = hierarchy.secondary.primary)
         }
-        // Offers a retry: a failed fetch and a match with no card yet look the same from here, and
-        // the reader had no way to ask again short of leaving the match.
-        scorecard == null || scorecard.innings.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(stringResource(R.string.common_no_scorecard_available), color = TextSecondary)
-                if (onRetry != null) {
-                    TextButton(onClick = onRetry) {
-                        Text(stringResource(R.string.action_retry), color = BouncerThemeV2.colors.primaryText)
-                    }
-                }
-            }
-        }
+        // No action: a failed live-data load already shows the match header's banner with Retry.
+        scorecard == null || scorecard.innings.isEmpty() -> EmptyStateV2(
+            title = stringResource(R.string.state_scorecard_title),
+            subtitle = stringResource(R.string.state_scorecard_cause),
+            modifier = Modifier.fillMaxSize(),
+            icon = Icons.Outlined.Scoreboard,
+        )
         else -> CompositionLocalProvider(LocalScorecardIsLive provides isLive, LocalScorecardSquads provides squads) {
             PremiumScorecardTab(scorecard = scorecard, modifier = modifier)
         }

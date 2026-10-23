@@ -3,8 +3,6 @@ package com.tanush.bouncer.ui.screens.matchdetail.v2
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -43,7 +41,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.ui.components.v2.BallGlyphKind
-import com.tanush.bouncer.ui.components.v2.EmptyStateV2
+import com.tanush.bouncer.ui.components.v2.DelayedSkeleton
+import com.tanush.bouncer.ui.components.v2.FailedState
+import com.tanush.bouncer.ui.components.v2.FailureKind
 import com.tanush.bouncer.ui.components.v2.ballGlyphKindOf
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.components.v2.ShimmerCommentaryList
@@ -67,8 +67,10 @@ fun CommentaryTabV2(
     commentary: List<CommentaryEntry>,
     matchStatus: String = "",
     isLoading: Boolean = false,
-    error: String? = null,
-    onRetry: (() -> Unit)? = null,
+    failure: FailureKind? = null,
+    onRetry: () -> Unit = {},
+    /** Switches to the Info tab; null when the match has none. */
+    onOpenInfo: (() -> Unit)? = null,
     hasOlder: Boolean = false,
     isLoadingOlder: Boolean = false,
     onLoadOlder: (() -> Unit)? = null,
@@ -79,23 +81,18 @@ fun CommentaryTabV2(
     sourceCaption: String? = null,
 ) {
     if (isLoading) {
-        ShimmerCommentaryList(modifier = Modifier.fillMaxSize())
+        DelayedSkeleton(isLoading) { ShimmerCommentaryList(modifier = Modifier.fillMaxSize()) }
         return
     }
 
     // Feed failed (distinct from a genuinely quiet match)
-    if (error != null && commentary.isEmpty()) {
-        EmptyStateV2(
-            title = stringResource(R.string.commentary_error_title),
-            icon = Icons.Outlined.CloudOff,
-            subtitle = error,
-            onRetry = onRetry,
-        )
+    if (failure != null && commentary.isEmpty()) {
+        FailedState(failure, onRetry)
         return
     }
 
     if (commentary.isEmpty()) {
-        CommentaryEmptyState(matchStatus)
+        CommentaryEmptyState(matchStatus, onOpenInfo)
         return
     }
 

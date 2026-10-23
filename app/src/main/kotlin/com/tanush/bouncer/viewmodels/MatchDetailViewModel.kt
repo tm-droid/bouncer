@@ -1,5 +1,7 @@
 package com.tanush.bouncer.viewmodels
 
+import com.tanush.bouncer.ui.components.v2.FailureKind
+import com.tanush.bouncer.ui.components.v2.failureKindOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -144,6 +146,8 @@ class MatchDetailViewModel(
         val loadError: String? = null,
         /** Non-null when the commentary feed failed and no lines are available. */
         val commentaryError: String? = null,
+        /** Why [commentaryError] is set, so the tab can say offline versus server. */
+        val commentaryErrorKind: FailureKind = FailureKind.Unknown,
     ) {
         /**
          * Fold one live-detail payload into the screen's state.
@@ -446,7 +450,10 @@ class MatchDetailViewModel(
             sentryBreadcrumb("match_detail_v2.commentary_load", "Commentary feed load failed: ${it.message}", SentryLevel.WARNING)
             _uiState.update { st ->
                 if (st.commentary.isEmpty()) {
-                    st.copy(commentaryError = "Commentary feed unreachable — check your connection and retry.")
+                    st.copy(
+                        commentaryError = "Commentary feed unreachable — check your connection and retry.",
+                        commentaryErrorKind = failureKindOf(it),
+                    )
                 } else {
                     st
                 }

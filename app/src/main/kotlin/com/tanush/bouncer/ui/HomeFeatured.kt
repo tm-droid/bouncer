@@ -40,6 +40,10 @@ fun featuredFor(
     return FeaturedSplit(featured, followedRows + others)
 }
 
+/** The soonest dated fixture still ahead of [nowMs], for the "no live matches" empty state. */
+fun nextUpcomingMatch(matches: List<CricketMatch>, nowMs: Long): CricketMatch? =
+    matches.filter { it.isUpcoming && (it.startDateMs ?: 0L) > nowMs }.minByOrNull { it.startDateMs!! }
+
 private fun soonestFollowed(followed: List<CricketMatch>, nowMs: Long): CricketMatch? =
     followed
         .filter { it.isUpcoming && (it.startDateMs ?: Long.MAX_VALUE) <= nowMs + UPCOMING_WINDOW_MS }

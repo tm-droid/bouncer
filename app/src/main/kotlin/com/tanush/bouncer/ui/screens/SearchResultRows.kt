@@ -73,7 +73,12 @@ internal fun rememberHighlighted(text: String, query: String): AnnotatedString =
     }
 
 @Composable
-internal fun NoResultsMessage(suggestion: String?, onSuggestion: (String) -> Unit) {
+internal fun NoResultsMessage(
+    query: String,
+    suggestion: String?,
+    onSuggestion: (String) -> Unit,
+    onClear: () -> Unit,
+) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
@@ -85,10 +90,12 @@ internal fun NoResultsMessage(suggestion: String?, onSuggestion: (String) -> Uni
     ) {
         // The same empty state the rest of the app uses, rather than two bare lines of text.
         EmptyStateV2(
-            title = stringResource(R.string.search_no_results_title),
-            subtitle = stringResource(R.string.search_no_results_hint),
+            title = stringResource(R.string.state_search_empty_title, query.trim()),
+            subtitle = stringResource(R.string.state_search_empty_cause),
             icon = Icons.Outlined.SearchOff,
             modifier = Modifier.padding(0.dp),
+            onRetry = onClear,
+            actionLabel = stringResource(R.string.state_clear_search),
         )
         if (suggestion != null) {
             Spacer(Modifier.height(spacing.md))

@@ -21,6 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.PointsTableEntry
+import com.tanush.bouncer.ui.components.v2.DelayedSkeleton
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.ShimmerTableRows
@@ -49,7 +50,7 @@ fun PointsTableTab(
 
     val screenState = when {
         isLoading -> PointsTableState.Loading
-        error != null -> PointsTableState.Error
+        error != null && entries.isEmpty() -> PointsTableState.Error
         else -> PointsTableState.Content
     }
     PullRefreshWrapperV2(isRefreshing = isLoading, onRefresh = viewModel::retry) {
@@ -63,19 +64,32 @@ fun PointsTableTab(
             },
             label = "pointsTableState",
         ) { state ->
-            when (state) {
-                PointsTableState.Loading -> ShimmerTableRows(modifier = Modifier.fillMaxSize())
-                PointsTableState.Error -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    EmptyStateV2(
-                        icon = Icons.Outlined.TableChart,
-                        title = stringResource(R.string.points_no_standings_available),
-                        subtitle = error ?: "",
-                        onRetry = viewModel::retry,
-                    )
-                }
-                PointsTableState.Content -> StandingsList(entries = entries, onTeamClick = onTeamClick)
-            }
+            PointsTableBody(state, entries, error, viewModel::retry, onTeamClick)
         }
+    }
+}
+
+@Composable
+private fun PointsTableBody(
+    state: PointsTableState,
+    entries: List<PointsTableEntry>,
+    error: String?,
+    onRetry: () -> Unit,
+    onTeamClick: (String) -> Unit,
+) {
+    when (state) {
+        PointsTableState.Loading -> DelayedSkeleton(isLoading = true) {
+            ShimmerTableRows(modifier = Modifier.fillMaxSize())
+        }
+        PointsTableState.Error -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            EmptyStateV2(
+                icon = Icons.Outlined.TableChart,
+                title = stringResource(R.string.points_no_standings_available),
+                subtitle = error ?: "",
+                onRetry = onRetry,
+            )
+        }
+        PointsTableState.Content -> StandingsList(entries = entries, onTeamClick = onTeamClick)
     }
 }
 

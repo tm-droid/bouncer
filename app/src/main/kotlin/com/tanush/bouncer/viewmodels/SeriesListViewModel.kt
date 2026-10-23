@@ -1,6 +1,8 @@
 package com.tanush.bouncer.viewmodels
 
 import android.app.Application
+import com.tanush.bouncer.ui.components.v2.FailureKind
+import com.tanush.bouncer.ui.components.v2.failureKindOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.AppResult
@@ -43,8 +45,8 @@ class SeriesListViewModel(application: Application) : AndroidViewModel(applicati
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _hasError = MutableStateFlow(false)
-    val hasError: StateFlow<Boolean> = _hasError.asStateFlow()
+    private val _failure = MutableStateFlow<FailureKind?>(null)
+    val failure: StateFlow<FailureKind?> = _failure.asStateFlow()
 
     private val _mode = MutableStateFlow(Mode.CURRENT)
     val mode: StateFlow<Mode> = _mode.asStateFlow()
@@ -79,7 +81,7 @@ class SeriesListViewModel(application: Application) : AndroidViewModel(applicati
             Mode.CURRENT -> if (currentJob?.isActive == true || current.isNotEmpty()) {
                 // Still loading, or already loaded: show what there is and let the load finish it.
                 _series.value = current
-                _hasError.value = false
+                _failure.value = null
                 _isLoading.value = current.isEmpty()
             } else {
                 loadCurrent()
@@ -95,7 +97,7 @@ class SeriesListViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun showLoaded(list: List<Series>) {
         _series.value = list
-        _hasError.value = false
+        _failure.value = null
         _isLoading.value = false
     }
 
@@ -109,7 +111,7 @@ class SeriesListViewModel(application: Application) : AndroidViewModel(applicati
         currentJob = viewModelScope.launch {
             if (showingCurrent()) {
                 _isLoading.value = true
-                _hasError.value = false
+                _failure.value = null
             }
             val cachedCurrent = cachedCurrentSeries(getApplication())
             if (cachedCurrent.isNotEmpty()) {
@@ -129,10 +131,9 @@ class SeriesListViewModel(application: Application) : AndroidViewModel(applicati
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             if (!isUpstreamOutage(e)) Sentry.captureException(e)
-            // An error state only when there is nothing to show. A failed refresh over a list
-            // the user is already reading is not a failure they need to be told about.
+            // With a list on screen the failure becomes the stale-data banner, not an error page.
             if (showingCurrent()) {
-                _hasError.value = cachedCurrent.isEmpty()
+                _failure.value = failureKindOf(e)
                 _isLoading.value = false
             }
         }
@@ -142,7 +143,7 @@ class SeriesListViewModel(application: Application) : AndroidViewModel(applicati
         pastByYear[year]?.let { return showLoaded(it) }
         pastJob?.cancel()
         _isLoading.value = true
-        _hasError.value = false
+        _failure.value = null
         _series.value = emptyList()
         pastJob = viewModelScope.launch {
             when (val result = SeriesScraper().fetchArchivedSeries(year)) {
@@ -154,7 +155,7 @@ class SeriesListViewModel(application: Application) : AndroidViewModel(applicati
                 is AppResult.Error -> {
                     result.report()
                     if (showingPast(year)) {
-                        _hasError.value = true
+                        _failure.value = failureKindOf(result.exception)
                         _isLoading.value = false
                     }
                 }

@@ -2,13 +2,13 @@ package com.tanush.bouncer.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import com.tanush.bouncer.ui.components.v2.TeamCrest
+import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.PersonAvatar
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.graphics.Color
 import com.tanush.bouncer.ui.theme.rememberSegmentColors
 import com.tanush.bouncer.ui.components.v2.TextTabBarV2
 import com.tanush.bouncer.network.PlayerSearchOutcome
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
@@ -34,6 +34,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -378,25 +379,17 @@ private fun PlayerSearchBox(
 
         // A failed lookup and an empty one used to look the same: nothing at all.
         when {
-            outcome is PlayerSearchOutcome.Unavailable -> Row(
-                modifier = Modifier.fillMaxWidth().padding(top = spacing.sm),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    stringResource(R.string.player_search_unavailable),
-                    style = typography.bodySmall,
-                    color = colors.textSecondary,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = { attempt++ }) {
-                    Text(stringResource(R.string.action_retry), color = colors.primaryText)
-                }
-            }
-            outcome is PlayerSearchOutcome.Success && results.isEmpty() -> Text(
-                stringResource(R.string.player_search_no_results, query.trim()),
-                style = typography.bodySmall,
-                color = colors.textSecondary,
-                modifier = Modifier.padding(top = spacing.sm),
+            outcome is PlayerSearchOutcome.Unavailable -> EmptyStateV2(
+                title = stringResource(R.string.player_search_unavailable),
+                subtitle = stringResource(R.string.state_server_cause),
+                icon = Icons.Outlined.CloudOff,
+                onRetry = { attempt++ },
+            )
+            outcome is PlayerSearchOutcome.Success && results.isEmpty() -> EmptyStateV2(
+                title = stringResource(R.string.state_search_empty_title, query.trim()),
+                subtitle = stringResource(R.string.state_search_empty_cause),
+                onRetry = { query = "" },
+                actionLabel = stringResource(R.string.state_clear_search),
             )
         }
 

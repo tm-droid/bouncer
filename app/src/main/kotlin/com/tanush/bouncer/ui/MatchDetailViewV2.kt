@@ -251,6 +251,10 @@ fun MatchDetailViewV2(
         val page = tabs.indexOf(MatchTab.COMMENTARY)
         if (page >= 0) scope.launch { pagerState.animateScrollToPage(page) }
     }
+    val openInfo: () -> Unit = {
+        val page = tabs.indexOf(MatchTab.INFO)
+        if (page >= 0) scope.launch { pagerState.animateScrollToPage(page) }
+    }
 
     val battingTeam = liveMatch.teams.firstOrNull { it.isBatting }
     // The selected tab takes the batting side's colour when the registry knows it; otherwise the
@@ -433,7 +437,6 @@ fun MatchDetailViewV2(
                     MatchTab.SCORECARD -> ScorecardTab(
                         scorecard = uiState.scorecard,
                         isLoading = uiState.scorecardLoading,
-                        onRetry = vm::retryInitialLoad,
                         // The screen's phase, not the list's status: after the toss the status line
                         // reads "India opt to bowl" for the whole first innings.
                         isLive = phase == MatchPhase.IN_PLAY,
@@ -443,8 +446,9 @@ fun MatchDetailViewV2(
                         commentary = uiState.commentary,
                         matchStatus = liveMatch.currentStatus,
                         isLoading = uiState.commentaryLoading,
-                        error = uiState.commentaryError,
+                        failure = uiState.commentaryErrorKind.takeIf { uiState.commentaryError != null },
                         onRetry = vm::retryInitialLoad,
+                        onOpenInfo = openInfo.takeIf { MatchTab.INFO in tabs },
                         hasOlder = uiState.hasOlderCommentary,
                         isLoadingOlder = uiState.olderCommentaryLoading,
                         onLoadOlder = vm::loadOlderCommentary,

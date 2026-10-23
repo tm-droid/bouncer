@@ -13,24 +13,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwapHoriz
 import android.content.Context
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,14 +39,12 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.FormatStats
@@ -62,6 +54,7 @@ import com.tanush.bouncer.services.PlayerCacheWorker
 import com.tanush.bouncer.ui.screens.player.playerBioItems
 import com.tanush.bouncer.ui.screens.player.playerRecentFormItems
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
+import com.tanush.bouncer.ui.components.v2.DelayedSkeleton
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.ShimmerPlayerHeader
@@ -127,7 +120,7 @@ fun PlayerDetailScreenV2(
     ) { padding ->
         val loaded = profile
         when {
-            loadState == LoadState.Loading -> PlayerLoading(padding)
+            loadState == LoadState.Loading -> DelayedSkeleton(isLoading = true) { PlayerLoading(padding) }
             loaded == null -> PlayerLoadError(padding, playerName) { retryCount++ }
             else -> PlayerProfileList(
                 padding = padding,
@@ -192,33 +185,13 @@ private fun PlayerLoading(padding: PaddingValues) {
 /** Honest failure state — no placeholder stats masquerading as real data. */
 @Composable
 private fun PlayerLoadError(padding: PaddingValues, playerName: String, onRetry: () -> Unit) {
-    val colors = BouncerThemeV2.colors
-    val spacing = BouncerThemeV2.spacing
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)
-            .padding(spacing.lg),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        EmptyStateV2(
-            icon = Icons.Default.Person,
-            title = "Couldn't load $playerName",
-            subtitle = stringResource(R.string.player_the_profile_isn_t_available_right),
-        )
-        Button(
-            onClick = onRetry,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colors.primary,
-                contentColor = colors.onPrimary,
-            ),
-        ) {
-            Icon(Icons.Default.Refresh, "Retry", Modifier.size(16.dp))
-            Spacer(Modifier.width(spacing.xs))
-            Text(stringResource(R.string.player_retry), style = BouncerThemeV2.typography.labelMedium)
-        }
-    }
+    EmptyStateV2(
+        modifier = Modifier.padding(padding),
+        icon = Icons.Default.Person,
+        title = "Couldn't load $playerName",
+        subtitle = stringResource(R.string.player_the_profile_isn_t_available_right),
+        onRetry = onRetry,
+    )
 }
 
 /** What the caller already knew about the player, used where the profile is silent. */

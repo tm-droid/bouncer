@@ -52,7 +52,9 @@ import com.tanush.bouncer.models.SeriesMatchDay
 import com.tanush.bouncer.models.SeriesStats
 import com.tanush.bouncer.models.SeriesStatsTable
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
+import com.tanush.bouncer.ui.components.v2.DelayedSkeleton
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
+import com.tanush.bouncer.ui.components.v2.FailedState
 import com.tanush.bouncer.ui.components.v2.MatchCardV2
 import com.tanush.bouncer.ui.components.v2.MatchStatusType
 import com.tanush.bouncer.ui.components.v2.determineMatchStatus
@@ -124,16 +126,11 @@ private fun ScheduleTab(
 ) {
     when (state) {
         SeriesTabState.Loading -> LoadingRows()
-        SeriesTabState.Error -> CenteredEmpty(
-            icon = Icons.Outlined.CalendarMonth,
-            title = stringResource(R.string.series_couldn_t_load_schedule),
-            subtitle = stringResource(R.string.series_check_your_connection_and_try_again),
-            onRetry = onRetry,
-        )
+        is SeriesTabState.Error -> FailedState(state.kind, onRetry, Modifier.fillMaxSize())
         SeriesTabState.Empty -> CenteredEmpty(
             icon = Icons.Outlined.CalendarMonth,
-            title = stringResource(R.string.series_no_matches_listed),
-            subtitle = stringResource(R.string.series_fixtures_appear_when_announced),
+            title = stringResource(R.string.state_series_empty_title),
+            subtitle = stringResource(R.string.state_series_empty_cause),
         )
         is SeriesTabState.Loaded -> ScheduleList(state.data, onMatchClick)
     }
@@ -207,12 +204,7 @@ private fun StatsTab(viewModel: SeriesDetailViewModel, onPlayerClick: (name: Str
 
     when (val s = state) {
         SeriesTabState.Loading -> LoadingRows()
-        SeriesTabState.Error -> CenteredEmpty(
-            icon = Icons.Outlined.BarChart,
-            title = stringResource(R.string.series_couldn_t_load_stats),
-            subtitle = stringResource(R.string.series_check_your_connection_and_try_again),
-            onRetry = viewModel::retryStats,
-        )
+        is SeriesTabState.Error -> FailedState(s.kind, viewModel::retryStats, Modifier.fillMaxSize())
         SeriesTabState.Empty -> CenteredEmpty(
             icon = Icons.Outlined.BarChart,
             title = stringResource(R.string.series_no_stats_yet),
@@ -316,11 +308,13 @@ private fun StatsTable(table: SeriesStatsTable, onPlayerClick: (name: String, cr
 @Composable
 private fun LoadingRows() {
     val spacing = BouncerThemeV2.spacing
-    Column(
-        modifier = Modifier.fillMaxSize().padding(spacing.lg),
-        verticalArrangement = Arrangement.spacedBy(spacing.sm),
-    ) {
-        repeat(6) { ShimmerListItem() }
+    DelayedSkeleton(isLoading = true) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
+        ) {
+            repeat(6) { ShimmerListItem() }
+        }
     }
 }
 
@@ -329,10 +323,9 @@ private fun CenteredEmpty(
     icon: ImageVector,
     title: String,
     subtitle: String,
-    onRetry: (() -> Unit)? = null,
 ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        EmptyStateV2(icon = icon, title = title, subtitle = subtitle, onRetry = onRetry)
+        EmptyStateV2(icon = icon, title = title, subtitle = subtitle)
     }
 }
 

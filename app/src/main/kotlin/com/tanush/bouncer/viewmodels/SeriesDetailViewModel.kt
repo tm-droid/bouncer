@@ -3,6 +3,8 @@ package com.tanush.bouncer.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.AppResult
+import com.tanush.bouncer.ui.components.v2.FailureKind
+import com.tanush.bouncer.ui.components.v2.failureKindOf
 import com.tanush.bouncer.data.report
 import com.tanush.bouncer.models.SeriesMatchDay
 import com.tanush.bouncer.models.SeriesStats
@@ -20,7 +22,7 @@ sealed interface SeriesTabState<out T> {
     data object Loading : SeriesTabState<Nothing>
     data class Loaded<T>(val data: T) : SeriesTabState<T>
     data object Empty : SeriesTabState<Nothing>
-    data object Error : SeriesTabState<Nothing>
+    data class Error(val kind: FailureKind) : SeriesTabState<Nothing>
 }
 
 /**
@@ -96,7 +98,7 @@ class SeriesDetailViewModel(
                 }
                 is AppResult.Error -> {
                     result.report()
-                    _schedule.value = SeriesTabState.Error
+                    _schedule.value = SeriesTabState.Error(failureKindOf(result.exception))
                 }
                 AppResult.Loading -> Unit
             }
@@ -119,7 +121,7 @@ class SeriesDetailViewModel(
                 }
                 is AppResult.Error -> {
                     result.report()
-                    _stats.value = SeriesTabState.Error
+                    _stats.value = SeriesTabState.Error(failureKindOf(result.exception))
                 }
                 AppResult.Loading -> Unit
             }

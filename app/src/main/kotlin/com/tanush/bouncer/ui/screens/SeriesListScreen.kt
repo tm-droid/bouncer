@@ -10,7 +10,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.outlined.EmojiEvents
-import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.runtime.saveable.rememberSaveable
 import java.time.ZoneId
 import androidx.compose.ui.res.stringResource
@@ -57,7 +56,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.Series
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
+import com.tanush.bouncer.ui.components.v2.DelayedSkeleton
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
+import com.tanush.bouncer.ui.components.v2.FailedState
+import com.tanush.bouncer.ui.components.v2.FailureKind
+import com.tanush.bouncer.ui.components.v2.ScreenState
+import com.tanush.bouncer.ui.components.v2.StaleDataBanner
+import com.tanush.bouncer.ui.components.v2.screenStateOf
 import com.tanush.bouncer.ui.components.v2.TextTabBarV2
 import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.ShimmerListItem
@@ -83,7 +88,7 @@ fun SeriesListScreen(
 
     val allSeries by viewModel.series.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
-    val hasError by viewModel.hasError.collectAsStateWithLifecycle()
+    val failure by viewModel.failure.collectAsStateWithLifecycle()
     val mode by viewModel.mode.collectAsStateWithLifecycle()
     val selectedYear by viewModel.selectedYear.collectAsStateWithLifecycle()
     var selectedFilter by rememberSaveable { mutableStateOf("All") }
@@ -127,7 +132,7 @@ fun SeriesListScreen(
                     stringResource(R.string.series_active_cricket_series_will_appear_here)
                 },
                 isLoading = isLoading,
-                hasError = hasError,
+                failure = failure,
                 allSeries = allSeries,
                 filteredSeries = filteredSeries,
                 filterOptions = SERIES_FILTER_OPTIONS,
@@ -173,7 +178,7 @@ private fun SeriesListBody(
     innerPadding: PaddingValues,
     emptySubtitle: String,
     isLoading: Boolean,
-    hasError: Boolean,
+    failure: FailureKind?,
     allSeries: List<Series>,
     filteredSeries: List<Series>,
     filterOptions: List<String>,
@@ -186,12 +191,12 @@ private fun SeriesListBody(
     // Fade between skeleton/error/empty/content instead of hard-swapping.
     // Opacity-only, so it stays on under reduced motion (shorter spec).
     Crossfade(
-        targetState = seriesListStateOf(isLoading, hasError, allSeries.isEmpty()),
+        targetState = screenStateOf(allSeries.isNotEmpty(), isLoading, failure),
         animationSpec = stateFadeSpec(),
         label = "seriesListState",
     ) { state ->
         when (state) {
-        SeriesListState.Loading -> {
+        ScreenState.Loading -> DelayedSkeleton(isLoading) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -202,17 +207,10 @@ private fun SeriesListBody(
                 repeat(6) { ShimmerListItem() }
             }
         }
-        SeriesListState.Error -> {
-            Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                EmptyStateV2(
-                    title = stringResource(R.string.series_couldn_t_load_series),
-                    icon = Icons.Outlined.CloudOff,
-                    subtitle = stringResource(R.string.series_check_your_connection_and_try_again),
-                    onRetry = onRetry,
-                )
-            }
+        is ScreenState.Failed -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+            FailedState(state.kind, onRetry)
         }
-        SeriesListState.Empty -> {
+        ScreenState.Empty -> {
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 EmptyStateV2(
                     title = stringResource(R.string.series_no_series_found),
@@ -221,14 +219,17 @@ private fun SeriesListBody(
                 )
             }
         }
-        SeriesListState.Content -> SeriesListContent(
-            innerPadding = innerPadding,
-            filteredSeries = filteredSeries,
-            filterOptions = filterOptions,
-            selectedFilter = selectedFilter,
-            onFilterSelected = onFilterSelected,
-            onSeriesClick = onSeriesClick,
-        )
+        else -> Column(Modifier.fillMaxSize()) {
+            if (state is ScreenState.ContentWithBanner) StaleDataBanner(state.kind, state.savedAtMs, onRetry)
+            SeriesListContent(
+                innerPadding = innerPadding,
+                filteredSeries = filteredSeries,
+                filterOptions = filterOptions,
+                selectedFilter = selectedFilter,
+                onFilterSelected = onFilterSelected,
+                onSeriesClick = onSeriesClick,
+            )
+        }
         }
     }
 }
@@ -263,15 +264,6 @@ private fun SeriesListContent(
 
         item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
     }
-}
-
-private enum class SeriesListState { Loading, Error, Empty, Content }
-
-private fun seriesListStateOf(isLoading: Boolean, hasError: Boolean, isEmpty: Boolean): SeriesListState = when {
-    isLoading -> SeriesListState.Loading
-    hasError -> SeriesListState.Error
-    isEmpty -> SeriesListState.Empty
-    else -> SeriesListState.Content
 }
 
 private fun stateFadeSpec(): FiniteAnimationSpec<Float> =

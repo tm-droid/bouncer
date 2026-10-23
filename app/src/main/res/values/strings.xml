@@ -65,7 +65,6 @@
     <string name="search_did_you_mean">Did you mean:\u0020</string>
     <string name="search_recent_title">Recent searches</string>
     <string name="search_trending_title">Trending</string>
-    <string name="search_no_results_title">No results found</string>
     <!-- Section heading with its result count, e.g. "Teams (3)". -->
     <string name="search_section_with_count" translatable="false">%1$s (%2$d)</string>
     <string name="search_section_teams">Teams</string>
@@ -80,7 +79,6 @@
     <string name="search_see_all">See all (%1$d)</string>
     <string name="search_players_searching">Searching all players…</string>
     <string name="search_players_unavailable">Online player search is unavailable right now</string>
-    <string name="search_no_results_hint">Try a team code like RCB, a surname, or a competition like IPL 2026</string>
     <plurals name="search_team_fixtures">
         <item quantity="one">%1$s · %2$d match</item>
         <item quantity="other">%1$s · %2$d matches</item>
@@ -205,7 +203,6 @@
     <string name="summary_empty_subtitle">The result above is all there is for this match.</string>
     <string name="graphs_wagon_title">Where the runs went, %1$s</string>
 
-    <string name="commentary_error_title">Commentary interrupted</string>
     <string name="commentary_action_copy">Copy text</string>
     <string name="commentary_action_share">Share</string>
     <string name="commentary_empty_stumps_title">Stumps</string>
@@ -216,8 +213,6 @@
     <string name="commentary_empty_rain_subtitle">Commentary will resume when play restarts</string>
     <string name="commentary_empty_complete_title">Match Complete</string>
     <string name="commentary_empty_complete_subtitle">No more commentary available</string>
-    <string name="commentary_empty_none_title">No commentary yet</string>
-    <string name="commentary_empty_none_subtitle">Commentary will appear once the match starts</string>
     <string name="commentary_filter_empty_title">Nothing here yet</string>
     <string name="commentary_filter_none_subtitle">None in this match so far.</string>
     <string name="commentary_filter_empty_subtitle">No matching deliveries in the commentary loaded so far. Load earlier commentary, or switch back to All.</string>
@@ -237,7 +232,6 @@
     <string name="update_required_body">This version no longer works with Bouncer\'s servers. Update to keep following matches.</string>
     <string name="update_required_action">Update</string>
     <string name="about_made_with_by_tanush">Made with ❤️ by Tanush</string>
-    <string name="matches_couldnt_load">Couldn\'t load matches</string>
     <string name="notification_channel_live_events_desc">Notifications for live match events</string>
     <string name="appearance_dark">Dark</string>
     <string name="appearance_light">Light</string>
@@ -343,7 +337,6 @@
     <string name="player_player">Player</string>
     <string name="player_player_1">Player 1</string>
     <string name="player_player_2">Player 2</string>
-    <string name="player_retry">Retry</string>
     <string name="player_search_player">Search player…</string>
     <string name="player_tap_to_search">Tap to search</string>
     <string name="player_the_profile_isn_t_available_right">The profile isn\'t available right now. Check your connection and try again.</string>
@@ -373,20 +366,14 @@
     <string name="reminders_empty_subtitle">Set one from an upcoming match\'s page.</string>
     <string name="reminders_scheduled_reminders">Reminders</string>
     <string name="series_active_cricket_series_will_appear_here">Active cricket series will appear here</string>
-    <string name="series_check_your_connection_and_try_again">Check your connection and try again</string>
-    <string name="series_couldn_t_load_series">Couldn\'t load series</string>
     <string name="series_current">Current</string>
     <string name="series_past">Past</string>
     <string name="series_no_archived_series_for_year">Cricbuzz has no series archived for %1$d</string>
     <string name="series_schedule">Schedule</string>
     <string name="series_stats">Stats</string>
     <string name="series_points_table">Points table</string>
-    <string name="series_no_matches_listed">No matches listed</string>
-    <string name="series_fixtures_appear_when_announced">Fixtures appear here once Cricbuzz announces them.</string>
-    <string name="series_couldn_t_load_schedule">Couldn\'t load the schedule</string>
     <string name="series_no_stats_yet">No stats yet</string>
     <string name="series_stats_appear_once_played">Stats appear once matches in this series have been played.</string>
-    <string name="series_couldn_t_load_stats">Couldn\'t load stats</string>
     <string name="series_no_players_for_stat">No players qualify for this stat yet.</string>
     <string name="series_no_series_found">No series found</string>
     <string name="series_series">Series</string>
@@ -444,7 +431,6 @@
     <string name="reminder_failed">Couldn\'t set that reminder. Try again</string>
     <string name="common_close">Close</string>
     <string name="player_search_unavailable">Player search isn\'t available right now.</string>
-    <string name="player_search_no_results">No players found for \"%1$s\"</string>
     <string name="scorecard_innings_first">%1$s 1st inns</string>
     <string name="scorecard_innings_second">%1$s 2nd inns</string>
     <plurals name="onboarding_permission_scope">
@@ -453,7 +439,6 @@
     </plurals>
     <string name="onboarding_permission_scope_none">Follow your teams first. We\'ll only ping you about them.</string>
     <string name="share_failed">Couldn\'t share this match. Try again</string>
-    <string name="home_empty_live_title">No live matches right now</string>
     <string name="home_empty_live_subtitle">Upcoming fixtures and recent results are a tab away.</string>
     <string name="home_see_upcoming">See upcoming</string>
     <plurals name="day_match_count">
@@ -550,12 +535,11 @@
         <item quantity="one">in %d hr</item>
         <item quantity="other">in %d hr</item>
     </plurals>
-    <string name="result_title">Result</string>
     <string name="result_won_by">Won by %s</string>
-    <string name="result_top_batter">Top batter</string>
-    <string name="result_top_bowler">Top bowler</string>
     <string name="result_tied">Match tied</string>
     <string name="result_no_result">No result</string>
+    <string name="result_drawn">Match drawn</string>
+    <string name="result_abandoned">Match abandoned</string>
     <string name="a11y_score_for">%1$s %2$s for %3$s, %4$s overs</string>
     <string name="a11y_score_all_out">%1$s %2$s all out, %3$s overs</string>
     <string name="a11y_yet_to_bat">%1$s yet to bat</string>

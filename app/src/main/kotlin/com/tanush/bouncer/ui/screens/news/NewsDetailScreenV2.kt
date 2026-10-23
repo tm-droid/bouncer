@@ -35,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
+import com.tanush.bouncer.ui.components.v2.DelayedSkeleton
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.NewsImage
 import com.tanush.bouncer.ui.components.v2.ShimmerBox
@@ -195,13 +196,19 @@ private class ArticleBodyState(val paragraphs: List<String>, val isLoading: Bool
 
 private fun LazyListScope.articleBody(body: ArticleBodyState, onRetry: () -> Unit) {
     if (body.isLoading) {
-        items(BODY_SKELETON_LINES, key = { "body_shimmer_$it" }) {
-            ShimmerBox(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = BouncerThemeV2.spacing.lg, vertical = BouncerThemeV2.spacing.xs),
-                height = 16.dp,
-            )
+        item(key = "body_shimmer") {
+            DelayedSkeleton(isLoading = true) {
+                Column {
+                    repeat(BODY_SKELETON_LINES) {
+                        ShimmerBox(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = BouncerThemeV2.spacing.lg, vertical = BouncerThemeV2.spacing.xs),
+                            height = 16.dp,
+                        )
+                    }
+                }
+            }
         }
     }
 

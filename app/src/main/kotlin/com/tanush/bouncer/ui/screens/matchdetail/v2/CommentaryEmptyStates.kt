@@ -15,7 +15,7 @@ import com.tanush.bouncer.viewmodels.CommentaryEventPage
 
 /** Contextual empty state — a quiet feed reads differently at stumps vs. pre-match. */
 @Composable
-internal fun CommentaryEmptyState(matchStatus: String) {
+internal fun CommentaryEmptyState(matchStatus: String, onOpenInfo: (() -> Unit)? = null) {
     val statusLower = matchStatus.lowercase()
     // The status text being matched is upstream scoreboard copy, always English; only the message
     // shown to the reader is a resource.
@@ -28,9 +28,16 @@ internal fun CommentaryEmptyState(matchStatus: String) {
             R.string.commentary_empty_rain_title to R.string.commentary_empty_rain_subtitle
         statusLower.contains("won") || statusLower.contains("drawn") ->
             R.string.commentary_empty_complete_title to R.string.commentary_empty_complete_subtitle
-        else -> R.string.commentary_empty_none_title to R.string.commentary_empty_none_subtitle
+        else -> R.string.state_no_commentary_title to R.string.state_no_commentary_cause
     }
-    EmptyStateV2(title = stringResource(title), subtitle = stringResource(subtitle), icon = Icons.Outlined.ChatBubbleOutline)
+    val offersInfo = title == R.string.state_no_commentary_title && onOpenInfo != null
+    EmptyStateV2(
+        title = stringResource(title),
+        subtitle = stringResource(subtitle),
+        icon = Icons.Outlined.ChatBubbleOutline,
+        onRetry = onOpenInfo.takeIf { offersInfo },
+        actionLabel = stringResource(R.string.state_open_match_info).takeIf { offersInfo },
+    )
 }
 
 /**

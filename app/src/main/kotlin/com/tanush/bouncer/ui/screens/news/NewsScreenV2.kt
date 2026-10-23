@@ -37,6 +37,7 @@ import com.tanush.bouncer.R
 import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
+import com.tanush.bouncer.ui.components.v2.DelayedSkeleton
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.NewsImage
 import com.tanush.bouncer.ui.components.v2.NewsRowSkeleton
@@ -133,7 +134,9 @@ private fun LazyListScope.newsItems(
     // Loading
     if (state.isLoading && articles.isEmpty()) {
         // News-shaped and still. These were match-row skeletons, so first paint jumped.
-        items(SKELETON_ROWS, key = { "skeleton_$it" }) { NewsRowSkeleton() }
+        item(key = "skeleton") {
+            DelayedSkeleton(isLoading = true) { Column { repeat(SKELETON_ROWS) { NewsRowSkeleton() } } }
+        }
         return
     }
 
@@ -145,14 +148,7 @@ private fun LazyListScope.newsItems(
     // "Something went wrong". Retry is offered in BOTH branches: an empty tab with no way out was
     // this bug's most visible symptom.
     if (articles.isEmpty()) {
-        item(key = "empty") {
-            EmptyStateV2(
-                title = state.error ?: stringResource(R.string.news_none_yet),
-                subtitle = emptySubtitle,
-                icon = if (state.error != null) Icons.Outlined.CloudOff else Icons.Outlined.Newspaper,
-                onRetry = onRetry,
-            )
-        }
+        emptyNewsItem(state.error != null, emptySubtitle, onRetry)
         return
     }
 
@@ -162,6 +158,21 @@ private fun LazyListScope.newsItems(
         item(key = "stale_banner") { StaleHeadlinesBanner(ageMs = stale.ageMs, modifier = rowPadding) }
     }
 
+    articleItems(articles, onArticleClick)
+}
+
+private fun LazyListScope.emptyNewsItem(hasError: Boolean, emptySubtitle: String, onRetry: () -> Unit) {
+    item(key = "empty") {
+        EmptyStateV2(
+            title = stringResource(if (hasError) R.string.state_news_title else R.string.news_none_yet),
+            subtitle = if (hasError) stringResource(R.string.state_news_cause) else emptySubtitle,
+            icon = if (hasError) Icons.Outlined.CloudOff else Icons.Outlined.Newspaper,
+            onRetry = onRetry,
+        )
+    }
+}
+
+private fun LazyListScope.articleItems(articles: List<NewsArticleData>, onArticleClick: (NewsArticleData) -> Unit) {
     // The lead story, then every other as a row. One background, split by dividers.
     val lead = articles.first()
     item(key = "lead_${lead.id}") {

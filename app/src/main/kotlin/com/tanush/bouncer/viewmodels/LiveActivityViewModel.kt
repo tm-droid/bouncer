@@ -14,6 +14,8 @@ import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.data.PlayedMatchIndex
 import com.tanush.bouncer.data.remote.WinProbabilityStore
 import com.tanush.bouncer.services.MatchCacheService
+import com.tanush.bouncer.ui.components.v2.FailureKind
+import com.tanush.bouncer.ui.components.v2.failureKindOf
 import com.tanush.bouncer.network.CricBuzzUrls
 import com.tanush.bouncer.network.MatchListUnavailableException
 import io.sentry.Breadcrumb
@@ -75,7 +77,7 @@ internal fun loadFailureMessage(e: Throwable): String = when {
 sealed class LoadingState {
     object Idle : LoadingState()
     object Refreshing : LoadingState()
-    data class Error(val message: String) : LoadingState()
+    data class Error(val message: String, val kind: FailureKind = FailureKind.Unknown) : LoadingState()
 }
 
 class LiveActivityViewModel(
@@ -458,7 +460,7 @@ class LiveActivityViewModel(
             applyOfflineFallback(status, e)
         } else if (status !in freshStatuses && statusIsOnScreen(status)) {
             // The list on screen is the one seeded from disk, and nothing newer has arrived.
-            _loadingState.value = LoadingState.Error(CACHED_DATA_MESSAGE)
+            _loadingState.value = LoadingState.Error(CACHED_DATA_MESSAGE, failureKindOf(e))
         }
     }
 
@@ -470,9 +472,9 @@ class LiveActivityViewModel(
         _loadingState.value = if (!offline.isNullOrEmpty()) {
             Log.d(TAG, "Using offline cache for $status (${offline.size} matches)")
             filterAndEmitMatches(offline)
-            LoadingState.Error(CACHED_DATA_MESSAGE)
+            LoadingState.Error(CACHED_DATA_MESSAGE, failureKindOf(e))
         } else {
-            LoadingState.Error(loadFailureMessage(e))
+            LoadingState.Error(loadFailureMessage(e), failureKindOf(e))
         }
     }
 
@@ -614,7 +616,7 @@ class LiveActivityViewModel(
                 data = mapOf("error_type" to e.javaClass.simpleName),
             )
             if (isReportableScrapeFailure(e)) Sentry.captureException(e)
-            _loadingState.value = LoadingState.Error(loadFailureMessage(e))
+            _loadingState.value = LoadingState.Error(loadFailureMessage(e), failureKindOf(e))
         }
     }
 
@@ -623,7 +625,7 @@ class LiveActivityViewModel(
         breadcrumb("network.error", crumb, SentryLevel.ERROR)
         // Offline and a timeout are the network's state; the screen already says so.
         if (isReportableScrapeFailure(e)) Sentry.captureException(e)
-        _loadingState.value = LoadingState.Error(userMsg)
+        _loadingState.value = LoadingState.Error(userMsg, failureKindOf(e))
     }
 
     override fun onCleared() {

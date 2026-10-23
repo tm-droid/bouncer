@@ -1,6 +1,5 @@
 package com.tanush.bouncer.ui
 
-import androidx.compose.runtime.LaunchedEffect
 
 
 
@@ -20,7 +19,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.CloudOff
 import com.tanush.bouncer.viewmodels.LoadingState
 import androidx.compose.material.icons.outlined.SportsCricket
 import androidx.compose.material3.Badge
@@ -31,8 +29,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
@@ -41,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -53,14 +50,27 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.NetworkStatusBanner
 import com.tanush.bouncer.ui.components.rememberIsOffline
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
+import com.tanush.bouncer.ui.components.v2.DelayedSkeleton
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
+import com.tanush.bouncer.ui.components.v2.FailedState
+import com.tanush.bouncer.ui.components.v2.FailureKind
 import com.tanush.bouncer.ui.components.v2.HeroMatchCard
 import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
+import com.tanush.bouncer.ui.components.v2.ScreenState
 import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
+import com.tanush.bouncer.ui.components.v2.StaleDataBanner
+import com.tanush.bouncer.ui.components.v2.screenStateOf
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.v2.bouncerScreenBackground
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.viewmodels.STATUS_ALL
+import com.tanush.bouncer.viewmodels.statusesToFetch
+import com.tanush.bouncer.ui.screens.dayLabel
+import android.text.format.DateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.util.Date
 
 /**
  * HomeScreenV2 — the main home tab.
@@ -88,14 +98,12 @@ fun HomeScreenV2(
     val favourites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
     val favouriteNames = remember(favourites) { favourites.map { it.trim().lowercase() }.toSet() }
     val matches = remember(currentMatches, filters, favouriteNames) { currentMatches.narrowedBy(filters, favouriteNames) }
-
-    // Refresh failed while content is on screen: keep the stale list, say so.
-    // (The empty-list failure case is handled by the EmptyState below.)
-    val snackbarHostState = remember { SnackbarHostState() }
-    RefreshFailureSnackbarEffect(loadingState = loadingState, hasContent = matches.isNotEmpty(), snackbarHostState = snackbarHostState)
+    val allMatches by viewModel.allMatches.collectAsStateWithLifecycle()
+    val nextUp = remember(allMatches) { nextUpcomingMatch(allMatches, System.currentTimeMillis()) }
+    // The disk cache stamps every successful fetch, so its newest stamp is when the list on screen was saved.
+    val savedAtMs = remember(loadingState, selectedStatus) { MatchCacheService.savedAtMs(statusesToFetch(selectedStatus)) }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             HomeHeader(selectedStatus, filters, onFiltersChanged, onNotificationsClick, onSearchClick) {
                 viewModel.setAndFetchMatches(it)
@@ -113,7 +121,9 @@ fun HomeScreenV2(
                 favouriteNames = favouriteNames,
                 byDay = dayOrderFor(selectedStatus),
                 isLoading = isLoading,
-                loadError = (loadingState as? LoadingState.Error)?.message,
+                failure = (loadingState as? LoadingState.Error)?.kind,
+                savedAtMs = savedAtMs,
+                nextUp = nextUp,
                 filtered = if (filters.active) FilteredList(filters.label) { onFiltersChanged(HomeFilters()) } else null,
                 onMatchClick = onMatchClick,
                 onRetry = { viewModel.refreshMatches() },
@@ -231,7 +241,9 @@ private fun HomeMatchList(
     favouriteNames: Set<String>,
     byDay: DayOrder,
     isLoading: Boolean,
-    loadError: String?,
+    failure: FailureKind?,
+    savedAtMs: Long?,
+    nextUp: CricketMatch?,
     filtered: FilteredList?,
     onMatchClick: (CricketMatch) -> Unit,
     onRetry: () -> Unit,
@@ -259,13 +271,24 @@ private fun HomeMatchList(
         modifier = Modifier.fillMaxSize().bouncerScreenBackground(),
         contentPadding = PaddingValues(bottom = 80.dp),
     ) {
-        when {
-            isLoading && matches.isEmpty() -> items(SHIMMER_ROWS, key = { "shimmer_$it" }) {
-                // Mirror the real row's geometry so first paint does not jump.
-                ShimmerMatchCard(Modifier.padding(horizontal = spacing.lg, vertical = spacing.rowVertical))
+        val state = screenStateOf(matches.isNotEmpty(), isLoading, failure, savedAtMs)
+        when (state) {
+            ScreenState.Loading -> item(key = "shimmer") {
+                DelayedSkeleton(isLoading) {
+                    Column {
+                        repeat(SHIMMER_ROWS) {
+                            // Mirror the real row's geometry so first paint does not jump.
+                            ShimmerMatchCard(Modifier.padding(horizontal = spacing.lg, vertical = spacing.rowVertical))
+                        }
+                    }
+                }
             }
-            matches.isEmpty() -> homeEmptyItems(loadError, filtered, onRetry, onSeeUpcoming)
+            is ScreenState.Failed -> item(key = "load_error") { FailedState(state.kind, onRetry) }
+            ScreenState.Empty -> homeEmptyItems(filtered, nextUp, onSeeUpcoming)
             else -> {
+                if (state is ScreenState.ContentWithBanner) {
+                    item(key = "stale", contentType = "stale") { StaleDataBanner(state.kind, state.savedAtMs, onRetry) }
+                }
                 featured?.match?.let { fm ->
                     item(key = "hero_${fm.id}", contentType = "hero") {
                         HeroMatchCard(match = fm, onClick = { onMatchClick(fm) }, modifier = Modifier.animateItem())
@@ -281,24 +304,13 @@ private fun HomeMatchList(
     }
 }
 
-/** Home with nothing to list: a failed load, a filter that emptied it, or no cricket on. */
+/** Home with nothing to list and no failure: a filter that emptied it, or no cricket on. */
 private fun LazyListScope.homeEmptyItems(
-    loadError: String?,
     filtered: FilteredList?,
-    onRetry: () -> Unit,
+    nextUp: CricketMatch?,
     onSeeUpcoming: (() -> Unit)?,
 ) {
     when {
-        // A failed load with nothing saved says so. It used to fall through to the filter advice
-        // or "No matches", with no retry and the reason dropped.
-        loadError != null -> item(key = "load_error") {
-            EmptyStateV2(
-                title = stringResource(R.string.matches_couldnt_load),
-                subtitle = loadError,
-                icon = Icons.Outlined.CloudOff,
-                onRetry = onRetry,
-            )
-        }
         // A filter that empties the list says which filter, and offers the way out. It used to
         // read "No matches found" with no action.
         filtered != null -> item(key = "empty_filtered") {
@@ -314,8 +326,8 @@ private fun LazyListScope.homeEmptyItems(
         // "Try changing your filters" on an unfiltered Live tab.
         onSeeUpcoming != null -> item(key = "empty_live") {
             EmptyStateV2(
-                title = stringResource(R.string.home_empty_live_title),
-                subtitle = stringResource(R.string.home_empty_live_subtitle),
+                title = stringResource(R.string.state_no_live_title),
+                subtitle = nextUp?.let { nextUpCause(it) } ?: stringResource(R.string.home_empty_live_subtitle),
                 icon = Icons.Outlined.SportsCricket,
                 onRetry = onSeeUpcoming,
                 actionLabel = stringResource(R.string.home_see_upcoming),
@@ -331,22 +343,18 @@ private fun LazyListScope.homeEmptyItems(
     }
 }
 
-// ─── Helpers ──────────────────────────────────────────────
-
-/** Shows the refresh-failure message as a snackbar when stale content is still visible. */
+/** "Next: India v Australia, Tomorrow 7:30 pm." for the dated [match]. */
 @Composable
-private fun RefreshFailureSnackbarEffect(
-    loadingState: LoadingState,
-    hasContent: Boolean,
-    snackbarHostState: SnackbarHostState,
-) {
-    LaunchedEffect(loadingState) {
-        val errorState = loadingState as? LoadingState.Error
-        if (errorState != null && hasContent) {
-            snackbarHostState.showSnackbar(errorState.message)
-        }
-    }
+private fun nextUpCause(match: CricketMatch): String {
+    val zone = ZoneId.systemDefault()
+    val startMs = match.startDateMs ?: return stringResource(R.string.home_empty_live_subtitle)
+    val day = dayLabel(Instant.ofEpochMilli(startMs).atZone(zone).toLocalDate(), LocalDate.now(zone))
+    val time = DateFormat.getTimeFormat(LocalContext.current).format(Date(startMs))
+    val teams = match.teams.joinToString(" v ") { it.name }
+    return stringResource(R.string.state_no_live_cause, teams, "$day $time")
 }
+
+// ─── Helpers ──────────────────────────────────────────────
 
 internal fun CricketMatch.hasFavouriteTeam(favouriteNames: Set<String>): Boolean =
     favouriteNames.isNotEmpty() && teams.any { it.name.trim().lowercase() in favouriteNames }
