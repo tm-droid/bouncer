@@ -173,7 +173,7 @@
     <string name="match_info_meetings">Recorded %1$s meetings</string>
     <string name="match_info_meetings_played">Played</string>
     <string name="match_info_meetings_won">%1$s won</string>
-    <string name="match_info_ground_matches">Matches in the archive</string>
+    <string name="match_info_ground_matches">Matches on record</string>
     <string name="match_info_ground_average">Average first innings</string>
     <string name="match_info_ground_bat_first">Won batting first</string>
     <string name="match_info_ground_chasing">Won chasing</string>

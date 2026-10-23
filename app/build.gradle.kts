@@ -292,6 +292,12 @@ android {
             .withPropertyName("teamVariantParityFixture")
             .withPathSensitivity(PathSensitivity.RELATIVE)
 
+        // SearchCorpusRankingTest ranks teams over the shipped curated codes ("aus" is Australia's,
+        // Austria's is AUT). Same reasoning: undeclared, an edit to the asset leaves the task UP-TO-DATE.
+        inputs.files(file("src/main/assets/TeamAcronyms.json"))
+            .withPropertyName("teamAcronymsAsset")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+
         // LogoInkTest pins the plate colours tools/team_sources.py measures crests against to the
         // app's surfaceVariant tokens. Same reasoning: undeclared, an edit leaves the task UP-TO-DATE.
         inputs.files(rootProject.file("tools/team_sources.py"))

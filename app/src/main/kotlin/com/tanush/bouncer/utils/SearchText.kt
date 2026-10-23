@@ -39,9 +39,10 @@ object SearchScore {
     /**
      * A query that is a team's curated code ("rcb", "csk"). Inside the prefix band because it is
      * as certain as typing the name, and above every prefix hit shorter than a full name, so "mi"
-     * ranks Mumbai Indians above "MI Cape Town" rather than below it.
+     * ranks Mumbai Indians above "MI Cape Town" and "aus" Australia above Austria (3 of 7 letters
+     * scores 0.971, which 0.97 lost to).
      */
-    const val ACRONYM = 0.97
+    const val ACRONYM = 0.99
 
     private const val SHORT_QUERY_MAX = 3
     private const val MEDIUM_QUERY_MAX = 7

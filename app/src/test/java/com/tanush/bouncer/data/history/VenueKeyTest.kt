@@ -81,4 +81,20 @@ class VenueKeyTest {
     @Test fun `a Cricsheet ground with no city resolves to its own row`() {
         assertEquals("melbourne-cricket-ground", VenueKey.lookup(live, "Melbourne Cricket Ground")?.key)
     }
+
+    // Shapes copied from the live s/venue files: the same ground is split by Cricsheet's city.
+    private val mcgNoCity = """{"n":"Melbourne Cricket Ground","city":null,"f":{"Test":[13,4398,13,0,0],"ODI":[31,8054,31,15,16]},"m":[]}"""
+
+    @Test fun `a Test carries no win counts, so the record has none to show`() {
+        val test = HistoryRecords.parseVenue(mcgNoCity, "Test", true)!!
+        assertEquals(13, test.matches)
+        assertEquals(338, test.averageFirstInnings)
+        assertEquals(0, test.wonBattingFirst + test.wonChasing)
+    }
+
+    @Test fun `an ODI at the same ground carries batting first and chasing wins`() {
+        val odi = HistoryRecords.parseVenue(mcgNoCity, "ODI", true)!!
+        assertEquals(15, odi.wonBattingFirst)
+        assertEquals(16, odi.wonChasing)
+    }
 }

@@ -63,6 +63,21 @@ class SearchCorpusRankingTest {
     }
 
     @Test
+    fun `each side of a pair leads with its own best team over the shipped codes`() {
+        val assetJson = java.io.File("src/main/assets/TeamAcronyms.json").readText()
+        val shipped = kotlinx.serialization.json.Json.decodeFromString<Map<String, String>>(assetJson)
+        val corpus = SearchRepository.buildTeamCorpus(emptyList(), shipped)
+        val ranked = { q: String ->
+            runBlocking { SearchRepository.search(q, emptyList(), emptyList(), corpus).teams.map { it.teamName } }
+        }
+        assertEquals("AUS", shipped["Australia"])
+        assertEquals("Australia", ranked("aus").first())
+        val pair = ranked("ind v aus 2011 final")
+        assertEquals(listOf("India", "Australia"), pair.take(2))
+        assertTrue("India A" in pair && "Austria" in pair)
+    }
+
+    @Test
     fun `a curated team code finds its team first`() {
         assertEquals("Royal Challengers Bengaluru", teamSearch("rcb").first())
         assertEquals("Chennai Super Kings", teamSearch("CSK").first())

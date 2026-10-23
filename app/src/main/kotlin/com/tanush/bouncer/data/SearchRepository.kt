@@ -497,12 +497,12 @@ object SearchRepository {
 
     /**
      * What a team can be matched on. Facets and "v" name no team: "ind v aus 2011 final" scored
-     * whole matched only India A, Under-19 and Women, whose extra words happened to fit. Each side
-     * of a pair is a needle of its own.
+     * whole matched only India A, Under-19 and Women, whose extra words happened to fit. A pair
+     * is two lists, one per side ([searchTeams] interleaves them); anything else is one.
      */
-    private fun teamNeedles(q: String): List<String> {
+    private fun teamNeedles(q: String): List<List<String>> {
         val parsed = parseQuery(q)
-        return (listOf(q) + (parsed.pair?.toList() ?: listOf(parsed.entityText))).distinct()
+        return parsed.pair?.toList()?.map { listOf(it) } ?: listOf(listOf(q, parsed.entityText).distinct())
     }
 
     private fun teamScore(needle: String, team: TeamEntry): Double {
@@ -523,8 +523,7 @@ object SearchRepository {
             .associate { normalizeForSearch(it.name) to it.logoUrl }
         // The corpus lists loaded sides first, then the curated asset, so its order stands in for popularity.
         val order = HashMap<String, Int>().also { map -> teams.forEachIndexed { i, t -> map.putIfAbsent(t.name, i) } }
-        val needles = teamNeedles(q)
-        return teams.mapNotNull { team ->
+        fun rank(needles: List<String>) = teams.mapNotNull { team ->
             val score = needles.maxOf { teamScore(it, team) }
             if (score <= ENTITY_THRESHOLD) return@mapNotNull null
             SearchResult.TeamResult(
@@ -542,6 +541,11 @@ object SearchRepository {
                 .thenByDescending { it.fixtureCount }
                 .thenBy { order[it.teamName] ?: Int.MAX_VALUE }
         )
+        // One side's variants (India, India A, India Women...) must not crowd the other side out
+        // of the capped list, so each side's best comes first, then each side's next.
+        val perSide = teamNeedles(q).map(::rank)
+        val depth = perSide.maxOf { it.size }
+        return (0 until depth).flatMap { i -> perSide.mapNotNull { it.getOrNull(i) } }.distinctBy { it.teamName }
     }
 
     private fun searchPlayers(q: String, matches: List<CricketMatch>): List<SearchResult.PlayerResult> {
