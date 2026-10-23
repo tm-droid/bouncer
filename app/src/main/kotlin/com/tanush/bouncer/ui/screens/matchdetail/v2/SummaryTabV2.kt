@@ -14,6 +14,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
@@ -49,11 +50,13 @@ fun SummaryTabV2(
     }
     val surface = matchSurfaceFor(context.second, isCompleted = true)
     val innings = scorecard?.innings.orEmpty()
+    val summaryResult = remember(match, scorecard) { summaryResultOf(match, scorecard) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = spacing.lg, vertical = spacing.md),
         verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
+        summaryResult?.let { item(key = "summary_result") { SummaryResultCard(it, match) } }
         overviewMatchSurface(surface)
         innings.forEachIndexed { idx, inn -> topPerformerItems(idx, inn) }
         if (surface == null && innings.isEmpty() && context.first) {
