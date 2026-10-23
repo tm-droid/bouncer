@@ -11,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,7 +19,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -40,17 +38,6 @@ fun SectionDivider(
     modifier: Modifier = Modifier,
     showShimmer: Boolean = true
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "sectionShimmer")
-    val shimmerAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "shimmerAlpha"
-    )
-
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
     Row(
@@ -65,7 +52,6 @@ fun SectionDivider(
             modifier = Modifier
                 .size(6.dp)
                 .background(hierarchy.secondary.primary, CircleShape)
-                .graphicsLayer { alpha = shimmerAlpha }
         )
         
         // Title
@@ -75,7 +61,6 @@ fun SectionDivider(
             fontSize = 12.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 2.sp,
-            modifier = Modifier.graphicsLayer { alpha = shimmerAlpha }
         )
         
         // Extended gradient line
@@ -165,26 +150,7 @@ fun LiveBadge(
     text: String = "LIVE"
 ) {
     val colors = BouncerDesignSystem.colors
-    val infiniteTransition = rememberInfiniteTransition(label = "liveBadge")
-    val pulse by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "livePulse"
-    )
-    
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "liveGlow"
-    )
+    val glowAlpha = 0.6f
 
     Surface(
         modifier = modifier
@@ -204,10 +170,6 @@ fun LiveBadge(
             Box(
                 modifier = Modifier
                     .size(8.dp)
-                    .graphicsLayer { 
-                        scaleX = pulse
-                        scaleY = pulse 
-                    }
                     .background(Color.White, CircleShape)
                     .shadow(4.dp, CircleShape, spotColor = Color.White)
             )
@@ -290,16 +252,7 @@ fun GlowingIconButton(
     content: @Composable () -> Unit
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "iconGlow")
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowAlpha"
-    )
+    val glowAlpha = 0.45f
 
     Box(
         modifier = modifier

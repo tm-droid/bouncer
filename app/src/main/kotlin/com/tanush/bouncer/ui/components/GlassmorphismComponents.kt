@@ -34,32 +34,6 @@ import kotlin.random.Random
 import io.sentry.Sentry
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
-private fun reversingSpec(durationMs: Int, easing: Easing = FastOutSlowInEasing) =
-    infiniteRepeatable<Float>(animation = tween(durationMs, easing = easing), repeatMode = RepeatMode.Reverse)
-
-@Composable
-private fun pulsingFloat(
-    enabled: Boolean,
-    initial: Float,
-    target: Float,
-    durationMs: Int,
-    easing: Easing = FastOutSlowInEasing,
-    staticValue: Float = initial,
-    label: String = "pulsingFloat"
-): State<Float> {
-    return if (enabled) {
-        val transition = rememberInfiniteTransition(label = label)
-        transition.animateFloat(
-            initialValue = initial,
-            targetValue = target,
-            animationSpec = reversingSpec(durationMs, easing),
-            label = label
-        )
-    } else {
-        remember { mutableFloatStateOf(staticValue) }
-    }
-}
-
 /**
  * A faint dot texture over the content.
  *
@@ -194,13 +168,8 @@ fun GlassCard(
     val isCritical = importance == BouncerImportance.CRITICAL
     val shape = RoundedCornerShape(cornerRadius)
 
-    val shimmerAlpha by pulsingFloat(
-        enabled = isCritical,
-        initial = 0.02f,
-        target = 0.08f,
-        durationMs = 5000,
-        label = "shimmer"
-    )
+    // Static midpoint of the old 0.02-0.08 pulse: a CRITICAL card no longer redraws every frame.
+    val shimmerAlpha = 0.05f
 
     Card(
         modifier = modifier.shadow(

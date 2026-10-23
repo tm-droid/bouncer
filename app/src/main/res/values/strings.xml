@@ -540,7 +540,6 @@
         <item quantity="other">Updated %d min ago</item>
     </plurals>
     <string name="freshness_last_seen_live">Last seen live</string>
-    <string name="freshness_updated_just_now">Updated just now</string>
     <string name="start_now">Starting now</string>
     <plurals name="start_in_min">
         <item quantity="one">in %d min</item>
@@ -560,6 +559,8 @@
     <string name="a11y_score_for">%1$s %2$s for %3$s, %4$s overs</string>
     <string name="a11y_score_all_out">%1$s %2$s all out, %3$s overs</string>
     <string name="a11y_yet_to_bat">%1$s yet to bat</string>
+    <string name="a11y_score_for_no_overs">%1$s %2$s for %3$s</string>
+    <string name="a11y_score_all_out_no_overs">%1$s %2$s all out</string>
     <string name="state_offline_saved_title">You\'re offline</string>
     <string name="state_offline_saved_cause">Showing scores saved at %s.</string>
     <string name="state_server_title">Scores didn\'t load</string>
