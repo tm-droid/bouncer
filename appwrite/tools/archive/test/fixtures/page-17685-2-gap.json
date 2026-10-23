@@ -1,0 +1,218 @@
+[
+ {
+  "commType": "over-separator",
+  "matchId": 17685,
+  "inningsId": 2,
+  "timestamp": 1481716745716,
+  "overSeparator": {
+   "overNumber": 14,
+   "overRuns": 4,
+   "batTeamObj": {
+    "teamScore": "106-3"
+   }
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Nabi to Shaiman Anwar, 1 run",
+  "inningsId": 2,
+  "event": [
+   "over-break",
+   "all"
+  ],
+  "ballMetric": 13.6,
+  "timestamp": 1481716745714,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 9837,
+   "playerName": "Shaiman Anwar"
+  },
+  "bowlerDetails": {
+   "playerId": 3007,
+   "playerName": "Nabi"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Nabi to Rameez Shahzad, 1 run",
+  "inningsId": 2,
+  "event": [
+   "none",
+   "all"
+  ],
+  "ballMetric": 13.5,
+  "timestamp": 1481716743800,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 9837,
+   "playerName": "Shaiman Anwar"
+  },
+  "bowlerDetails": {
+   "playerId": 3007,
+   "playerName": "Nabi"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Nabi to Rameez Shahzad, SIX",
+  "inningsId": 2,
+  "event": [
+   "six",
+   "all"
+  ],
+  "ballMetric": 13.4,
+  "timestamp": 1481716740662,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 9837,
+   "playerName": "Shaiman Anwar"
+  },
+  "bowlerDetails": {
+   "playerId": 3007,
+   "playerName": "Nabi"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Nabi to Rameez Shahzad, SIX, the partnership between Rameez Shahzad a",
+  "inningsId": 2,
+  "event": [
+   "six",
+   "other",
+   "all"
+  ],
+  "ballMetric": 13.2,
+  "timestamp": 1481716735279,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 9837,
+   "playerName": "Shaiman Anwar"
+  },
+  "bowlerDetails": {
+   "playerId": 3007,
+   "playerName": "Nabi"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Rashid Khan to Rameez Shahzad, 1 run",
+  "inningsId": 2,
+  "event": [
+   "none",
+   "all"
+  ],
+  "ballMetric": 12.5,
+  "timestamp": 1481716708773,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 11568,
+   "playerName": "Rameez Shahzad"
+  },
+  "bowlerDetails": {
+   "playerId": 10738,
+   "playerName": "Rashid Khan"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Rashid Khan to Shaiman Anwar, 1 run",
+  "inningsId": 2,
+  "event": [
+   "none",
+   "all"
+  ],
+  "ballMetric": 12.4,
+  "timestamp": 1481716706734,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 11568,
+   "playerName": "Rameez Shahzad"
+  },
+  "bowlerDetails": {
+   "playerId": 10738,
+   "playerName": "Rashid Khan"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Rashid Khan to Shaiman Anwar, no run",
+  "inningsId": 2,
+  "event": [
+   "none",
+   "all"
+  ],
+  "ballMetric": 12.3,
+  "timestamp": 1481716704445,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 11568,
+   "playerName": "Rameez Shahzad"
+  },
+  "bowlerDetails": {
+   "playerId": 10738,
+   "playerName": "Rashid Khan"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Rashid Khan to Rameez Shahzad, 1 run",
+  "inningsId": 2,
+  "event": [
+   "none",
+   "all"
+  ],
+  "ballMetric": 12.2,
+  "timestamp": 1481716703690,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 9837,
+   "playerName": "Shaiman Anwar"
+  },
+  "bowlerDetails": {
+   "playerId": 10738,
+   "playerName": "Rashid Khan"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Rashid Khan to Rameez Shahzad, FOUR",
+  "inningsId": 2,
+  "event": [
+   "four",
+   "all"
+  ],
+  "ballMetric": 12.1,
+  "timestamp": 1481716700525,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 11568,
+   "playerName": "Rameez Shahzad"
+  },
+  "bowlerDetails": {
+   "playerId": 10738,
+   "playerName": "Rashid Khan"
+  }
+ },
+ {
+  "commType": "over-separator",
+  "matchId": 17685,
+  "inningsId": 2,
+  "timestamp": 1481716670860,
+  "overSeparator": {
+   "overNumber": 12,
+   "overRuns": 8,
+   "batTeamObj": {
+    "teamScore": "79-3"
+   }
+  }
+ }
+]

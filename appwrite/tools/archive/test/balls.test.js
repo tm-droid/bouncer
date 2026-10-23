@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { BITS, CricbuzzBlockedError, ballsBlock, crawlInnings, deliveriesOf, inningsProblems, recordOf } from "../src/balls.js";
+import { BITS, CricbuzzBlockedError, ballsBlock, batterProblems, crawlInnings, deliveriesOf, inningsProblems, recordOf } from "../src/balls.js";
 import { parseBallOutcome } from "../src/ball-outcome.js";
 import { isEligible, probe, run } from "../backfill-balls.mjs";
 
@@ -97,7 +97,7 @@ test("output holds no commentary text", () => {
   const longestName = Math.max(...balls.p.map((x) => x[0].length));
   assert.ok(strings.every((s) => s.length <= Math.max(longestName, 24)), strings.filter((s) => s.length > 24).join());
   assert.ok(!JSON.stringify(balls).includes("<b>"));
-  assert.ok(balls.p.every(([n, id]) => n && /^\d+$/.test(id)));
+  assert.ok(balls.p.every(([n, id]) => n && /^\d*$/.test(id))); // batters carry an id only when the scorecard names them
 });
 
 test("vendored outcome parser equals match-sync's", async (t) => {
@@ -182,4 +182,119 @@ test("probe: 0 on 200s, 2 on 403", async () => {
 
 test("CricbuzzBlockedError carries the status", () => {
   assert.equal(new CricbuzzBlockedError(429).status, 429);
+});
+
+// Real pages of 17685 (UAE v AFG, 2016-12), text cut to the outcome clause.
+const boundary = fixture("page-17685-boundary.json"); // last 3 items of innings 2, then innings 1's newest 7
+const runout = fixture("page-17685-1-runout.json"); // over 16 of innings 1: 16.5 is a run out with "1 run completed"
+const gap = fixture("page-17685-2-gap.json"); // overs 12-13 of innings 2: Cricbuzz has no 13.1 and no 13.3
+
+test("walking innings 2 past its first ball runs into innings 1: foreign items are dropped and end the walk", async () => {
+  const own = boundary.filter((i) => i.inningsId === 2);
+  const other = boundary.filter((i) => i.inningsId === 1);
+  assert.ok(own.length === 3 && other.length === 7);
+  const pages = [own, other];
+  const asked = [];
+  const st = { cursor: 9e15, done: 0, recs: [] };
+  const why = await crawlInnings({ st, innings: 2, fetchPage: async (c) => (asked.push(c), pages.shift()) });
+  assert.equal(why, "foreign");
+  assert.equal(st.done, 1);
+  assert.equal(st.recs.length, 2); // 0.2 and 0.1; the separator carries no ball
+  assert.deepEqual(st.recs.map((r) => r.t).sort(), [1, 2]);
+  assert.equal(asked.length, 2);
+});
+
+test("a mixed page keeps only the asked innings", async () => {
+  const st = { cursor: 9e15, done: 0, recs: [] };
+  await crawlInnings({ st, innings: 1, fetchPage: async () => boundary.slice(0, 5) });
+  assert.ok(st.recs.every((r) => r.t >= 190)); // innings 1's 19.x only
+});
+
+test("same timestamp key dedupes; two wides sharing over.ball are both kept", async () => {
+  const wide = (ts) => item(7.5, "A to B, wide", { timestamp: ts });
+  const st = { cursor: 9e15, done: 0, recs: [] };
+  await crawlInnings({ st, innings: 1, fetchPage: async () => [wide(2000), wide(1000)] });
+  assert.equal(st.recs.length, 2);
+});
+
+test("a run out with runs completed scores them to the striker", () => {
+  const r = runout.filter((i) => i.ballMetric === 16.5).map((i) => recordOf(i))[0];
+  assert.equal(r.runs, 1);
+  assert.equal(r.kind, null);
+  assert.ok(r.ev & 4);
+  assert.equal(recordOf(item(1.1, "A to B, out Bowled!! B b A 3(2)", { event: ["wicket", "all"] })).runs, 0);
+});
+
+test("over separators become score checkpoints and the log says which balls and overs are off", async () => {
+  const st = { cursor: 9e15, done: 0, recs: [] };
+  await crawlInnings({ st, innings: 2, fetchPage: async () => gap });
+  assert.deepEqual(st.cp, { 12: 79, 14: 106 });
+  const ds = deliveriesOf(st.recs, new Map());
+  const msg = inningsProblems(ds, { score: "106-3", overs: "20" }, { cp: st.cp }).join(" | ");
+  assert.match(msg, /no commentary for ball 12\.6 13\.1 13\.3( \||$)/);
+  assert.match(msg, /over 14: -6/);
+});
+
+test("batter runs must equal the scorecard's, joined by profile id then by name", () => {
+  const people = [["Rohan Mustafa", "9835"], ["Shahzad", ""]];
+  const ds = [{ d: [0, 1, 0, -1, -1, 4, 0, 0] }, { d: [0, 2, 0, -1, -1, 1, 0, 0] }, { d: [0, 3, 1, -1, -1, 2, 0, 0] }];
+  const card = (a, b) => ({ batsmen: [
+    { name: "Rohan Mustafa", runs: String(a), profileUrl: "https://www.cricbuzz.com/profiles/9835/rohan-mustafa" },
+    { name: "Shahzad (wk)", runs: String(b), profileUrl: "" },
+  ] });
+  assert.deepEqual(batterProblems(ds, card(5, 2), people), []);
+  assert.match(batterProblems(ds, card(6, 2), people).join(), /rohan mustafa 5 != 6/);
+  assert.match(batterProblems(ds, card(5, 3), people).join(), /shahzad 2 != 3/);
+  assert.match(batterProblems(ds, { batsmen: [{ name: "Other", runs: "1", profileUrl: "https://x/profiles/77/o" }] }, people).join(), /not on the scorecard/);
+  // Wired in: the same deliveries pass the totals but the innings goes partial on a batter mismatch.
+  const recs = [item(0.1, "A to Nabi, 1 run"), item(0.2, "A to Nabi, FOUR", { event: ["four", "all"] })].map((i) => recordOf(i));
+  const ok = { score: "5", overs: "0.2", batsmen: [{ name: "Nabi", runs: "5", profileUrl: "https://x/profiles/1/nabi" }] };
+  assert.equal(ballsBlock([{ id: 1, recs }], [ok]).balls.inn[0].partial, undefined);
+  const bad = { ...ok, batsmen: [{ name: "Nabi", runs: "4", profileUrl: "https://x/profiles/1/nabi" }] };
+  assert.equal(ballsBlock([{ id: 1, recs }], [bad]).balls.inn[0].partial, 1);
+});
+
+test("the striker is the name in the line, not batsmanDetails (the batter after the ball)", () => {
+  // Real 17685 innings 1: 0.1 "to Najeeb Tarakai, 1 run" carries batsmanDetails Mohammad Shahzad (next striker).
+  const mk = (t, text, after) => item(t, text, { batsmanDetails: { playerId: after, playerName: "x" } });
+  const recs = [
+    mk(0.1, "Ahmed Raza to Najeeb Tarakai, 1 run", 3014),
+    mk(0.2, "Ahmed Raza to Mohammad Shahzad, 1 run", 9973),
+    mk(0.3, "Ahmed Raza to Najeeb Tarakai, FOUR", 9973),
+  ].map((i) => recordOf(i));
+  const card = { score: "6", overs: "0.3", batsmen: [
+    { name: "Najeeb Tarakai", runs: "5", profileUrl: "https://www.cricbuzz.com/profiles/9973/najeeb-tarakai" },
+    { name: "Mohammad Shahzad (wk)", runs: "1", profileUrl: "https://www.cricbuzz.com/profiles/3014/mohammad-shahzad-wk" },
+  ] };
+  const { balls, problems } = ballsBlock([{ id: 1, recs }], [card]);
+  assert.deepEqual(problems, []);
+  assert.deepEqual(balls.inn[0].b.map((d) => balls.p[d[2]][1]), ["9973", "3014", "9973"]);
+});
+
+test("a short commentary name resolves to the one scorecard batter it ends, exact name first", () => {
+  const roster = [{ name: "Shahzad", runs: "1", profileUrl: "https://x/profiles/5/s" }, { name: "Rameez Shahzad (c)", runs: "1", profileUrl: "https://x/profiles/6/r" }];
+  const recs = [item(0.1, "A to Shahzad, 1 run"), item(0.2, "A to Rameez Shahzad, 1 run"), item(0.3, "A to Stranger, no run")].map((i) => recordOf(i));
+  const { balls } = ballsBlock([{ id: 1, recs }], [{ score: "2", overs: "0.3", batsmen: roster }]);
+  assert.deepEqual(balls.inn[0].b.map((d) => balls.p[d[2]]), [["Shahzad", "5"], ["Rameez Shahzad", "6"], ["Stranger", ""]]);
+});
+
+test("an ambiguous short name is settled by who Cricbuzz put at the crease after the previous ball", () => {
+  const batsmen = [
+    { name: "Mohammad Shahzad", runs: "1", profileUrl: "https://x/profiles/10042/m" },
+    { name: "Rameez Shahzad", runs: "1", profileUrl: "https://x/profiles/11568/r" },
+  ];
+  const recs = [
+    item(0.1, "A to Rameez Shahzad, 1 run", { batsmanDetails: { playerId: 10042, playerName: "Mohammad Shahzad" } }),
+    item(0.2, "A to Shahzad, 1 run", { batsmanDetails: { playerId: 11568, playerName: "Rameez Shahzad" } }),
+  ].map((i) => recordOf(i));
+  const { balls, problems } = ballsBlock([{ id: 1, recs }], [{ score: "2", overs: "0.2", batsmen }]);
+  assert.deepEqual(problems, []);
+  assert.deepEqual(balls.inn[0].b.map((d) => balls.p[d[2]][1]), ["11568", "10042"]);
+});
+
+test("one player under two people entries (bowler 'Nabi' and batter 'Mohammad Nabi') is summed by id", () => {
+  const people = [["Nabi", "3007"], ["Mohammad Nabi", "3007"]];
+  const ds = [{ d: [0, 1, 0, -1, -1, 4, 0, 0] }, { d: [0, 2, 1, -1, -1, 9, 0, 0] }];
+  const card = { batsmen: [{ name: "Mohammad Nabi", runs: "13", profileUrl: "https://x/profiles/3007/n" }] };
+  assert.deepEqual(batterProblems(ds, card, people), []);
 });

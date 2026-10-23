@@ -129,6 +129,7 @@ export async function run({ site, maxRequests = 400, delayMs = 3000, cache = nul
         try {
           const why = await crawlInnings({
             st,
+            innings: n,
             canRequest: () => counter.sent < maxRequests,
             fetchPage: async (cursor) => itemsOf(await fetchUrl(commentaryUrl(id, n, cursor))),
           });
@@ -148,7 +149,7 @@ export async function run({ site, maxRequests = 400, delayMs = 3000, cache = nul
         if (counter.sent >= maxRequests) break;
         continue;
       }
-      const inns = cards.map((_, i) => ({ id: i + 1, recs: m.inn[i + 1].recs ?? [] }));
+      const inns = cards.map((_, i) => ({ id: i + 1, recs: m.inn[i + 1].recs ?? [], cp: m.inn[i + 1].cp }));
       if (inns.every((x) => x.recs.length === 0)) {
         m.done = 1; // Cricbuzz holds no ball data for this match; do not ask again.
         log(`match ${id}: no ball data`);

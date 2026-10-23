@@ -1,0 +1,204 @@
+[
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Fareed Ahmad to Rohan Mustafa, no run",
+  "inningsId": 2,
+  "event": [
+   "none",
+   "all"
+  ],
+  "ballMetric": 0.2,
+  "timestamp": 1481712884924,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 9835,
+   "playerName": "Rohan Mustafa"
+  },
+  "bowlerDetails": {
+   "playerId": 9848,
+   "playerName": "Fareed Ahmad"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Fareed Ahmad to Rohan Mustafa, no run",
+  "inningsId": 2,
+  "event": [
+   "none",
+   "all"
+  ],
+  "ballMetric": 0.1,
+  "timestamp": 1481712884496,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 9835,
+   "playerName": "Rohan Mustafa"
+  },
+  "bowlerDetails": {
+   "playerId": 9848,
+   "playerName": "Fareed Ahmad"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": "Rohan Mustafa and Mohammed Qasim are at the crease. Rohan Mustafa is o",
+  "inningsId": 2,
+  "event": [
+   "none",
+   "all"
+  ],
+  "timestamp": 1481712883166,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 0,
+   "playerName": ""
+  },
+  "bowlerDetails": {
+   "playerId": 0,
+   "playerName": ""
+  }
+ },
+ {
+  "commType": "over-separator",
+  "matchId": 17685,
+  "inningsId": 1,
+  "timestamp": 1481711717418,
+  "overSeparator": {
+   "overNumber": 20,
+   "overRuns": 15,
+   "batTeamObj": {
+    "teamScore": "161-6"
+   }
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Shahzad to Rashid Khan, FOUR",
+  "inningsId": 1,
+  "event": [
+   "over-break",
+   "four",
+   "all"
+  ],
+  "ballMetric": 19.6,
+  "timestamp": 1481711717416,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 8375,
+   "playerName": "Najibullah"
+  },
+  "bowlerDetails": {
+   "playerId": 10042,
+   "playerName": "Shahzad"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Shahzad to Rashid Khan, FOUR",
+  "inningsId": 1,
+  "event": [
+   "four",
+   "all"
+  ],
+  "ballMetric": 19.5,
+  "timestamp": 1481711683992,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 10738,
+   "playerName": "Rashid Khan"
+  },
+  "bowlerDetails": {
+   "playerId": 10042,
+   "playerName": "Shahzad"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Shahzad to Rashid Khan, SIX",
+  "inningsId": 1,
+  "event": [
+   "six",
+   "all"
+  ],
+  "ballMetric": 19.4,
+  "timestamp": 1481711655085,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 10738,
+   "playerName": "Rashid Khan"
+  },
+  "bowlerDetails": {
+   "playerId": 10042,
+   "playerName": "Shahzad"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Shahzad to Rashid Khan, no run",
+  "inningsId": 1,
+  "event": [
+   "none",
+   "all"
+  ],
+  "ballMetric": 19.3,
+  "timestamp": 1481711494525,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 10738,
+   "playerName": "Rashid Khan"
+  },
+  "bowlerDetails": {
+   "playerId": 10042,
+   "playerName": "Shahzad"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Shahzad to Najibullah, 1 run",
+  "inningsId": 1,
+  "event": [
+   "none",
+   "all"
+  ],
+  "ballMetric": 19.2,
+  "timestamp": 1481711430073,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 10738,
+   "playerName": "Rashid Khan"
+  },
+  "bowlerDetails": {
+   "playerId": 10042,
+   "playerName": "Shahzad"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Shahzad to Nabi, out Caught by Muhammad Usman!! Nabi c Muhammad Usman",
+  "inningsId": 1,
+  "event": [
+   "wicket",
+   "all"
+  ],
+  "ballMetric": 19.1,
+  "timestamp": 1481711416316,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 0,
+   "playerName": ""
+  },
+  "bowlerDetails": {
+   "playerId": 10042,
+   "playerName": "Shahzad"
+  }
+ }
+]

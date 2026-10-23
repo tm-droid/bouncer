@@ -1,0 +1,154 @@
+[
+ {
+  "commType": "over-separator",
+  "matchId": 17685,
+  "inningsId": 1,
+  "timestamp": 1481710824483,
+  "overSeparator": {
+   "overNumber": 17,
+   "overRuns": 8,
+   "batTeamObj": {
+    "teamScore": "106-5"
+   }
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Mohammed Qasim to Najibullah, 1 run",
+  "inningsId": 1,
+  "event": [
+   "over-break",
+   "all"
+  ],
+  "ballMetric": 16.6,
+  "timestamp": 1481710824481,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 8375,
+   "playerName": "Najibullah"
+  },
+  "bowlerDetails": {
+   "playerId": 10871,
+   "playerName": "Mohammed Qasim"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Mohammed Qasim to Nabi, out Karim Janat Run Out!! 1 run completed Kar",
+  "inningsId": 1,
+  "event": [
+   "wicket",
+   "all"
+  ],
+  "ballMetric": 16.5,
+  "timestamp": 1481710816703,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 3007,
+   "playerName": "Nabi"
+  },
+  "bowlerDetails": {
+   "playerId": 10871,
+   "playerName": "Mohammed Qasim"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Mohammed Qasim to Karim Janat, 1 run",
+  "inningsId": 1,
+  "event": [
+   "none",
+   "all"
+  ],
+  "ballMetric": 16.4,
+  "timestamp": 1481710624212,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 3007,
+   "playerName": "Nabi"
+  },
+  "bowlerDetails": {
+   "playerId": 10871,
+   "playerName": "Mohammed Qasim"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Mohammed Qasim to Karim Janat, FOUR",
+  "inningsId": 1,
+  "event": [
+   "four",
+   "all"
+  ],
+  "ballMetric": 16.3,
+  "timestamp": 1481710551190,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 11077,
+   "playerName": "Karim Janat"
+  },
+  "bowlerDetails": {
+   "playerId": 10871,
+   "playerName": "Mohammed Qasim"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Mohammed Qasim to Karim Janat, no run",
+  "inningsId": 1,
+  "event": [
+   "none",
+   "all"
+  ],
+  "ballMetric": 16.2,
+  "timestamp": 1481710548951,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 11077,
+   "playerName": "Karim Janat"
+  },
+  "bowlerDetails": {
+   "playerId": 10871,
+   "playerName": "Mohammed Qasim"
+  }
+ },
+ {
+  "matchId": 17685,
+  "commType": "commentary",
+  "commText": " Mohammed Qasim to Nabi, 1 run",
+  "inningsId": 1,
+  "event": [
+   "none",
+   "all"
+  ],
+  "ballMetric": 16.1,
+  "timestamp": 1481710548532,
+  "overSeparator": null,
+  "batsmanDetails": {
+   "playerId": 11077,
+   "playerName": "Karim Janat"
+  },
+  "bowlerDetails": {
+   "playerId": 10871,
+   "playerName": "Mohammed Qasim"
+  }
+ },
+ {
+  "commType": "over-separator",
+  "matchId": 17685,
+  "inningsId": 1,
+  "timestamp": 1481710449011,
+  "overSeparator": {
+   "overNumber": 16,
+   "overRuns": 10,
+   "batTeamObj": {
+    "teamScore": "98-4"
+   }
+  }
+ }
+]
