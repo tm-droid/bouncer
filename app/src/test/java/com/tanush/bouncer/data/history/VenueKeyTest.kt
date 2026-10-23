@@ -16,7 +16,7 @@ class VenueKeyTest {
         """.trimIndent(),
     )!!
 
-    private fun key(text: String) = VenueKey.lookup(rows, text)?.key
+    private fun key(text: String) = VenueKey.lookup(rows, text).singleOrNull()?.key
 
     @Test fun `the slug matches the builder's file key`() {
         assertEquals("wankhede-stadium-mumbai", VenueKey.slug("Wankhede Stadium", "Mumbai"))
@@ -70,7 +70,7 @@ class VenueKeyTest {
     )!!
 
     @Test fun `Cricbuzz's ground text resolves to the row with its city`() {
-        fun live(text: String) = VenueKey.lookup(live, text)?.key
+        fun live(text: String) = VenueKey.lookup(live, text).filter { it.city.isNotEmpty() }.singleOrNull()?.key
         assertEquals("wankhede-stadium-mumbai", live("Wankhede Stadium, Mumbai"))
         assertEquals("melbourne-cricket-ground-melbourne", live("Melbourne Cricket Ground, Melbourne"))
         assertEquals("eden-gardens-kolkata", live("Eden Gardens, Kolkata"))
@@ -78,8 +78,21 @@ class VenueKeyTest {
         assertEquals("ma-chidambaram-stadium-chennai", live("MA Chidambaram Stadium, Chennai"))
     }
 
-    @Test fun `a Cricsheet ground with no city resolves to its own row`() {
-        assertEquals("melbourne-cricket-ground", VenueKey.lookup(live, "Melbourne Cricket Ground")?.key)
+    @Test fun `a ground split by Cricsheet's city resolves to every file`() {
+        val mcg = listOf("melbourne-cricket-ground-melbourne", "melbourne-cricket-ground")
+        assertEquals(mcg, VenueKey.lookup(live, "Melbourne Cricket Ground").map { it.key })
+        assertEquals(mcg, VenueKey.lookup(live, "Melbourne Cricket Ground, Melbourne").map { it.key })
+        assertEquals(emptyList<String>(), VenueKey.lookup(live, "Melbourne Cricket Ground, Sydney").map { it.key })
+    }
+
+    @Test fun `two cities with one name are ambiguous unless the match names its city`() {
+        val two = HistoryRecords.parseVenues(
+            """[["national-stadium-karachi","National Stadium","Karachi",171],["national-stadium","National Stadium",null,5],
+               ["national-stadium-hamilton","National Stadium","Hamilton",16]]""",
+        )!!
+        assertEquals(emptyList<String>(), VenueKey.lookup(two, "National Stadium").map { it.key })
+        val karachi = VenueKey.lookup(two, "National Stadium, Karachi").map { it.key }
+        assertEquals(listOf("national-stadium-karachi", "national-stadium"), karachi)
     }
 
     // Shapes copied from the live s/venue files: the same ground is split by Cricsheet's city.
@@ -96,5 +109,16 @@ class VenueKeyTest {
         val odi = HistoryRecords.parseVenue(mcgNoCity, "ODI", true)!!
         assertEquals(15, odi.wonBattingFirst)
         assertEquals(16, odi.wonChasing)
+    }
+
+    @Test fun `the MCG's two files add up to one record`() {
+        val withCity = """{"n":"Melbourne Cricket Ground","city":"Melbourne","f":{"Test":[10,3144,10,0,0],"ODI":[9,2235,9,3,5]},"m":[]}"""
+        val test = HistoryRecords.parseVenue(listOf(withCity, mcgNoCity), "Test", true)!!
+        assertEquals(23, test.matches)
+        assertEquals(327, test.averageFirstInnings)
+        val odi = HistoryRecords.parseVenue(listOf(withCity, mcgNoCity), "ODI", true)!!
+        assertEquals(40, odi.matches)
+        assertEquals(18, odi.wonBattingFirst)
+        assertEquals(21, odi.wonChasing)
     }
 }

@@ -45,21 +45,28 @@ object VenueKey {
     fun slug(name: String, city: String): String =
         squash("${squash(name)} ${squash(city)}").replace(' ', '-').ifEmpty { "unknown" }
 
+    /** Cricsheet files one ground under several keys; more than this is a different ground. */
+    const val MAX_FILES = 3
+
     /**
-     * "Wankhede Stadium, Mumbai" to its row: the exact key first, else the one row whose name
-     * matches and whose city agrees (a venue text with no city agrees with any). More than one
-     * such row is null, because another ground's record is worse than none.
+     * "Wankhede Stadium, Mumbai" to every row that is that ground: same name, and a city that
+     * matches or is missing (Cricsheet splits one ground by whether the match had a city). A venue
+     * text with no city reads as the one city the rows share. Empty when the name has two cities
+     * or the city is unknown, because another ground's record is worse than none.
      */
-    fun lookup(rows: List<VenueRow>, venueText: String): VenueRow? {
+    fun lookup(rows: List<VenueRow>, venueText: String): List<VenueRow> {
         val name = venueText.substringBefore(',').trim()
-        if (squash(name).isEmpty()) return null
-        val city = if (venueText.contains(',')) venueText.substringAfterLast(',').trim() else ""
-        val key = slug(name, city)
-        rows.firstOrNull { it.key == key }?.let { return it }
-        return rows.filter {
-            squash(it.name.substringBefore(',')) == squash(name) &&
-                (squash(city).isEmpty() || squash(it.city) == squash(city))
-        }.singleOrNull()
+        if (squash(name).isEmpty()) return emptyList()
+        val city = squash(if (venueText.contains(',')) venueText.substringAfterLast(',').trim() else "")
+        val same = rows.filter { squash(it.name.substringBefore(',')) == squash(name) }
+        val cities = same.map { squash(it.city) }.filter { it.isNotEmpty() }.distinct()
+        val chosen = when {
+            city.isNotEmpty() -> city.takeIf { it in cities }
+            cities.size <= 1 -> cities.firstOrNull().orEmpty()
+            else -> null
+        } ?: return emptyList()
+        return same.filter { squash(it.city).let { c -> c.isEmpty() || c == chosen } }
+            .takeIf { it.size <= MAX_FILES }.orEmpty()
     }
 }
 
@@ -86,10 +93,13 @@ object HistoryRecords {
 
     /** The ground's record in [format]'s Cricsheet key, for a Cricbuzz venue text. */
     suspend fun venue(venueText: String, matchType: String, international: Boolean): VenueRecord? {
-        val row = venueRows()?.let { VenueKey.lookup(it, venueText) } ?: return null
-        val bytes = StaticSite.fetch(HistoryClient.BASE_URL, "s/venue/${row.key}.json", MAX_AGE_SECONDS, MAX_STALE_SECONDS)
-            ?: return null
-        return parseVenue(bytes.decodeToString(), matchType, international)
+        val group = venueRows()?.let { VenueKey.lookup(it, venueText) }?.takeIf { it.isNotEmpty() } ?: return null
+        // One missing file would undercount the ground, so any failure is no record.
+        val files = group.map { row ->
+            StaticSite.fetch(HistoryClient.BASE_URL, "s/venue/${row.key}.json", MAX_AGE_SECONDS, MAX_STALE_SECONDS)
+                ?.decodeToString() ?: return null
+        }
+        return parseVenue(files, matchType, international)
     }
 
     private suspend fun venueRows(): List<VenueRow>? {
@@ -120,11 +130,21 @@ object HistoryRecords {
         }.sortedByDescending { it.played }
     }.getOrNull()
 
-    /** Counters are `[matches, first-innings runs, first innings counted, won batting first, won chasing]`. */
-    internal fun parseVenue(json: String, matchType: String, international: Boolean): VenueRecord? = runCatching {
-        val f = (AppJson.parseToJsonElement(json) as JsonObject)["f"] as JsonObject
-        val n = venueFormat(matchType, international, f.keys)?.let { ints(f[it]) }
-            ?.takeIf { it.size >= VENUE_FIELDS && it[0] > 0 } ?: return@runCatching null
+    internal fun parseVenue(json: String, matchType: String, international: Boolean): VenueRecord? =
+        parseVenue(listOf(json), matchType, international)
+
+    /**
+     * Counters are `[matches, first-innings runs, first innings counted, won batting first, won chasing]`;
+     * a split ground's files add up.
+     */
+    internal fun parseVenue(files: List<String>, matchType: String, international: Boolean): VenueRecord? = runCatching {
+        val rows = files.mapNotNull { json ->
+            val f = (AppJson.parseToJsonElement(json) as JsonObject)["f"] as JsonObject
+            venueFormat(matchType, international, f.keys)?.let { ints(f[it]) }
+                ?.takeIf { it.size >= VENUE_FIELDS && it[0] > 0 }
+        }
+        if (rows.isEmpty()) return@runCatching null
+        val n = List(VENUE_FIELDS) { i -> rows.sumOf { it[i] } }
         VenueRecord(
             matches = n[0],
             averageFirstInnings = n[2].takeIf { it > 0 }?.let { n[1] / it },
