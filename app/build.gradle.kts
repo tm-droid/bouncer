@@ -103,7 +103,7 @@ android {
         // never collide or go backwards. versionName stays hand-edited: it is the thing users
         // read, and it changes when the release is worth a name, not when CI runs.
         versionCode = System.getenv("BOUNCER_VERSION_CODE")?.toIntOrNull() ?: 8
-        versionName = "1.0.11"
+        versionName = "1.0.12"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
