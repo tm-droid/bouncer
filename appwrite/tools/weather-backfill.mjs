@@ -26,6 +26,7 @@ import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import { chooseCandidate } from "./history/src/openmeteo.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const trainerDir = path.resolve(here, "../functions/train-win-probability");
@@ -76,39 +77,6 @@ async function getJson(url) {
     if (attempt >= 5 || res.status < 500) throw new Error(`HTTP ${res.status} for ${url}`);
     await sleep(3000 * attempt);
   }
-}
-
-// A country as Open-Meteo names it, for a side as Cricsheet names it. A city name alone is
-// ambiguous — "Hamilton" is Ontario before it is Waikato — and the sides that have played there
-// are the only hint the archive carries.
-const TEAM_COUNTRY = {
-  England: "United Kingdom", Scotland: "United Kingdom", Wales: "United Kingdom",
-  "United Arab Emirates": "United Arab Emirates", "United States of America": "United States",
-  "Hong Kong": "Hong Kong", "Papua New Guinea": "Papua New Guinea",
-};
-const WEST_INDIES = new Set(["Barbados", "Jamaica", "Trinidad and Tobago", "Guyana", "Antigua and Barbuda", "Saint Lucia", "Grenada", "Saint Kitts and Nevis", "Saint Vincent and the Grenadines", "Dominica"]);
-const CRICKET_COUNTRIES = ["India", "Australia", "United Kingdom", "South Africa", "New Zealand", "Pakistan", "Sri Lanka", "Bangladesh", "Zimbabwe", "Ireland", "United Arab Emirates", "Afghanistan", "Netherlands", "Nepal", "Oman", "Namibia", "Kenya", "Uganda", "Malaysia", "Singapore", "Hong Kong", "Canada", "United States"];
-
-function chooseCandidate(results, teamCounts) {
-  if (!results?.length) return null;
-  let best = null;
-  let bestScore = -1;
-  for (const r of results) {
-    let score = 0;
-    for (const [team, n] of teamCounts) {
-      const country = TEAM_COUNTRY[team] ?? team;
-      if (country === r.country || (team === "West Indies" && WEST_INDIES.has(r.country))) score += n * 1000;
-    }
-    const rank = CRICKET_COUNTRIES.indexOf(r.country);
-    if (WEST_INDIES.has(r.country)) score += 50;
-    else if (rank >= 0) score += 100 - rank;
-    score += Math.min((r.population ?? 0) / 1e7, 1);
-    if (score > bestScore) {
-      bestScore = score;
-      best = r;
-    }
-  }
-  return best;
 }
 
 console.error(`Reading ${zipPath} ...`);

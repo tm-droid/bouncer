@@ -175,6 +175,9 @@
     </plurals>
     <string name="match_info_forecast_wind">Wind</string>
     <string name="match_info_forecast_cloud">Cloud cover</string>
+    <string name="match_info_weather">Weather on the day</string>
+    <string name="match_info_weather_line">Max %1$s°C · %2$s mm rain · wind %3$d km/h · humidity %4$d%% · cloud %5$d%%</string>
+    <string name="match_info_weather_source">Weather data: Open-Meteo.com</string>
     <string name="match_info_forecast_source">Open-Meteo forecast, fetched %1$s</string>
     <string name="match_info_ground_record">This ground</string>
     <string name="match_info_meetings">Recorded %1$s meetings</string>

@@ -22,15 +22,30 @@ import { compactMatch, SCHEMA_VERSION } from "./src/match.js";
 import { addMatch, createStats, formatKey, playerNameFiles, statsFiles, venueIndex } from "./src/stats.js";
 import { parseRegister } from "./src/register.js";
 import { biosByRegId, loadWikidata } from "./src/wikidata.mjs";
-import { monthOf, teamKey } from "./src/keys.js";
+import { monthOf, slug, teamKey } from "./src/keys.js";
+import { venueKey } from "./src/names.js";
+import { endDate, fillWeather, loadPublished, mergeWeather, validWeather } from "./src/weather.mjs";
+import { coordsFromRows, geocodeCity, loadGrounds, resolveVenues } from "./src/venuecoords.mjs";
+import { makeFetcher } from "./src/openmeteo.mjs";
 
 export const SIZE_LIMIT_BYTES = 900 * 1024 * 1024;
 
-const [zipPath, outDir] = process.argv.slice(2);
+// Optional: --weather-cache <dir> (local cache, filled between runs), --weather-limit <calls>
+// (default WEATHER_LIMIT or 4500), --no-weather.
+const args = process.argv.slice(2);
+const option = (name) => {
+  const i = args.indexOf(name);
+  return i === -1 ? null : args.splice(i, 2)[1] ?? null;
+};
+const weatherCacheDir = option("--weather-cache");
+const weatherLimit = Number(option("--weather-limit") ?? process.env.WEATHER_LIMIT ?? 4500);
+const noWeather = args.includes("--no-weather");
+const [zipPath, outDir] = args.filter((a) => a !== "--no-weather");
 if (!zipPath || !outDir) {
-  console.error("usage: node build.mjs <all_json.zip> <out dir>");
+  console.error("usage: node build.mjs <all_json.zip> <out dir> [--weather-cache dir] [--weather-limit n] [--no-weather]");
   process.exit(1);
 }
+const SITE_URL = "https://tm-droid.github.io/bouncer-history/";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -85,15 +100,87 @@ const bios = register
     )
   : new Map();
 
-fs.rmSync(outDir, { recursive: true, force: true });
-fs.mkdirSync(outDir, { recursive: true });
-
 let zip = new AdmZip(zipPath);
 const entries = zip.getEntries().filter((e) => !e.isDirectory && /^\d+\.json$/.test(path.basename(e.entryName)));
+
+// Weather and ground coordinates. Everything here is best effort: any failure builds the site
+// without weather for the matches it touches, never fails the build.
+const weatherById = new Map();
+const venueCoords = new Map();
+async function loadWeather() {
+  // Pass one reads only where and when each match was played.
+  const matches = [];
+  const grounds = new Map();
+  for (const entry of entries) {
+    try {
+      const info = JSON.parse(entry.getData().toString("utf8")).info ?? {};
+      const d = info.dates?.[0];
+      if ((info.teams ?? []).length !== 2 || !DATE_RE.test(d ?? "")) continue;
+      const vk = venueKey(info.venue, info.city);
+      if (!vk) continue;
+      const key = slug(vk.replace("@", " "));
+      const id = path.basename(entry.entryName, ".json");
+      matches.push({ id, key, start: d, end: endDate(d, info.dates.length) });
+      const g = grounds.get(key) ?? grounds.set(key, { key, name: info.venue, city: info.city ?? null, teams: new Map() }).get(key);
+      for (const t of info.teams) g.teams.set(t, (g.teams.get(t) ?? 0) + 1);
+    } catch {
+      // Unreadable here means skipped by the main pass as well.
+    }
+  }
+  const cacheFile = weatherCacheDir ? path.join(weatherCacheDir, "weather-cache.json") : null;
+  const local = { w: {}, v: [] };
+  try {
+    if (cacheFile && fs.existsSync(cacheFile)) Object.assign(local, JSON.parse(fs.readFileSync(cacheFile, "utf8")));
+  } catch {
+    // A corrupt local cache is an empty one.
+  }
+  const published = await loadPublished({ baseUrl: SITE_URL });
+  const have = mergeWeather(
+    published.weather,
+    new Map(Object.entries(local.w ?? {}).filter(([, w]) => validWeather(w)))
+  );
+  const previous = new Map([...coordsFromRows(published.venueRows), ...coordsFromRows(local.v)]);
+  console.log(`weather cache: ${have.size} matches, ${previous.size} grounds with coordinates`);
+
+  const getJson = makeFetcher({ gapMs: 700 });
+  const resolved = await resolveVenues({
+    venues: [...grounds.values()],
+    previous,
+    grounds: await loadGrounds({ cacheDir: weatherCacheDir }),
+    geocode: (place, teams) => geocodeCity(getJson, place, teams),
+  });
+  for (const [k, v] of resolved) venueCoords.set(k, v);
+  const bySrc = { w: 0, c: 0 };
+  for (const v of resolved.values()) bySrc[v.src]++;
+  console.log(`ground coordinates: ${resolved.size}/${grounds.size} (Wikidata ${bySrc.w}, city geocode ${bySrc.c}), ${getJson.calls} geocode calls`);
+
+  const ids = new Set(matches.map((m) => m.id));
+  for (const [id, w] of have) if (ids.has(id)) weatherById.set(id, w);
+  const coordPairs = new Map([...resolved].map(([k, v]) => [k, [v.lat, v.lon]]));
+  const fetcher = makeFetcher({ gapMs: 700 });
+  const run = await fillWeather({ matches, have: weatherById, coords: coordPairs, getJson: fetcher, cap: weatherLimit, log: console.log });
+  for (const [id, w] of run.weather) weatherById.set(id, w);
+  console.log(`weather: ${run.fetched} fetched in ${run.calls} calls${run.stopped ? ` (stopped: ${run.stopped})` : ""}; ${weatherById.size}/${matches.length} matches have it`);
+  if (cacheFile) {
+    fs.mkdirSync(weatherCacheDir, { recursive: true });
+    fs.writeFileSync(cacheFile, JSON.stringify({ w: Object.fromEntries(weatherById), v: [...venueCoords].map(([k, v]) => [k, "", "", 0, v.lat, v.lon, v.src]) }));
+  }
+}
+if (!noWeather) {
+  try {
+    await loadWeather();
+  } catch (e) {
+    console.error(`weather skipped: ${e?.message}`);
+  }
+}
+
+fs.rmSync(outDir, { recursive: true, force: true });
+fs.mkdirSync(outDir, { recursive: true });
 const stats = createStats();
 const months = new Map();
 const teams = new Map();
 let parsed = 0;
+const parsedIds = [];
 let skipped = 0;
 let badDate = 0;
 
@@ -122,6 +209,9 @@ for (let i = 0; i < entries.length; i++) {
     continue;
   }
   parsed++;
+  parsedIds.push(id);
+  const weather = weatherById.get(id);
+  if (weather) match.w = weather;
   write(`m/${id}.json`, match);
   addMatch(stats, match);
 
@@ -162,7 +252,17 @@ write(
 );
 
 for (const [rel, obj] of statsFiles(stats, register, bios)) write(rel, obj);
-write("idx/venues.json", venueIndex(stats));
+write(
+  "idx/venues.json",
+  venueIndex(stats).map((row) => {
+    const at = venueCoords.get(row[0]);
+    return at ? [...row, at.lat, at.lon, at.src] : row;
+  })
+);
+if (weatherById.size) {
+  const shown = new Set(parsedIds);
+  write("idx/weather.json", Object.fromEntries([...weatherById].filter(([id]) => shown.has(id))));
+}
 for (const [rel, obj] of playerNameFiles(stats, register)) write(rel, obj);
 
 // Last, so a reader that sees this build's manifest sees every file it describes.
@@ -182,6 +282,9 @@ fs.writeFileSync(
     "[Open Data Commons Attribution License (ODC-BY 1.0)](https://opendatacommons.org/licenses/by/1-0/).",
     "",
     `Built ${manifest.built} from ${parsed} matches.`,
+    "",
+    "Weather: [Open-Meteo.com](https://open-meteo.com/) historical archive, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).",
+    "Ground coordinates: [Wikidata](https://www.wikidata.org/) (CC0) and Open-Meteo geocoding.",
     "",
   ].join("\n")
 );

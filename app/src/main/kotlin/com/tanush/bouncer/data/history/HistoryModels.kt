@@ -31,6 +31,8 @@ data class HistoryMatch(
     val p: List<List<String>> = emptyList(),
     val xi: List<List<Int>> = emptyList(),
     val inn: List<HistoryInnings> = emptyList(),
+    /** Weather on the day, `[tmax, rain, humidity, wind, cloud]` (see [PastWeather]); empty until fetched. */
+    val w: List<Double> = emptyList(),
 ) {
     fun name(index: Int): String = p.getOrNull(index)?.firstOrNull() ?: "?"
 }

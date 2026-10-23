@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +11,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import com.tanush.bouncer.data.history.HistoryCoverage
 import com.tanush.bouncer.data.history.HistoryRecords
+import com.tanush.bouncer.data.history.PastWeather
+import com.tanush.bouncer.data.history.pastWeatherOf
+import com.tanush.bouncer.data.history.trimmed
 import com.tanush.bouncer.data.history.VenueRecord
 import com.tanush.bouncer.data.remote.H2HPair
 import com.tanush.bouncer.ui.components.HeadToHeadCard
@@ -60,6 +64,8 @@ fun InfoTabV2(
     val context by produceState<MatchContext?>(initialValue = null, match.id) {
         value = MatchContextStore.get(match.id, finished = match.isCompleted)
     }
+    // A past Cricsheet match's weather on the day, from the history site; absent for most matches.
+    val pastWeather by produceState<PastWeather?>(initialValue = null, match.id) { value = pastWeatherOf(match.id) }
     val forecast = context?.forecast?.summary(System.currentTimeMillis())
     val ground = context?.venue?.takeIf { it.known && it.matches >= GROUND_MIN_MATCHES }
     // Cricsheet's record for the ground in this format. The context's ground is the fallback, so a
@@ -82,6 +88,7 @@ fun InfoTabV2(
         infoDetailsItems(match)
         infoTossItems(match)
         infoOfficialsItems(match, context?.cricinfo)
+        infoPastWeatherItems(pastWeather)
         if (forecast != null) {
             item(key = "forecast_header") { SectionHeaderV2(title = stringResource(R.string.match_info_forecast)) }
             item(key = "forecast_card") { ForecastCard(forecast) }
@@ -250,6 +257,39 @@ private fun ForecastCard(forecast: ForecastSummary) {
             color = colors.textSecondary,
             modifier = Modifier.padding(spacing.md),
         )
+    }
+}
+
+private fun LazyListScope.infoPastWeatherItems(weather: PastWeather?) {
+    if (weather == null) return
+    item(key = "weather_header") { SectionHeaderV2(title = stringResource(R.string.match_info_weather)) }
+    item(key = "weather_card") { PastWeatherCard(weather) }
+}
+
+/** What the weather was on the day, with the credit Open-Meteo's licence asks for. */
+@Composable
+private fun PastWeatherCard(weather: PastWeather) {
+    val spacing = BouncerThemeV2.spacing
+    BouncerCard {
+        Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+            Text(
+                text = stringResource(
+                    R.string.match_info_weather_line,
+                    weather.maxTempC.trimmed(),
+                    weather.rainMm.trimmed(),
+                    weather.windKph,
+                    weather.humidityPercent,
+                    weather.cloudPercent,
+                ),
+                style = BouncerThemeV2.typography.bodyMedium,
+                color = BouncerThemeV2.colors.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.match_info_weather_source),
+                style = BouncerThemeV2.typography.labelMedium,
+                color = BouncerThemeV2.colors.textSecondary,
+            )
+        }
     }
 }
 

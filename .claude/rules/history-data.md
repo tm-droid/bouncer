@@ -36,8 +36,9 @@ paths:
 | `idx/m/YYYY-MM.json` | rows `[id, date, format, gender, team1, team2, winnerIdx, result, event, venue]` |
 | `idx/search.json` | the same rows without the venue, every match |
 | `idx/teams.json` | `[name, gender, key, matches]` |
-| `idx/venues.json` | `[key, name, city, matches]`, most played first; `key` is the `s/venue` file name |
-| `m/<id>.json` | one match: `t` teams, `p` people `[name, registryId?]`, `xi`, `o` outcome, `inn[]` with `b` deliveries, `sc` scorecard, `ov` per-over `[runs, wkts]` |
+| `idx/venues.json` | `[key, name, city, matches, lat?, lon?, src?]`, most played first; `key` is the `s/venue` file name; `src` `w` Wikidata, `c` city geocode; 4 cells when unplaced |
+| `idx/weather.json` | `{matchId: w}`, the weather side index and the builder's self-cache |
+| `m/<id>.json` | one match: `t` teams, `p` people `[name, registryId?]`, `xi`, `o` outcome, `inn[]` with `b` deliveries, `sc` scorecard, `ov` per-over `[runs, wkts]`, `w` weather (absent until fetched) |
 | `s/team/<key>.json`, `s/h2h/<a>__<b>.json`, `s/venue/<key>.json`, `s/p/<registryId>.json`, `s/p/names/<letter>.json` | records |
 
 - **A delivery** is `[over, ball, batter, bowler, nonStriker, batRuns, extraRuns, extrasBits, wickets?]`.
@@ -62,3 +63,8 @@ paths:
   - Several SPARQL queries (one per property, joined by id): a single join times out at WDQS's 60 s. Birthplace labels come from `wbgetentities`, photos from the Commons API in batches of 50. Cached as `wikidata-cache.json` beside `all_json.zip` for 6 days; a failed query builds without bios (warned), or from a stale cache.
   - Batting/bowling style skipped: P2545 (bowling style) is on 1,159 of 31,716 cricketers and Wikidata has no batting-hand property.
   - 2026-10-24 build: `bio` on 7,162 of 13,696 players (52%), photo on 1,373 (10%), +1.1 MB.
+- **Weather and ground coordinates** (`src/weather.mjs`, `venuecoords.mjs`, `openmeteo.mjs`). `w` is `[tmax 0.1 C, rain 0.1 mm summed, humidity % mean, wind km/h max, cloud % mean]` over the match's days (`d` plus `ds`-1), from the Open-Meteo archive (`temperature_2m_max,precipitation_sum,relative_humidity_2m_mean,wind_speed_10m_max,cloud_cover_mean`). Append new positions, never reorder; `PastWeather.of` needs 5. Old builds ignore `w` and the extra venue cells (`parseVenues` reads cells by index).
+  - **Attribution rule: Open-Meteo is CC BY 4.0.** The Info tab shows "Weather data: Open-Meteo.com" under every weather line and the site README credits it; keep both. Ground coordinates: Wikidata (CC0) else Open-Meteo geocoding.
+  - **Self-cache.** The weekly runner is empty, so the build first fetches the published `idx/weather.json` and `idx/venues.json` and asks Open-Meteo only for matches missing from them, at most `WEATHER_LIMIT` calls (default 4500, 0.7 s apart): the free tier is 600/min, **5,000/hour**, 10,000/day, so more than 5,000 in one run is refused. One request serves one ground's matches within 14 days (one call), newest first, so the archive fills over about two weekly runs (8,527 requests for 22,028 matches). Matches in the last 6 days wait (the archive lags). A 429 stops the run; any error builds without that weather, never fails. `--weather-cache <dir>` also keeps `weather-cache.json` there for a faster local fill; `--weather-limit n`, `--no-weather`.
+  - **Venue coordinates:** Wikidata items that are a cricket field (Q682943 and subclasses) or have sport cricket, label/alias matched by squashed name; used only when within 100 km of the city's geocode (grounds share names), else the city point. 2026-10-24: 663 of 743 grounds placed (Wikidata 214, city 449); 80 have no city Open-Meteo knows, so their matches get no weather.
+  - `appwrite/tools/weather-backfill.mjs` (model features) imports `chooseCandidate` from `openmeteo.mjs`. The app shows weather only for `cs-` matches (read from the match's own file).
