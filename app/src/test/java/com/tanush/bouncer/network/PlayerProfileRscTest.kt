@@ -112,4 +112,18 @@ class PlayerProfileRscTest {
         // would look like a successful scrape of a player with no career.
         assertNull(PlayerProfileRsc.parse("<html><body>nothing here</body></html>", "1413", "Fallback Name"))
     }
+
+    @Test
+    fun `null stats tables parse to a profile with no stats, not a crash`() {
+        // ANDROID-5T: Cricbuzz serves `battingStats: null` for players with no recorded stats.
+        // Gson keeps that as a JsonNull member, and getAsJsonObject threw ClassCastException on
+        // it, failing the whole scrape instead of returning the personal details.
+        val html = """<script>self.__next_f.push([1,"5:[{\"faceImageId\":\"123\",\"name\":\"Roelofsen\",""" +
+            """\"recentBatting\":null},{\"battingStats\":null,\"bowlingStats\":null}]"])</script>"""
+        val profile = PlayerProfileRsc.parse(html, "14187", "Fallback Name")
+        assertNotNull(profile)
+        assertEquals("Roelofsen", profile!!.name)
+        assertTrue(profile.stats.isEmpty())
+        assertTrue(profile.recentForm.isEmpty())
+    }
 }
