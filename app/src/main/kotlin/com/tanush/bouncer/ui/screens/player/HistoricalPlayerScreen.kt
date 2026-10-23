@@ -1,8 +1,10 @@
 package com.tanush.bouncer.ui.screens.player
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -52,6 +54,8 @@ fun HistoricalPlayerScreen(
     displayName: String?,
     onBackClick: () -> Unit,
     onMatchClick: (CricketMatch) -> Unit,
+    /** Opens the live profile (photo, birth date, styles) for a Cricbuzz id Cricsheet's register names. */
+    onLiveProfileClick: ((cricbuzzId: String) -> Unit)? = null,
 ) {
     val viewModel: HistoricalPlayerViewModel = viewModel(
         key = HistoricalPlayerViewModel.storeKey(playerId),
@@ -69,7 +73,7 @@ fun HistoricalPlayerScreen(
             failure = FailureKind.Server.takeIf { state is HistoricalPlayerState.Failed },
         )
         when {
-            loaded != null -> CareerList(padding, loaded, displayName, onMatchClick)
+            loaded != null -> CareerList(padding, loaded, displayName, onMatchClick, onLiveProfileClick)
             screen is ScreenState.Failed -> FailedState(screen.kind, viewModel::retry, Modifier.padding(padding))
             else -> DelayedSkeleton(isLoading = true) {
                 Column(Modifier.fillMaxSize().padding(padding).padding(BouncerThemeV2.spacing.lg)) { ShimmerPlayerHeader() }
@@ -84,6 +88,7 @@ private fun CareerList(
     loaded: HistoricalPlayerState.Loaded,
     displayName: String?,
     onMatchClick: (CricketMatch) -> Unit,
+    onLiveProfileClick: ((String) -> Unit)?,
 ) {
     val spacing = BouncerThemeV2.spacing
     val career = loaded.career
@@ -103,6 +108,18 @@ private fun CareerList(
                     style = BouncerThemeV2.typography.bodySmall,
                     color = BouncerThemeV2.colors.textSecondary,
                     modifier = Modifier.padding(top = spacing.sm),
+                )
+            }
+        }
+        val liveId = career.cricbuzzId
+        if (liveId != null && onLiveProfileClick != null) {
+            item(key = "live_profile") {
+                Text(
+                    stringResource(R.string.history_live_profile_link),
+                    style = BouncerThemeV2.typography.bodyMedium,
+                    color = BouncerThemeV2.colors.primaryText,
+                    modifier = Modifier.fillMaxWidth().clickable { onLiveProfileClick(liveId) }
+                        .padding(horizontal = spacing.lg, vertical = spacing.md),
                 )
             }
         }

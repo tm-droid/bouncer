@@ -35,4 +35,17 @@ class CareerJoinTest {
         val md = listOf(HistoryNameRow("Md Rizwan", "y", "Pakistan", 5))
         assertEquals(md[0], CareerJoin.link("Mohammad Rizwan", "Pakistan", md))
     }
+
+    @Test
+    fun `a Cricbuzz id from the register beats the name test`() {
+        val milne = HistoryNameRow("AF Milne", "350bb1b1", "New Zealand", 300, "7625")
+        assertEquals(milne, CareerJoin.link("Adam Milne", "Wellington", listOf(milne), "7625"))
+        assertNull(CareerJoin.link("Adam Milne", "Wellington", listOf(milne), "1"))
+    }
+
+    @Test
+    fun `an alias row is the same person, not a second candidate`() {
+        val rows = listOf(HistoryNameRow("S Sharma", "1", "India", 10), HistoryNameRow("S Sharma", "1", "India", 10))
+        assertEquals(rows[0], CareerJoin.link("Sanjay Sharma", "India", rows))
+    }
 }

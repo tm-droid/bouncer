@@ -186,7 +186,7 @@ private fun careerRowFor(profile: PlayerProfile?): HistoryNameRow? = produceStat
     val loaded = profile ?: return@produceState
     val letter = PlayerNameMatch.letters(loaded.name).firstOrNull() ?: return@produceState
     val names = HistoryClient.names(letter) ?: return@produceState
-    value = CareerJoin.link(loaded.name, loaded.country.ifBlank { loaded.teams.firstOrNull().orEmpty() }, names)
+    value = CareerJoin.link(loaded.name, loaded.country.ifBlank { loaded.teams.firstOrNull().orEmpty() }, names, loaded.id)
 }.value
 
 @Composable

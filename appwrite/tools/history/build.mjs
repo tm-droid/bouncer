@@ -20,6 +20,7 @@ import path from "node:path";
 import AdmZip from "adm-zip";
 import { compactMatch, SCHEMA_VERSION } from "./src/match.js";
 import { addMatch, createStats, formatKey, playerNameFiles, statsFiles, venueIndex } from "./src/stats.js";
+import { parseRegister } from "./src/register.js";
 import { monthOf, teamKey } from "./src/keys.js";
 
 export const SIZE_LIMIT_BYTES = 900 * 1024 * 1024;
@@ -30,6 +31,8 @@ if (!zipPath || !outDir) {
   process.exit(1);
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MONTH_RE = /^\d{4}-\d{2}$/;
 const mb = (n) => (n / 1024 / 1024).toFixed(1);
 let bytes = 0;
 let files = 0;
@@ -46,6 +49,29 @@ const write = (rel, obj) => {
   files += 1;
 };
 
+// The register sits beside the archive. A failed download builds without it (records lose their
+// Cricbuzz/Cricinfo ids and aliases for a week) rather than leaving the published site stale.
+const REGISTER_URL = "https://cricsheet.org/register/";
+async function loadRegister() {
+  const dir = path.dirname(path.resolve(zipPath));
+  const read = async (name) => {
+    const file = path.join(dir, name);
+    if (!fs.existsSync(file)) {
+      const res = await fetch(REGISTER_URL + name, { signal: AbortSignal.timeout(60_000) });
+      if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
+      fs.writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+    }
+    return fs.readFileSync(file, "utf8");
+  };
+  try {
+    return parseRegister(await read("people.csv"), await read("names.csv"));
+  } catch (e) {
+    console.error(`register unavailable, building without it: ${e?.message}`);
+    return null;
+  }
+}
+const register = await loadRegister();
+
 fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
 
@@ -56,6 +82,7 @@ const months = new Map();
 const teams = new Map();
 let parsed = 0;
 let skipped = 0;
+let badDate = 0;
 
 // Each entry slot is cleared once read: adm-zip keeps an entry's inflated bytes for as long as
 // the entry is referenced (the trainer died at 512 MB on exactly this, build.js).
@@ -75,6 +102,12 @@ for (let i = 0; i < entries.length; i++) {
     skipped++;
     continue;
   }
+  // The date becomes the `idx/m/<month>.json` file name, so only a plain YYYY-MM-DD gets through.
+  if (!DATE_RE.test(match.d)) {
+    badDate++;
+    skipped++;
+    continue;
+  }
   parsed++;
   write(`m/${id}.json`, match);
   addMatch(stats, match);
@@ -82,6 +115,7 @@ for (let i = 0; i < entries.length; i++) {
   const fk = formatKey(match);
   const row = [match.id, match.d, fk, match.g, match.t[0], match.t[1], match.o.w, match.o.r, match.e?.n ?? null, match.ven];
   const month = monthOf(match.d);
+  if (!MONTH_RE.test(month)) throw new Error(`bad month ${month}`);
   if (!months.has(month)) months.set(month, []);
   months.get(month).push(row);
   for (const team of match.t) {
@@ -93,6 +127,7 @@ for (let i = 0; i < entries.length; i++) {
 }
 entries.length = 0;
 zip = null;
+if (badDate) console.error(`skipped ${badDate} matches whose date is not YYYY-MM-DD`);
 console.log(`parsed ${parsed}, skipped ${skipped}, RSS ${mb(process.memoryUsage().rss)} MB`);
 
 const byDate = (a, b) => String(a[1]).localeCompare(String(b[1])) || String(a[0]).localeCompare(String(b[0]));
@@ -113,9 +148,9 @@ write(
   [...teams].map(([key, t]) => [t.n, t.g, key, t.c]).sort((a, b) => b[3] - a[3])
 );
 
-for (const [rel, obj] of statsFiles(stats)) write(rel, obj);
+for (const [rel, obj] of statsFiles(stats, register)) write(rel, obj);
 write("idx/venues.json", venueIndex(stats));
-for (const [rel, obj] of playerNameFiles(stats)) write(rel, obj);
+for (const [rel, obj] of playerNameFiles(stats, register)) write(rel, obj);
 
 // Last, so a reader that sees this build's manifest sees every file it describes.
 const manifest = { v: SCHEMA_VERSION, built: new Date().toISOString(), matches: parsed, files: files + 1, bytes };

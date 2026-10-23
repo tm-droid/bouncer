@@ -391,6 +391,9 @@ private fun NavGraphBuilder.entityDestinations(
             displayName = name,
             onBackClick = { navController.popBackStack() },
             onMatchClick = onMatchClick,
+            onLiveProfileClick = { cricbuzzId ->
+                navController.navigateForward(BouncerScreen.PlayerDetail.createRoute(name.orEmpty(), cricbuzzId))
+            },
         )
     }
 

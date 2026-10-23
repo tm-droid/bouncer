@@ -7,6 +7,7 @@
  */
 
 import { venueKey } from "./names.js";
+import { aliasesFor } from "./register.js";
 import { pairKey, slug, teamKey } from "./keys.js";
 
 /**
@@ -33,6 +34,11 @@ export const REGISTRY_ID = /^[0-9a-f]{8}$/;
 const RESULT_SLOT = { W: 1, L: 2, T: 3, D: 4, N: 5 };
 const newTally = () => [0, 0, 0, 0, 0, 0]; // played, W, L, T, D, N
 
+// Record maps are keyed by strings from Cricsheet's files (match type, team, ...). A plain {} lets
+// "__proto__" select Object.prototype and the tally write into it; a null-prototype object has no
+// such key and JSON.stringify writes it exactly as it writes a plain one.
+const dict = () => Object.create(null);
+
 export function createStats() {
   return { teams: new Map(), pairs: new Map(), venues: new Map(), players: new Map() };
 }
@@ -44,7 +50,7 @@ export function addMatch(stats, m) {
   for (const side of [0, 1]) {
     const key = teamKey(m.t[side], m.g);
     let team = stats.teams.get(key);
-    if (!team) stats.teams.set(key, (team = { t: m.t[side], g: m.g, f: {}, y: {}, m: [] }));
+    if (!team) stats.teams.set(key, (team = { t: m.t[side], g: m.g, f: dict(), y: dict(), m: [] }));
     const res = resultFor(m, side);
     tally((team.f[fk] ??= newTally()), res);
     tally((team.y[year] ??= newTally()), res);
@@ -55,7 +61,7 @@ export function addMatch(stats, m) {
   let pair = stats.pairs.get(pk);
   if (!pair) {
     const sides = [...m.t].sort((a, b) => slug(a).localeCompare(slug(b)));
-    stats.pairs.set(pk, (pair = { t: sides, g: m.g, f: {}, m: [] }));
+    stats.pairs.set(pk, (pair = { t: sides, g: m.g, f: dict(), m: [] }));
   }
   // [played, side 0 won, side 1 won, tied, drawn, no result], sides in the file's own order.
   const winnerSide = m.o.w >= 0 ? pair.t.indexOf(m.t[m.o.w]) : -1;
@@ -82,7 +88,7 @@ function addVenue(stats, m, fk) {
   if (!vk) return;
   const key = slug(vk.replace("@", " "));
   let venue = stats.venues.get(key);
-  if (!venue) stats.venues.set(key, (venue = { n: m.ven, city: m.city, f: {}, m: [] }));
+  if (!venue) stats.venues.set(key, (venue = { n: m.ven, city: m.city, f: dict(), m: [] }));
   const first = m.inn.find((i) => !i.so);
   // [matches, first-innings runs summed, first innings counted, won batting first, won chasing]
   const vf = (venue.f[fk] ??= [0, 0, 0, 0, 0]);
@@ -151,7 +157,7 @@ function addPlayers(stats, m, fk) {
     const side = sideOf.get(idx);
     if (side === undefined) continue;
     let player = stats.players.get(id);
-    if (!player) stats.players.set(id, (player = { n: person[0], f: {}, tm: {}, m: [] }));
+    if (!player) stats.players.set(id, (player = { n: person[0], f: dict(), tm: dict(), m: [] }));
     player.tm[m.t[side]] = (player.tm[m.t[side]] ?? 0) + 1;
     // [matches, innings, not outs, runs, balls faced, high score, high score not out, 50s, 100s,
     //  balls bowled, runs conceded, wickets, best wickets, best runs, catches, stumpings,
@@ -202,8 +208,8 @@ export function venueIndex(stats) {
     .sort((a, b) => b[3] - a[3] || a[0].localeCompare(b[0]));
 }
 
-/** Every stats file, as [path, object]. Match lists newest first. */
-export function* statsFiles(stats) {
+/** Every stats file, as [path, object]. Match lists newest first. Player records get the register's ids. */
+export function* statsFiles(stats, register = null) {
   for (const [key, team] of stats.teams) {
     team.m.sort(byDateDesc);
     yield [`s/team/${key}.json`, team];
@@ -218,19 +224,33 @@ export function* statsFiles(stats) {
   }
   for (const [id, player] of stats.players) {
     player.m.sort(byDateDesc);
+    // Appended after `m`; the register's Cricbuzz and Cricinfo ids, where it has them.
+    const known = register?.ids.get(id);
+    if (known?.cb) player.cb = known.cb;
+    if (known?.ci) player.ci = known.ci;
     yield [`s/p/${id}.json`, player];
   }
 }
 
-/** Name lookup, one file per surname initial: [name, registry id, main side, matches]. */
-export function playerNameFiles(stats) {
+/**
+ * Name lookup, one file per surname initial: `[name, registry id, main side, matches, cricbuzz id?]`.
+ * The fifth cell is present only when the register knows the Cricbuzz id. A player's other names
+ * (`aliases`, from the register) are further rows with the same id, filed under the alias's own
+ * surname initial, so an old reader that takes four cells sees them as one more player.
+ */
+export function playerNameFiles(stats, register = null) {
   const byLetter = new Map();
-  for (const [id, player] of stats.players) {
-    const surname = player.n.trim().split(/\s+/).pop() ?? "";
+  const add = (name, id, side, matches, cb) => {
+    const surname = name.trim().split(/\s+/).pop() ?? "";
     const letter = /^[a-z]$/i.test(surname[0] ?? "") ? surname[0].toLowerCase() : "0";
-    const side = Object.entries(player.tm).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
     if (!byLetter.has(letter)) byLetter.set(letter, []);
-    byLetter.get(letter).push([player.n, id, side, player.m.length]);
+    byLetter.get(letter).push(cb ? [name, id, side, matches, cb] : [name, id, side, matches]);
+  };
+  for (const [id, player] of stats.players) {
+    const side = Object.entries(player.tm).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    const cb = register?.ids.get(id)?.cb;
+    add(player.n, id, side, player.m.length, cb);
+    for (const alias of aliasesFor(player.n, register?.names.get(id))) add(alias, id, side, player.m.length, cb);
   }
   return [...byLetter].map(([letter, rows]) => [`s/p/names/${letter}.json`, rows.sort((a, b) => b[3] - a[3])]);
 }

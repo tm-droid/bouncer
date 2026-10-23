@@ -72,4 +72,11 @@ class PlayerNameMatchTest {
         assertTrue(ids("zz").isEmpty())
         assertTrue(ids("ko").isEmpty())
     }
+
+    @Test
+    fun `a person with an alias row appears once`() {
+        val withAlias = rows + HistoryNameRow("Chiku Kohli", "a", "India", 837)
+        assertEquals(1, PlayerNameMatch.search("kohli", withAlias).count { it.row.id == "a" })
+        assertEquals("a", PlayerNameMatch.search("chikku kohli", withAlias).first().row.id)
+    }
 }

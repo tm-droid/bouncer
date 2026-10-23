@@ -8,8 +8,11 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
 import java.time.LocalDate
 
-/** One player in `s/p/names/<letter>.json`: `["V Kohli", regId, team, matches]`. */
-data class HistoryNameRow(val name: String, val id: String, val team: String, val matches: Int)
+/**
+ * One player in `s/p/names/<letter>.json`: `["V Kohli", regId, team, matches, cricbuzzId?]`. A person
+ * with another name in Cricsheet's register has a further row per name, with the same [id].
+ */
+data class HistoryNameRow(val name: String, val id: String, val team: String, val matches: Int, val cricbuzzId: String? = null)
 
 /** One entry of a player's `m` list: `[id, date, format, team, opponent, ...figures]`, newest first. */
 data class CareerMatch(val id: String, val date: LocalDate?, val format: String, val team: String, val opponent: String) {
@@ -29,6 +32,9 @@ data class PlayerCareer(
     val matches: List<CareerMatch>,
     /** Whether the record carries 4s, 6s and five-wicket hauls; one built before they were added does not. */
     val hasBoundaries: Boolean = false,
+    /** The player's Cricbuzz and Cricinfo ids from Cricsheet's register; null where it has none. */
+    val cricbuzzId: String? = null,
+    val cricinfoId: String? = null,
 )
 
 /** Turns the site's compact player records into the models the player page already renders. */
@@ -97,14 +103,15 @@ object CareerStats {
             .map { (team, count) -> team to ((count as? JsonPrimitive)?.intOrNull ?: 0) }
             .sortedByDescending { it.second }
         val matches = (root["m"] as? JsonArray).orEmpty().mapNotNull { (it as? JsonArray)?.let(::careerMatch) }
-        PlayerCareer((root["n"] as JsonPrimitive).content, formats, teams, matches, hasBoundaries)
+        val id = { key: String -> (root[key] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } }
+        PlayerCareer((root["n"] as JsonPrimitive).content, formats, teams, matches, hasBoundaries, id("cb"), id("ci"))
     }.getOrNull()
 
     fun parseNames(json: String): List<HistoryNameRow>? = runCatching {
         (AppJson.parseToJsonElement(json) as JsonArray).mapNotNull { row ->
             val cells = (row as? JsonArray)?.map { (it as JsonPrimitive).content } ?: return@mapNotNull null
             if (cells.size < 4) return@mapNotNull null
-            HistoryNameRow(cells[0], cells[1], cells[2], cells[3].toIntOrNull() ?: 0)
+            HistoryNameRow(cells[0], cells[1], cells[2], cells[3].toIntOrNull() ?: 0, cells.getOrNull(4)?.takeIf { it.isNotBlank() })
         }
     }.getOrNull()
 

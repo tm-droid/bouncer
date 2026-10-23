@@ -41,6 +41,8 @@ object PlayerNameMatch {
             if (score > 0.0 && agrees(given, initialsOf(row.name))) PlayerNameHit(row, score) else null
         }
             .sortedWith(compareByDescending<PlayerNameHit> { it.score }.thenByDescending { ln(1.0 + it.row.matches) })
+            // A person with an alias row appears twice; the better-scoring name stands for them.
+            .distinctBy { it.row.id }
             .take(limit)
     }
 
@@ -93,8 +95,12 @@ object CareerJoin {
     /**
      * The one row of [rows] with [name]'s surname and first initial that played for [side], else null.
      * Two candidates (two "S Sharma"s for the same side) give no link: a career of the wrong person is
-     * worse than none.
+     * worse than none. A row whose [HistoryNameRow.cricbuzzId] is [cricbuzzId] is taken without the name test.
      */
-    fun link(name: String, side: String, rows: List<HistoryNameRow>): HistoryNameRow? =
-        rows.filter { PlayerNameMatch.samePlayer(name, side, it) }.singleOrNull()
+    fun link(name: String, side: String, rows: List<HistoryNameRow>, cricbuzzId: String? = null): HistoryNameRow? {
+        // Cricsheet's register names some players' Cricbuzz id; that is exact, so it beats any name test.
+        if (!cricbuzzId.isNullOrBlank()) rows.firstOrNull { it.cricbuzzId == cricbuzzId }?.let { return it }
+        // A register alias is a second row for the same person, not a second candidate.
+        return rows.filter { PlayerNameMatch.samePlayer(name, side, it) }.distinctBy { it.id }.singleOrNull()
+    }
 }

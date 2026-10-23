@@ -86,4 +86,15 @@ class CareerStatsTest {
         val rows = CareerStats.parseNames("""[["V Kohli","ba607b88","India",837],["x"]]""")!!
         assertEquals(listOf(HistoryNameRow("V Kohli", "ba607b88", "India", 837)), rows)
     }
+
+    @Test
+    fun `a names row may carry a Cricbuzz id and a record the register ids`() {
+        val rows = CareerStats.parseNames("""[["AF Milne","350bb1b1","New Zealand",50,"7625"],["B One","b","X",1,""]]""")!!
+        assertEquals("7625", rows[0].cricbuzzId)
+        assertNull(rows[1].cricbuzzId)
+        val career = CareerStats.parseCareer("""{"n":"X","f":{},"tm":{},"m":[],"cb":"7625","ci":"450860"}""")!!
+        assertEquals("7625", career.cricbuzzId)
+        assertEquals("450860", career.cricinfoId)
+        assertNull(CareerStats.parseCareer("""{"n":"X","f":{},"tm":{},"m":[]}""")!!.cricbuzzId)
+    }
 }
