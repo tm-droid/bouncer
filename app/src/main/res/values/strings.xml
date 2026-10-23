@@ -515,4 +515,70 @@
     <string name="player_economy">Economy</string>
     <string name="player_best_bowling">Best bowling</string>
     <string name="player_five_wickets">Five-wicket hauls</string>
+
+    <!-- Design upgrade 2026-10 -->
+    <!-- reuse: tab_live (LIVE), action_retry (Retry), stat_crr, stat_rrr, home_see_upcoming (See upcoming) -->
+    <plurals name="hero_runs">
+        <item quantity="one">%d run</item>
+        <item quantity="other">%d runs</item>
+    </plurals>
+    <plurals name="hero_balls">
+        <item quantity="one">%d ball</item>
+        <item quantity="other">%d balls</item>
+    </plurals>
+    <string name="hero_need_off">%1$s need %2$s off %3$s</string>
+    <string name="hero_need_to_win">%1$s need %2$s to win</string>
+    <string name="hero_lead_by">%1$s lead by %2$s</string>
+    <string name="hero_trail_by">%1$s trail by %2$s</string>
+    <string name="hero_scores_level">Scores level</string>
+    <string name="hero_expand_score">Expand score</string>
+    <string name="hero_collapse_score">Collapse score</string>
+    <string name="hero_vs">vs</string>
+    <string name="hero_next_up">Next up</string>
+    <plurals name="freshness_updated_min_ago">
+        <item quantity="one">Updated %d min ago</item>
+        <item quantity="other">Updated %d min ago</item>
+    </plurals>
+    <string name="freshness_last_seen_live">Last seen live</string>
+    <string name="freshness_updated_just_now">Updated just now</string>
+    <string name="start_now">Starting now</string>
+    <plurals name="start_in_min">
+        <item quantity="one">in %d min</item>
+        <item quantity="other">in %d min</item>
+    </plurals>
+    <string name="start_in_hr_min">in %1$dh %2$dm</string>
+    <plurals name="start_in_hr">
+        <item quantity="one">in %d hr</item>
+        <item quantity="other">in %d hr</item>
+    </plurals>
+    <string name="result_title">Result</string>
+    <string name="result_won_by">Won by %s</string>
+    <string name="result_top_batter">Top batter</string>
+    <string name="result_top_bowler">Top bowler</string>
+    <string name="result_tied">Match tied</string>
+    <string name="result_no_result">No result</string>
+    <string name="a11y_score_for">%1$s %2$s for %3$s, %4$s overs</string>
+    <string name="a11y_score_all_out">%1$s %2$s all out, %3$s overs</string>
+    <string name="a11y_yet_to_bat">%1$s yet to bat</string>
+    <string name="state_offline_saved_title">You\'re offline</string>
+    <string name="state_offline_saved_cause">Showing scores saved at %s.</string>
+    <string name="state_server_title">Scores didn\'t load</string>
+    <string name="state_server_cause">Bouncer\'s server isn\'t responding.</string>
+    <string name="state_try_again">Try again</string>
+    <string name="state_no_live_title">No live matches</string>
+    <string name="state_no_live_cause">Next: %1$s, %2$s.</string>
+    <string name="state_no_commentary_title">Commentary hasn\'t started</string>
+    <string name="state_no_commentary_cause">It appears once the first ball is bowled.</string>
+    <string name="state_open_match_info">Open match info</string>
+    <string name="state_scorecard_title">Scorecard not ready</string>
+    <string name="state_scorecard_cause">It appears when the match starts.</string>
+    <string name="state_search_empty_title">Nothing matches \"%s\"</string>
+    <string name="state_search_empty_cause">Try a team or player name.</string>
+    <string name="state_clear_search">Clear search</string>
+    <string name="state_series_empty_title">No matches listed</string>
+    <string name="state_series_empty_cause">This series has no fixtures yet.</string>
+    <string name="state_news_title">News didn\'t load</string>
+    <string name="state_news_cause">The news source isn\'t responding.</string>
+    <string name="state_offline_title">You\'re offline</string>
+    <string name="state_offline_cause">Connect to the internet to load scores.</string>
 </resources>

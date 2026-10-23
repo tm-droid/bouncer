@@ -136,6 +136,14 @@ data class BouncerTypographyV2(
         lineHeight = 16.sp,
         letterSpacing = 0.8.sp,
     ),
+    /** 36sp ExtraBold, tabular — hero score on the match header */
+    val scoreHero: TextStyle = TextStyle(
+        fontFamily = BouncerFontFamily,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 36.sp,
+        lineHeight = 42.sp,
+        fontFeatureSettings = TABULAR,
+    ),
     /** 24sp ExtraBold, tabular — compact match card scores */
     val scoreLarge: TextStyle = TextStyle(
         fontFamily = BouncerFontFamily,

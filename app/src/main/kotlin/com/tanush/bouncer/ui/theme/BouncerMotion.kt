@@ -36,6 +36,9 @@ object BouncerMotion {
         const val Fast = AnimationDuration.fast
         const val Normal = AnimationDuration.normal
         const val Slow = AnimationDuration.moderate
+        const val Brisk = 120
+        const val Medium = 200
+        const val Measured = 300
     }
 
     object Springs {
@@ -50,6 +53,7 @@ object BouncerMotion {
         fun <T> gentle(): SpringSpec<T> = springSpec(GentleDamping, GentleStiffness)
         fun <T> medium(): SpringSpec<T> = springSpec(MediumDamping, MediumStiffness)
         fun <T> snappy(): SpringSpec<T> = springSpec(SnappyDamping, SnappyStiffness)
+        fun <T> noBounce(): SpringSpec<T> = springSpec(Spring.DampingRatioNoBouncy, MediumStiffness)
 
         private fun <T> springSpec(dampingRatio: Float, stiffness: Float): SpringSpec<T> =
             SpringSpec(dampingRatio = dampingRatio, stiffness = stiffness)
