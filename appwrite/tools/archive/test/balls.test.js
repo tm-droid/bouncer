@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { BITS, CricbuzzBlockedError, ballsBlock, batterProblems, crawlInnings, deliveriesOf, inningsProblems, recordOf } from "../src/balls.js";
+import { BITS, CricbuzzBlockedError, ballsBlock, ballsOfOvers, batterProblems, crawlInnings, deliveriesOf, inningsProblems, overToken, reconcile, recordOf } from "../src/balls.js";
 import { parseBallOutcome } from "../src/ball-outcome.js";
 import { isEligible, probe, run } from "../backfill-balls.mjs";
 
@@ -342,4 +342,85 @@ test("one player under two people entries (bowler 'Nabi' and batter 'Mohammad Na
   const ds = [{ d: [0, 1, 0, -1, -1, 4, 0, 0] }, { d: [0, 2, 1, -1, -1, 9, 0, 0] }];
   const card = { batsmen: [{ name: "Mohammad Nabi", runs: "13", profileUrl: "https://x/profiles/3007/n" }] };
   assert.deepEqual(batterProblems(ds, card, people), []);
+});
+
+// Over summaries, read from Cricbuzz's own over separators (shapes measured on 103852, 109351,
+// 148415 and 16933; the app's BallOutcome.kt pins the same token arithmetic).
+const sep = (n, summary, ts) => ({ commType: "over-separator", timestamp: ts, inningsId: 1, overSeparator: { overNumber: n, overSummary: summary, batTeamObj: { teamScore: "0-0" } } });
+const recs = (...items) => items.map((i) => recordOf(i)).filter(Boolean);
+
+test("over-summary tokens: totals include the extra's penalty, P is a penalty and not a ball", () => {
+  assert.deepEqual(overToken("0"), { runs: 0, kind: null });
+  assert.deepEqual(overToken("W"), { runs: 0, kind: null, w: 1 });
+  assert.deepEqual(overToken("Wd"), { runs: 1, kind: "WIDE" });
+  assert.deepEqual(overToken("Wd5"), { runs: 5, kind: "WIDE" });
+  assert.deepEqual(overToken("N"), { runs: 1, kind: "NOBALL" });
+  assert.deepEqual(overToken("N4"), { runs: 5, kind: "NOBALL" });
+  assert.deepEqual(overToken("NB1"), { runs: 2, kind: "NOBALL" });
+  assert.deepEqual(overToken("L3"), { runs: 3, kind: "LEGBYE" });
+  assert.deepEqual(overToken("B4"), { runs: 4, kind: "BYE" });
+  assert.deepEqual(overToken("P"), { runs: 5, pen: 1 });
+  assert.equal(overToken("?"), null);
+});
+
+test("crawl keeps each over's summary", async () => {
+  const st = { cursor: 9e15, done: 0 };
+  const page = [sep(1, "0 1 ", 50), item(0.2, "A to B, 1 run", { timestamp: 20 }), item(0.1, "A to B, no run", { timestamp: 10 })];
+  let n = 0;
+  await crawlInnings({ st, innings: 1, fetchPage: async () => (n++ ? [] : page) });
+  assert.deepEqual(st.os, { 1: "0 1" });
+});
+
+test("the summary settles an unreadable wicket line and a no-ball's leg byes (103852, 109351)", () => {
+  const rs = recs(
+    item(0.1, "A to B, no run", { timestamp: 1 }),
+    item(0.2, "A to B, New baller gets the wicket!! A dream delivery", { timestamp: 2, event: ["wicket"] }),
+    item(0.3, "A to B, no ball, leg byes, 1 run, late on the flick", { timestamp: 3 }),
+    item(0.3, "A to B, 1 run", { timestamp: 4 }),
+  );
+  assert.equal(rs[1].runs, null);
+  const out = reconcile(rs, { 1: "0 W N1 1" });
+  const ds = deliveriesOf(out, new Map());
+  assert.equal(ds.filter((o) => o.unreadable).length, 0);
+  assert.deepEqual(ds[1].d.slice(5, 8), [0, 0, 0]);
+  assert.deepEqual(ds[2].d.slice(5, 8), [0, 2, BITS.NOBALL | BITS.LEGBYE]);
+});
+
+test("a penalty in the summary lands on the next ball as penalty extras (148415)", () => {
+  const rs = recs(item(0.1, "A to B, no run", { timestamp: 1 }), item(0.2, "A to B, 4 runs", { timestamp: 2, event: ["four"] }));
+  const ds = deliveriesOf(reconcile(rs, { 1: "P 0 4" }), new Map());
+  assert.deepEqual(ds[0].d.slice(5, 8), [0, 5, BITS.PENALTY]);
+  assert.deepEqual(ds[1].d.slice(5, 8), [4, 0, 0]);
+});
+
+test("a ball missing from the stream is rebuilt from the summary, on strike as Cricbuzz left it (16933)", () => {
+  const rs = recs(
+    item(0.1, "A to Nabi, 1 run", { timestamp: 1, batsmanDetails: { playerId: 2, playerName: "Shenwari" } }),
+    item(0.2, "A to Shenwari, no run", { timestamp: 2, batsmanDetails: { playerId: 2, playerName: "Shenwari" } }),
+    item(0.4, "A to Shenwari, 1 run", { timestamp: 4, batsmanDetails: { playerId: 1, playerName: "Nabi" } }),
+  );
+  const roster = [{ id: "1", name: "Mohammad Nabi" }, { id: "2", name: "Samiullah Shenwari" }];
+  const people = new Map();
+  const ds = deliveriesOf(reconcile(rs, { 1: "1 0 2 1" }), people, roster);
+  assert.deepEqual(ds.map((o) => `${o.d[0]}.${o.d[1]}`), ["0.1", "0.2", "0.3", "0.4"]);
+  const names = [...people.keys()];
+  assert.equal(names[ds[2].d[2]], "2|Samiullah Shenwari");
+  assert.equal(ds[2].d[3], ds[1].d[3]); // the over's bowler
+  assert.deepEqual(ds[2].d.slice(5, 8), [2, 0, 0]);
+});
+
+test("a summary that cannot be matched to the over's balls changes nothing", () => {
+  const rs = recs(item(0.1, "A to B, 1 run", { timestamp: 1 }), item(0.2, "A to B, 4 runs", { timestamp: 2, event: ["four"] }));
+  assert.deepEqual(reconcile(rs, { 1: "6 6 6" }), rs); // more tokens, none fit
+  assert.deepEqual(reconcile(rs, { 1: "1" }), rs); // fewer tokens than balls
+  assert.deepEqual(reconcile(rs, { 1: "1 ?" }), rs); // a token it cannot read
+});
+
+test("overs read as Cricbuzz's scorecard writes them, so the legal-ball count is checked", () => {
+  assert.equal(ballsOfOvers("18 Ov"), 108);
+  assert.equal(ballsOfOvers("19.2 Ov"), 116);
+  assert.equal(ballsOfOvers("20"), 120);
+  assert.equal(ballsOfOvers("Ov"), null);
+  const ds = conv([item(0.1, "A to B, 1 run", { timestamp: 1 }), item(0.3, "A to B, 1 run", { timestamp: 3 })]);
+  assert.match(inningsProblems(ds, { score: "2-0", overs: "0.3 Ov" }).join(" | "), /legal balls 2 != overs 0\.3 Ov/);
 });

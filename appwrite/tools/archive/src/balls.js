@@ -75,7 +75,11 @@ export function recordOf(item, parseOutcome = parseBallOutcome) {
   // empty on a wicket), so it is not who faced it: measured on 17685-17687, where reading it
   // misattributed 5-10 runs per batter. The id is resolved later against the scorecard's batsmen.
   const lead = text.match(/^\s*.+?\s+to\s+(.+?),/);
+  // "no ball, leg byes, 1 run": the runs past the no-ball's penalty are leg byes, not the batter's.
+  // The total comes from the over summary (`reconcile`); the line is the only place the split is said.
+  const nbx = kind === "NOBALL" ? text.match(/\bno.?balls?,\s*(leg ?byes?|byes?)\b/i)?.[1] : null;
   return {
+    ...(nbx ? { nbx: /^leg/i.test(nbx) ? "LEGBYE" : "BYE" } : {}),
     ts: Number(item.timestamp),
     t,
     ev,
@@ -104,6 +108,7 @@ const keyOf = (r) => `${r.ts}:${r.t}`;
  * exclusive (items strictly older), and `timestamp` is unique per item, so it is the dedupe key
  * (over.ball is not: a wide and the ball bowled again share a label).
  * `st.cp[n]` = runs on the board after `n` overs, from the over separators, for diagnostics only.
+ * `st.os[n]` = that separator's over summary ("0 W N1 1"), Cricbuzz's own scoring codes, for `reconcile`.
  */
 export async function crawlInnings({ fetchPage, st, innings = null, canRequest = () => true, parseOutcome = parseBallOutcome }) {
   const seen = new Set((st.recs ?? []).map(keyOf));
@@ -127,6 +132,8 @@ export async function crawlInnings({ fetchPage, st, innings = null, canRequest =
         const n = Number(item.overSeparator?.overNumber);
         const score = Number.parseInt(String(item.overSeparator?.batTeamObj?.teamScore ?? ""), 10);
         if (Number.isFinite(n) && Number.isFinite(score)) (st.cp ??= {})[n] = score;
+        const summary = String(item.overSeparator?.overSummary ?? "").trim();
+        if (Number.isFinite(n) && summary) (st.os ??= {})[n] = summary;
         continue;
       }
       const r = recordOf(item, parseOutcome);
@@ -152,6 +159,104 @@ export async function crawlInnings({ fetchPage, st, innings = null, canRequest =
     }
   }
   return "done";
+}
+
+// Cricbuzz's over-summary codes. A number is the delivery's TOTAL, an extra's penalty included
+// ("Wd3" = 3, "N1" = 2, "NB1" = 2); "P" is 5 penalty runs and not a ball. Every summary in the
+// four innings measured (103852, 109351, 148415, 16933; 275 overs) adds up to its `overRuns`.
+const OVER_TOKENS = [
+  [/^(\d)$/, (m) => ({ runs: Number(m[1]), kind: null })],
+  [/^W(\d)?$/, (m) => ({ runs: Number(m[1] ?? 0), kind: null, w: 1 })],
+  [/^Wd(\d)?$/, (m) => ({ runs: Number(m[1] ?? 1), kind: "WIDE" })],
+  [/^NB?(\d)?$/, (m) => ({ runs: 1 + Number(m[1] ?? 0), kind: "NOBALL" })],
+  [/^L(\d)$/, (m) => ({ runs: Number(m[1]), kind: "LEGBYE" })],
+  [/^B(\d)$/, (m) => ({ runs: Number(m[1]), kind: "BYE" })],
+  [/^P$/, () => ({ runs: 5, pen: 1 })],
+];
+
+/** One over-summary code as `{runs, kind, w?, pen?}`, or null when it is not one. */
+export function overToken(code) {
+  for (const [re, of] of OVER_TOKENS) {
+    const m = String(code).match(re);
+    if (m) return of(m);
+  }
+  return null;
+}
+
+const fits = (r, k) => r.runs === null || (r.runs === k.runs && (r.kind ?? null) === k.kind);
+
+/**
+ * The innings' records corrected by each over's summary (`os`, from `crawlInnings`). The commentary
+ * line is free text and the summary is the scorer's: where a line cannot be read ("New baller gets
+ * the wicket!!") or reads short ("no ball, leg byes, 1 run" parses as 1 where the summary says N1),
+ * the summary's total and kind win. Its "P" becomes penalty extras on the next ball.
+ *
+ * Alignment, per over: as many balls as codes pairs them in order, each pair agreeing on its label
+ * or its runs. FEWER balls than codes (Cricbuzz's stream drops a line, measured on 16933) pairs every
+ * ball with a code of the same label and runs, and each code left over becomes a rebuilt ball
+ * (`syn`), bowled by the over's bowler, its striker settled in `deliveriesOf`. Anything else (more
+ * balls than codes, a code it cannot read, no pairing) leaves the over as the lines had it.
+ */
+export function reconcile(recs, os) {
+  if (!os) return recs;
+  const byOver = new Map();
+  for (const r of recs) {
+    const o = Math.floor(r.t / 10);
+    if (!byOver.has(o)) byOver.set(o, []);
+    byOver.get(o).push(r);
+  }
+  const replaced = new Map();
+  const added = [];
+  for (const [n, summary] of Object.entries(os)) {
+    const o = Number(n) - 1;
+    const mine = (byOver.get(o) ?? []).sort((a, b) => a.ts - b.ts);
+    const codes = String(summary).split(/\s+/).map(overToken);
+    if (mine.length === 0 || codes.some((c) => !c)) continue;
+    const balls = [];
+    let legal = 0;
+    let pen = 0;
+    for (const c of codes) {
+      if (c.pen) {
+        pen += c.runs;
+        continue;
+      }
+      balls.push({ ...c, label: o * 10 + legal + 1, pen });
+      pen = 0;
+      if (c.kind !== "WIDE" && c.kind !== "NOBALL") legal++;
+    }
+    if (pen && balls.length) balls.at(-1).pen += pen;
+    let pairs = null;
+    if (mine.length === balls.length) {
+      if (mine.every((r, k) => r.t === balls[k].label || fits(r, balls[k]))) pairs = mine.map((r, k) => [r, k]);
+    } else if (mine.length < balls.length) {
+      pairs = [];
+      let k = 0;
+      for (const r of mine) {
+        while (k < balls.length && !(r.t === balls[k].label && fits(r, balls[k]))) k++;
+        if (k === balls.length) break;
+        pairs.push([r, k++]);
+      }
+      if (pairs.length !== mine.length) pairs = null;
+    }
+    if (!pairs) continue;
+    const used = new Set();
+    for (const [r, k] of pairs) {
+      const c = balls[k];
+      used.add(k);
+      replaced.set(r, { ...r, runs: c.runs, kind: c.kind, ...(c.pen ? { pen: c.pen } : {}) });
+    }
+    const bowl = mine[0].bowl;
+    balls.forEach((c, k) => {
+      if (used.has(k)) return;
+      // Ordered between its neighbours: after the paired ball before it, else before the first.
+      const before = pairs.filter(([, j]) => j < k).at(-1)?.[0];
+      const ts = before ? before.ts + (k + 1) / 1000 : mine[0].ts - (balls.length - k) / 1000;
+      const ev = (c.runs === 4 && !c.kind ? 1 : 0) | (c.runs === 6 && !c.kind ? 2 : 0) | (c.w ? 4 : 0);
+      added.push({ ts, t: c.label, ev, bat: ["", ""], nx: "", bowl, runs: c.runs, kind: c.kind, wk: c.w ? "wicket" : null, syn: 1, ...(c.pen ? { pen: c.pen } : {}) });
+    });
+  }
+  if (replaced.size === 0 && added.length === 0) return recs;
+  return [...recs.map((r) => replaced.get(r) ?? r), ...added];
 }
 
 const normName = (n) =>
@@ -246,7 +351,13 @@ export function deliveriesOf(recs, people, roster = null) {
   let lastWicket = false;
   let hint = "";
   for (const r of sorted) {
-    const s = idx(resolveBatter(r.bat, roster, hint, voted));
+    // A rebuilt ball (`reconcile`) has no line to name its striker: it is the batter Cricbuzz put on
+    // strike after the ball before it.
+    const rebuilt = () => {
+      const hit = roster?.find((x) => x.id === hint);
+      return hit ? [hit.id, hit.name] : [hint, ""];
+    };
+    const s = idx(r.syn ? rebuilt() : resolveBatter(r.bat, roster, hint, voted));
     if (last !== -1 && s !== last) {
       if (s === partner) partner = last;
       else if (!lastWicket) partner = last;
@@ -256,12 +367,14 @@ export function deliveriesOf(recs, people, roster = null) {
     let bits = 0;
     const total = r.runs ?? 0;
     if (r.kind === "WIDE") [extra, bits] = [total, BITS.WIDE];
+    else if (r.kind === "NOBALL" && r.nbx) [extra, bits] = [total, BITS.NOBALL | BITS[r.nbx]];
     else if (r.kind === "NOBALL") [extra, bat, bits] = [Math.min(1, total), Math.max(0, total - 1), BITS.NOBALL];
     else if (r.kind === "BYE") [extra, bits] = [total, BITS.BYE];
     else if (r.kind === "LEGBYE") [extra, bits] = [total, BITS.LEGBYE];
     else bat = total;
     // A 4 or 6 the batter ran is not a boundary.
     if ((bat === 4 && !(r.ev & 1)) || (bat === 6 && !(r.ev & 2))) bits |= BITS.NON_BOUNDARY;
+    if (r.pen) [extra, bits] = [extra + r.pen, bits | BITS.PENALTY];
     const d = [Math.floor(r.t / 10), r.t % 10, s, idx(r.bowl), partner, bat, extra, bits];
     if (r.wk) d.push([r.wk, s]);
     out.push({ d, unreadable: r.runs === null });
@@ -279,9 +392,9 @@ const firstInt = (v) => {
   const n = Number.parseInt(String(v ?? "").trim(), 10);
   return Number.isFinite(n) ? n : null;
 };
-/** "19.2" -> 116 legal balls. */
+/** "19.2" or Cricbuzz's "19.2 Ov" -> 116 legal balls. */
 export function ballsOfOvers(overs) {
-  const m = String(overs ?? "").trim().match(/^(\d+)(?:\.(\d))?$/);
+  const m = String(overs ?? "").trim().match(/^(\d+)(?:\.(\d))?(?:\s*Ov)?$/i);
   return m ? Number(m[1]) * 6 + Number(m[2] ?? 0) : null;
 }
 
@@ -387,8 +500,8 @@ const personOf = (k) => {
 export function ballsBlock(inns, cards) {
   const people = new Map();
   const problems = [];
-  const innings = inns.map(({ id, recs, cp }, i) => {
-    const ds = deliveriesOf(recs, people, rosterOf(cards?.[i]));
+  const innings = inns.map(({ id, recs, cp, os }, i) => {
+    const ds = deliveriesOf(reconcile(recs, os), people, rosterOf(cards?.[i]));
     const bad = inningsProblems(ds, cards?.[i], { people: [...people.keys()].map(personOf), cp });
     const inn = { i: id, b: ds.map((o) => o.d) };
     if (bad.length) {
