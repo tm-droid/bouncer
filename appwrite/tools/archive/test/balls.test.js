@@ -476,3 +476,13 @@ test("the one name left unresolved is the one batter who faced and has no ball (
   const d2 = deliveriesOf(rs, p2, two);
   assert.equal([...p2.keys()][d2[2].d[2]], "|Andy Balbirnie");
 });
+
+test("a P in a ball's place is that ball's 5 penalty runs (46490 '1 2 1 P 4 W', 41841 '0 0 0 1 1 P')", () => {
+  const rs = recs(
+    item(0.1, "A to B, 1 run", { timestamp: 1 }),
+    item(0.2, "A to B, no run, the keeper misses as well", { timestamp: 2 }),
+    item(0.3, "A to B, 4 runs", { timestamp: 3, event: ["four"] }),
+  );
+  const ds = deliveriesOf(reconcile(rs, { 1: "1 P 4" }, { 1: 10 }), new Map());
+  assert.deepEqual(ds.map((o) => o.d.slice(5, 8)), [[1, 0, 0], [0, 5, BITS.PENALTY], [4, 0, 0]]);
+});

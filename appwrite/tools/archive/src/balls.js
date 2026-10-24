@@ -239,19 +239,29 @@ export function reconcile(recs, os, cp = null) {
     // (47211 overs 45-46), so a summary counts only when the board's own change says the same.
     const board = cp?.[n] - (Number(n) === 1 ? 0 : cp?.[Number(n) - 1]);
     if (codes.reduce((s, c) => s + c.runs, 0) !== board) continue;
-    const balls = [];
-    let legal = 0;
-    let pen = 0;
-    for (const c of codes) {
-      if (c.pen) {
-        pen += c.runs;
-        continue;
+    // "P" is either penalty runs between balls (148415 "P 0 Wd ...") or a ball whose only runs are
+    // the penalty (46490 "1 2 1 P 4 W": the ball hit the keeper's helmet). The reading whose ball
+    // count is the over's line count wins; between balls first.
+    const ballsOf = (pIsBall) => {
+      const out = [];
+      let legal = 0;
+      let pen = 0;
+      for (const raw of codes) {
+        const c = raw.pen && pIsBall ? { runs: 0, kind: null, pen: raw.runs } : raw;
+        if (c.pen && !pIsBall) {
+          pen += c.runs;
+          continue;
+        }
+        out.push({ ...c, label: o * 10 + legal + 1, pen: (c.pen ?? 0) + pen });
+        pen = 0;
+        if (c.kind !== "WIDE" && c.kind !== "NOBALL") legal++;
       }
-      balls.push({ ...c, label: o * 10 + legal + 1, pen });
-      pen = 0;
-      if (c.kind !== "WIDE" && c.kind !== "NOBALL") legal++;
-    }
-    if (pen && balls.length) balls.at(-1).pen += pen;
+      if (pen && out.length) out.at(-1).pen += pen;
+      return out;
+    };
+    const between = ballsOf(false);
+    const asBall = codes.some((c) => c.pen) ? ballsOf(true) : between;
+    const balls = mine.length !== between.length && mine.length === asBall.length ? asBall : between;
     let pairs = null;
     if (mine.length === balls.length) {
       if (mine.every((r, k) => r.t === balls[k].label || fits(r, balls[k]))) pairs = mine.map((r, k) => [r, k]);
