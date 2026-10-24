@@ -449,3 +449,30 @@ test("a legal ball posted twice keeps its newest line; wides sharing a label are
   const clean = rs.slice(2, 6);
   assert.equal(dropReposts(clean), clean); // nothing to drop: the same array back
 });
+
+test("a boundary line with no runs clause takes its runs from the event (20236 1.4: 'FOUR plunges forward')", () => {
+  assert.equal(recordOf(item(1.4, "Mujeeb to Porterfield, FOUR plunges forward and drives it", { event: ["four", "all"] })).runs, 4);
+  assert.equal(recordOf(item(1.5, "Mujeeb to Porterfield, SIX over long-on", { event: ["six", "all"] })).runs, 6);
+  assert.equal(recordOf(item(1.6, "Mujeeb to Porterfield, beaten all ends up", { event: ["none", "all"] })).runs, null);
+});
+
+test("the one name left unresolved is the one batter who faced and has no ball (21647: Andy for Andrew Balbirnie)", () => {
+  const roster = [
+    { id: "1114", name: "Paul Stirling", balls: 50 },
+    { id: "6710", name: "Andrew Balbirnie", balls: 4 },
+    { id: "77", name: "Tail Ender", balls: 0 },
+  ];
+  const rs = recs(
+    item(0.1, "A to Paul Stirling, no run", { timestamp: 1, batsmanDetails: { playerId: 1114, playerName: "Paul Stirling" } }),
+    item(0.2, "A to Paul Stirling, 1 run", { timestamp: 2, batsmanDetails: { playerId: 6710, playerName: "Andrew Balbirnie" } }),
+    item(0.3, "A to Andy Balbirnie, 2 runs", { timestamp: 3, batsmanDetails: { playerId: 1, playerName: "Nabi" } }),
+  );
+  const people = new Map();
+  const ds = deliveriesOf(rs, people, roster);
+  assert.equal([...people.keys()][ds[2].d[2]], "6710|Andrew Balbirnie");
+  // Two batters who faced and have no ball: no guess.
+  const two = [...roster, { id: "88", name: "Other One", balls: 3 }];
+  const p2 = new Map();
+  const d2 = deliveriesOf(rs, p2, two);
+  assert.equal([...p2.keys()][d2[2].d[2]], "|Andy Balbirnie");
+});

@@ -68,6 +68,9 @@ export function recordOf(item, parseOutcome = parseBallOutcome) {
     const done = text.match(/\b(\d{1,2}) runs? completed\b/i);
     if (done) runs = Number(done[1]);
   }
+  // "FOUR plunges forward..." has no comma after the outcome, so the clause reads as prose; the
+  // event still says it was a boundary (20236 1.4).
+  if (runs === null && !wicket) runs = events.includes("four") ? 4 : events.includes("six") ? 6 : null;
   const ev = (events.includes("four") ? 1 : 0) | (events.includes("six") ? 2 : 0) | (wicket ? 4 : 0);
   const who = (d) => [d?.playerId ? String(d.playerId) : "", String(d?.playerName ?? "")];
   // The STRIKER is the name in the line's own "Bowler to Batter," lead. `batsmanDetails` is the
@@ -297,9 +300,13 @@ const initialled = (rn) => {
   return [`${ini.join("")} ${last}`, `${ini.join(" ")} ${last}`, `${ini[0]} ${last}`];
 };
 
-/** The scorecard's batsmen as [{id, name}], ids from their profile links. */
+/** The scorecard's batsmen as [{id, name, balls}], ids from their profile links. */
 const rosterOf = (card) =>
-  (card?.batsmen ?? []).map((b) => ({ id: profileId(b.profileUrl), name: String(b.name ?? "").replace(/\s*\([^)]*\)/g, "").trim() }));
+  (card?.batsmen ?? []).map((b) => ({
+    id: profileId(b.profileUrl),
+    name: String(b.name ?? "").replace(/\s*\([^)]*\)/g, "").trim(),
+    balls: Number.parseInt(String(b.balls ?? ""), 10) || 0,
+  }));
 
 /**
  * A commentary name ("Shahzad", "Asghar Stanikzai", "J Mohammed") -> the roster batsman: the exact name,
@@ -356,6 +363,29 @@ function votedIds(recs) {
 }
 
 /**
+ * The one commentary name nothing resolves, joined to the one scorecard batter who faced a ball and
+ * has none: they are the same player. Settles a nickname the vote cannot ("Andy Balbirnie", 4 balls
+ * and no dot ball he kept strike on, 21647). Two names or two batters left over: no join. Adds to
+ * `voted` in place.
+ */
+function leftoverJoin(sorted, roster, voted) {
+  if (!roster?.length) return;
+  const unresolved = new Set();
+  const used = new Set();
+  let hint = "";
+  for (const r of sorted) {
+    if (!r.syn) {
+      const [id, name] = resolveBatter(r.bat, roster, hint, voted);
+      if (id) used.add(id);
+      else if (name) unresolved.add(normName(name));
+    }
+    hint = r.nx ?? "";
+  }
+  const idle = roster.filter((b) => b.id && b.balls > 0 && !used.has(b.id));
+  if (unresolved.size === 1 && idle.length === 1) voted.set([...unresolved][0], idle[0].id);
+}
+
+/**
  * Records of one innings as `{p, b, extras...}`: deliveries in bowling order, people appended to the
  * shared `people` (a Map "id|name" -> index). The non-striker is inferred from who faced before,
  * because Cricbuzz names only the striker and bowler per ball.
@@ -369,6 +399,7 @@ export function deliveriesOf(recs, people, roster = null) {
   };
   const sorted = [...recs].sort((a, b) => a.ts - b.ts || a.t - b.t);
   const voted = votedIds(sorted);
+  leftoverJoin(sorted, roster, voted);
   const out = [];
   let last = -1;
   let partner = -1;
