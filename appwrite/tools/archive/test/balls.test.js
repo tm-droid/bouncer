@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { BITS, CricbuzzBlockedError, ballsBlock, ballsOfOvers, batterProblems, crawlInnings, deliveriesOf, inningsProblems, overToken, reconcile, recordOf } from "../src/balls.js";
+import { BITS, CricbuzzBlockedError, ballsBlock, ballsOfOvers, batterProblems, crawlInnings, deliveriesOf, dropReposts, inningsProblems, overToken, reconcile, recordOf } from "../src/balls.js";
 import { parseBallOutcome } from "../src/ball-outcome.js";
 import { isEligible, probe, run } from "../backfill-balls.mjs";
 
@@ -379,7 +379,7 @@ test("the summary settles an unreadable wicket line and a no-ball's leg byes (10
     item(0.3, "A to B, 1 run", { timestamp: 4 }),
   );
   assert.equal(rs[1].runs, null);
-  const out = reconcile(rs, { 1: "0 W N1 1" });
+  const out = reconcile(rs, { 1: "0 W N1 1" }, { 1: 3 });
   const ds = deliveriesOf(out, new Map());
   assert.equal(ds.filter((o) => o.unreadable).length, 0);
   assert.deepEqual(ds[1].d.slice(5, 8), [0, 0, 0]);
@@ -388,7 +388,7 @@ test("the summary settles an unreadable wicket line and a no-ball's leg byes (10
 
 test("a penalty in the summary lands on the next ball as penalty extras (148415)", () => {
   const rs = recs(item(0.1, "A to B, no run", { timestamp: 1 }), item(0.2, "A to B, 4 runs", { timestamp: 2, event: ["four"] }));
-  const ds = deliveriesOf(reconcile(rs, { 1: "P 0 4" }), new Map());
+  const ds = deliveriesOf(reconcile(rs, { 1: "P 0 4" }, { 1: 9 }), new Map());
   assert.deepEqual(ds[0].d.slice(5, 8), [0, 5, BITS.PENALTY]);
   assert.deepEqual(ds[1].d.slice(5, 8), [4, 0, 0]);
 });
@@ -401,7 +401,7 @@ test("a ball missing from the stream is rebuilt from the summary, on strike as C
   );
   const roster = [{ id: "1", name: "Mohammad Nabi" }, { id: "2", name: "Samiullah Shenwari" }];
   const people = new Map();
-  const ds = deliveriesOf(reconcile(rs, { 1: "1 0 2 1" }), people, roster);
+  const ds = deliveriesOf(reconcile(rs, { 1: "1 0 2 1" }, { 1: 4 }), people, roster);
   assert.deepEqual(ds.map((o) => `${o.d[0]}.${o.d[1]}`), ["0.1", "0.2", "0.3", "0.4"]);
   const names = [...people.keys()];
   assert.equal(names[ds[2].d[2]], "2|Samiullah Shenwari");
@@ -423,4 +423,29 @@ test("overs read as Cricbuzz's scorecard writes them, so the legal-ball count is
   assert.equal(ballsOfOvers("Ov"), null);
   const ds = conv([item(0.1, "A to B, 1 run", { timestamp: 1 }), item(0.3, "A to B, 1 run", { timestamp: 3 })]);
   assert.match(inningsProblems(ds, { score: "2-0", overs: "0.3 Ov" }).join(" | "), /legal balls 2 != overs 0\.3 Ov/);
+});
+
+test("a placeholder summary the board contradicts changes nothing (47211: '0 0 0 0 0 0' while the board moved 6)", () => {
+  const rs = recs(item(0.1, "A to B, 1 run", { timestamp: 1 }), item(0.2, "A to B, 4 runs", { timestamp: 2, event: ["four"] }));
+  assert.deepEqual(reconcile(rs, { 1: "0 0" }, { 1: 5 }), rs);
+  assert.deepEqual(reconcile(rs, { 2: "0 0" }, { 2: 5 }), rs); // no board before it: cannot be checked
+  const w = recs(item(0.1, "A to B, gets the wicket!!", { timestamp: 1, event: ["wicket"] }), item(0.2, "A to B, 4 runs", { timestamp: 2, event: ["four"] }));
+  assert.equal(reconcile(w, { 1: "W 4" }, { 1: 4 })[0].runs, 0);
+});
+
+test("a legal ball posted twice keeps its newest line; wides sharing a label are both kept (18005, 47211)", () => {
+  const rs = recs(
+    item(0.1, "Farooqi to Raza, no run", { timestamp: 1, bowlerDetails: { playerId: 8, playerName: "Farooqi" } }),
+    item(0.1, "Fareed to Raza, no run", { timestamp: 5, bowlerDetails: { playerId: 7, playerName: "Fareed" } }),
+    item(0.2, "Fareed to Raza, wide", { timestamp: 6 }),
+    item(0.2, "Fareed to Raza, wide", { timestamp: 7 }),
+    item(0.2, "Fareed to Raza, 1 run", { timestamp: 8 }),
+    item(0.3, "Fareed to Raza, 2 runs", { timestamp: 9 }),
+    item(0.3, "Fareed to Raza, 1 run", { timestamp: 10 }), // a different outcome: not a re-post, kept
+  );
+  const out = dropReposts(rs);
+  assert.deepEqual(out.map((r) => r.ts), [5, 6, 7, 8, 9, 10]);
+  assert.equal(out[0].bowl[1], "Fareed");
+  const clean = rs.slice(2, 6);
+  assert.equal(dropReposts(clean), clean); // nothing to drop: the same array back
 });

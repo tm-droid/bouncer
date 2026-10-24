@@ -161,6 +161,25 @@ export async function crawlInnings({ fetchPage, st, innings = null, canRequest =
   return "done";
 }
 
+/**
+ * Records without the superseded copies of a legal ball: two legal deliveries never share a label,
+ * so two lines with one label and one outcome are the same ball posted twice, and the newer is the
+ * correction (47211 32.1 first named the wrong bowler; 18005 posted its whole first over twice,
+ * minutes apart). Wides and no-balls share labels by rule and are never dropped, and lines with
+ * different outcomes are kept for the totals check to judge.
+ */
+export function dropReposts(recs) {
+  const legal = (r) => r.kind !== "WIDE" && r.kind !== "NOBALL";
+  const newest = new Map();
+  for (const r of recs) {
+    if (!legal(r)) continue;
+    const k = `${r.t}:${r.runs}:${r.kind ?? ""}`;
+    if (!newest.has(k) || newest.get(k).ts < r.ts) newest.set(k, r);
+  }
+  const out = recs.filter((r) => !legal(r) || newest.get(`${r.t}:${r.runs}:${r.kind ?? ""}`) === r);
+  return out.length === recs.length ? recs : out;
+}
+
 // Cricbuzz's over-summary codes. A number is the delivery's TOTAL, an extra's penalty included
 // ("Wd3" = 3, "N1" = 2, "NB1" = 2); "P" is 5 penalty runs and not a ball. Every summary in the
 // four innings measured (103852, 109351, 148415, 16933; 275 overs) adds up to its `overRuns`.
@@ -189,7 +208,8 @@ const fits = (r, k) => r.runs === null || (r.runs === k.runs && (r.kind ?? null)
  * The innings' records corrected by each over's summary (`os`, from `crawlInnings`). The commentary
  * line is free text and the summary is the scorer's: where a line cannot be read ("New baller gets
  * the wicket!!") or reads short ("no ball, leg byes, 1 run" parses as 1 where the summary says N1),
- * the summary's total and kind win. Its "P" becomes penalty extras on the next ball.
+ * the summary's total and kind win. Its "P" becomes penalty extras on the next ball. A summary is used
+ * only when its total equals the board's change over that over (`cp`, the separators' scores).
  *
  * Alignment, per over: as many balls as codes pairs them in order, each pair agreeing on its label
  * or its runs. FEWER balls than codes (Cricbuzz's stream drops a line, measured on 16933) pairs every
@@ -197,7 +217,7 @@ const fits = (r, k) => r.runs === null || (r.runs === k.runs && (r.kind ?? null)
  * (`syn`), bowled by the over's bowler, its striker settled in `deliveriesOf`. Anything else (more
  * balls than codes, a code it cannot read, no pairing) leaves the over as the lines had it.
  */
-export function reconcile(recs, os) {
+export function reconcile(recs, os, cp = null) {
   if (!os) return recs;
   const byOver = new Map();
   for (const r of recs) {
@@ -212,6 +232,10 @@ export function reconcile(recs, os) {
     const mine = (byOver.get(o) ?? []).sort((a, b) => a.ts - b.ts);
     const codes = String(summary).split(/\s+/).map(overToken);
     if (mine.length === 0 || codes.some((c) => !c)) continue;
+    // Some separators carry a placeholder ("0 0 0 0 0 0", overRuns 0) while the board moved 6
+    // (47211 overs 45-46), so a summary counts only when the board's own change says the same.
+    const board = cp?.[n] - (Number(n) === 1 ? 0 : cp?.[Number(n) - 1]);
+    if (codes.reduce((s, c) => s + c.runs, 0) !== board) continue;
     const balls = [];
     let legal = 0;
     let pen = 0;
@@ -501,7 +525,7 @@ export function ballsBlock(inns, cards) {
   const people = new Map();
   const problems = [];
   const innings = inns.map(({ id, recs, cp, os }, i) => {
-    const ds = deliveriesOf(reconcile(recs, os), people, rosterOf(cards?.[i]));
+    const ds = deliveriesOf(reconcile(dropReposts(recs), os, cp), people, rosterOf(cards?.[i]));
     const bad = inningsProblems(ds, cards?.[i], { people: [...people.keys()].map(personOf), cp });
     const inn = { i: id, b: ds.map((o) => o.d) };
     if (bad.length) {
