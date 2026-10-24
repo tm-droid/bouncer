@@ -81,7 +81,6 @@ export function recordOf(item, parseOutcome = parseBallOutcome) {
     ev,
     bat: ["", lead ? lead[1].trim() : ""],
     nx: item.batsmanDetails?.playerId ? String(item.batsmanDetails.playerId) : "",
-    nxName: String(item.batsmanDetails?.playerName ?? ""),
     bowl: who(item.bowlerDetails),
     runs,
     kind,
@@ -177,16 +176,15 @@ const rosterOf = (card) =>
  * A commentary name ("Shahzad", "Asghar Stanikzai", "J Mohammed") -> the roster batsman: the exact name,
  * else the one name it prefixes or suffixes or abbreviates to initials. When several fit ("Shahzad" in a
  * side with two), `hintId` breaks the tie: the previous ball's `nx`, the batter Cricbuzz put at the
- * crease after it. `known` (normalized name -> ids, from `batsmanDetails`) comes before the fuzzy rules:
- * Cricbuzz names a batter there as in the commentary lead, with the id, so it settles nicknames and
- * short forms no name rule can ("Andy Balbirnie" for "Andrew Balbirnie", "U Yadav" for "Umesh").
+ * crease after it. `voted` (normalized name -> id, from `votedIds`) comes before the fuzzy rules: it
+ * settles nicknames and short forms no name rule can ("Andy Balbirnie" for "Andrew Balbirnie").
  */
-function resolveBatter(pair, roster, hintId = "", known = null) {
+function resolveBatter(pair, roster, hintId = "", voted = null) {
   if (pair[0] || !pair[1] || !roster?.length) return pair;
   const n = normName(pair[1]);
   const exact = roster.filter((r) => normName(r.name) === n);
-  const ids = known?.get(n);
-  const byId = exact.length === 0 && ids?.size === 1 ? roster.filter((r) => ids.has(r.id)) : [];
+  const id = voted?.get(n);
+  const byId = exact.length === 0 && id ? roster.filter((r) => r.id === id) : [];
   const pool =
     exact.length > 0
       ? exact
@@ -204,6 +202,31 @@ function resolveBatter(pair, roster, hintId = "", known = null) {
 }
 
 /**
+ * Commentary name -> player id, voted from the balls after which the striker cannot have changed (no
+ * wicket, even runs, not an over's last ball): there `nx`, the batter on strike after the ball, is the
+ * one who faced it. `batsmanDetails` gives the profile name ("Andrew Balbirnie") where the lead says
+ * "Andy Balbirnie" (measured on 19316), so the id, not its name, is what joins them. A name needs two
+ * votes and a two-thirds majority; a misread ball or a lead the parser got wrong cannot carry it.
+ */
+function votedIds(recs) {
+  const tally = new Map();
+  for (const r of recs) {
+    if (!r.nx || !r.bat[1] || r.wk || r.runs === null || r.runs % 2 !== 0 || r.t % 10 >= 6) continue;
+    const n = normName(r.bat[1]);
+    if (!tally.has(n)) tally.set(n, new Map());
+    const c = tally.get(n);
+    c.set(r.nx, (c.get(r.nx) ?? 0) + 1);
+  }
+  const out = new Map();
+  for (const [n, c] of tally) {
+    const total = [...c.values()].reduce((a, b) => a + b, 0);
+    const [id, top] = [...c].sort((a, b) => b[1] - a[1])[0];
+    if (top >= 2 && top * 3 >= total * 2) out.set(n, id);
+  }
+  return out;
+}
+
+/**
  * Records of one innings as `{p, b, extras...}`: deliveries in bowling order, people appended to the
  * shared `people` (a Map "id|name" -> index). The non-striker is inferred from who faced before,
  * because Cricbuzz names only the striker and bowler per ball.
@@ -216,20 +239,14 @@ export function deliveriesOf(recs, people, roster = null) {
     return people.get(k);
   };
   const sorted = [...recs].sort((a, b) => a.ts - b.ts || a.t - b.t);
-  const known = new Map();
-  for (const r of sorted) {
-    if (!r.nx || !r.nxName) continue;
-    const k = normName(r.nxName);
-    if (!known.has(k)) known.set(k, new Set());
-    known.get(k).add(r.nx);
-  }
+  const voted = votedIds(sorted);
   const out = [];
   let last = -1;
   let partner = -1;
   let lastWicket = false;
   let hint = "";
   for (const r of sorted) {
-    const s = idx(resolveBatter(r.bat, roster, hint, known));
+    const s = idx(resolveBatter(r.bat, roster, hint, voted));
     if (last !== -1 && s !== last) {
       if (s === partner) partner = last;
       else if (!lastWicket) partner = last;

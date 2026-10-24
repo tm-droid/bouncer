@@ -303,18 +303,38 @@ test("a commentary name in initials resolves to the scorecard batter it abbrevia
   assert.deepEqual(balls.inn[0].b.map((d) => balls.p[d[2]]), [["Jason Mohammed", "8603"], ["Mahendra Singh Dhoni", "265"], ["J Smith", ""]]);
 });
 
-test("a nickname or short form resolves through the id Cricbuzz gives that name in batsmanDetails", () => {
+test("a nickname resolves to the id Cricbuzz keeps on strike after his dot balls (19316: Andy -> Andrew Balbirnie)", () => {
   const batsmen = [
-    { name: "Andrew Balbirnie", runs: "4", profileUrl: "https://x/profiles/8730/a" },
-    { name: "Umesh", runs: "1", profileUrl: "https://x/profiles/1858/u" },
+    { name: "Andrew Balbirnie", runs: "5", profileUrl: "https://x/profiles/6710/a" },
+    { name: "Paul Stirling", runs: "0", profileUrl: "https://x/profiles/1114/p" },
   ];
+  const andrew = { batsmanDetails: { playerId: 6710, playerName: "Andrew Balbirnie" } };
+  const paul = { batsmanDetails: { playerId: 1114, playerName: "Paul Stirling" } };
   const recs = [
-    item(0.1, "A to Andy Balbirnie, FOUR", { batsmanDetails: { playerId: 8730, playerName: "Andy Balbirnie" } }),
-    item(0.2, "A to U Yadav, 1 run", { batsmanDetails: { playerId: 1858, playerName: "U Yadav" } }),
+    item(0.1, "A to Andy Balbirnie, no run", andrew),
+    item(0.2, "A to Andy Balbirnie, FOUR", andrew),
+    item(0.3, "A to Andy Balbirnie, 1 run", paul),
+    item(0.4, "A to Stirling, no run", paul),
   ].map((i) => recordOf(i));
-  const { balls, problems } = ballsBlock([{ id: 1, recs }], [{ score: "5", overs: "0.2", batsmen }]);
+  const { balls, problems } = ballsBlock([{ id: 1, recs }], [{ score: "5", overs: "0.4", batsmen }]);
   assert.deepEqual(problems, []);
-  assert.deepEqual(balls.inn[0].b.map((d) => balls.p[d[2]]), [["Andrew Balbirnie", "8730"], ["Umesh", "1858"]]);
+  assert.deepEqual(balls.inn[0].b.map((d) => balls.p[d[2]][1]), ["6710", "6710", "6710", "1114"]);
+});
+
+test("one vote, or a split vote, does not rename a batter", () => {
+  const batsmen = [
+    { name: "Andrew Balbirnie", runs: "0", profileUrl: "https://x/profiles/6710/a" },
+    { name: "Paul Stirling", runs: "0", profileUrl: "https://x/profiles/1114/p" },
+  ];
+  const bd = (id) => ({ batsmanDetails: { playerId: id } });
+  const striker = (texts) => {
+    const recs = texts.map(([t, id], k) => item(0.1 + k / 10, t, bd(id))).map((i) => recordOf(i));
+    const { balls } = ballsBlock([{ id: 1, recs }], [{ score: "0", overs: "0.4", batsmen }]);
+    return balls.p[balls.inn[0].b[0][2]];
+  };
+  assert.deepEqual(striker([["A to Andy Balbirnie, no run", 6710]]), ["Andy Balbirnie", ""]);
+  const split = [["A to Andy Balbirnie, no run", 6710], ["A to Andy Balbirnie, no run", 6710], ["A to Andy Balbirnie, no run", 1114], ["A to Andy Balbirnie, no run", 1114]];
+  assert.deepEqual(striker(split), ["Andy Balbirnie", ""]);
 });
 
 test("one player under two people entries (bowler 'Nabi' and batter 'Mohammad Nabi') is summed by id", () => {
