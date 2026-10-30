@@ -68,8 +68,8 @@ agents.md
 # MCP / internal tooling docs
 **/README_MCP.md
 
-# Backend API project (separate repo)
-cricket-api/
+# Old Android-side API checkout
+/android/cricket-api/
 
 # Sentry wizard binary
 sentry-wizard
@@ -88,3 +88,21 @@ appwrite/functions/*/node_modules/
 # Python bytecode from tools/
 __pycache__/
 *.pyc
+
+# Xcode local state and generated products
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+.vercel/
+node_modules/
+.env
+.env.*
+*.mobileprovision
+*.p12
+*.pem
+*.key
+
+# Common repository instructions are versioned.
+!AGENTS.md

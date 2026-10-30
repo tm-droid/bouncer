@@ -68,7 +68,7 @@ class CricbuzzHttpVendorParityTest {
 
     /**
      * Resolved by walking up from the test's working directory (Gradle runs unit tests with the
-     * module directory as `user.dir`, so the repo root sits one level up). A missing file is a hard
+     * module directory as `user.dir`, so the repo root sits two levels up). A missing file is a hard
      * failure, never a skipped test.
      */
     private fun locate(relativePath: String): File {

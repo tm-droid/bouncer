@@ -40,6 +40,10 @@ const toolsDir = path.dirname(fileURLToPath(import.meta.url));
 const appwriteDir = path.resolve(toolsDir, "..");
 const repoRoot = path.resolve(appwriteDir, "..");
 
+// Fail locally before credentials are read or a deployment can be uploaded.
+execFileSync(process.execPath, [path.join(repoRoot, "shared", "check-backend-config.mjs")], { stdio: "inherit" });
+execFileSync(process.execPath, [path.join(toolsDir, "sync-api-parsers.mjs"), "--check"], { stdio: "inherit" });
+
 const config = JSON.parse(fs.readFileSync(path.join(appwriteDir, "appwrite.config.json"), "utf8"));
 const fn = config.functions.find((f) => f.$id === functionId);
 if (!fn) {
@@ -49,7 +53,7 @@ if (!fn) {
 
 const props = Object.fromEntries(
   fs
-    .readFileSync(path.join(repoRoot, "local.properties"), "utf8")
+    .readFileSync(path.join(repoRoot, "android", "local.properties"), "utf8")
     .split(/\r?\n/)
     .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
     .map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim()])

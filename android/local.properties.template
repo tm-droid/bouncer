@@ -20,20 +20,12 @@ sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
 SENTRY_USER_AUTH_TOKEN=
 # Ingest endpoint. Public by design — a DSN can submit events, not read them.
 #
-# This line and the APPWRITE_* lines below are what the CI release job builds the Play bundle
-# from (`grep` in .github/workflows/ci.yml). Blank one and `verifyReleaseConfig` fails the build.
+# CI copies this SENTRY_DSN; public Appwrite defaults come from ../shared/backend.json.
 SENTRY_DSN=https://e9ade5d835c36a97939191077734e5a7@o4510958403518464.ingest.us.sentry.io/4510963429212160
 
-# Appwrite resource ids. Not secrets: these name public read("any") resources.
-APPWRITE_ENDPOINT=https://sgp.cloud.appwrite.io/v1
-APPWRITE_PROJECT_ID=6a02f7f3000e6e100b19
-APPWRITE_AI_CACHE_DB_ID=bouncer-db
-APPWRITE_AI_CACHE_COL_ID=ai-commentary-cache
-APPWRITE_FAVOURITES_COL_ID=user-favourites
-APPWRITE_HIGHLIGHTS_DB_ID=bouncer-db
-APPWRITE_HIGHLIGHTS_COL_ID=highlights
-APPWRITE_PLAYER_FORMS_DB_ID=bouncer-db
-APPWRITE_PLAYER_PROFILES_COL_ID=player-profiles
+# Public Appwrite defaults are read from ../shared/backend.json by Gradle.
+# Optional APPWRITE_* overrides in local.properties or the environment take precedence.
+# Provider and server API keys must never be compiled into a client.
 
 # Release signing — generated via keytool; never commit actual values
 KEYSTORE_PASSWORD=your_keystore_password_here

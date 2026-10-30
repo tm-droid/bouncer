@@ -1,3 +1,4 @@
+import groovy.json.JsonSlurper
 import java.util.Properties
 import org.gradle.api.tasks.PathSensitivity
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -34,6 +35,28 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
 
+// Shared public client resource ids. Local properties and environment values remain overrides.
+val sharedBackendFile = rootProject.file("../shared/backend.json")
+val sharedBackend = JsonSlurper().parse(sharedBackendFile) as Map<*, *>
+val sharedTables = sharedBackend["tables"] as Map<*, *>
+val publicDefaults = mapOf(
+    "APPWRITE_ENDPOINT" to sharedBackend["endpoint"],
+    "APPWRITE_PROJECT_ID" to sharedBackend["projectId"],
+    "APPWRITE_DATABASE_ID" to sharedBackend["databaseId"],
+    "APPWRITE_AI_CACHE_DB_ID" to sharedBackend["databaseId"],
+    "APPWRITE_AI_CACHE_COL_ID" to sharedTables["aiCommentaryCache"],
+    "APPWRITE_FAVOURITES_COL_ID" to sharedTables["favourites"],
+    "APPWRITE_HIGHLIGHTS_DB_ID" to sharedBackend["databaseId"],
+    "APPWRITE_HIGHLIGHTS_COL_ID" to sharedTables["highlights"],
+    "APPWRITE_PLAYER_FORMS_DB_ID" to sharedBackend["databaseId"],
+    "APPWRITE_PLAYER_PROFILES_COL_ID" to sharedTables["playerProfiles"],
+    "APPWRITE_MATCH_COMMENTARY_COL_ID" to sharedTables["matchCommentary"],
+    "APPWRITE_MATCH_DETAIL_COL_ID" to sharedTables["matchLiveDetail"],
+    "APPWRITE_MATCH_SCORECARD_COL_ID" to sharedTables["matchScorecard"],
+    "APPWRITE_MATCHES_BUCKET_ID" to sharedBackend["matchesBucketId"],
+    "APPWRITE_API_FUNCTION_ID" to sharedBackend["apiFunctionId"],
+).mapValues { (key, value) -> requireNotNull(value as? String) { "Missing shared backend config for $key" } }
+
 // A `KEY=` line loads as "", not null, so `getProperty(key) ?: fallback` never falls back. The CI
 // release job wrote every Appwrite id that way — from GitHub secrets that did not exist — and the
 // Play build shipped with a blank endpoint: no Appwrite call of any kind, and no Sentry DSN to
@@ -41,6 +64,7 @@ if (localPropertiesFile.exists()) {
 fun buildConfigValue(key: String): String =
     localProperties.getProperty(key)?.trim()?.takeIf { it.isNotEmpty() }
         ?: System.getenv(key)?.trim()?.takeIf { it.isNotEmpty() }
+        ?: publicDefaults[key]
         ?: ""
 
 // The values a release artifact is useless without. Hung on the artifact tasks rather than on
@@ -53,7 +77,7 @@ val verifyReleaseConfig = tasks.register("verifyReleaseConfig") {
     doLast {
         check(missing.isEmpty()) {
             "Release build has no value for $missing. Set them in local.properties (the Appwrite " +
-                "ids are pre-filled in local.properties.template). Built without them the app " +
+                "public ids default to ../shared/backend.json). Built without them the app " +
                 "cannot reach Appwrite and reports nothing to Sentry."
         }
     }
@@ -114,17 +138,9 @@ android {
         // R8 does not obfuscate string literals, so minification never hid them. Commentary
         // generation now runs entirely in bouncer-generate-commentary, which holds the keys
         // server-side. The ids below are not secrets: they name public, read("any") resources.
-        listOf(
-            "APPWRITE_ENDPOINT",
-            "APPWRITE_PROJECT_ID",
-            "APPWRITE_AI_CACHE_DB_ID",
-            "APPWRITE_AI_CACHE_COL_ID",
-            "APPWRITE_FAVOURITES_COL_ID",
-            "APPWRITE_HIGHLIGHTS_DB_ID",
-            "APPWRITE_HIGHLIGHTS_COL_ID",
-            "APPWRITE_PLAYER_FORMS_DB_ID",
-            "APPWRITE_PLAYER_PROFILES_COL_ID",
-        ).forEach { key -> buildConfigField("String", key, "\"${buildConfigValue(key)}\"") }
+        publicDefaults.keys.forEach { key ->
+            buildConfigField("String", key, "\"${buildConfigValue(key)}\"")
+        }
         manifestPlaceholders["sentryDsn"] = buildConfigValue("SENTRY_DSN")
         // Default environment; overridden per build type below
         manifestPlaceholders["sentryEnvironment"] = "production"
@@ -227,7 +243,7 @@ android {
         // heap and not the tests.
         maxHeapSize = "2g"
 
-        inputs.files(rootProject.file("appwrite/functions/match-sync/src/llm.js"))
+        inputs.files(rootProject.file("../appwrite/functions/match-sync/src/llm.js"))
             .withPropertyName("commentaryConstantParitySource")
             .withPathSensitivity(PathSensitivity.RELATIVE)
 
@@ -235,8 +251,8 @@ android {
         // copies of cricbuzz-http.js. Both paths must be declared: with only one, editing the
         // other leaves the task UP-TO-DATE and the drift ships.
         inputs.files(
-            rootProject.file("appwrite/functions/match-sync/src/cricbuzz-http.js"),
-            rootProject.file("appwrite/functions/api/src/player-search/cricbuzz-http.js"),
+            rootProject.file("../appwrite/functions/match-sync/src/cricbuzz-http.js"),
+            rootProject.file("../appwrite/functions/api/src/player-search/cricbuzz-http.js"),
         )
             .withPropertyName("cricbuzzHttpVendorParitySources")
             .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -245,17 +261,17 @@ android {
         // scorecard parser reads player names, fall of wickets and partnerships the same way
         // CricBuzzParser.kt does. Same reasoning as above: undeclared, an edit to cricbuzz.js
         // leaves the task UP-TO-DATE and the parity checks never run.
-        inputs.files(rootProject.file("appwrite/functions/match-sync/src/cricbuzz.js"))
+        inputs.files(rootProject.file("../appwrite/functions/match-sync/src/cricbuzz.js"))
             .withPropertyName("cricbuzzScorecardParitySource")
             .withPathSensitivity(PathSensitivity.RELATIVE)
 
         // SeriesClassificationParityTest compares the Kotlin category rules against series.js, and
         // MatchStatusParityTest the classifier lists against matchstate.js. Same reasoning again.
         inputs.files(
-            rootProject.file("appwrite/functions/match-sync/src/series.js"),
-            rootProject.file("appwrite/functions/match-sync/src/matchstate.js"),
+            rootProject.file("../appwrite/functions/match-sync/src/series.js"),
+            rootProject.file("../appwrite/functions/match-sync/src/matchstate.js"),
             // FcmJsVendorParityTest: matchTopic's rule, which the device mirrors.
-            rootProject.file("appwrite/functions/match-sync/src/fcm.js"),
+            rootProject.file("../appwrite/functions/match-sync/src/fcm.js"),
         )
             .withPropertyName("winProbAndSeriesParitySources")
             .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -264,8 +280,8 @@ android {
         // computes the model's team, ground and player terms with it and match-sync recomputes
         // them for a live match. Both paths, for the same reason as above.
         inputs.files(
-            rootProject.file("appwrite/functions/match-sync/src/contextmath.js"),
-            rootProject.file("appwrite/functions/train-win-probability/src/contextmath.js"),
+            rootProject.file("../appwrite/functions/match-sync/src/contextmath.js"),
+            rootProject.file("../appwrite/functions/train-win-probability/src/contextmath.js"),
         )
             .withPropertyName("contextMathVendorParitySources")
             .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -281,7 +297,7 @@ android {
         // player-search's own test pins its JS copy to. Same reasoning: undeclared, an edit to the
         // fixture leaves the task UP-TO-DATE and only one side ever gets checked against it.
         inputs.files(
-            rootProject.file("appwrite/functions/api/test/player-search/fixtures/search-normalization.json"),
+            rootProject.file("../appwrite/functions/api/test/player-search/fixtures/search-normalization.json"),
         )
             .withPropertyName("searchNormalizationParityFixture")
             .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -307,7 +323,10 @@ android {
         // CommentaryRunsParityTest and MatchRowIdTest both assert on lines of match-sync's main.js.
         // It was the one file a parity test read that was not declared here, so on a warm build an
         // edit to it left the task UP-TO-DATE and neither check ran.
-        inputs.files(rootProject.file("appwrite/functions/match-sync/src/main.js"))
+        inputs.files(
+            rootProject.file("../appwrite/functions/match-sync/src/main.js"),
+            rootProject.file("../appwrite/functions/match-sync/src/outcome.js"),
+        )
             .withPropertyName("matchSyncMainParitySource")
             .withPathSensitivity(PathSensitivity.RELATIVE)
     }

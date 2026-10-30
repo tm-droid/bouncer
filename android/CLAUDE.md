@@ -27,7 +27,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Codespaces is the dev box. Leave **prebuilds off**: they bill Actions minutes.
 - Every push to main uploads to Play with `distribution/whatsnew/whatsnew-en-US` as "What's new". A commit touching `app/src/main/` must update that file (user-facing wording, ≤500 chars — see `distribution/whatsnew/README.md`). `.claude/hooks/release-notes-check.sh` blocks the commit otherwise; prefix `SKIP_RELEASE_NOTES=1` only when nothing user-visible changed.
 - **Retiring old builds.** A push with a `Force-Update: yes` commit trailer uploads at in-app update priority 5, and every Play install then shows Play's immediate update (`AppUpdateGate`). For installs Play cannot reach (sideloaded APKs, a stale Play cache), `node appwrite/tools/set-min-version.mjs <versionCode>` publishes a minimum that blocks older builds behind an "Update Bouncer" screen. Publish it only once that build has cleared closed-testing review. Builds below 1000 (local) are never gated.
-- The Play bundle's Appwrite ids and Sentry DSN come from `local.properties.template`, not from GitHub secrets; `verifyReleaseConfig` fails a release artifact built without them. A green CI run does not mean the bundle can reach the backend — see "The Play build takes its ids from the template" in `.claude/rules/api-keys-and-setup.md`.
+- The Play bundle's Appwrite ids come from `../shared/backend.json` and its Sentry DSN from `local.properties.template`, not from GitHub secrets; `verifyReleaseConfig` fails a release artifact built without them. A green CI run does not mean the bundle can reach the backend — see "The Play build takes its ids from the template" in `.claude/rules/api-keys-and-setup.md`.
 
 ## Code Tasks
 - When asked to 'look at the app' or audit features, INSPECT THE CODEBASE (Read/Grep) rather than launching, screenshotting, or building mocked/fake screens.
@@ -46,8 +46,8 @@ Cricket live-scoring, match analytics, and team management app built in Kotlin/C
 
 **Setup (first time):**
 ```bash
-cp local.properties.template local.properties  # Fill in secret keys (RAPIDAPI_KEY, GROQ_API_KEY, etc.)
-# Most non-secret Appwrite IDs are pre-filled — only secret API keys need manual entry.
+cp local.properties.template local.properties  # Set sdk.dir and build-machine settings.
+# Public Appwrite defaults come from ../shared/backend.json; no provider credentials in clients.
 ```
 
 **Build & run:**
@@ -109,7 +109,7 @@ app/src/main/kotlin/com/tanush/bouncer/
                         # — use these instead of raw Breadcrumb().apply boilerplate
 ```
 
-**Appwrite cloud functions** live in `appwrite/functions/` (Node.js; deploy with `node appwrite/tools/deploy-function.mjs`). `appwrite/appwrite.config.json` defines project-level config. Details: `.claude/rules/appwrite-functions.md`.
+**Appwrite cloud functions** live in root `../appwrite/functions/` (Node.js; deployment tools run from the monorepo root). `appwrite/appwrite.config.json` defines project-level config. Details: `.claude/rules/appwrite-functions.md`.
 - `match-sync` — every minute; polls the match lists (`src/poll.js`), then live detail, scorecard, commentary, win probability and alerts
 - `api` (`bouncer-api`) — everything else that must stay on Appwrite, because the Free plan allows **two functions**. On-demand routes by execution path: `/news` (Cricbuzz news via RapidAPI into `cricket-stats`), `/player-search` (player name → Cricbuzz profile id), `/presence` (the server half of the viewer gate). Its `*/15` schedule runs one job per slot: highlights sync (first tick of each hour; Highlightly quota), the commentary prune (offered every hour's third tick, but it acts only in a billing cycle's last 12 hours, spending 90% of the writes left on rows the archive already holds) and the player-index rebuild (04:15 every third day). The device names a route as `bouncer-api/<route>` (`AppwriteClient.executeFunctionDetailed`)
 - `appwrite/tools/history` — not a function: builds the historical-match site (every Cricsheet match, ball-by-ball, plus records) that `build-history.yml` publishes weekly to the public repo `tm-droid/bouncer-history` on GitHub Pages. Off Appwrite because Free cannot hold or serve it
@@ -141,7 +141,7 @@ the check never runs. Prove a new guard bites by mutating one rule and watching 
 
 **New Appwrite client pattern:** `object` singleton extending `AppwriteTableClient(tag)`. The base provides `initTable()`, `isReady`, the billed-operation funnels `guardedRead()`/`guardedWrite()`, the refcounted Realtime `acquireChannel(channel) { … }` + reconnect backoff, `stop()`/`stopAll()`, and `logSilentFailure()` — don't reimplement these, and never construct a raw `TablesDB(client)`. Subclass adds `initialize()` (calls `initTable(dbId, tableId)`) and its table ops as `runCatching` + `logSilentFailure` on failure. Register in `BouncerApp.kt` via `initializeSafely("Name") { Client.initialize() }`.
 
-**API keys:** Always access via `ApiKeys` object (`ApiKeys.kt`), never `BuildConfig` directly. Add new keys to `ApiKeys.kt` + `build.gradle.kts` + `local.properties.template`.
+**API keys:** Always access via `ApiKeys` object (`ApiKeys.kt`), never `BuildConfig` directly. Public resource defaults belong in `../shared/backend.json` and the Gradle mapping. Credentials stay server-side.
 
 **Appwrite Free plan (from November 2026).** 250k DB writes, 500k reads, 5 GB bandwidth, 2 GB storage *including function deployments and builds*, two functions, 512 MB per function, and a project is **paused after 7 days with no Console activity** (app traffic does not count; `appwrite/tools/archive/workflow/appwrite-alive.yml`, run in the public `bouncer-archive` repo, is the alarm). `deploy-function.mjs` deletes old deployments after a verified deploy for the storage cap.
 

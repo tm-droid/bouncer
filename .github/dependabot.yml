@@ -2,7 +2,7 @@ version: 2
 
 updates:
   - package-ecosystem: "gradle"
-    directory: "/"
+    directory: "/android"
     ignore:
       # Not in the app. Every one of these resolves on `androidLintTool` or on the Unified Test
       # Platform's configuration (com.android.tools.utp:android-device-provider-ddmlib ->
@@ -120,7 +120,7 @@ updates:
           - "*"
 
   - package-ecosystem: "uv"
-    directory: "/android-dev-mcp-server"
+    directory: "/android/android-dev-mcp-server"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -136,7 +136,7 @@ updates:
   # deployed anywhere — but it has its own lockfile, so it raises its own alerts and needs its
   # own entry for version updates to reach it.
   - package-ecosystem: "npm"
-    directory: "/my-video"
+    directory: "/android/my-video"
     schedule:
       interval: "weekly"
       day: "monday"

@@ -25,7 +25,7 @@ internal object LlmJsSource {
      * The JS source text.
      *
      * Resolved by walking up from the test's working directory (Gradle runs unit tests with the
-     * module directory as `user.dir`, so the file sits one level up). A missing file is a hard
+     * module directory as `user.dir`, so the backend sits two levels up). A missing file is a hard
      * failure, never a skipped test — a parity check that quietly disables itself when the path
      * changes is worth less than no check at all, because it still reads as green.
      */

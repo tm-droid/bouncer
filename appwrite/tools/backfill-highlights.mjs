@@ -30,7 +30,7 @@ if (!from || !to) {
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const props = Object.fromEntries(
   fs
-    .readFileSync(path.join(repoRoot, "local.properties"), "utf8")
+    .readFileSync(path.join(repoRoot, "android", "local.properties"), "utf8")
     .split(/\r?\n/)
     .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
     .map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim()])

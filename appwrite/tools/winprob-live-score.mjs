@@ -329,7 +329,7 @@ export function report(rawLogs, { rounds = 2000, cricinfo = [] } = {}) {
 async function fromStorage(since) {
   const toolsDir = path.dirname(fileURLToPath(import.meta.url));
   const props = Object.fromEntries(
-    fs.readFileSync(path.resolve(toolsDir, "../../local.properties"), "utf8")
+    fs.readFileSync(path.resolve(toolsDir, "../../android/local.properties"), "utf8")
       .split(/\r?\n/)
       .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
       .map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim()])

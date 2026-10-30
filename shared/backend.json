@@ -1,0 +1,17 @@
+{
+  "endpoint": "https://sgp.cloud.appwrite.io/v1",
+  "projectId": "6a02f7f3000e6e100b19",
+  "databaseId": "bouncer-db",
+  "tables": {
+    "aiCommentaryCache": "ai-commentary-cache",
+    "favourites": "user-favourites",
+    "highlights": "highlights",
+    "highlightsMeta": "highlights-meta",
+    "playerProfiles": "player-profiles",
+    "matchCommentary": "match-commentary",
+    "matchLiveDetail": "match-live-detail",
+    "matchScorecard": "match-scorecard"
+  },
+  "matchesBucketId": "cricket-stats",
+  "apiFunctionId": "bouncer-api"
+}

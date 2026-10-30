@@ -11,7 +11,7 @@
 #                               bouncer-ci@golden-object-498303-q9.iam.gserviceaccount.com
 #
 # No API key and no Appwrite id is a secret here. The app holds no credentials, and the Appwrite
-# ids plus the Sentry DSN are read from local.properties.template.
+# ids come from shared/backend.json; the Sentry DSN stays Android-specific.
 #
 # Error tracking:
 #   SENTRY_AUTH_TOKEN         — Sentry auth token (ProGuard mapping upload on release)
@@ -34,10 +34,10 @@ on:
     branches: [main]
     paths-ignore: &ignored
       - '**/*.md'
-      - '.claude/**'
+      - 'android/.claude/**'
       - '.devcontainer/**'
-      - 'my-video/**'
-      - 'android-dev-mcp-server/**'
+      - 'android/my-video/**'
+      - 'android/android-dev-mcp-server/**'
       - '.github/dependabot.yml'
   # The same list. Dependabot's my-video and MCP-server PRs start no run.
   pull_request:
@@ -74,6 +74,7 @@ jobs:
       actions: read
     outputs:
       bundle: ${{ steps.changes.outputs.bundle }}
+      ios: ${{ steps.changes.outputs.ios }}
     # Job-level so a step's `if` can see it; a step `if` cannot read `secrets`.
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -104,7 +105,7 @@ jobs:
           PUBLISH: ${{ inputs.publish }}
         run: |
           set -euo pipefail
-          app='^(app/|baselineprofile/|gradle/|distribution/|[^/]*\.gradle\.kts$|gradle\.properties$|local\.properties\.template$)'
+          app='^android/(app/|baselineprofile/|gradle/|distribution/|[^/]*\.gradle\.kts$|gradle\.properties$|gradlew(\.bat)?$|local\.properties\.template$)|^shared/backend\.json$'
           base="${BEFORE}"
           if [ "${EVENT}" = pull_request ]; then base="${PR_BASE}"; fi
           files=ALL
@@ -113,13 +114,19 @@ jobs:
           fi
           changed() { [ "${files}" = ALL ] || grep -qE "$1" <<< "${files}"; }
 
-          android=no; functions=no; bundle=no; ship=no
-          if changed "${app}|^tools/|^\.github/workflows/ci\.yml$"; then android=yes; fi
-          if changed '^appwrite/|^\.github/workflows/ci\.yml$'; then functions=yes; fi
+          android=no; ios=no; functions=no; bundle=no; ship=no
+          if changed "${app}|^android/tools/|^shared/|^\.github/workflows/ci\.yml$"; then android=yes; fi
+          if changed '^appwrite/|^shared/|^\.github/workflows/ci\.yml$'; then functions=yes; fi
+          if changed '^ios/|^shared/|^\.github/workflows/ci\.yml$'; then ios=yes; fi
+          # The first monorepo commit relocates every app path. Run its checks without treating
+          # that directory move as an automatic Play release. Manual dispatch remains explicit.
+          migration=no
+          if git cat-file -e "${base}:settings.gradle.kts" 2>/dev/null &&
+             [ -f android/settings.gradle.kts ]; then migration=yes; fi
           if [ "${EVENT}" = workflow_dispatch ]; then
             bundle=yes
             if [ "${PUBLISH}" = true ]; then ship=yes; fi
-          elif [ "${EVENT}" = push ] && [ "${REF}" = refs/heads/main ] && changed "${app}"; then
+          elif [ "${EVENT}" = push ] && [ "${REF}" = refs/heads/main ] && [ "${migration}" != yes ] && changed "${app}"; then
             bundle=yes; ship=yes
           fi
           # A release whose exact commit already passed this workflow, with its signed bundle kept,
@@ -147,8 +154,14 @@ jobs:
 
           gradle=no
           if [ "${android}" = yes ] || [ "${functions}" = yes ]; then gradle=yes; fi
-          printf 'android=%s\nfunctions=%s\ngradle=%s\nbundle=%s\nship=%s\nreuse=%s\n' \
-            "${android}" "${functions}" "${gradle}" "${bundle}" "${ship}" "${reuse}" | tee -a "$GITHUB_OUTPUT"
+          printf 'android=%s\nios=%s\nfunctions=%s\ngradle=%s\nbundle=%s\nship=%s\nreuse=%s\n' \
+            "${android}" "${ios}" "${functions}" "${gradle}" "${bundle}" "${ship}" "${reuse}" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Check shared client configuration
+        if: steps.changes.outputs.functions == 'yes'
+        run: |
+          node shared/check-backend-config.mjs
+          node appwrite/tools/sync-api-parsers.mjs --check
 
       # The provider ladder, the fact-checker, the rewrite backlog and the win-probability maths
       # exist only in JavaScript. First, because they take seconds and Gradle takes minutes.
@@ -223,20 +236,12 @@ jobs:
 
       - name: Decode keystore
         if: steps.changes.outputs.bundle == 'yes'
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/bouncer-release.keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/bouncer-release.keystore
 
-      # The Appwrite ids and the Sentry DSN come from the checked-in template, not from secrets:
-      # they are public configuration, and the release job used to read them from secrets that
-      # were never created. Every line came out as `KEY=`, so each build published to Play from
-      # 2026-09-22 had a blank endpoint — no Appwrite call at all — and no DSN to report it, while
-      # CI stayed green. `verifyReleaseConfig` now fails bundleRelease on a blank.
-      #
-      # The same lines on every run, bundling or not, so the debug compile's inputs match between
-      # runs and its build-cache entry is reused. Signing values are placeholders unless bundling.
-      #
-      # Not a plain `cp`: the template's sdk.dir is a macOS path, and its SENTRY_USER_AUTH_TOKEN
-      # placeholder would outrank the SENTRY_AUTH_TOKEN the build step supplies.
+      # Public Appwrite ids default to shared/backend.json in Gradle. Only the Android Sentry
+      # DSN and build-machine signing values are copied into this ignored local file.
       - name: Create local.properties
+        working-directory: android
         if: steps.changes.outputs.gradle == 'yes'
         env:
           BUNDLE: ${{ steps.changes.outputs.bundle }}
@@ -244,7 +249,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          grep -E '^(APPWRITE_[A-Z_]+|SENTRY_DSN)=' local.properties.template > local.properties
+          grep -E '^SENTRY_DSN=' local.properties.template > local.properties
           if [ "${BUNDLE}" = yes ]; then
             printf 'KEYSTORE_PASSWORD=%s\nKEY_ALIAS=%s\nKEY_PASSWORD=%s\n' \
               "${KEYSTORE_PASSWORD}" "${KEY_ALIAS}" "${KEY_PASSWORD}" >> local.properties
@@ -270,7 +275,7 @@ jobs:
           curl -fsSL -o /tmp/sentry-cli "https://downloads.sentry-cdn.com/sentry-cli/${SENTRY_CLI_VERSION}/sentry-cli-Linux-x86_64"
           echo "${SENTRY_CLI_SHA256}  /tmp/sentry-cli" | sha256sum --check
           sudo install -m 0755 /tmp/sentry-cli /usr/local/bin/sentry-cli
-          printf 'defaults.project=android\ndefaults.org=tanush-4w\ncli.executable=/usr/local/bin/sentry-cli\n' > sentry.properties
+          printf 'defaults.project=android\ndefaults.org=tanush-4w\ncli.executable=/usr/local/bin/sentry-cli\n' > android/sentry.properties
 
       # One invocation, so the debug compile the tests and lint share is done once. The coverage
       # task depends on testDebugUnitTest, so it still fails on a failing test. `--continue` reports
@@ -281,6 +286,7 @@ jobs:
       # that catches a NewApi call, a wrong exported flag or an invalid backup rule before an
       # upload.
       - name: Gradle
+        working-directory: android
         if: steps.changes.outputs.gradle == 'yes'
         env:
           ANDROID_CHECKS: ${{ steps.changes.outputs.android }}
@@ -310,13 +316,13 @@ jobs:
         if: failure() && steps.changes.outputs.gradle == 'yes'
         with:
           name: test-results
-          path: app/build/reports/tests/
+          path: android/app/build/reports/tests/
 
       - uses: actions/upload-artifact@v7
         if: always() && steps.changes.outputs.android == 'yes'
         with:
           name: lint-report
-          path: app/build/reports/lint-results-*.html
+          path: android/app/build/reports/lint-results-*.html
 
       # Coverage is reported, not gated: an upload failure never blocks the Play build. The step is
       # skipped until CODECOV_TOKEN exists, and on Dependabot runs, which see no secrets.
@@ -324,7 +330,7 @@ jobs:
         if: env.CODECOV_TOKEN != '' && steps.changes.outputs.gradle == 'yes'
         with:
           token: ${{ env.CODECOV_TOKEN }}
-          files: app/build/reports/coverage/test/debug/report.xml
+          files: android/app/build/reports/coverage/test/debug/report.xml
           disable_search: true
           flags: unit
 
@@ -332,7 +338,7 @@ jobs:
         if: steps.changes.outputs.bundle == 'yes'
         with:
           name: release-aab
-          path: app/build/outputs/bundle/release/app-release.aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
 
       # The tested bundle, to the path the Gradle build would have left it at.
       - name: Fetch the tested bundle
@@ -342,8 +348,8 @@ jobs:
           RUN_ID: ${{ steps.changes.outputs.reuse }}
         run: |
           set -euo pipefail
-          gh run download "${RUN_ID}" --repo "${GITHUB_REPOSITORY}" --name release-aab --dir app/build/outputs/bundle/release
-          test -s app/build/outputs/bundle/release/app-release.aab
+          gh run download "${RUN_ID}" --repo "${GITHUB_REPOSITORY}" --name release-aab --dir android/app/build/outputs/bundle/release
+          test -s android/app/build/outputs/bundle/release/app-release.aab
 
       # A push whose commits carry a `Force-Update: yes` trailer uploads at in-app update priority
       # 5, which AppUpdatePolicy turns into Play's immediate update screen on every Play install.
@@ -368,7 +374,7 @@ jobs:
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.tanush.bouncer
-          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
           # One upload, two tracks. `alpha` is the Play API id of the default closed testing
           # track, which waits on review; `internal` has no review, so the same build is
           # installable within minutes. No space after the comma.
@@ -377,7 +383,30 @@ jobs:
           inAppUpdatePriority: ${{ steps.priority.outputs.value }}
           # Without this every release shipped with blank release notes.
           # distribution/whatsnew/README.md says who edits it and when.
-          whatsNewDirectory: distribution/whatsnew
+          whatsNewDirectory: android/distribution/whatsnew
+
+  ios:
+    name: Build and test iOS
+    needs: ci
+    if: needs.ci.outputs.ios == 'yes'
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and test
+        run: |
+          set -euo pipefail
+          device=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          print(next(d["udid"] for runtime, items in devices.items() if "iOS" in runtime
+                     for d in items if d["name"].startswith("iPhone")))')
+          xcodebuild -project ios/Bouncer.xcodeproj -scheme Bouncer \
+            -destination "platform=iOS Simulator,id=${device}" \
+            -derivedDataPath "$RUNNER_TEMP/BouncerDerivedData" \
+            CODE_SIGNING_ALLOWED=NO test
 
   # Submits the graph the ci job saved. Separate so that only this job, which runs no repository
   # code, holds a token that can write. A few seconds, on bundling runs only.

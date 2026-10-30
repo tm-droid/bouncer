@@ -75,7 +75,7 @@ function readLocalProperties() {
   const out = {};
   let raw;
   try {
-    raw = readFileSync(join(REPO_ROOT, "local.properties"), "utf8");
+    raw = readFileSync(join(REPO_ROOT, "android", "local.properties"), "utf8");
   } catch {
     return out;
   }

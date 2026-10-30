@@ -39,28 +39,19 @@ If a feature needs a credential, it calls an Appwrite function that holds one. I
 
 ## What is still in `local.properties`
 
-Appwrite endpoint/project/database/table ids. These name public `read("any")` resources and are
-already visible to anyone with the APK; they are configuration, not credentials. The template
-(`local.properties.template`) is pre-filled with them, so setup is:
+Public Appwrite endpoint/project/database/table defaults live in root `shared/backend.json`. Gradle preserves existing `APPWRITE_*` names and accepts nonblank local/environment overrides. Signing values, SDK location and Sentry build settings stay in ignored `android/local.properties`.
+
+From `android/`:
 
 ```bash
-cp local.properties.template local.properties   # then set sdk.dir and, for release builds, the signing values
+cp local.properties.template local.properties   # set sdk.dir and any release signing values
 ```
 
-The app builds and runs with no secrets at all. Commentary comes from the server.
+The app builds and runs with no provider secrets. Commentary comes from the server.
 
-## The Play build takes its ids from the template, not from GitHub secrets
+## The Play build takes public defaults from shared JSON
 
-The CI release job builds `local.properties` by `grep`-ing the `APPWRITE_*` and `SENTRY_DSN` lines
-out of `local.properties.template` and appending the three signing secrets. There are no
-`APPWRITE_*` GitHub secrets and there never were: the job used to write
-`APPWRITE_ENDPOINT=${{ secrets.APPWRITE_ENDPOINT }}` for ten ids, each of which expanded to `KEY=`,
-and `getProperty(key) ?: fallback` treats `""` as a value. Every bundle published to Play from
-2026-09-22 to 2026-10-02 therefore had a blank endpoint and project id — `AppwriteClient` never
-initialised, so player search, presence, server commentary, the detail and scorecard rows,
-highlights and every Storage download were off — and a blank Sentry DSN, so none of it was
-reported. CI was green throughout, and local debug builds worked because this machine's
-`local.properties` is filled in.
+CI copies the Android Sentry DSN and build-machine signing values from the template/secrets. Public Appwrite ids come from `shared/backend.json`, not GitHub secrets. A blank override falls back to the shared defaults.
 
 What holds it now:
 

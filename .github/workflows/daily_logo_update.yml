@@ -28,12 +28,14 @@ jobs:
       # fails the job rather than committing a truncated asset. The version this replaced fetched
       # nothing at all and reported "No changes to commit" on every run for five months.
       - name: Run update_logos.py
+        working-directory: android
         run: python tools/update_logos.py
 
       # Logos for the sides Cricbuzz's pages don't give one (TheSportsDB, Wikidata, a variant's
-      # parent side), and each source's own colours into tools/team_lookups.json. The pure parts are
+      # parent side), and each source's own colours into android/tools/team_lookups.json. The pure parts are
       # tested offline first, so a broken parser fails here rather than writing a bad asset.
       - name: Run update_logos_extra.py
+        working-directory: android
         run: |
           pip install --quiet pillow cairosvg
           python -m unittest discover -s tools/tests
@@ -42,6 +44,7 @@ jobs:
       # Team colours for every side the hand-picked table in TeamPalettes.kt does not list: the
       # sources' kit colours, then the crest, then the national flag (flag-icons, MIT, pinned).
       - name: Run extract_team_colors.py
+        working-directory: android
         run: |
           mkdir -p "$RUNNER_TEMP/flag-icons"
           npm pack flag-icons@7.6.0 --silent --pack-destination "$RUNNER_TEMP/flag-icons"
@@ -52,7 +55,7 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add app/src/main/assets/TeamLogos.json app/src/main/assets/TeamAcronyms.json app/src/main/assets/TeamColors.json app/src/main/assets/TeamLogoInk.json tools/team_lookups.json
+          git add android/app/src/main/assets/TeamLogos.json android/app/src/main/assets/TeamAcronyms.json android/app/src/main/assets/TeamColors.json android/app/src/main/assets/TeamLogoInk.json android/tools/team_lookups.json
           # Check if there are changes to commit
           if git diff --staged --quiet; then
             echo "No changes to commit"

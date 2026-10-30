@@ -31,12 +31,12 @@ fi
 # The ids Gradle asks for by name: compileSdk 37 is `android-37.0`, and AGP 9.3's default build-tools.
 "$SDK/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-37.0" "build-tools;36.0.0"
 
-# The template's sdk.dir is a macOS path. Take only its public Appwrite ids and Sentry DSN, as the CI
-# release job does, plus signing placeholders so the release variant configures.
-if [ ! -f local.properties ]; then
+# The template's sdk.dir is a macOS path. Take its Android Sentry DSN plus signing placeholders;
+# Gradle reads public Appwrite defaults from shared/backend.json.
+if [ ! -f android/local.properties ]; then
   {
     echo "sdk.dir=$SDK"
-    grep -E '^(APPWRITE_[A-Z_]+|SENTRY_DSN)=' local.properties.template
+    grep -E '^SENTRY_DSN=' android/local.properties.template
     printf 'KEYSTORE_PASSWORD=placeholder\nKEY_ALIAS=placeholder\nKEY_PASSWORD=placeholder\n'
-  } > local.properties
+  } > android/local.properties
 fi

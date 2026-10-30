@@ -16,8 +16,8 @@ cd "${CLAUDE_PROJECT_DIR:-.}"
 # Staged plus unstaged: the command may be `git add … && git commit`, which stages after this runs.
 changed=$( { git diff --cached --name-only; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u )
 
-grep -q '^app/src/main/' <<<"$changed" || exit 0
-grep -q '^distribution/whatsnew/whatsnew-en-US$' <<<"$changed" && exit 0
+grep -q '^android/app/src/main/' <<<"$changed" || exit 0
+grep -q '^android/distribution/whatsnew/whatsnew-en-US$' <<<"$changed" && exit 0
 
 cat >&2 <<'EOF'
 Release notes not updated. This commit changes app/src/main/, and every push to main uploads to
