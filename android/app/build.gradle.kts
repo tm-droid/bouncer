@@ -247,6 +247,10 @@ android {
             .withPropertyName("commentaryConstantParitySource")
             .withPathSensitivity(PathSensitivity.RELATIVE)
 
+        inputs.files(rootProject.file("../appwrite/functions/api/test/fixtures/match-detail.json"))
+            .withPropertyName("sharedMatchDetailContract")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+
         // Same reasoning for CricbuzzHttpVendorParityTest, which byte-compares the vendored
         // copies of cricbuzz-http.js. Both paths must be declared: with only one, editing the
         // other leaves the task UP-TO-DATE and the drift ships.

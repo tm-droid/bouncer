@@ -2,7 +2,7 @@
 
 ## Units
 - [x] U1: monorepo/config/CI | files: root layout, .github, shared, Android Gradle path inputs | acceptance: Android history preserved, sanitized iOS, no relocation-only Play publish
-- [ ] U2: shared detail service | files: appwrite | acceptance: cache/contract/deadline/quota tests, existing Node suites
+- [x] U2: shared detail service | files: appwrite | acceptance: cache/contract/deadline/quota tests, existing Node suites
 - [ ] U3: iOS real-data slice | files: ios | acceptance: fixtures+lifecycle tests, build/test/smoke after queue grant
 - [ ] U4: Android shared detail fallback | files: android app source/tests | acceptance: regression checks and Android build/lint/detekt after queue grant
 - [ ] U5: review/verification/handoff | files: docs and integration fixes | acceptance: fresh review, appropriate checks, documented cloud setup
@@ -28,3 +28,14 @@
 - U1 complete ccd5acbc: all 1280 original tracked paths preserved; actionlint/config/vendor guards and CI path fixtures PASS, no relocation-only auto-publish.
 - Tanush ended testing turns (Minecraft complete); builds/suites may run directly. Earlier backend waiting session is no longer accessible and no suite logs exist, so full suites remain unverified and will be rerun via verifier.
 - Root checks: node shared/check-backend-config.mjs PASS; git diff --check PASS.
+- U2 pre-review: focused service/vendor 15/15 PASS; canonical HTTP 17/17 PASS; generated parser and syntax checks PASS. Stable schema/fixture passed to both native workers. Full suites pending fresh verifier.
+- Root documentation commit 8e7836b records cloud setup and no-production-change boundary.
+- Backend full verification: `npx --yes --package=node@22 -- npm ci --ignore-scripts --no-audit --no-fund --prefix appwrite/functions/api` and same prefix match-sync PASS; `npx --yes --package=node@22 -- npm test --prefix appwrite/functions/api` PASS119/119; same command match-sync PASS473/473. Logs /private/tmp/bouncer-{api,sync}-{install,test}.log.
+- Found/fixed during verification: generated API lock lacked nestedundici dependency (regenerated under Node22); router's exact route list needed new path; five backend fixture references still pointed to pre-monorepo app/src resources. Tests now run original fixtures under android/app, no suppressed checks.
+- Imported current local Android AGENTS/CLAUDE and extracted architecture/claude docs (they were untracked/local newer guidance omitted by clean-history worktree). Original files untouched; updated shared-root/config references.
+- U2 complete dcd32a94: backend reviewer clean for route/cache, API119/119 and match-sync473/473 under Node22. Native/production end-to-end remains pending (route not deployed).
+- Fresh iOS review found null envelope fetchedAt decoding mismatch on valid partial200 response; U3 fixing with regression coverage before native verification.
+- Native review: iOS corrected nullable/fractional timestamps, final-score projection, lifecycle/cancellation, per-section freshness, metadata shapes;16 tests compile pending execution. Android review found delivery-label loss, break-state TTL and stale-card-before-archive selection; U4 fixing with regressions.
+- Shared fixture corrected to real parser ballMetric object {label,over,ball}; both clients notified. Earlier numeric fixture was unrealistic, actual server contract unchanged.
+- Android full all-gates run: compile had no reported Kotlin error;detekt failed8new findings. Scoped fixes underway; verifier runningassemble/tests/lint separately. Log /private/tmp/bouncer-android-verify.log.
+- iOS runtime installation authorized/inprogress: xcodebuild -downloadPlatform iOS -architectureVariant arm64, root session12393, log /private/tmp/bouncer-ios-runtime.log. No originalcheckouts/productionresources modified.

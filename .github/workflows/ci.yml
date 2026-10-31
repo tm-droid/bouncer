@@ -117,7 +117,7 @@ jobs:
           android=no; ios=no; functions=no; bundle=no; ship=no
           if changed "${app}|^android/tools/|^shared/|^\.github/workflows/ci\.yml$"; then android=yes; fi
           if changed '^appwrite/|^shared/|^\.github/workflows/ci\.yml$'; then functions=yes; fi
-          if changed '^ios/|^shared/|^\.github/workflows/ci\.yml$'; then ios=yes; fi
+          if changed '^ios/|^shared/|^appwrite/functions/api/(src/match-detail/|test/fixtures/match-detail[^/]*[.]json$)|^\.github/workflows/ci\.yml$'; then ios=yes; fi
           # The first monorepo commit relocates every app path. Run its checks without treating
           # that directory move as an automatic Play release. Manual dispatch remains explicit.
           migration=no

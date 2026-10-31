@@ -23,7 +23,11 @@
     {
       "timestamp": 1,
       "commText": "Bowler to Batter, 1 run",
-      "ballMetric": 18.1,
+      "ballMetric": {
+        "label": "18.1",
+        "over": 18,
+        "ball": 1
+      },
       "innings": 2,
       "source": "cricbuzz",
       "aiGenerated": false

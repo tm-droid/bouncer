@@ -127,7 +127,7 @@ function isRetryableTransportError(e) {
 /** Attempts per fetchHtml call: the original plus one retry. */
 export const MAX_FETCH_ATTEMPTS = 2;
 
-export async function fetchHtml(url, timeoutMs = 12_000) {
+export async function fetchHtml(url, timeoutMs = 12_000, { deadlineAt = Infinity, maxAttempts = MAX_FETCH_ATTEMPTS } = {}) {
   const now = Date.now();
   if (now < blockedUntil) throw new CricbuzzBlockedError(blockedUntil - now);
 
@@ -139,11 +139,13 @@ export async function fetchHtml(url, timeoutMs = 12_000) {
   let resp;
   for (let attempt = 1; ; attempt++) {
     await takeSlot();
+    const remaining = Math.min(timeoutMs, deadlineAt - Date.now());
+    if (remaining <= 0) throw new Error("Cricbuzz deadline exceeded");
     try {
-      resp = await fetch(url, { headers: browserHeaders(), signal: AbortSignal.timeout(timeoutMs) });
+      resp = await fetch(url, { headers: browserHeaders(), signal: AbortSignal.timeout(Math.ceil(remaining)) });
       break;
     } catch (e) {
-      if (attempt >= MAX_FETCH_ATTEMPTS || !isRetryableTransportError(e)) throw e;
+      if (attempt >= maxAttempts || !isRetryableTransportError(e)) throw e;
     }
   }
   if (resp.ok) return resp.text();
