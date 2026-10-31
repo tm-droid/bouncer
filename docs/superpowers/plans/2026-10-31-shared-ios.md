@@ -6,6 +6,6 @@ Goal: unify the repo, centralize backend detail retrieval and deliver a real-dat
 2. Shared detail service: tests first for route contract/cache/validation, generated parser reuse, private-cache configuration, bounded deadline and maintenance. Acceptance: full Node suites, cold/warm/stale/partial/budget/unknown-ID tests and zero AI invocation.
 3. iOS client and screens: native config/gateway/models/repository + cache/lifecycle, real match list/detail/scorecard/commentary, meaningful test targets. Acceptance: pinned SDK, no old network/provider/random data paths, fixture tests and simulator flow.
 4. Android integration: map shared detail route into current fallback seams, request-specific timeout and existing guards/caches. Acceptance: regression tests, unchanged other scrapers and live/archival behavior.
-5. Final review, scheduled verification, docs and handoff: run all relevant checks only when queue allows; fix correctness findings; commit units, preserve source checkouts; report deployment steps and unverified live state. No push/deploy.
+5. Final review, scheduled verification, docs and handoff: run all relevant checks with bounded logs; fix correctness findings; commit units, preserve source checkouts; report deployment steps and unverified live state. No push/deploy.
 
-Execution: separate ownership per unit; U2 and U3 can run in parallel after U1. U4 depends on the pinned U2 contract. Root agent owns ledger/spec/plan; workers must not edit others' files. Queue constraints override build cadence.
+Execution: separate ownership per unit; U2 and U3 can run in parallel after U1. U4 depends on the pinned U2 contract. Root agent owns ledger/spec/plan; workers must not edit others' files. Testing turns were explicitly lifted after Minecraft finished.
