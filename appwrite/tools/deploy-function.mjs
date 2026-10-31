@@ -51,15 +51,16 @@ if (!fn) {
   process.exit(1);
 }
 
+const publicConfig = JSON.parse(fs.readFileSync(path.join(repoRoot, "shared", "backend.json"), "utf8"));
+const propsFile = path.join(repoRoot, "android", "local.properties");
 const props = Object.fromEntries(
-  fs
-    .readFileSync(path.join(repoRoot, "android", "local.properties"), "utf8")
+  (fs.existsSync(propsFile) ? fs.readFileSync(propsFile, "utf8") : "")
     .split(/\r?\n/)
     .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
     .map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim()])
 );
-const endpoint = (process.env.APPWRITE_ENDPOINT || props.APPWRITE_ENDPOINT || "").replace(/\/$/, "");
-const projectId = process.env.APPWRITE_PROJECT_ID || props.APPWRITE_PROJECT_ID;
+const endpoint = (process.env.APPWRITE_ENDPOINT || props.APPWRITE_ENDPOINT || publicConfig.endpoint).replace(/\/$/, "");
+const projectId = process.env.APPWRITE_PROJECT_ID || props.APPWRITE_PROJECT_ID || publicConfig.projectId;
 const apiKey = process.env.APPWRITE_API_KEY || props.APPWRITE_API_KEY;
 if (!endpoint || !projectId || !apiKey) {
   console.error("missing APPWRITE_ENDPOINT / APPWRITE_PROJECT_ID / APPWRITE_API_KEY");
