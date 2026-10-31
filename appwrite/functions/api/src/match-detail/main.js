@@ -16,6 +16,11 @@ async function bounded(work, deadlineAt, maxMs = 1500) {
   try { return await Promise.race([work(), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('match-detail dependency timeout')), ms); })]); }
   finally { clearTimeout(timer); }
 }
+export function storedMatchEntries(blob, state) {
+  if (!Array.isArray(blob?.data?.matches)) throw new Error('Invalid match list');
+  return blob.data.matches.map(summary => ({ summary, state: state === 'recent' ? 'Complete' : state,
+    fetchedAt: typeof blob.fetchedAt === 'number' ? blob.fetchedAt : null }));
+}
 function dependencies() {
   const client = new Client().setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
     .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID).setKey(process.env.APPWRITE_API_KEY);
@@ -28,8 +33,7 @@ function dependencies() {
     async readLists(end) {
       const groups = await Promise.all(['live', 'upcoming', 'recent'].map(async state => {
         const blob = await bounded(async () => parseJsonFile(await storage.getFileDownload(LISTS, `${state}-matches`)), end);
-        if (!Array.isArray(blob?.data)) throw new Error('Invalid match list');
-        return blob.data.map(summary => ({ summary, state: state === 'recent' ? 'Complete' : state, fetchedAt: typeof blob.fetchedAt === 'number' ? blob.fetchedAt : null }));
+        return storedMatchEntries(blob, state);
       }));
       return groups.flat();
     },
