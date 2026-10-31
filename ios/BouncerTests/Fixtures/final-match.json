@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "matchId": "12345",
+  "state": "Complete",
+  "summary": {
+    "id": "12345",
+    "title": "India vs Australia",
+    "status": "India won by 7 wickets",
+    "state": "Complete",
+    "matchFormat": "T20",
+    "teams": []
+  },
+  "detail": {
+    "batsmen": [],
+    "bowler": null,
+    "recentBalls": [],
+    "score": "140/3 (18)",
+    "status": "India need 20 runs"
+  },
+  "scorecard": {
+    "innings": [
+      {
+        "teamName": "India",
+        "score": "160/3",
+        "overs": "19.2",
+        "batsmen": [],
+        "bowlers": [],
+        "extras": "5",
+        "total": "160"
+      }
+    ]
+  },
+  "meta": {
+    "venue": {
+      "name": "Wankhede Stadium",
+      "city": "Mumbai",
+      "country": "India"
+    },
+    "toss": {
+      "winnerName": "Australia",
+      "decision": "batting"
+    },
+    "startMs": 1793404800000
+  },
+  "commentary": [
+    {
+      "timestamp": 1,
+      "commText": "Bowler to Batter, 1 run",
+      "ballMetric": {
+        "label": "18.1",
+        "over": 18,
+        "ball": 1
+      },
+      "innings": 2,
+      "source": "cricbuzz",
+      "aiGenerated": false
+    }
+  ],
+  "fetchedAt": 1793404800000,
+  "stale": true,
+  "retryAfterSeconds": 0,
+  "availability": {
+    "summary": {
+      "available": true,
+      "fetchedAt": 1793404800000,
+      "stale": false
+    },
+    "detail": {
+      "available": true,
+      "fetchedAt": 1793404800000,
+      "stale": false
+    },
+    "scorecard": {
+      "available": true,
+      "fetchedAt": 1000,
+      "stale": true
+    },
+    "meta": {
+      "available": true,
+      "fetchedAt": 1793404800000,
+      "stale": false
+    },
+    "commentary": {
+      "available": true,
+      "fetchedAt": 1793404800000,
+      "stale": false
+    }
+  }
+}
