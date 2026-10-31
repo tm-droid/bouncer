@@ -1,6 +1,6 @@
 # Goal: shared Bouncer Android/iOS repo and real-data iOS matches/detail
 
-Status: local implementation verified; production activation/live-data smoke blocked.
+Status: approved cloud activation, real-data verification, branch publication and fast-forward main merge in progress.
 Current workspace: /Users/tanushmalhotra/Documents/Tanush Coding/Bouncer-unified
 Branch: codex/shared-ios-foundation
 
@@ -11,14 +11,19 @@ Branch: codex/shared-ios-foundation
 - [x] U4: Android shared detail fallback | files: android app source/tests | acceptance: regression checks and Android build/lint/detekt after queue grant
 - [x] U5: review/verification/handoff | files: docs and integration fixes | acceptance: fresh review, appropriate checks, documented cloud setup
 
+- [ ] U6: Appwrite activation/canary | owner: cloud worker | acceptance: private cache, Apple platform, healthy deployment, cadence and Free quota validation, rollback preserved
+- [ ] U7: real iOS then Android smoke | owner: separate UI agents | acceptance: actual lists/detail/cache/lifecycle/offline with app data retained; fix scoped regressions
+- [ ] U8: branch CI then main promotion | owner: GitHub worker/root | acceptance: exact tested commit, ship=no before normal FF push, main CI healthy, private repo description current
+- [ ] U9: final handoff | owner: root | acceptance: clean commits, deployment/CI evidence, no lingering Bouncer workloads
+
 ## Decisions
 - Existing remote is tm-droid/bouncer; preserve it and its Android history.
 - Native SwiftUI, Android visual identity adapted; local prefs; iOS18.2/current IDs; no widgets/push/accounts/full parity/store release.
 - Shared on-demand detail now, consumed by both apps; no LLM on request path; cron sole canonical-row writer.
 - Private response-cache bucket; no mutation of legacy public bucket permissions.
-- Worktree /private/tmp/bouncer-shared-ios, codex/shared-ios-foundation; original parent/Android remain untouched.
-- No push/deploy: production side effects are outside original authorization. Prepare concrete instructions instead.
-- Testing queue: iOS baseline passed before hold; no heavy jobs now. New builds/simulators wait for explicit queue slot.
+- Worktree Bouncer-unified on codex/shared-ios-foundation; original parent/Android remain recovery checkouts and own common Git metadata.
+- User explicitly approved cloud activation, feature-branch push, CI with publish=false and fast-forward GitHub main after verification. No paid upgrade or store release.
+- Testing turns ended per Tanush; run existing iOS and Android simulators sequentially and stop them after verification.
 
 ## Log
 - Recon: Android backend already shares AI/provider keys server-side; iOS uses obsolete endpoints and hardcoded credentials; baseline simulator build PASS.
@@ -52,3 +57,5 @@ Branch: codex/shared-ios-foundation
 - DedicatediOStestappterminatedandsimulatorC609F07D-E70D-42C1-B8C6-BA4138106F23 shutdown(exit0). No ongoingBouncerbuild/test/UIload.
 - Repeatedpost-moveGitdiffwhitespacecheckstalled andwasinterrupted(exit130); pre-movecodewhitespacecheckhadpassed. Finalchangedtextfileschecked directlyfortrailingwhitespace; checkpointusesquietGitcommitwithoutoptionalpreload/scans.
 - Newcheckoutislinked: commonGitmetadata remainsatoriginalBouncer/android/.git; preserveoriginaluntilseparateclone/cutover. Quietfinalcheckpoint succeeded; code/status verificationreport saved.
+
+- User approved full continuation plan. Baseline a7975c16 clean; live Bouncer project confirmed connected via Appwrite MCP. Original main93549c93 unchanged/unprotected; currentfunctions interval60 hourly, plannedcron1min/15min with budget canary.
