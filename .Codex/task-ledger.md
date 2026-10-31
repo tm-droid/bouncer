@@ -1,8 +1,34 @@
 # Goal: shared Bouncer Android/iOS repo and real-data iOS matches/detail
 
-Status: approved cloud activation, real-data verification, branch publication and fast-forward main merge in progress.
+Status: paused at Tanush’s request to clear storage. Healthy shared API deployed; native smoke, Free cron limitation and Actions budget prevent full completion/main promotion.
 Current workspace: /Users/tanushmalhotra/Documents/Tanush Coding/Bouncer-unified
 Branch: codex/shared-ios-foundation
+
+## Next (after storage is cleared)
+1. Continue only in `/Users/tanushmalhotra/Documents/Tanush Coding/Bouncer-unified`, branch `codex/shared-ios-foundation`. Original folders share Git metadata; do not move/delete/reset them. Source deployment commit `f93721a7f90a4449e668dade6f1f5ef46387c352`.
+2. Finish real iOS then Android UI checks sequentially, preserving data. iOS simulator `C609F07D-E70D-42C1-B8C6-BA4138106F23`, bundle `Testing.Bouncer`, built app `/private/tmp/bouncer-shared-derived/Build/Products/Debug-iphonesimulator/Bouncer.app`. Android existing `bouncer_test`, package `com.tanush.bouncer`, APK `/Users/tanushmalhotra/Library/Caches/bouncer-android/app/outputs/apk/debug/app-debug.apk` already installed with `-r`. Check lists/scores/scorecards/commentary/meta/offline/lifecycle. No new runtime download needed. Stop afterward.
+3. Finish bounded section-freshness/partial/outage/expiry verification for `/match-detail`; use fixtures for quota exhaustion. Do not deliberately exhaust production. Earlier full API123/123 and native/match-sync checks remain reusable until relevant code changes.
+4. Resolve actual Free cron rejection (`403 billing_feature_unsupported`, functionsAllowCronfalse, intervalMinimum60) within approved boundaries before any cadence change. Both functions remain hourly; current API minute55 falls in no-job window, so quarter-hour maintenance is unresolved. No paid upgrade, scheduler bypass or external trigger added. Minute canary did not run.
+5. Restore GitHub Actions availability without spending changes, then dispatch `.github/workflows/ci.yml` with publish=false on latest pushed feature commit and require Android/backend/iOS pass. Last run41206442951 budget-blocked before steps. Do not treat local tests as satisfying this CI gate.
+6. Only after all gates pass: fetch/recheck exact remote main, rerun migration/release detector against that base and require ship=no BEFORE normal fast-forward push. If main advanced, merge it into feature, resolve/retest/reassess. No force-push/PR needed. Verify mainCI/tree/backendhealth; update repo description for Android+iOS. Visibility stays private.
+7. Update this ledger and `docs/verification.md` with final results/CI URLs/commit. No store release.
+
+## Current safe cloud state
+- Project `6a02f7f3000e6e100b19`, sgp. Apple platform `bouncer-ios` / bundle `Testing.Bouncer` registered.
+- Private `bouncer-db/match-detail-cache`: permissions[], rowSecurityfalse, required mediumtext payload, encryptfalse (Free disallows column encryption; public cricket cache only/no secrets). Legacy resource permissions/provider secrets unchanged.
+- Active healthy API `6ae5f4f2ea8070f7723a`; original rollback `6ad18b9dbd1bc3d6b655` retained. Intermediate `6ae5f39a79f25837a39f` inactive after real-list-shape failure/rollback/fix. Sync deployment `match-sync-mvliqrgc` unchanged. Production build enforces locked `npm ci --omit=dev --no-audit --no-fund`.
+- Archive27files/72,524B, SHA256 `6d55b3c4d2843b175c6f02c27f7fee1c017b89c4bb07c9d1d12803b07850f250`.
+- Rollback settings/source in protected `/private/tmp/bouncer-activation-rollback`; nonsecret cloud evidence `/private/tmp/bouncer-activation-evidence.json`. Do not publish server keys/secret values. Write MCP facade absent; approved REST fallback used existing original ignored `android/local.properties` key transiently, no key copies/new grants.
+- Final org usage:108898reads/500000,41490writes/250000,9862executions/750000; execution+build compute63.7785/100GBh, cycleendsNov13. Baseline108875reads/41396writes/9841executions; delayed aggregate changes include background jobs, not exact test attribution.
+- Both functions scheduleempty/interval60. No lingering Bouncer simulator/build/test/cloud jobs from this continuation.
+
+## Verify with / gotchas
+- Latest exact backend suite: `/Users/tanushmalhotra/.npm/_npx/52027bd8fc0022aa/node_modules/node/bin/node --test` from `appwrite/functions/api`:123/123 PASS(11.14s). `npx` wrapper earlier DNS-failed; cached Node22.23.4 works.
+- `node shared/check-backend-config.mjs`; `node appwrite/tools/sync-api-parsers.mjs --check`; `git -c core.fsmonitor=false diff --check`:PASS. Fresh reviews clean for private-table and real-list-envelope deltas.
+- Live170761/upcoming161234/recent147942 cold+warm200/schema1/private persisted rows[]; recent stateComplete. MalformedID400/invalidJSON400/unknown404/GET405. Four cheap oldroute hashes/statuses identical before/after. No interactiveAI/canonical-table writes in request code. Forced expiry/outage/sectionfreshness and actual nativeUI remain incomplete.
+- iOS launch300s timeout/remote automation timeout despite booted status; shutdown verified. Android install-rPASS/launchStatusok→permissioncontroller; diskfilled beforeUI. Third lowmemory attempt stopped on userwrapup. `adb devices` empty, iOS dedicateddeviceShutdown. No appdata erased.
+- Only task-generated iOS intermediates/index/modulecaches were removed to free space; app Products/testevidence/sourcepackages retained. Logs `/private/tmp/bouncer-{ios,android}-live-initial.txt`, Android emulator logs in same prefix. Do not blindly rerun failed resource-heavy jobs before storage is cleared.
+- Feature CI https://github.com/tm-droid/bouncer/actions/runs/41206442951:failure, no steps, Actions budget preventing use; iOS skipped. Remote main lastverified93549c93f5f1d9b1f519391a63e8ac64e07c2c2f, never promoted.
 
 ## Units
 - [x] U1: monorepo/config/CI | files: root layout, .github, shared, Android Gradle path inputs | acceptance: Android history preserved, sanitized iOS, no relocation-only Play publish
@@ -14,7 +40,7 @@ Branch: codex/shared-ios-foundation
 - [ ] U6: Appwrite activation/canary | owner: cloud worker | acceptance: private cache, Apple platform, healthy deployment, cadence and Free quota validation, rollback preserved
 - [ ] U7: real iOS then Android smoke | owner: separate UI agents | acceptance: actual lists/detail/cache/lifecycle/offline with app data retained; fix scoped regressions
 - [ ] U8: branch CI then main promotion | owner: GitHub worker/root | acceptance: exact tested commit, ship=no before normal FF push, main CI healthy, private repo description current
-- [ ] U9: final handoff | owner: root | acceptance: clean commits, deployment/CI evidence, no lingering Bouncer workloads
+- [x] U9: pause handoff | owner: root | acceptance: committed/pushed checkpoint, deployment/CI evidence, no lingering Bouncer workloads; resume from Next below
 
 ## Decisions
 - Existing remote is tm-droid/bouncer; preserve it and its Android history.
@@ -67,3 +93,5 @@ Branch: codex/shared-ios-foundation
 - U6 first candidate6ae5f39a79f25837a39f built in5s (lockednpmci), activated then rolled back to6ad18b9dbd1bc3d6b655 after realproducer listshape regression: data.matches object envelope vs assumedarray. Four cheap legacyroute response hashes/statuses matched baseline. Bothcronupdates denied403billing_feature_unsupported; realtier0plan has functionsAllowCronfalse/intervalMinimum60. Verified scheduleempty/interval60 retained; no minute canary orpaidupgrade/bypass.
 - U6 listadapter now matches actual poll.js producer {data:{matches:[...]},fetchedAt}; realshape tests cover3tabs/membership/freshness/malformed. Freshreview clean; Node22fullAPI123/123 PASS(11.14s), config/vendor/diffguardsPASS. Checkpoint before reactivation.
 - U7 cleanup/retry: removed only task-generated /private/tmp/bouncer-shared-derived intermediate/index/module caches, preserving Products/app/testevidence/sourcepackages. Free1.2→4.1GiB. ExistingAndroidAVD booted, adbinstall-rPASS, launchStatusok reachedpermissioncontroller; hostdiskfilled beforeUIcapture. Emulatorstoppedcleanly/adbdevicesempty,free1.9GiB restored. Allappdataretained; lists/detail/offline/lifecycle stillunverified.
+
+- Pause requested by Tanush to clear storage. Corrected deployment healthy; all app verification workloads stopped. Final handoff commit will be pushed to existing feature branch; main remains gated.
