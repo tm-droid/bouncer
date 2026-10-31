@@ -21,16 +21,19 @@ import com.tanush.bouncer.models.Scorecard
 data class LiveDetailSnapshot(
     val payload: MatchLiveDetailPayload,
     val updatedAtMs: Long?,
+    val confirmedTerminal: Boolean = false,
+    val stale: Boolean = false,
 ) {
     /** See [ScorecardSnapshot.isFresh]: same question, same answer for an unknown age. */
     fun isFresh(nowMs: Long = System.currentTimeMillis()): Boolean =
-        updatedAtMs == null || nowMs - updatedAtMs <= ROW_STALE_MS
+        !stale && (updatedAtMs == null || nowMs - updatedAtMs <= ROW_STALE_MS)
 }
 
 /** As [LiveDetailSnapshot], for the `match-scorecard` row, which freezes by the same mechanism. */
 data class ScorecardSnapshot(
     val scorecard: Scorecard,
     val updatedAtMs: Long?,
+    val stale: Boolean = false,
 ) {
     /**
      * Whether `match-sync` still appears to be writing this row.
@@ -44,7 +47,7 @@ data class ScorecardSnapshot(
      * scorecard.
      */
     fun isFresh(nowMs: Long = System.currentTimeMillis()): Boolean =
-        updatedAtMs == null || nowMs - updatedAtMs <= ROW_STALE_MS
+        !stale && (updatedAtMs == null || nowMs - updatedAtMs <= ROW_STALE_MS)
 }
 
 /**
@@ -67,4 +70,11 @@ private const val ROW_STALE_MS = 180_000L
 internal fun rowUpdatedAtMs(value: Any?): Long? {
     val raw = (value as? String)?.trim()?.takeIf { it.isNotEmpty() } ?: return null
     return runCatching { java.time.Instant.parse(raw).toEpochMilli() }.getOrNull()
+}
+
+/** A known-stale shared section must not replace a newer canonical row already on screen. */
+internal fun LiveDetailSnapshot.olderThanApplied(hasApplied: Boolean, previousAt: Long?): Boolean {
+    if (!stale || !hasApplied) return false
+    val at = updatedAtMs ?: return false
+    return previousAt?.let { it > at } == true
 }

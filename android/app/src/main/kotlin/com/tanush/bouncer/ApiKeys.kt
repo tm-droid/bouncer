@@ -13,6 +13,8 @@ package com.tanush.bouncer
  * to publish.
  */
 object ApiKeys {
+    val appwriteApiFunctionId = BuildConfig.APPWRITE_API_FUNCTION_ID
+
     // Appwrite
     val appwriteEndpoint        = BuildConfig.APPWRITE_ENDPOINT
     val appwriteProjectId       = BuildConfig.APPWRITE_PROJECT_ID

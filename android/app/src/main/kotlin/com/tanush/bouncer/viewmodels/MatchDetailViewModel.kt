@@ -25,8 +25,10 @@ import com.tanush.bouncer.data.history.ArchivedInfo
 import com.tanush.bouncer.data.history.PastFeedSource
 import com.tanush.bouncer.data.history.PastMatchSource
 import com.tanush.bouncer.data.history.isCricsheetOnly
+import com.tanush.bouncer.data.remote.SHARED_DETAIL_TIMEOUT_MS
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
+import com.tanush.bouncer.data.remote.olderThanApplied
 import com.tanush.bouncer.data.remote.LiveDetailSnapshot
 import com.tanush.bouncer.data.remote.LiveMatchDetailSource
 import com.tanush.bouncer.data.remote.LiveSituation
@@ -45,7 +47,6 @@ import com.tanush.bouncer.services.MatchPresenceReporter
 import com.tanush.bouncer.ui.components.BatsmanMilestoneInfo
 import com.tanush.bouncer.ui.components.MilestoneType
 import com.tanush.bouncer.utils.bouncerExceptionHandler
-import com.tanush.bouncer.utils.firstAnswer
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import com.tanush.bouncer.utils.sentryCaptureThrottled
 import io.sentry.Breadcrumb
@@ -182,8 +183,8 @@ class MatchDetailViewModel(
          * to its own table still carry one, and an old card beats an empty tab. `loadError` is deliberately
          * NOT cleared on that branch: a stale payload is not evidence that anything loaded.
          */
-        internal fun merge(p: MatchLiveDetailPayload, matchIsOver: Boolean): UiState {
-            if (matchIsOver) {
+        internal fun merge(p: MatchLiveDetailPayload, matchIsOver: Boolean, confirmedTerminal: Boolean = false): UiState {
+            if (matchIsOver && !confirmedTerminal) {
                 val legacyCard = p.scorecard?.takeIf { it.innings.isNotEmpty() && scorecard == null }
                     ?: return this
                 return this.copy(scorecard = legacyCard)
@@ -233,6 +234,7 @@ class MatchDetailViewModel(
 
     /** `updated_at` of the newest detail row applied, or null when one arrived without a usable age. */
     private var detailUpdatedAtMs: Long? = null
+    private var confirmedTerminalCorrection = false
 
     /** Whether any detail payload has ever been applied. Before the first one the list is all there is. */
     private var hasAppliedDetail = false
@@ -391,22 +393,7 @@ class MatchDetailViewModel(
 
     private suspend fun loadInitial() {
         try {
-            // Live snapshot (batsmen/bowler/score/scorecard) + commentary feed from Appwrite.
-            //
-            // Not fetched at all for a finished match: the row froze when the match left the live
-            // list, [UiState.merge] would discard every field of it, and the read is billed per row
-            // out of the quota a 402 takes out app-wide.
-            if (!match.isCompleted) {
-                val detail = withTimeoutOrNull(10_000L) { liveSource.getForMatch(match.id) }
-                if (detail == null) {
-                    sentryBreadcrumb(
-                        "match_detail_v2.scorecard",
-                        "Appwrite live-detail fetch timed out or returned null",
-                        SentryLevel.WARNING,
-                    )
-                }
-                applyDetail(detail)
-            }
+            loadInitialDetail(match, liveSource, matchRepository, ::applyDetail)
             // Scorecard: one billed read for first paint, because the detail payload no longer
             // carries it and the row's realtime channel only speaks when match-sync next writes --
             // up to a minute of a blank Overview otherwise. Every update after this arrives free
@@ -422,7 +409,7 @@ class MatchDetailViewModel(
             ) { e ->
                 sentryBreadcrumb(
                     "match_detail_v2.scorecard_fallback",
-                    "On-device scorecard fetch failed: ${e.message}",
+                    "Shared scorecard fetch failed: ${e.message}",
                     SentryLevel.WARNING,
                 )
                 // Offline and a Cricbuzz 5xx (ANDROID-5R: a 504) fall through to the stored card.
@@ -558,7 +545,9 @@ class MatchDetailViewModel(
      */
     fun onMatchUpdated(updated: CricketMatch) {
         if (updated.id != match.id) return
+        val unchanged = match == updated
         match = updated
+        if (confirmedTerminalCorrection && unchanged) return
         if (!listLeadsDetail(updated, hasAppliedDetail, detailUpdatedAtMs)) return
         _uiState.update { it.seededFrom(updated).withScoreStamp(it, System.currentTimeMillis()) }
     }
@@ -586,12 +575,14 @@ class MatchDetailViewModel(
         // Remembered so [onMatchUpdated] can tell a row match-sync is still writing from one it
         // abandoned. Null (an unreadable `updated_at`) is not treated as old — see
         // [LiveDetailSnapshot] — so it is recorded as "seen, age unknown".
+        if (snapshot.olderThanApplied(hasAppliedDetail, detailUpdatedAtMs)) return
         detailUpdatedAtMs = snapshot.updatedAtMs
+        if (snapshot.confirmedTerminal) confirmedTerminalCorrection = true
         hasAppliedDetail = true
         // Judged from the state BEFORE this payload, so the update that finishes the match still
         // lands and only the re-reads of that frozen row afterwards are ignored. See [UiState.merge].
         val alreadyOver = isMatchOver(match, _uiState.value.liveStatus)
-        _uiState.update { st -> st.merge(p, alreadyOver).withScoreStamp(st, System.currentTimeMillis()) }
+        _uiState.update { st -> st.merge(p, alreadyOver, snapshot.confirmedTerminal).withScoreStamp(st, System.currentTimeMillis()) }
         if (alreadyOver) return
         p.batsmen.forEach { handleBatsmanMilestone(it) }
     }
@@ -796,24 +787,14 @@ internal suspend fun resolveScorecard(
 ): Scorecard? {
     if (current != null) return null
     suspend fun stored() = liveSource.getScorecardForMatch(matchId)?.takeIf { it.scorecard.innings.isNotEmpty() }
-    // runCatchingSuspend rethrows cancellation, which stdlib runCatching reported as a failed scrape.
-    suspend fun scraped() = AppResult.runCatchingSuspend { repository.fetchScorecard(matchId) }
-        .onError { onScrapeFailure(it.cause ?: it) }
-        .getOrNull()
-        ?.takeIf { it.innings.isNotEmpty() }
-    // `match-scorecard` freezes when the match leaves the live list, at the same instant and for
-    // the same reason `match-live-detail` does — so for a finished match the stored row is the
-    // truncated one and Cricbuzz's own page has the completed card. The scrape goes first there,
-    // which also spends no billed read unless it fails.
-    // The archive is last: it holds the card as the row froze, and is only reached once the row
-    // itself has been pruned.
-    if (matchIsOver) return firstAnswer({ scraped() }, { stored()?.scorecard }, archived)
-    // Live: one billed read, and the row wins while the server is still writing it. A row that has
-    // gone quiet is not discarded — it is merely outranked by a scrape, and still serves if that
-    // scrape comes back empty. Losing a stale card to no card at all would be a worse answer.
+    if (matchIsOver) {
+        val shared = fetchSharedScorecard(repository, matchId, onScrapeFailure)
+        return resolveFinishedScorecard(shared, { stored() }, archived)
+    }
     val row = stored()
     if (row != null && row.isFresh()) return row.scorecard
-    return scraped() ?: row?.scorecard
+    return fetchSharedScorecard(repository, matchId, onScrapeFailure)?.scorecard ?: row?.scorecard
+
 }
 
 /**
@@ -908,9 +889,9 @@ internal fun insertBySortKey(
 
 private suspend fun scrapeCommentary(repository: MatchRepository, matchId: String): List<String> =
     try {
-        withTimeoutOrNull(COMMENTARY_FETCH_TIMEOUT_MS) {
+        withTimeoutOrNull(SHARED_DETAIL_TIMEOUT_MS) {
             repository.fetchLiveCommentary(CricBuzzUrls.liveScoresUrl(matchId))
-        }.orEmpty()
+        } ?: throw java.net.SocketTimeoutException("Shared commentary deadline exceeded")
     } catch (e: kotlinx.coroutines.CancellationException) {
         // Leaving the screen cancels the fetch; that is not a failed fetch (ANDROID-53).
         throw e
@@ -918,7 +899,7 @@ private suspend fun scrapeCommentary(repository: MatchRepository, matchId: Strin
         Sentry.addBreadcrumb(
             Breadcrumb().apply {
                 category = "commentary_fallback"
-                message = "On-device commentary fetch failed: ${e.message}"
+                message = "Shared commentary fetch failed: ${e.message}"
                 level = SentryLevel.WARNING
             }
         )

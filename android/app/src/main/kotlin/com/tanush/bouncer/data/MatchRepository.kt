@@ -21,6 +21,9 @@ import com.tanush.bouncer.network.CricBuzzScraper.ScrapedMatchDetails
  */
 interface MatchRepository {
 
+    /** Shared on-demand detail; null for sources without the shared contract. */
+    suspend fun fetchSharedDetail(matchId: String): com.tanush.bouncer.data.remote.SharedMatchDetail? = null
+
     /** AppResult-wrapped live match list fetch (used by MainViewModel). */
     suspend fun fetchMatches(url: String, status: String): AppResult<List<CricketMatch>>
 

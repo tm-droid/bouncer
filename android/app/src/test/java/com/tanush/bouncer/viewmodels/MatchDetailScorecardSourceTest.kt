@@ -61,6 +61,7 @@ class MatchDetailScorecardSourceTest {
     }
 
     private fun repository(scorecard: Scorecard): MatchRepository = mockk(relaxed = true) {
+        coEvery { fetchSharedDetail(any()) } returns null
         coEvery { fetchScorecard(any()) } returns scorecard
     }
 
@@ -159,6 +160,7 @@ class MatchDetailScorecardSourceTest {
     @Test
     fun `a scrape failure on a finished match still falls back to the row`() = runTest {
         val repo: MatchRepository = mockk(relaxed = true) {
+        coEvery { fetchSharedDetail(any()) } returns null
             coEvery { fetchScorecard(any()) } throws java.io.IOException("no network")
         }
         var reported: Throwable? = null
@@ -172,4 +174,37 @@ class MatchDetailScorecardSourceTest {
         assertEquals(truncated, resolved)
         assertEquals("no network", reported?.message)
     }
+
+    @Test
+    fun `shared route deadline reports timeout and preserves completed archive fallback`() = runTest {
+        val repo: MatchRepository = mockk(relaxed = true) {
+        coEvery { fetchSharedDetail(any()) } returns null
+            coEvery { fetchScorecard(any()) } coAnswers {
+                kotlinx.coroutines.delay(20_001)
+                complete
+            }
+        }
+        var reported: Throwable? = null
+        val resolved = resolveScorecard(
+            current = null,
+            matchId = "169380",
+            liveSource = ScorecardSource(null),
+            repository = repo,
+            matchIsOver = true,
+            archived = { truncated },
+        ) { reported = it }
+        assertEquals(truncated, resolved)
+        org.junit.Assert.assertTrue(reported is java.net.SocketTimeoutException)
+    }
+
+
+    @Test
+    fun `completed archive outranks known stale shared card while fresh correction wins`() = runTest {
+        val stale = ScorecardSnapshot(truncated, 100, stale = true)
+        assertEquals(complete, resolveFinishedScorecard(stale, { null }, { complete }))
+        assertEquals(truncated, resolveFinishedScorecard(stale, { null }, { null }))
+        val fresh = ScorecardSnapshot(complete, 200, stale = false)
+        assertEquals(complete, resolveFinishedScorecard(fresh, { null }, { truncated }))
+    }
+
 }

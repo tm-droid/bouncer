@@ -25,14 +25,11 @@ import org.junit.Test
 class CommentaryRunsParityTest {
 
     private val js by lazy {
-        // Two files, one source of truth. `BALL_OUTCOME` and `TRAILING_PUNCTUATION` moved to
-        // llm.js when classifyEvent started reading the outcome clause before the prose: llm.js is
-        // vendored byte-identically into `generate-commentary`, which has no cricbuzz.js, so the
-        // import has to run cricbuzz.js -> llm.js and not the other way. Both are declared Gradle
-        // test inputs, so an edit to either still invalidates this task.
+        // Pure outcome patterns are canonical in outcome.js; provider code is not a parser dependency.
+        // Both canonical files are declared Gradle inputs so either edit invalidates this task.
         locate("appwrite/functions/match-sync/src/cricbuzz.js").readText(Charsets.UTF_8) +
             "\n" +
-            locate("appwrite/functions/match-sync/src/llm.js").readText(Charsets.UTF_8)
+            locate("appwrite/functions/match-sync/src/outcome.js").readText(Charsets.UTF_8)
     }
     private val kotlin by lazy {
         locate(
@@ -96,7 +93,7 @@ class CommentaryRunsParityTest {
     /** `const NAME = /pattern/flags;` → the pattern, unescaped-as-written. */
     private fun jsRegex(name: String): String {
         val m = Regex("""const $name = /(.*?)/[gimsuy]*;""").find(js)
-            ?: error("neither cricbuzz.js nor llm.js has `const $name = /…/`")
+            ?: error("neither cricbuzz.js nor outcome.js has `const $name = /…/`")
         return m.groupValues[1]
     }
 
