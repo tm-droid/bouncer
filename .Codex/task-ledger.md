@@ -20,7 +20,7 @@ Branch: codex/shared-ios-foundation
 - Existing remote is tm-droid/bouncer; preserve it and its Android history.
 - Native SwiftUI, Android visual identity adapted; local prefs; iOS18.2/current IDs; no widgets/push/accounts/full parity/store release.
 - Shared on-demand detail now, consumed by both apps; no LLM on request path; cron sole canonical-row writer.
-- Private response-cache bucket; no mutation of legacy public bucket permissions.
+- Private server-only response-cache table in existing bouncer-db, approved after Free plan rejected a second bucket; no mutation of legacy resource permissions.
 - Worktree Bouncer-unified on codex/shared-ios-foundation; original parent/Android remain recovery checkouts and own common Git metadata.
 - User explicitly approved cloud activation, feature-branch push, CI with publish=false and fast-forward GitHub main after verification. No paid upgrade or store release.
 - Testing turns ended per Tanush; run existing iOS and Android simulators sequentially and stop them after verification.
@@ -59,3 +59,8 @@ Branch: codex/shared-ios-foundation
 - Newcheckoutislinked: commonGitmetadata remainsatoriginalBouncer/android/.git; preserveoriginaluntilseparateclone/cutover. Quietfinalcheckpoint succeeded; code/status verificationreport saved.
 
 - User approved full continuation plan. Baseline a7975c16 clean; live Bouncer project confirmed connected via Appwrite MCP. Original main93549c93 unchanged/unprotected; currentfunctions interval60 hourly, plannedcron1min/15min with budget canary.
+
+- U6 continuation: Apple platform bouncer-ios registered for Testing.Bouncer (2026-10-31T13:37:47Z); private bucket create rejected403 additional_resource_not_allowed (Free one-bucket limit). No API deployment/env/cadence changed. Rollback source/settings preserved in protected /private/tmp/bouncer-activation-rollback. User approved private cache table alternative; adapting code and config before fresh review/deployment.
+- U8 feature branch pushed at af9c24401d49c7254950e36a608b477fc33058fd; workflow_dispatch publish=false run https://github.com/tm-droid/bouncer/actions/runs/41206442951 failed before any step: Actions budget preventing further use. iOS/dependency jobs skipped. Main remains93549c93f5f1d9b1f519391a63e8ac64e07c2c2f; CI gate is not satisfied and promotion is held.
+- U6 table adaptation ready: match-detail-cache in existing bouncer-db, permissions[]/rowSecurityfalse; payload mediumtext available (column encryption unavailable on Free, public cricket payload only). 96,048-byte server roundtrip PASS, anonymousrow404, private row[], cleanupquery accepted; proberow deleted. Fresh independent review clean. API121/121 PASS using cached Node22.23.4 binary (183951ms); sharedconfig/parserguards and diff--check PASS. npx wrapper attempt failed DNS; direct cachedbinary suite passed. No new API deployment/env/cadence yet.
+- U7 initial iOS retry: dedicated simulator reported booted, but app launch and automation timed out (launch300s, remote automation session creation timeout). Normal shutdown exit0; device verified Shutdown. No realUI/origin result claimed. Evidence /private/tmp/bouncer-ios-live-initial.txt; Android existingAVD next, preservingdata.

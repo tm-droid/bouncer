@@ -67,9 +67,15 @@ test('fixture has exact envelope and honest per-section availability', async () 
   assert.equal(f.schemaVersion, 1); assert.equal(f.commentary[0].aiGenerated, false);
   assert.equal(f.availability.scorecard.available, false); assert.equal(f.availability.detail.fetchedAt, f.fetchedAt);
 });
-test('private cleanup limits candidates and ignores foreign file IDs', async () => {
+test('private cleanup limits candidates and ignores foreign row IDs', async () => {
   let deleted = [];
-  const q = { lessThan: (...args) => args, orderAsc: x => x, limit: x => x };
-  const storage = { listFiles: async (bucket, queries) => { assert.equal(bucket, 'match-detail-cache'); assert.equal(queries[2], 20); return { files: [{ $id: 'md-123' }, { $id: 'active-viewers' }] }; }, deleteFile: async (bucket, id) => deleted.push(id) };
-  assert.equal(await cleanupDetailCache(storage, q), 1); assert.deepEqual(deleted, ['md-123']);
+  const q = { lessThan: (...args) => args, orderAsc: x => x, limit: x => x, select: x => x };
+  const db = { listRows: async ({ databaseId, tableId, queries, total }) => {
+    assert.equal(databaseId, 'bouncer-db'); assert.equal(tableId, 'match-detail-cache');
+    assert.equal(queries[2], 20); assert.equal(total, false); assert.deepEqual(queries[3], ['$id']);
+    return { rows: [{ $id: 'md-123' }, { $id: 'active-viewers' }] };
+  }, deleteRow: async ({ databaseId, tableId, rowId }) => {
+    assert.equal(databaseId, 'bouncer-db'); assert.equal(tableId, 'match-detail-cache'); deleted.push(rowId);
+  } };
+  assert.equal(await cleanupDetailCache(db, q), 1); assert.deepEqual(deleted, ['md-123']);
 });

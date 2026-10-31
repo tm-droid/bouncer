@@ -56,7 +56,7 @@ export default async ({ res, log, error }) => {
   const db = new TablesDB(new Client().setEndpoint(endpoint).setProject(project).setKey(key));
   const storage = new Storage(new StorageClient().setEndpoint(endpoint).setProject(project).setKey(key));
 
-  try { await cleanupDetailCache(storage, Query); }
+  try { await cleanupDetailCache(db, Query); }
   catch (e) { error(`Private detail cache cleanup skipped: ${e?.message}`); }
 
   const manifest = await fetchJson("manifest.json");

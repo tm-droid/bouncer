@@ -59,7 +59,7 @@
                     "value": "match-commentary"
                 },
                 {
-                    "key": "MATCH_DETAIL_CACHE_BUCKET_ID",
+                    "key": "MATCH_DETAIL_CACHE_TABLE_ID",
                     "value": "match-detail-cache"
                 }
             ]
@@ -183,20 +183,6 @@
                 "update(\"any\")",
                 "delete(\"any\")"
             ]
-        },
-        {
-            "$id": "match-detail-cache",
-            "name": "Private match detail responses",
-            "enabled": true,
-            "fileSecurity": false,
-            "maximumFileSize": 1048576,
-            "allowedFileExtensions": [
-                "json"
-            ],
-            "compression": "gzip",
-            "encryption": true,
-            "antivirus": false,
-            "$permissions": []
         }
     ],
     "tablesDB": [
@@ -207,6 +193,24 @@
         }
     ],
     "tables": [
+        {
+            "$id": "match-detail-cache",
+            "$permissions": [],
+            "databaseId": "bouncer-db",
+            "name": "Private match detail responses",
+            "enabled": true,
+            "rowSecurity": false,
+            "columns": [
+                {
+                    "key": "payload",
+                    "type": "mediumtext",
+                    "required": true,
+                    "array": false,
+                    "encrypt": false
+                }
+            ],
+            "indexes": []
+        },
         {
             "$id": "ai-commentary-cache",
             "$permissions": [

@@ -51,7 +51,7 @@ git -c core.fsmonitor=false diff --check
 
 The code checks passed. A repeated post-move Git whitespace scan stalled and was interrupted; the final changed text files passed a direct trailing-whitespace check, and the local checkpoint was saved with optional Git scans disabled. Six targeted iOS CI path cases pass; prior migration/Android/backend/shared filters also passed, including no relocation-only Play publish. Known provider credential scan:0hits in imported iOS text sources; machine/user-state import scan:0hits.
 
-## Review and live verification boundary
+## Earlier baseline review and live verification boundary
 
 Independent backend review found no remaining scoped correctness gaps. Independent Android and iOS re-reviews confirmed their findings were fixed. The actual iOS app launches on the dedicated simulator, but Appwrite rejects its unregistered iOS origin: `testing.bouncer`. Consequently, real match loading and match-detail navigation remain **blocked**, despite passing build and fixture/lifecycle tests. No mocked screenshots were substituted for real data.
 
@@ -60,3 +60,20 @@ Before live end-to-end validation: register the iOS platform for the current bun
 No GitHub push, merge, production platform/bucket mutation, function deployment or store release was performed. Actual organization usage/limits and deployed permissions were not inspected. Local and warm-container limits do not guarantee an organization-wide monthly budget or global singleflight.
 
 The dedicated Bouncer app was terminated and simulator `C609F07D-E70D-42C1-B8C6-BA4138106F23` was shut down after the UI check; both cleanup commands completed. No Bouncer build/test/UI workload remains running.
+
+
+## Authorized activation continuation
+
+The approved continuation is in progress in `Bouncer-unified` on `codex/shared-ios-foundation`. The original recovery checkouts and shared Git metadata are retained.
+
+- Apple platform `bouncer-ios` was registered for bundle `Testing.Bouncer` at `2026-10-31T13:37:47Z`; Android's platform remains unchanged.
+- Appwrite rejected the proposed second bucket with `403 additional_resource_not_allowed`: the existing Free plan permits one bucket. Tanush approved a private response-cache table in the existing `bouncer-db` instead. Legacy resource permissions and provider secrets remain unchanged. API activation and cron changes await the table adaptation, fresh review and scoped checks.
+- The previous API deployment is `6ad18b9dbd1bc3d6b655`; match-sync deployment is `match-sync-mvliqrgc`. Protected rollback settings/source and baseline usage were captured in `/private/tmp/bouncer-activation-rollback`; nonsecret evidence is in `/private/tmp/bouncer-activation-evidence.json`.
+- Feature commit `af9c24401d49c7254950e36a608b477fc33058fd` was pushed to the existing private repository. [CI dispatch with `publish=false`](https://github.com/tm-droid/bouncer/actions/runs/41206442951) failed before executing any steps: “The job was not started because an Actions budget is preventing further use.” iOS and dependency jobs were skipped. This is not a passing CI result.
+- GitHub main remains `93549c93f5f1d9b1f519391a63e8ac64e07c2c2f`. Promotion is held until the required cloud, app and CI checks pass. No store publication or paid upgrade was performed.
+
+The table adaptation passed fresh independent review. Actual private table/column creation, a 96,048-byte payload roundtrip, empty row permissions, anonymous denial (`404 row_not_found`), and the cleanup query were checked; the probe row was removed. Built-in column encryption is unavailable on Free; this server-only table contains public cricket response data and no secrets.
+
+Affected backend verification: `/Users/tanushmalhotra/.npm/_npx/52027bd8fc0022aa/node_modules/node/bin/node --test` from `appwrite/functions/api` passed **121/121** in 183,951 ms using Node22.23.4. The `npx` wrapper first failed DNS, so the already-cached exact Node binary was used. `node shared/check-backend-config.mjs`, `node appwrite/tools/sync-api-parsers.mjs --check` and `git -c core.fsmonitor=false diff --check` passed. Match-sync and native code are unchanged; earlier passing checks are retained.
+
+The initial real-iOS retry remained unverified: boot status reported the dedicated device booted, but launch timed out after 300 seconds and snapshot creation timed out establishing remote automation. Normal shutdown succeeded and the device was verified `Shutdown`. No app data was erased; evidence is `/private/tmp/bouncer-ios-live-initial.txt`.

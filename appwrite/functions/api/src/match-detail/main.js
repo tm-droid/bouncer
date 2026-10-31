@@ -1,10 +1,10 @@
 import { Client, Databases, Storage } from 'node-appwrite';
-import { InputFile } from 'node-appwrite/file';
+import { Client as TableClient, TablesDB } from 'node-appwrite-26';
+import { detailCache } from './cache.js';
 import { parseJsonFile } from '../presence/storageJson.js';
 import { createDetailService, validMatchId } from './service.js';
 import { fetchHtml, liveScoresUrl, scorecardUrl, parseLiveDetail, parseScorecard, parseMatchMeta, parseCommentary } from './parser/cricbuzz.js';
 
-const CACHE = process.env.MATCH_DETAIL_CACHE_BUCKET_ID ?? 'match-detail-cache';
 const LISTS = process.env.MATCH_CACHE_BUCKET_ID ?? 'cricket-stats';
 const DB = process.env.APPWRITE_AI_CACHE_DB_ID ?? 'bouncer-db';
 // The SDK has no per-call cancellation in v15. Bound every await and check the absolute deadline
@@ -20,12 +20,11 @@ function dependencies() {
   const client = new Client().setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
     .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID).setKey(process.env.APPWRITE_API_KEY);
   const storage = new Storage(client), db = new Databases(client);
+  const cache = detailCache(new TablesDB(new TableClient().setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
+    .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID).setKey(process.env.APPWRITE_API_KEY)));
   return {
-    readCache: (id, end) => bounded(async () => parseJsonFile(await storage.getFileDownload(CACHE, `md-${id}`)), end),
-    async writeCache(id, value, end) {
-      await bounded(() => storage.deleteFile(CACHE, `md-${id}`).catch(e => { if (e?.code !== 404) throw e; }), end, 500);
-      await bounded(() => storage.createFile(CACHE, `md-${id}`, InputFile.fromBuffer(Buffer.from(JSON.stringify(value)), `${id}.json`), []), end, 500);
-    },
+    readCache: (id, end) => bounded(() => cache.read(id), end),
+    writeCache: (id, value, end) => bounded(() => cache.write(id, value), end, 1000),
     async readLists(end) {
       const groups = await Promise.all(['live', 'upcoming', 'recent'].map(async state => {
         const blob = await bounded(async () => parseJsonFile(await storage.getFileDownload(LISTS, `${state}-matches`)), end);
