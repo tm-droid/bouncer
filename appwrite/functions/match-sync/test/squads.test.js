@@ -7,7 +7,7 @@ import { parseSquads, squadsUrl } from "../src/squads.js";
 // The pages `MatchSquadsRscTest` pins on the device: IND v WI 2nd ODI (151543, in progress) and
 // PAK v BAN (171051, preview), captured 2026-09-30.
 const fixture = (name) =>
-  readFileSync(new URL(`../../../../app/src/test/resources/${name}`, import.meta.url), "utf8");
+  readFileSync(new URL(`../../../../android/app/src/test/resources/${name}`, import.meta.url), "utf8");
 
 test("after the toss each side has a playing eleven and a bench", () => {
   const squads = parseSquads(fixture("cricbuzz_match_squads_xi.html"));

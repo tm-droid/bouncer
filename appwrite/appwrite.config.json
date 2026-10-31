@@ -57,6 +57,10 @@
                 {
                     "key": "MATCH_COMMENTARY_COL_ID",
                     "value": "match-commentary"
+                },
+                {
+                    "key": "MATCH_DETAIL_CACHE_BUCKET_ID",
+                    "value": "match-detail-cache"
                 }
             ]
         },
@@ -179,6 +183,20 @@
                 "update(\"any\")",
                 "delete(\"any\")"
             ]
+        },
+        {
+            "$id": "match-detail-cache",
+            "name": "Private match detail responses",
+            "enabled": true,
+            "fileSecurity": false,
+            "maximumFileSize": 1048576,
+            "allowedFileExtensions": [
+                "json"
+            ],
+            "compression": "gzip",
+            "encryption": true,
+            "antivirus": false,
+            "$permissions": []
         }
     ],
     "tablesDB": [

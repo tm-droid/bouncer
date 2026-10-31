@@ -189,3 +189,12 @@ test("the retry queues on the shared slot rather than bursting", async () => {
     },
   );
 });
+
+test("interactive fetch obeys absolute deadline before upstream and never retries", async () => {
+  await withStubbedFetch(() => { throw new DOMException('timeout', 'TimeoutError'); }, async calls => {
+    await assert.rejects(fetchHtml('https://www.cricbuzz.com/x', 1000, { deadlineAt: Date.now() - 1, maxAttempts: 1 }), /deadline/);
+    assert.equal(calls.length, 0);
+    await assert.rejects(fetchHtml('https://www.cricbuzz.com/x', 1000, { deadlineAt: Date.now() + 2000, maxAttempts: 1 }), /timeout/);
+    assert.equal(calls.length, 1);
+  });
+});

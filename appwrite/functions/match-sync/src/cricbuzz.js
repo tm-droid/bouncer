@@ -4,7 +4,7 @@
 //   ScrapedBatsman, ScrapedBowler, Scorecard/Innings/BatsmanStats/BowlerStats/FallOfWicket.
 
 import * as cheerio from "cheerio";
-import { outcomeClause } from "./llm.js";
+import { outcomeClause } from "./outcome.js";
 import {
   CRICBUZZ_BASE,
   BLOCK_BACKOFF_MS,
@@ -241,8 +241,7 @@ export function parseCommentary(html) {
 // distinguishable, or the device is back to inventing the figure this exists to stop it inventing.
 // Mirrored by parseBallRuns in CommentaryParsing.kt; CommentaryRunsParityTest fails the build on
 // a one-sided edit.
-// The outcome clause parser lives in llm.js, which classifyEvent shares it with; see
-// outcomeClause there for why the import runs in this direction.
+// The pure outcome parser is shared with classifyEvent through outcome.js.
 const RUNS_OFF_BAT = /^(\d{1,3}) runs?$/i;
 const NO_RUN = /^no run$/i;
 const OUTCOME_FOUR = /^four$/i;

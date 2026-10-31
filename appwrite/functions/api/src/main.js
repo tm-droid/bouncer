@@ -10,6 +10,7 @@
 // deletes, and highlights was already on 26. They import `node-appwrite` and `node-appwrite-26`
 // respectively; moving a handler across is a change to that handler, not to this file.
 
+import matchDetail from "./match-detail/main.js";
 import news from "./news/main.js";
 import playerSearch from "./player-search/main.js";
 import presence from "./presence/main.js";
@@ -24,6 +25,7 @@ import prune from "./prune/main.js";
  * would let any caller hold a container ten times longer than before, against a 100 GB-hour plan.
  */
 export const ROUTES = {
+  "/match-detail": { handler: matchDetail, timeoutMs: 12_000 },
   "/news": { handler: news, timeoutMs: 30_000 },
   "/player-search": { handler: playerSearch, timeoutMs: 90_000 },
   "/presence": { handler: presence, timeoutMs: 15_000 },

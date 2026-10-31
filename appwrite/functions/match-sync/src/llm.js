@@ -1,3 +1,5 @@
+import { outcomeClause } from "./outcome.js";
+export { outcomeClause } from "./outcome.js";
 // LLM provider chain + sanitization + event classification for server-side commentary generation.
 //
 // This is the only copy since October 2026. It was vendored byte-identically into
@@ -990,28 +992,6 @@ export function classifyEvent(text) {
 const OUTCOME_WICKET_RE = /^(?:out\b|that'?s out\b)/i;
 const SCORING_CLAUSE_RE = /^(?:no run|\d{1,3} runs?|four|six)$/i;
 
-const BALL_OUTCOME = /^[^,]+,\s*([^,]+)/;
-const TRAILING_PUNCTUATION = /[.!]+$/;
-
-/**
- * Cricbuzz's outcome clause: the field after "<Bowler> to <Batter>," and before the description.
- *
- * The only STRUCTURAL statement of what a delivery was. Everything after it is prose, and prose
- * about a delivery routinely contains the words for other deliveries.
- *
- * It lives HERE rather than in cricbuzz.js — which is its other caller, via parseBallOutcome —
- * because this file is vendored byte-identically into `generate-commentary`, which has no
- * cricbuzz.js. An import in this direction would break that deployment; the import goes the other
- * way instead. Mirrored on the device by TimelineEventExtractor.outcomeClause.
- *
- * Trailing punctuation is trimmed because callers match the clause whole: the passthrough path
- * writes Cricbuzz's text verbatim, and a "1 run." reaching an anchored `^(\d+) runs?$` would score
- * null and lose a delivery the raw text names outright.
- */
-export function outcomeClause(text) {
-  const m = String(text || "").match(BALL_OUTCOME);
-  return m ? m[1].trim().replace(TRAILING_PUNCTUATION, "") : "";
-}
 
 function clauseEvent(clause) {
   if (/^six$/i.test(clause)) return "SIX";

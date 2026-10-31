@@ -12,7 +12,7 @@ import { parseMatchMeta } from "../src/cricbuzz.js";
 import { parseSquads } from "../src/squads.js";
 
 const fixture = (name) =>
-  readFileSync(new URL(`../../../../app/src/test/resources/${name}`, import.meta.url), "utf8");
+  readFileSync(new URL(`../../../../android/app/src/test/resources/${name}`, import.meta.url), "utf8");
 
 // IND v WI, ODI — the captured team sheet, against tables shaped as the trainer publishes them.
 const squads = parseSquads(fixture("cricbuzz_match_squads_xi.html"));

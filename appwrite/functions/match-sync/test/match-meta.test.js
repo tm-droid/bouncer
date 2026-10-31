@@ -6,7 +6,7 @@ import { metaPresence, parseMatchMeta } from "../src/cricbuzz.js";
 
 // Captured live pages — the same markup the Kotlin commentary tests pin.
 const fixture = (name) =>
-  readFileSync(new URL(`../../../../app/src/test/resources/${name}`, import.meta.url), "utf8");
+  readFileSync(new URL(`../../../../android/app/src/test/resources/${name}`, import.meta.url), "utf8");
 
 test("a one-day page yields the venue, the toss and the in-match state", () => {
   const meta = parseMatchMeta(fixture("cricbuzz_commentary_overball.html"));

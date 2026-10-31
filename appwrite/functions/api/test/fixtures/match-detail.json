@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "matchId": "12345",
+  "state": "LIVE",
+  "summary": {
+    "id": "12345",
+    "title": "India vs Australia",
+    "status": "India need 20 runs",
+    "state": "LIVE",
+    "matchFormat": "T20",
+    "teams": []
+  },
+  "detail": {
+    "batsmen": [],
+    "bowler": null,
+    "recentBalls": [],
+    "score": "140/3 (18)",
+    "status": "India need 20 runs"
+  },
+  "scorecard": null,
+  "meta": null,
+  "commentary": [
+    {
+      "timestamp": 1,
+      "commText": "Bowler to Batter, 1 run",
+      "ballMetric": 18.1,
+      "innings": 2,
+      "source": "cricbuzz",
+      "aiGenerated": false
+    }
+  ],
+  "fetchedAt": 1793404800000,
+  "stale": false,
+  "retryAfterSeconds": 0,
+  "availability": {
+    "summary": {
+      "available": true,
+      "fetchedAt": 1793404800000,
+      "stale": false
+    },
+    "detail": {
+      "available": true,
+      "fetchedAt": 1793404800000,
+      "stale": false
+    },
+    "scorecard": {
+      "available": false,
+      "fetchedAt": null,
+      "stale": false
+    },
+    "meta": {
+      "available": false,
+      "fetchedAt": null,
+      "stale": false
+    },
+    "commentary": {
+      "available": true,
+      "fetchedAt": 1793404800000,
+      "stale": false
+    }
+  }
+}

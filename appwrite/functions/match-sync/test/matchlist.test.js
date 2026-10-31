@@ -11,7 +11,7 @@ import { parseMatchList, teamInningsScore } from "../src/matchlist.js";
  * side, so both parsers of this one page are checked against one page rather than against two
  * hand-written expectations that can agree with each other and with neither reality.
  */
-const FIXTURE = "app/src/test/resources/cricbuzz_match_list_team_images.html";
+const FIXTURE = "android/app/src/test/resources/cricbuzz_match_list_team_images.html";
 
 function locate(relativePath) {
   let dir = dirname(fileURLToPath(import.meta.url));

@@ -8,7 +8,7 @@ import { mergeOverHistory } from "../src/main.js";
 // Captured live page (Durham, second innings, overs 47-49) — the same markup the Kotlin
 // commentary tests pin.
 const fixture = (name) =>
-  readFileSync(new URL(`../../../../app/src/test/resources/${name}`, import.meta.url), "utf8");
+  readFileSync(new URL(`../../../../android/app/src/test/resources/${name}`, import.meta.url), "utf8");
 
 test("each over separator on the page becomes one point, with its innings", () => {
   assert.deepEqual(parseOverHistory(fixture("cricbuzz_commentary_overball.html")), [

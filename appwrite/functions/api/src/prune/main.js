@@ -1,4 +1,5 @@
 import { Client, TablesDB, Query } from "node-appwrite-26";
+import { cleanupDetailCache } from "../match-detail/cleanup.js";
 import { Client as StorageClient, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { parseJsonFile } from "../presence/storageJson.js";
@@ -54,6 +55,9 @@ export default async ({ res, log, error }) => {
   const key = process.env.APPWRITE_API_KEY;
   const db = new TablesDB(new Client().setEndpoint(endpoint).setProject(project).setKey(key));
   const storage = new Storage(new StorageClient().setEndpoint(endpoint).setProject(project).setKey(key));
+
+  try { await cleanupDetailCache(storage, Query); }
+  catch (e) { error(`Private detail cache cleanup skipped: ${e?.message}`); }
 
   const manifest = await fetchJson("manifest.json");
   let state = null;

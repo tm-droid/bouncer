@@ -44,8 +44,9 @@ test("a path is matched without its trailing slash or query", () => {
   assert.equal(routeOf("/news"), "/news");
   assert.equal(routeOf("/news/"), "/news");
   assert.equal(routeOf("/player-search?x=1"), "/player-search");
+  assert.equal(routeOf("/match-detail/?x=1"), "/match-detail");
   assert.equal(routeOf(undefined), "/");
-  assert.deepEqual(Object.keys(ROUTES).sort(), ["/news", "/player-search", "/presence"]);
+  assert.deepEqual(Object.keys(ROUTES).sort(), ["/match-detail", "/news", "/player-search", "/presence"]);
 });
 
 test("an unknown route is a 404, never a default handler", async () => {
@@ -61,7 +62,7 @@ test("each public route keeps the timeout it had as its own function", () => {
   // The function's timeout is 300 s for the prune. These are callable by anyone.
   assert.deepEqual(
     Object.fromEntries(Object.entries(ROUTES).map(([path, r]) => [path, r.timeoutMs])),
-    { "/news": 30_000, "/player-search": 90_000, "/presence": 15_000 },
+    { "/match-detail": 12_000, "/news": 30_000, "/player-search": 90_000, "/presence": 15_000 },
   );
 });
 
