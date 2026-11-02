@@ -34,12 +34,13 @@ on:
     branches: [main]
     paths-ignore: &ignored
       - '**/*.md'
-      - '.claude/**'
-      - '.devcontainer/**'
-      - 'my-video/**'
-      - 'android-dev-mcp-server/**'
+      - 'android/.claude/**'
+      - 'android/.devcontainer/**'
+      - 'android/my-video/**'
+      - 'android/android-dev-mcp-server/**'
+      - 'ios/**'
       - '.github/dependabot.yml'
-  # The same list. Dependabot's my-video and MCP-server PRs start no run.
+  # The same list. Dependabot's my-video and MCP-server PRs, and iOS-only changes, start no run.
   pull_request:
     paths-ignore: *ignored
   # Every check plus the release bundle, whatever changed. `publish` uploads it to Play as well:
@@ -77,6 +78,11 @@ jobs:
     # Job-level so a step's `if` can see it; a step `if` cannot read `secrets`.
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    # The Android app and its functions live under android/ in the monorepo; `uses:` inputs below
+    # are repository-relative and carry the prefix themselves.
+    defaults:
+      run:
+        working-directory: android
 
     steps:
       - uses: actions/checkout@v7
@@ -104,7 +110,7 @@ jobs:
           PUBLISH: ${{ inputs.publish }}
         run: |
           set -euo pipefail
-          app='^(app/|baselineprofile/|gradle/|distribution/|[^/]*\.gradle\.kts$|gradle\.properties$|local\.properties\.template$)'
+          app='^android/(app/|baselineprofile/|gradle/|distribution/|[^/]*\.gradle\.kts$|gradle\.properties$|local\.properties\.template$)'
           base="${BEFORE}"
           if [ "${EVENT}" = pull_request ]; then base="${PR_BASE}"; fi
           files=ALL
@@ -114,8 +120,8 @@ jobs:
           changed() { [ "${files}" = ALL ] || grep -qE "$1" <<< "${files}"; }
 
           android=no; functions=no; bundle=no; ship=no
-          if changed "${app}|^tools/|^\.github/workflows/ci\.yml$"; then android=yes; fi
-          if changed '^appwrite/|^\.github/workflows/ci\.yml$'; then functions=yes; fi
+          if changed "${app}|^android/tools/|^\.github/workflows/ci\.yml$"; then android=yes; fi
+          if changed '^android/appwrite/|^\.github/workflows/ci\.yml$'; then functions=yes; fi
           if [ "${EVENT}" = workflow_dispatch ]; then
             bundle=yes
             if [ "${PUBLISH}" = true ]; then ship=yes; fi
@@ -159,9 +165,9 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: |
-            appwrite/functions/*/package-lock.json
-            appwrite/tools/history/package-lock.json
-            appwrite/tools/archive/package-lock.json
+            android/appwrite/functions/*/package-lock.json
+            android/appwrite/tools/history/package-lock.json
+            android/appwrite/tools/archive/package-lock.json
 
       - name: Run every function's tests
         if: steps.changes.outputs.functions == 'yes'
@@ -310,13 +316,13 @@ jobs:
         if: failure() && steps.changes.outputs.gradle == 'yes'
         with:
           name: test-results
-          path: app/build/reports/tests/
+          path: android/app/build/reports/tests/
 
       - uses: actions/upload-artifact@v7
         if: always() && steps.changes.outputs.android == 'yes'
         with:
           name: lint-report
-          path: app/build/reports/lint-results-*.html
+          path: android/app/build/reports/lint-results-*.html
 
       # Coverage is reported, not gated: an upload failure never blocks the Play build. The step is
       # skipped until CODECOV_TOKEN exists, and on Dependabot runs, which see no secrets.
@@ -324,7 +330,7 @@ jobs:
         if: env.CODECOV_TOKEN != '' && steps.changes.outputs.gradle == 'yes'
         with:
           token: ${{ env.CODECOV_TOKEN }}
-          files: app/build/reports/coverage/test/debug/report.xml
+          files: android/app/build/reports/coverage/test/debug/report.xml
           disable_search: true
           flags: unit
 
@@ -332,7 +338,7 @@ jobs:
         if: steps.changes.outputs.bundle == 'yes'
         with:
           name: release-aab
-          path: app/build/outputs/bundle/release/app-release.aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
 
       # The tested bundle, to the path the Gradle build would have left it at.
       - name: Fetch the tested bundle
@@ -368,7 +374,7 @@ jobs:
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.tanush.bouncer
-          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
           # One upload, two tracks. `alpha` is the Play API id of the default closed testing
           # track, which waits on review; `internal` has no review, so the same build is
           # installable within minutes. No space after the comma.
@@ -377,7 +383,7 @@ jobs:
           inAppUpdatePriority: ${{ steps.priority.outputs.value }}
           # Without this every release shipped with blank release notes.
           # distribution/whatsnew/README.md says who edits it and when.
-          whatsNewDirectory: distribution/whatsnew
+          whatsNewDirectory: android/distribution/whatsnew
 
   # Submits the graph the ci job saved. Separate so that only this job, which runs no repository
   # code, holds a token that can write. A few seconds, on bundling runs only.

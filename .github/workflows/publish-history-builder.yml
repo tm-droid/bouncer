@@ -15,8 +15,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'appwrite/tools/history/**'
-      - 'appwrite/functions/train-win-probability/src/contextmath.js'
+      - 'android/appwrite/tools/history/**'
+      - 'android/appwrite/functions/train-win-probability/src/contextmath.js'
       - '.github/workflows/publish-history-builder.yml'
   workflow_dispatch:
 
@@ -28,6 +28,10 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    defaults:
+      run:
+        # The Android app, its functions and tools live under android/ in the monorepo.
+        working-directory: android
     steps:
       - uses: actions/checkout@v7
 
@@ -37,7 +41,7 @@ jobs:
 
       # Here the vendored key helpers are checked against contextmath.js; in the public repo they cannot be.
       - name: Test
-        working-directory: appwrite/tools/history
+        working-directory: android/appwrite/tools/history
         run: npm ci --ignore-scripts --no-audit --no-fund && npm test
 
       - name: Publish

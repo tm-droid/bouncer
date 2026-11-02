@@ -1,0 +1,90 @@
+# Built application files
+*.apk
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+build/
+
+# Gradle files
+.gradle/
+build/
+
+# Local configuration file (contains API keys - DO NOT COMMIT)
+local.properties
+
+# Android Studio
+*.iml
+.idea/
+*.log
+
+# Kotlin
+.kotlin/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Signing files
+*.jks
+*.keystore
+
+# Proguard
+proguard/
+
+# Crashlytics
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+
+# Sentry Config File
+sentry.properties
+
+# A shell command whose $HOME failed to expand once wrote an entire Android SDK copy into
+# a literal ~/ directory here. That copy is gone; the rule stays so a repeat is ignored
+# rather than committed.
+~/
+
+# Design mockups / prototypes
+design/
+
+# Agent / Copilot internal files — not app code
+agents/
+agents.md
+.github/agents/
+.github/instructions/
+.github/prompts/
+**/src/.github/
+
+# MCP / internal tooling docs
+**/README_MCP.md
+
+# Backend API project (separate repo)
+cricket-api/
+
+# Sentry wizard binary
+sentry-wizard
+
+# Appwrite function dependencies. NEVER track these: a PARTIAL node_modules is worse than
+# none. Only the text files (LICENSE, README, package.json) of each package were ever
+# committed, so a VCS build checked out a @sentry/node with a valid package.json and no
+# build/ directory, npm install treated it as already present, and bouncer-match-sync died
+# on "Cannot find module @sentry/node/build/esm/index.js" every minute until the previous
+# deployment was reactivated by hand (2026-08-05 01:53-02:15 UTC).
+appwrite/functions/*/node_modules/
+
+# Session-scratch workflow scripts from the Workflow tool — not project config.
+.claude/workflows/
+
+# Python bytecode from tools/
+__pycache__/
+*.pyc

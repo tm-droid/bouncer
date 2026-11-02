@@ -15,7 +15,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'appwrite/tools/archive/**'
+      - 'android/appwrite/tools/archive/**'
       - '.github/workflows/publish-archiver.yml'
   workflow_dispatch:
 
@@ -27,6 +27,10 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    defaults:
+      run:
+        # The Android app, its functions and tools live under android/ in the monorepo.
+        working-directory: android
     steps:
       - uses: actions/checkout@v7
 
@@ -36,7 +40,7 @@ jobs:
 
       # Here the vendored classifier is checked against match-sync's; in the public repo it cannot be.
       - name: Test
-        working-directory: appwrite/tools/archive
+        working-directory: android/appwrite/tools/archive
         run: npm test
 
       - name: Publish

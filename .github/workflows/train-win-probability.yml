@@ -25,6 +25,10 @@ jobs:
   train:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        # The Android app, its functions and tools live under android/ in the monorepo.
+        working-directory: android
     steps:
       - uses: actions/checkout@v7
 
@@ -32,10 +36,10 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: appwrite/functions/train-win-probability/package-lock.json
+          cache-dependency-path: android/appwrite/functions/train-win-probability/package-lock.json
 
       - name: Install
-        working-directory: appwrite/functions/train-win-probability
+        working-directory: android/appwrite/functions/train-win-probability
         run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Train and publish
