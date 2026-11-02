@@ -1,24 +1,15 @@
 {
-  "originHash" : "659786766a90f01501a614ddcad57eb6e7a6f2d2402b67b9827abdb79a453e3c",
-  "pins" : [
+  "originHash": "659786766a90f01501a614ddcad57eb6e7a6f2d2402b67b9827abdb79a453e3c",
+  "pins": [
     {
-      "identity" : "swiftsoup",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/scinfu/SwiftSoup",
-      "state" : {
-        "revision" : "bba848db50462894e7fc0891d018dfecad4ef11e",
-        "version" : "2.8.7"
-      }
-    },
-    {
-      "identity" : "uiimagecolors",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/jathu/UIImageColors",
-      "state" : {
-        "revision" : "e49e6c32ea556e9fa0109dc79686bea4a10d41a2",
-        "version" : "2.2.0"
+      "identity": "uiimagecolors",
+      "kind": "remoteSourceControl",
+      "location": "https://github.com/jathu/UIImageColors",
+      "state": {
+        "revision": "e49e6c32ea556e9fa0109dc79686bea4a10d41a2",
+        "version": "2.2.0"
       }
     }
   ],
-  "version" : 3
+  "version": 3
 }
