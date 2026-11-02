@@ -2,11 +2,23 @@ import SwiftUI
 
 struct CommentaryTab: View {
     let store: MatchDetailStore
-    @State private var chip: Chip = .all
+    @State private var chip: Chip
+
+    init(store: MatchDetailStore) {
+        self.store = store
+        _chip = State(initialValue: Chip(filter: store.filter))
+    }
 
     enum Chip: String, CaseIterable, Identifiable {
         case all = "All", wickets = "Wickets", boundaries = "Boundaries", milestones = "Milestones"
         var id: String { rawValue }
+        init(filter: CommentaryFilter) {
+            switch filter {
+            case .wickets: self = .wickets
+            case .boundaries: self = .boundaries
+            default: self = .all
+            }
+        }
         var filter: CommentaryFilter {
             switch self {
             case .all, .milestones: .all
@@ -53,7 +65,7 @@ struct CommentaryTab: View {
                             overHeader(over)
                         }
                         CommentaryLine(entry: e)
-                            .onAppear { if i >= rows.count - 3 { loadMore() } }
+                            .onAppear { if chip != .milestones, i >= rows.count - 3 { loadMore() } }
                         Divider().overlay(BouncerColor.divider)
                     }
                     footer

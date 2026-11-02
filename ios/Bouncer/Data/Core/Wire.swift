@@ -33,14 +33,15 @@ struct Wire {
     func int64(_ key: String) -> Int64? {
         let k = WireKey(key)
         if let i = try? container.decodeIfPresent(Int64.self, forKey: k) { return i }
-        if let d = try? container.decodeIfPresent(Double.self, forKey: k), d.isFinite { return Int64(d) }
+        if let d = try? container.decodeIfPresent(Double.self, forKey: k) { return Wire.safeInt64(d) }
         if let s = try? container.decodeIfPresent(String.self, forKey: k) {
-            return Int64(s.trimmingCharacters(in: .whitespaces)) ?? Double(s).map { Int64($0) }
+            let t = s.trimmingCharacters(in: .whitespaces)
+            return Int64(t) ?? Double(t).flatMap(Wire.safeInt64)
         }
         return nil
     }
 
-    func int(_ key: String) -> Int? { int64(key).map { Int($0) } }
+    func int(_ key: String) -> Int? { int64(key).flatMap { Int(exactly: $0) } }
 
     func double(_ key: String) -> Double? {
         let k = WireKey(key)
@@ -74,6 +75,12 @@ struct Wire {
     func array<T: Decodable>(_ key: String, of type: T.Type = T.self) -> [T] {
         let lossy = (try? container.decodeIfPresent([Lossy<T>].self, forKey: WireKey(key))) ?? nil
         return (lossy ?? []).compactMap(\.value)
+    }
+
+    /// nil for NaN, infinities and values outside Int64 (a bare `Int64(d)` traps on those).
+    static func safeInt64(_ d: Double) -> Int64? {
+        guard d.isFinite, abs(d) < 9e18 else { return nil }
+        return Int64(d)
     }
 
     static func format(_ d: Double) -> String {

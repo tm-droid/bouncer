@@ -43,21 +43,21 @@ struct HeroModel: Equatable {
     init(store: MatchDetailStore) {
         let summary = store.summary
         let live = store.live
-        phase = summary?.phase ?? live?.phase ?? .upcoming
+        phase = store.phase
         status = [summary?.status, live?.status].compactMap { $0 }.first(where: { !$0.isEmpty }) ?? ""
         startsAt = summary?.startsAt ?? store.context?.startMs.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) }
         crr = live?.currentRunRate ?? ""
         rrr = live?.requiredRunRate ?? ""
         recentBalls = phase == .live ? (live?.recentBalls ?? []) : []
 
-        teams = Self.buildTeams(summary: summary, live: live, context: store.context)
+        teams = Self.buildTeams(summary: summary, live: live, context: store.context, phase: phase)
         chase = Self.chaseLine(status: status, live: live, teams: teams, multiDay: summary?.isMultiDay ?? false)
         if phase == .live, let p1 = live?.winProbabilityTeam1, let p2 = live?.winProbabilityTeam2, p1 + p2 > 0 {
             winProbability = WinProbability(team1: p1, team2: p2, draw: live?.winProbabilityDraw.flatMap { $0 > 0 ? $0 : nil })
         }
     }
 
-    private static func buildTeams(summary: MatchSummary?, live: LiveDetailPayload?, context: MatchContext?) -> [HeroTeam] {
+    private static func buildTeams(summary: MatchSummary?, live: LiveDetailPayload?, context: MatchContext?, phase: MatchPhase) -> [HeroTeam] {
         func logo(_ name: String) -> URL? { TeamLogoLoader.shared.getLogoUrl(for: name).flatMap(URL.init(string:)) }
         let battingIsTeam1 = live?.situation?.battingTeamIsTeam1
         func liveScore(_ idx: Int, id: String) -> (String, String)? {
@@ -76,7 +76,7 @@ struct HeroModel: Equatable {
                 let l = liveScore(i, id: t.teamId)
                 let batting = battingIsTeam1.map { $0 == (i == 0) } ?? t.isBatting
                 return HeroTeam(id: i, name: t.name, acronym: t.acronym, score: l?.0 ?? t.score, overs: l?.1 ?? t.overs,
-                                isBatting: batting && summary.phase == .live, logoURL: logo(t.name))
+                                isBatting: batting && phase == .live, logoURL: logo(t.name))
             }
         }
         if let ctx = context, ctx.teams.count >= 2 {

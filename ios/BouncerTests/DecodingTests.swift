@@ -187,3 +187,30 @@ struct HelperTests {
         #expect(m.battingTeam?.name == "B")
     }
 }
+
+struct NumericSafetyTests {
+    private struct Probe: Decodable {
+        let i: Int?, i64: Int64?
+        init(from decoder: Decoder) throws {
+            let w = try Wire(decoder)
+            i = w.int("v"); i64 = w.int64("v")
+        }
+    }
+
+    @Test(arguments: [#"{"v":"nan"}"#, #"{"v":"inf"}"#, #"{"v":"-inf"}"#, #"{"v":"1e30"}"#, #"{"v":1e30}"#, #"{"v":-1e300}"#])
+    func nonFiniteOrHugeDecodeToNil(json: String) throws {
+        let p = try WireJSON.decode(Probe.self, from: json)
+        #expect(p.i == nil && p.i64 == nil)
+    }
+
+    @Test func normalValuesStillDecode() throws {
+        #expect(try WireJSON.decode(Probe.self, from: #"{"v":"12.0"}"#).i == 12)
+        #expect(try WireJSON.decode(Probe.self, from: #"{"v":7.9}"#).i64 == 7)
+    }
+
+    @Test func lossyIntRejectsHugeDouble() {
+        #expect(throws: (any Error).self) { try WireJSON.decode(LossyInt.self, from: "1e30") }
+        #expect(throws: (any Error).self) { try WireJSON.decode(LossyInt.self, from: "\"nan\"") }
+        #expect((try? WireJSON.decode(LossyInt.self, from: "4.0"))?.value == 4)
+    }
+}

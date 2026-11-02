@@ -57,6 +57,8 @@ final class MatchDetailStore {
     @ObservationIgnored private let backgroundGrace: Duration
     @ObservationIgnored private let now: @Sendable () -> Date
     @ObservationIgnored private var started = false
+    @ObservationIgnored private var hasLoadedOnce = false
+    @ObservationIgnored private var isConnecting = false
     @ObservationIgnored private var isForeground = true
     @ObservationIgnored private var subscription: RealtimeSubscription?
     @ObservationIgnored private var eventTask: Task<Void, Never>?
@@ -84,7 +86,12 @@ final class MatchDetailStore {
     // MARK: Derived
 
     var rowId: String { MatchRowId.sanitize(matchId) }
-    var isOver: Bool { summary?.phase == .finished || live?.phase == .finished }
+    /// The live payload is the fresher source; the list summary is a cache snapshot from open time.
+    var phase: MatchPhase {
+        if let live, !live.status.isEmpty { return live.phase }
+        return summary?.phase ?? live?.phase ?? .upcoming
+    }
+    var isOver: Bool { phase == .finished }
 
     /// The commentary list for the selected filter.
     var visibleCommentary: [CommentaryEntry] {
@@ -105,12 +112,20 @@ final class MatchDetailStore {
     func start() async {
         guard !started else { return }
         started = true
+        if hasLoadedOnce {
+            // Reopened: keep what is on screen, reconnect and run the single catch-up path.
+            needsCatchUp = true
+            await connectRealtime()
+            if started { startHeartbeat() }
+            return
+        }
         loadState = .loading
         async let l: Void = refreshLive()
         async let s: Void = refreshScorecard()
         async let c: Void = loadContext()
         async let f: Void = loadFirstCommentaryPage()
         _ = await (l, s, c, f)
+        hasLoadedOnce = true
         if live == nil, scorecard == nil, context == nil, commentary.isEmpty {
             loadState = .failed(isQuotaBlocked ? "quota" : "no data")
         } else {
@@ -118,7 +133,7 @@ final class MatchDetailStore {
         }
         guard started else { return }
         await connectRealtime()
-        startHeartbeat()
+        if started { startHeartbeat() }
     }
 
     /// Releases the socket and timers. Call when the screen goes away.
@@ -183,9 +198,9 @@ final class MatchDetailStore {
 
     private func loadFirstCommentaryPage() async {
         do {
-            let page = try await fetchCommentary(CommentaryQueries.feed(matchId: matchId))
+            let (page, rawCount) = try await fetchCommentaryPage(CommentaryQueries.feed(matchId: matchId))
             merge(page)
-            hasMoreCommentary = page.count >= CommentaryQueries.firstPageLimit
+            hasMoreCommentary = rawCount >= CommentaryQueries.firstPageLimit
         } catch { record(error) }
     }
 
@@ -195,9 +210,9 @@ final class MatchDetailStore {
         isLoadingOlder = true
         defer { isLoadingOlder = false }
         do {
-            let page = try await fetchCommentary(CommentaryQueries.feed(matchId: matchId, olderThan: oldest))
+            let (page, rawCount) = try await fetchCommentaryPage(CommentaryQueries.feed(matchId: matchId, olderThan: oldest))
             merge(page)
-            hasMoreCommentary = page.count >= CommentaryQueries.pageLimit
+            hasMoreCommentary = rawCount >= CommentaryQueries.pageLimit
         } catch { record(error) }
     }
 
@@ -216,11 +231,11 @@ final class MatchDetailStore {
         feed.isLoading = true
         eventFeeds[filter] = feed
         do {
-            let page = try await fetchCommentary(
+            let (page, rawCount) = try await fetchCommentaryPage(
                 CommentaryQueries.events(matchId: matchId, events: values, olderThan: feed.entries.last?.sortKey))
             var updated = eventFeed(filter)
             updated.entries = Self.mergeSorted(updated.entries, page)
-            updated.hasMore = page.count >= CommentaryQueries.eventPageLimit
+            updated.hasMore = rawCount >= CommentaryQueries.eventPageLimit
             updated.hasLoaded = true
             updated.isLoading = false
             eventFeeds[filter] = updated
@@ -233,10 +248,15 @@ final class MatchDetailStore {
     }
 
     private func fetchCommentary(_ queries: [Query]) async throws -> [CommentaryEntry] {
+        try await fetchCommentaryPage(queries).rows
+    }
+
+    /// Filtered rows plus the raw row count, which is what tells whether the server has more.
+    private func fetchCommentaryPage(_ queries: [Query]) async throws -> (rows: [CommentaryEntry], rawCount: Int) {
         let data = try await api.listRows(table: AppwriteConfig.Table.commentary, queries: queries)
         let list = try WireJSON.decode(RowList<CommentaryEntry>.self, from: data)
         isQuotaBlocked = false
-        return list.rows.filter { !$0.text.isEmpty && $0.sortKey != 0 }
+        return (list.rows.filter { !$0.text.isEmpty && $0.sortKey != 0 }, list.rows.count)
     }
 
     /// What the feed missed while the socket was down: one live-detail row and the commentary newer
@@ -264,8 +284,14 @@ final class MatchDetailStore {
     // MARK: Realtime
 
     private func connectRealtime() async {
-        guard subscription == nil else { return }
+        guard subscription == nil, !isConnecting else { return }
+        isConnecting = true
+        defer { isConnecting = false }
         let sub = await realtime.subscribe(channels: [liveChannel, scorecardChannel, commentaryChannel])
+        guard started else {
+            await realtime.unsubscribe(sub.id)
+            return
+        }
         subscription = sub
         let realtime = self.realtime
         eventTask = Task { [weak self] in
@@ -365,7 +391,9 @@ final class MatchDetailStore {
     }
 
     private func shouldPing() -> Bool {
-        guard let summary, summary.phase == .upcoming, let start = summary.startsAt else { return true }
+        guard phase == .upcoming else { return true }
+        let start = summary?.startsAt ?? context?.startMs.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) }
+        guard let start else { return true }
         return start.timeIntervalSince(now()) <= Self.presenceLead
     }
 

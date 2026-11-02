@@ -159,7 +159,7 @@ struct LossyInt: Decodable, Equatable, Sendable {
     init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
         if let i = try? c.decode(Int.self) { value = i; return }
-        if let d = try? c.decode(Double.self) { value = Int(d); return }
+        if let d = try? c.decode(Double.self), let i = Wire.safeInt64(d).flatMap({ Int(exactly: $0) }) { value = i; return }
         if let s = try? c.decode(String.self), let i = Int(s) { value = i; return }
         throw DecodingError.typeMismatch(Int.self, .init(codingPath: decoder.codingPath, debugDescription: "not an int"))
     }
