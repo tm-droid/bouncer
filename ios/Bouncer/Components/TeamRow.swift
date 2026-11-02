@@ -41,7 +41,7 @@ struct TeamRow: View {
                     .foregroundStyle(dimmed ? BouncerColor.inkSecondary : BouncerColor.inkPrimary)
                     .tabularFigures().lineLimit(1).minimumScaleFactor(0.7)
                 if !overs.isEmpty && overs != "0.0" {
-                    Text("(\(overs))").font(.numericSmall).foregroundStyle(BouncerColor.inkSecondary).tabularFigures()
+                    Text("(\(displayOvers(overs)))").font(.numericSmall).foregroundStyle(BouncerColor.inkSecondary).tabularFigures()
                 }
             }
         }

@@ -28,7 +28,7 @@ enum MatchRowText {
     static func spoken(_ t: TeamScore) -> String {
         var s = t.name
         if t.hasScore { s += " " + t.score.replacingOccurrences(of: "/", with: " for ").replacingOccurrences(of: "&", with: "and") }
-        if !t.overs.isEmpty && t.overs != "0.0" { s += " in \(t.overs) overs" }
+        if !t.overs.isEmpty && t.overs != "0.0" { s += " in \(displayOvers(t.overs)) overs" }
         return s
     }
 

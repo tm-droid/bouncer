@@ -52,7 +52,7 @@ struct MatchHero: View {
                 Text(t.latestInnings).font(.scoreHero).tabularFigures()
                     .foregroundStyle(BouncerColor.inkPrimary).lineLimit(1).minimumScaleFactor(0.5)
                 if !t.overs.isEmpty, t.overs != "0.0" {
-                    Text("\(t.overs) ov").font(.numericSmall).tabularFigures().foregroundStyle(BouncerColor.inkSecondary)
+                    Text("\(displayOvers(t.overs)) ov").font(.numericSmall).tabularFigures().foregroundStyle(BouncerColor.inkSecondary)
                 }
             }
         }
@@ -66,7 +66,7 @@ struct MatchHero: View {
         var s = t.name
         if t.hasScore {
             s += " " + t.score.replacingOccurrences(of: "/", with: " for ").replacingOccurrences(of: "&", with: "and")
-            if !t.overs.isEmpty { s += " in \(t.overs) overs" }
+            if !t.overs.isEmpty { s += " in \(displayOvers(t.overs)) overs" }
         }
         return s
     }
