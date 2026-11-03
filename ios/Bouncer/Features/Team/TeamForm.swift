@@ -27,6 +27,8 @@ enum TeamPage {
     static func formResult(_ match: MatchSummary, team: String) -> FormResult? {
         guard match.phase == .finished, match.teams.contains(where: { sameTeamName($0.name, team) }) else { return nil }
         let status = match.status.trimmingCharacters(in: .whitespaces)
+        // "Match tied (India won the Super Over)" names a winner, but the result is a tie.
+        if status.lowercased().hasPrefix("match tied") { return .tied }
         guard let m = status.firstMatch(of: #/^(.+?)\s+won\b/#.ignoresCase()) else { return undecided(status.lowercased()) }
         let winner = String(m.1).trimmingCharacters(in: .whitespaces)
         if sameTeamName(winner, team) { return .won }

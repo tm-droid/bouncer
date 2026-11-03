@@ -11,6 +11,8 @@ actor PlayerRepository {
 
     private let api: any AppwriteAPI
     private let fetcher: SquadsRepository.HTMLFetcher
+    /// Ages cached rows; injectable so fixture rows don't expire.
+    private let now: @Sendable () -> Date
     private var searches: [String: [PlayerSearchResult]] = [:]
     private var profiles: [String: PlayerProfile] = [:]
     private var profileOrder: [String] = []
@@ -18,9 +20,11 @@ actor PlayerRepository {
     private let profileFlight = SingleFlight<String, PlayerProfile>()
 
     init(api: any AppwriteAPI = AppwriteClient.shared,
-         fetcher: @escaping SquadsRepository.HTMLFetcher = { try await SquadsRepository.fetchHTML($0) }) {
+         fetcher: @escaping SquadsRepository.HTMLFetcher = { try await SquadsRepository.fetchHTML($0) },
+         now: @escaping @Sendable () -> Date = { Date() }) {
         self.api = api
         self.fetcher = fetcher
+        self.now = now
     }
 
     /// Players matching `q`, best first, at most 10. Empty for a blank query without a request.
@@ -66,7 +70,7 @@ actor PlayerRepository {
     /// Table first; any failure there (404, quota, bad row) falls through to the scrape.
     private func load(id: String, name: String) async throws -> PlayerProfile {
         if let data = try? await api.getRow(table: Self.table, id: "cb_\(id)"),
-           let row = PlayerProfile(row: data, id: id) {
+           let row = PlayerProfile(row: data, id: id, now: now()) {
             return row
         }
         try Task.checkCancellation()

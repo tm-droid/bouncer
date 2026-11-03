@@ -10,6 +10,7 @@ struct MatchDetailScreen: View {
     @State private var heroHeight: CGFloat = 260
     @State private var squads: Squads?
     @State private var squadsLoading = false
+    @State private var following = false
 
     private var shareURL: URL? { URL(string: "https://www.cricbuzz.com/live-cricket-scores/\(matchId)") }
 
@@ -21,11 +22,18 @@ struct MatchDetailScreen: View {
         .navigationTitle(store.map { HeroModel(store: $0).navTitle } ?? "Match")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if let store, store.phase == .live, let summary = store.summary {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { toggleFollow(store, summary) } label: { Image(systemName: following ? "bell.fill" : "bell") }
+                        .accessibilityLabel(following ? "Stop following on Lock Screen" : "Follow on Lock Screen")
+                }
+            }
             if let shareURL {
                 ToolbarItem(placement: .topBarTrailing) { ShareLink(item: shareURL) }
             }
         }
         .task(id: matchId) {
+            following = LiveActivityController.shared.isActive(matchId: matchId)
             if store == nil {
                 let summary = await env.matches.cachedMatch(id: matchId)
                 store = MatchDetailStore(matchId: matchId, summary: summary)
@@ -35,6 +43,18 @@ struct MatchDetailScreen: View {
         }
         .onDisappear { Task { await store?.stop() } }
         .onChange(of: scenePhase) { _, phase in Task { await store?.setActive(phase == .active) } }
+    }
+
+    /// Starts or ends the Live Activity; a new one is seeded with the freshest payload, not the list snapshot.
+    private func toggleFollow(_ store: MatchDetailStore, _ summary: MatchSummary) {
+        let controller = LiveActivityController.shared
+        if following {
+            controller.end(matchId: matchId)
+            following = false
+        } else {
+            following = controller.start(summary: summary)
+            if following, let live = store.live { controller.update(matchId: matchId, payload: live) }
+        }
     }
 
     private var loading: some View {

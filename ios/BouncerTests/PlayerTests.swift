@@ -53,7 +53,7 @@ struct PlayerTests {
 
     @Test func parsesRecentForm() throws {
         let p = try #require(PlayerProfileParser.parse(html: try Fixture.string("player-profile.html"), id: "1413", fallbackName: "x"))
-        #expect(p.recentForm.count == 10)
+        #expect(p.recentForm.count == 5)
         #expect(p.recentForm[0] == RecentInnings(runs: 0, balls: 1, opponent: "WI", format: "ODI", date: "03 Oct 26"))
         #expect(p.recentForm[2].runs == 139 && p.recentForm[2].balls == 88)
     }
@@ -81,7 +81,9 @@ struct PlayerTests {
         let api = FakeAPI()
         await api.set(execution: "/player-search", try Fixture.data("player-search.json"))
         await api.set(row: "player-profiles", id: "cb_1413", try Fixture.data("player-profile-row.json"))
-        let repo = PlayerRepository(api: api, fetcher: { _ in throw URLError(.notConnectedToInternet) })
+        // The fixture row was saved 2026-10-23; read it a day later so it is inside the 7-day window.
+        let repo = PlayerRepository(api: api, fetcher: { _ in throw URLError(.notConnectedToInternet) },
+                                    now: { ISO8601DateFormatter().date(from: "2026-10-24T00:00:00Z")! })
         let p = try await repo.profile(id: nil, name: "Virat Kohli")
         #expect(p.id == "1413" && p.stats["ODI"] != nil)
         _ = try await repo.profile(id: "1413", name: "Virat Kohli")
@@ -98,7 +100,7 @@ struct PlayerTests {
             return html
         })
         let p = try await repo.profile(id: "1413", name: "Virat Kohli")
-        #expect(p.recentForm.count == 10)
+        #expect(p.recentForm.count == 5)
         #expect(await api.executeCalls.isEmpty)
     }
 

@@ -369,6 +369,7 @@ final class MatchDetailStore {
         live = payload
         liveUpdatedAt = row.updatedAt
         recordProbability(payload)
+        LiveActivityController.shared.update(matchId: matchId, payload: payload)
     }
 
     /// Keeps the session's win-probability line: one point per ball count, in the screen's team order.
