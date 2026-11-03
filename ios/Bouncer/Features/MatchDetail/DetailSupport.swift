@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum DetailTab: String, Hashable {
-    case live, summary, scorecard, commentary, squads, info
+    case live, summary, scorecard, commentary, graphs, squads, info, highlights
 
     var title: String {
         switch self {
@@ -9,16 +9,20 @@ enum DetailTab: String, Hashable {
         case .summary: "Summary"
         case .scorecard: "Scorecard"
         case .commentary: "Commentary"
+        case .graphs: "Graphs"
         case .squads: "Squads"
         case .info: "Info"
+        case .highlights: "Highlights"
         }
     }
 
-    static func tabs(for phase: MatchPhase) -> [DetailTab] {
+    /// The tabs for a match in `phase`, in order (MatchTabs.kt). The first is the one the screen opens on.
+    /// Graphs and Highlights are offered only once they have something to show.
+    static func tabs(for phase: MatchPhase, graphs: Bool = false, highlights: Bool = false) -> [DetailTab] {
         switch phase {
         case .upcoming: [.info, .squads, .commentary]
-        case .live: [.live, .scorecard, .commentary, .squads, .info]
-        case .finished: [.summary, .scorecard, .commentary, .squads, .info]
+        case .live: [.live, .scorecard, .commentary] + (graphs ? [.graphs] : []) + [.squads, .info] + (highlights ? [.highlights] : [])
+        case .finished: [.summary, .scorecard, .commentary] + (graphs ? [.graphs] : []) + (highlights ? [.highlights] : []) + [.squads, .info]
         }
     }
 }

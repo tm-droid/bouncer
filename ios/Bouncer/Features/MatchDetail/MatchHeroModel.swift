@@ -34,6 +34,7 @@ struct HeroModel: Equatable {
     var chase: String?
     var winProbability: WinProbability?
     var recentBalls: [String] = []
+    var seriesTitle = ""
 
     var navTitle: String {
         teams.count >= 2 ? "\(teams[0].acronym) vs \(teams[1].acronym)" : "Match"
@@ -46,6 +47,7 @@ struct HeroModel: Equatable {
         phase = store.phase
         status = [summary?.status, live?.status].compactMap { $0 }.first(where: { !$0.isEmpty }) ?? ""
         startsAt = summary?.startsAt ?? store.context?.startMs.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) }
+        seriesTitle = [summary?.title, summary?.seriesName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
         crr = live?.currentRunRate ?? ""
         rrr = live?.requiredRunRate ?? ""
         recentBalls = phase == .live ? (live?.recentBalls ?? []) : []
@@ -55,6 +57,12 @@ struct HeroModel: Equatable {
         if phase == .live, let p1 = live?.winProbabilityTeam1, let p2 = live?.winProbabilityTeam2, p1 + p2 > 0 {
             winProbability = WinProbability(team1: p1, team2: p2, draw: live?.winProbabilityDraw.flatMap { $0 > 0 ? $0 : nil })
         }
+    }
+
+    /// The fixture to look clips up for; nil until both sides and a start time are known.
+    var highlightTarget: HighlightTarget? {
+        guard teams.count >= 2 else { return nil }
+        return HighlightTarget(team1: teams[0].name, team2: teams[1].name, title: seriesTitle, startsAt: startsAt)
     }
 
     private static func buildTeams(summary: MatchSummary?, live: LiveDetailPayload?, context: MatchContext?, phase: MatchPhase) -> [HeroTeam] {

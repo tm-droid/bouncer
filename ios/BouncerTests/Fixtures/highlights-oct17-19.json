@@ -1,0 +1,47 @@
+{
+ "total": 3,
+ "rows": [
+  {
+   "highlight_id": "17061",
+   "type": "VERIFIED",
+   "img_url": "https://i.ytimg.com/vi/1Zpds8QWodU/hqdefault.jpg",
+   "title": "Australia vs South Africa 2nd Test Match Day 1 Highlights 2026",
+   "url": "https://www.youtube.com/watch?v=1Zpds8QWodU",
+   "channel": "Cricket Expert",
+   "source": "youtube",
+   "match_home_team": "South Africa",
+   "match_away_team": "Australia",
+   "match_league_name": "Australia in South Africa",
+   "match_start_date": "2026-10-18T00:00:00.000Z",
+   "fetched_at": 1792396843084
+  },
+  {
+   "highlight_id": "17063",
+   "type": "VERIFIED",
+   "img_url": "https://i.ytimg.com/vi/HAldNQVDE78/hqdefault.jpg",
+   "title": "Match Highlights | Pakistan vs Sri Lanka | Match 1 | ODI Tri-Series 2026 | PCB | MZS1K",
+   "url": "https://www.youtube.com/watch?v=HAldNQVDE78",
+   "channel": "Pakistan Cricket",
+   "source": "youtube",
+   "match_home_team": "Pakistan",
+   "match_away_team": "Sri Lanka",
+   "match_league_name": "Pakistan Triangular Series",
+   "match_start_date": "2026-10-18T00:00:00.000Z",
+   "fetched_at": 1792396843084
+  },
+  {
+   "highlight_id": "17062",
+   "type": "VERIFIED",
+   "img_url": "https://i.ytimg.com/vi/CULqADWQL58/hqdefault.jpg",
+   "title": "Australia v New Zealand | First T20I Highlights",
+   "url": "https://www.youtube.com/watch?v=CULqADWQL58",
+   "channel": "cricket.com.au",
+   "source": "youtube",
+   "match_home_team": "Australia Women",
+   "match_away_team": "New Zealand Women",
+   "match_league_name": "New Zealand Women in Australia",
+   "match_start_date": "2026-10-18T00:00:00.000Z",
+   "fetched_at": 1792396843084
+  }
+ ]
+}

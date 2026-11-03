@@ -50,6 +50,10 @@ final class MatchDetailStore {
     /// A 402/breaker is blocking reads; what is on screen is the last good copy.
     private(set) var isQuotaBlocked = false
     private(set) var filter: CommentaryFilter = .all
+    /// Win-probability readings from this session's live payloads, oldest first.
+    private(set) var sessionProbability: [ProbabilityPoint] = []
+    /// Clips matched to this match; empty until `loadHighlights` has run.
+    private(set) var highlights: [Highlight] = []
 
     @ObservationIgnored private let api: any AppwriteAPI
     @ObservationIgnored private let realtime: any RealtimeProviding
@@ -66,6 +70,9 @@ final class MatchDetailStore {
     @ObservationIgnored private var dropTask: Task<Void, Never>?
     @ObservationIgnored private var needsCatchUp = false
     @ObservationIgnored private var lastCatchUp = Date.distantPast
+    @ObservationIgnored private var highlightsLoaded = false
+    @ObservationIgnored private var probabilityInnings: Int?
+    @ObservationIgnored private var probabilityOffset = 0.0
 
     init(matchId: String,
          summary: MatchSummary? = nil,
@@ -103,6 +110,13 @@ final class MatchDetailStore {
     var liveChannel: String { AppwriteConfig.rowChannel(table: AppwriteConfig.Table.liveDetail, rowId: rowId) }
     var scorecardChannel: String { AppwriteConfig.rowChannel(table: AppwriteConfig.Table.scorecard, rowId: rowId) }
     var commentaryChannel: String { AppwriteConfig.tableChannel(table: AppwriteConfig.Table.commentary) }
+
+    /// The two sides' Cricbuzz team ids in screen order, for aligning the server's probability.
+    var teamIds: (first: String?, second: String?) {
+        if let t = summary?.teams, t.count >= 2 { return (t[0].teamId, t[1].teamId) }
+        if let t = context?.teams, t.count >= 2 { return (t[0].id, t[1].id) }
+        return (nil, nil)
+    }
 
     func updateSummary(_ new: MatchSummary) { summary = new }
 
@@ -185,6 +199,17 @@ final class MatchDetailStore {
         do {
             let data = try await api.getRow(table: AppwriteConfig.Table.scorecard, id: rowId)
             applyScorecard(try WireJSON.decode(ScorecardRow.self, from: data))
+            isQuotaBlocked = false
+        } catch { record(error) }
+    }
+
+    /// One `highlights` read per store, for matches that have started. Later calls are no-ops, so a
+    /// failed read is not retried while the screen stays open.
+    func loadHighlights(for target: HighlightTarget?) async {
+        guard let target, phase != .upcoming, !highlightsLoaded else { return }
+        highlightsLoaded = true
+        do {
+            highlights = try await HighlightsRepository(api: api).clips(for: target)
             isQuotaBlocked = false
         } catch { record(error) }
     }
@@ -343,6 +368,26 @@ final class MatchDetailStore {
         guard row.matchId.isEmpty || row.matchId == matchId, let payload = row.decodePayload() else { return }
         live = payload
         liveUpdatedAt = row.updatedAt
+        recordProbability(payload)
+    }
+
+    /// Keeps the session's win-probability line: one point per ball count, in the screen's team order.
+    /// A new innings continues after the last over of the one before.
+    private func recordProbability(_ payload: LiveDetailPayload) {
+        guard let p = payload.winProbabilityTeam1, let balls = payload.situation?.ballsBowled else { return }
+        let innings = payload.situation?.inningsId
+        if innings != probabilityInnings {
+            if probabilityInnings != nil { probabilityOffset = sessionProbability.last?.over ?? probabilityOffset }
+            probabilityInnings = innings
+        }
+        let ids = teamIds
+        let flip = ProbabilityHistory.isFlipped(serverTeam1Id: payload.team1Id, firstId: ids.first, secondId: ids.second)
+        let point = ProbabilityPoint(over: probabilityOffset + Double(balls) / 6, team1: min(max(flip ? 1 - p : p, 0), 1))
+        if let last = sessionProbability.last, last.over == point.over {
+            sessionProbability[sessionProbability.count - 1] = point
+        } else {
+            sessionProbability.append(point)
+        }
     }
 
     private func applyScorecard(_ row: ScorecardRow) {
