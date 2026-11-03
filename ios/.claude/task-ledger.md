@@ -29,3 +29,16 @@ One commit per unit, only paths under `ios/`.
 - 29892c91: port Android displayOvers ("19.6" shows "20") in TeamRow, MatchRow, MatchHero. test_sim 41/41.
 - Sim verification (iPhone Duo, iOS 27.1): Home All/Upcoming/Recent dark + light, filter menu, News list + article, Series list -> series matches -> finished match (hero, Summary, Scorecard), More light (teams Edit sheet, appearance, cache, version). Series "app disappeared" was test_sim relaunching the shared sim, not a crash.
 - Open gaps: realtime commentary channel shape not observed live; tab accent always gold; innings chips show raw names ("RSA 1st Innings" vs hero "SA"); Clear cache clears URLCache only; Home live refresh effectively 30s.
+
+# Phase 2 (scaffold 7c8709f8: routes .player/.team/.search, stub screens, onboarding cover, Home search button)
+Each wave-1 unit runs in its own git worktree + its own simulator clone, builds/tests with plain xcodebuild, commits on its branch; merged into ios-rebuild afterwards. Standard sim: "iPhone 17 Pro" 37B55D06 (iOS 27.0).
+
+| Unit | Scope (owned paths under ios/Bouncer unless noted) | Acceptance | Status |
+|---|---|---|---|
+| P-A | Graphs + Highlights tabs, scorecard/squad name taps to player (Features/MatchDetail, MatchDetailStore, Highlights model/repo) | build + tests pass; tabs follow Android MatchTabs rules | pending |
+| P-B | Player profile (Features/Player, Player model/repo/scraper, player-search) | build + tests; real fixture decodes | pending |
+| P-C | Series detail: Schedule / Points table / Stats (Features/Series, series scrapers) | build + tests; parser fixture tests | pending |
+| P-D | Team page + Onboarding (Features/Team, Features/Onboarding, MoreScreen team links, history records) | build + tests | pending |
+| P-F | Home/lock widget + Live Activity (ios/BouncerWidgetExtension*, pbxproj, Info.plist, Features/LiveActivity) | app + extension build; extension embedded | pending |
+| P-G | Search (wave 2, after P-B and P-C merge) | build + tests | pending |
+| P-Int | Follow button wiring for Live Activity, merge, fresh review, sim verification light+dark | no correctness gaps open | pending |
