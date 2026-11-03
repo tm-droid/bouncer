@@ -35,10 +35,12 @@ Each wave-1 unit runs in its own git worktree + its own simulator clone, builds/
 
 | Unit | Scope (owned paths under ios/Bouncer unless noted) | Acceptance | Status |
 |---|---|---|---|
-| P-A | Graphs + Highlights tabs, scorecard/squad name taps to player (Features/MatchDetail, MatchDetailStore, Highlights model/repo) | build + tests pass; tabs follow Android MatchTabs rules | pending |
-| P-B | Player profile (Features/Player, Player model/repo/scraper, player-search) | build + tests; real fixture decodes | pending |
-| P-C | Series detail: Schedule / Points table / Stats (Features/Series, series scrapers) | build + tests; parser fixture tests | pending |
-| P-D | Team page + Onboarding (Features/Team, Features/Onboarding, MoreScreen team links, history records) | build + tests | pending |
-| P-F | Home/lock widget + Live Activity (ios/BouncerWidgetExtension*, pbxproj, Info.plist, Features/LiveActivity) | app + extension build; extension embedded | pending |
-| P-G | Search (wave 2, after P-B and P-C merge) | build + tests | pending |
-| P-Int | Follow button wiring for Live Activity, merge, fresh review, sim verification light+dark | no correctness gaps open | pending |
+| P-A | Graphs + Highlights tabs, scorecard/squad name taps to player (Features/MatchDetail, MatchDetailStore, Highlights model/repo) | build + tests pass; tabs follow Android MatchTabs rules | done 0271e0d9..e757d43e (merged e0bcee47) |
+| P-B | Player profile (Features/Player, Player model/repo/scraper, player-search) | build + tests; real fixture decodes | done 0271e0d9 |
+| P-C | Series detail: Schedule / Points table / Stats (Features/Series, series scrapers) | build + tests; parser fixture tests | done d09ca118 (merged 7d4aaf17) |
+| P-D | Team page + Onboarding (Features/Team, Features/Onboarding, MoreScreen team links, history records) | build + tests | done eb59a792 (merged e2a2d699) |
+| P-F | Home/lock widget + Live Activity (ios/BouncerWidgetExtension*, pbxproj, Info.plist, Features/LiveActivity) | app + extension build; extension embedded | done d816d9fd (merged abae7b89) |
+| P-G | Search (wave 2, after P-B and P-C merge) | build + tests | done 03f1ad98 |
+| P-Int | Follow button wiring for Live Activity, merge, fresh review, sim verification light+dark | no correctness gaps open | wiring + 3 test fixes 8a5039f5; review fixes e87ac0f6 (skipped #4 cold-deep-link follow button, #12 GraphsModel recompute); 127/127 tests pass; sim UI check NOT done |
+
+Note: parallel `xcodebuild test` runs on 5 simulator clones thrashed the machine (load ~800, sim boot timeouts). Units now verify with `build-for-testing`; the main session runs tests serially after merging.
