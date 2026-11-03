@@ -105,6 +105,7 @@ actor SeriesDetailScraper {
     private var schedules: [String: Cached<[SeriesMatchDay]>] = [:]
     private var tables: [String: Cached<[PointsGroup]>] = [:]
     private var stats: [String: Cached<SeriesStats>] = [:]
+    private let slugFlight = SingleFlight<String, String>()
 
     init(fetcher: @escaping HTMLFetcher = { try await SquadsRepository.fetchHTML($0) }, clock: @escaping @Sendable () -> Date = { Date() }) {
         self.fetcher = fetcher
@@ -146,16 +147,19 @@ actor SeriesDetailScraper {
         return try await fetcher(url)
     }
 
-    /// One landing fetch per series. A landing page has answered 200 with no slugged link and carried
+    /// One landing fetch per series, shared by concurrent tabs. A landing page has answered 200 with no slugged link and carried
     /// them later (Android ANDROID-59), so a second unslugged tab is tried before giving up.
     private func slug(for id: String) async throws -> String {
         if let slug = slugs[id] { return slug }
+        let slug = try await slugFlight.run(id) { [self] in try await fetchSlug(for: id) }
+        slugs[id] = slug
+        return slug
+    }
+
+    private func fetchSlug(for id: String) async throws -> String {
         for tab in ["matches", "squads"] {
             guard let url = URL(string: "https://www.cricbuzz.com/cricket-series/\(id)/\(tab)") else { continue }
-            if let slug = SeriesSlug.of(html: try await fetcher(url), seriesId: id) {
-                slugs[id] = slug
-                return slug
-            }
+            if let slug = SeriesSlug.of(html: try await fetcher(url), seriesId: id) { return slug }
         }
         throw SlugNotFound()
     }

@@ -209,7 +209,7 @@ final class MatchDetailStore {
         guard let target, phase != .upcoming, !highlightsLoaded else { return }
         highlightsLoaded = true
         do {
-            highlights = try await HighlightsRepository(api: api).clips(for: target)
+            highlights = try await HighlightsRepository(api: api).clips(for: target, finished: isOver)
             isQuotaBlocked = false
         } catch { record(error) }
     }

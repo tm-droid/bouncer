@@ -17,21 +17,33 @@ enum TeamPage {
         return !k.isEmpty && k == key(b)
     }
 
+    /// `name` is the team, or `team` is its acronym ("IND"), which a favourite can be.
+    static func isTeam(_ name: String, _ team: String) -> Bool {
+        sameTeamName(name, team) || (team.count <= 4 && TeamAcronym.make(name).caseInsensitiveCompare(team) == .orderedSame)
+    }
+
+    /// The full name for an acronym "team": the shortest `known` name that abbreviates to it, else `team` unchanged.
+    static func fullName(_ team: String, known: [String]) -> String {
+        if known.contains(where: { sameTeamName($0, team) }) { return team }
+        let hits = known.filter { isTeam($0, team) }
+        return hits.min { ($0.count, $0) < ($1.count, $1) } ?? team
+    }
+
     private static func plays(_ match: MatchSummary, _ team: String) -> Bool {
-        match.teams.contains { $0.name.caseInsensitiveCompare(team) == .orderedSame }
+        match.teams.contains { isTeam($0.name, team) }
     }
 
     /// `team`'s result in a finished match, read from the status line ("India won by 5 wkts", "Match drawn").
     /// Nil when the line names a winner that is neither side as the app spells it, because a guessed W/L
     /// is worse than a missing one.
     static func formResult(_ match: MatchSummary, team: String) -> FormResult? {
-        guard match.phase == .finished, match.teams.contains(where: { sameTeamName($0.name, team) }) else { return nil }
+        guard match.phase == .finished, match.teams.contains(where: { isTeam($0.name, team) }) else { return nil }
         let status = match.status.trimmingCharacters(in: .whitespaces)
         // "Match tied (India won the Super Over)" names a winner, but the result is a tie.
         if status.lowercased().hasPrefix("match tied") { return .tied }
         guard let m = status.firstMatch(of: #/^(.+?)\s+won\b/#.ignoresCase()) else { return undecided(status.lowercased()) }
         let winner = String(m.1).trimmingCharacters(in: .whitespaces)
-        if sameTeamName(winner, team) { return .won }
+        if isTeam(winner, team) { return .won }
         return match.teams.contains { sameTeamName($0.name, winner) } ? .lost : nil
     }
 
@@ -56,7 +68,7 @@ enum TeamPage {
     /// The eleven `team` named for `match`, or empty. The side is picked out of the match by name, then
     /// joined to the team sheet on its Cricbuzz team id, never on names (one page says "AFG", the other "Afghanistan").
     static func lastEleven(_ match: MatchSummary, team: String, squads: Squads?) -> [SquadPlayer] {
-        guard let id = match.teams.first(where: { $0.name.caseInsensitiveCompare(team) == .orderedSame })?.teamId,
+        guard let id = match.teams.first(where: { isTeam($0.name, team) })?.teamId,
               !id.isEmpty, let squads else { return [] }
         return [squads.team1, squads.team2].first { $0.teamId == id }?.playingXI ?? []
     }

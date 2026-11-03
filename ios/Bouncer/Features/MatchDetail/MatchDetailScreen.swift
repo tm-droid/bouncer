@@ -42,7 +42,12 @@ struct MatchDetailScreen: View {
             await store?.start()
         }
         .onDisappear { Task { await store?.stop() } }
-        .onChange(of: scenePhase) { _, phase in Task { await store?.setActive(phase == .active) } }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { following = LiveActivityController.shared.isActive(matchId: matchId) }
+            Task { await store?.setActive(phase == .active) }
+        }
+        // The activity ends itself when the match does, and can be dismissed from the Lock Screen.
+        .onChange(of: store?.phase) { _, _ in following = LiveActivityController.shared.isActive(matchId: matchId) }
     }
 
     /// Starts or ends the Live Activity; a new one is seeded with the freshest payload, not the list snapshot.

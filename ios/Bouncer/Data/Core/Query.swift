@@ -10,6 +10,8 @@ enum Query: Equatable, Sendable {
     case orderAsc(String)
     case limit(Int)
     case select([String])
+    /// Matches when any nested query matches.
+    case or([Query])
 
     var json: String {
         switch self {
@@ -27,6 +29,8 @@ enum Query: Equatable, Sendable {
             return "{\"method\":\"limit\",\"values\":[\(n)]}"
         case let .select(cols):
             return "{\"method\":\"select\",\"values\":[\(cols.map(WireJSON.quote).joined(separator: ","))]}"
+        case let .or(queries):
+            return "{\"method\":\"or\",\"values\":[\(queries.map(\.json).joined(separator: ","))]}"
         }
     }
 

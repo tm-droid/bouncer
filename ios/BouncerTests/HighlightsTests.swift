@@ -2,6 +2,11 @@ import Foundation
 import Testing
 @testable import Bouncer
 
+private final class LockedDate: @unchecked Sendable {
+    var value: Date
+    init(_ value: Date) { self.value = value }
+}
+
 struct HighlightsTests {
     private func clip(_ home: String, _ away: String, league: String = "", date: String = "2026-10-18T00:00:00.000Z") -> Highlight {
         Highlight(id: "1", title: "t", url: URL(string: "https://www.youtube.com/watch?v=x")!, homeTeam: home, awayTeam: away,
@@ -51,10 +56,24 @@ struct HighlightsTests {
 
     @Test func queriesAskForThreeDaysSelectedColumnsAndACap() {
         let json = HighlightsRepository.queries(for: target("A", "B", day: "2026-03-01")).map(\.json)
-        #expect(json.count == 4)
+        #expect(json.count == 5)
         #expect(json[0] == #"{"method":"equal","attribute":"match_start_date","values":["2026-02-28T00:00:00.000Z","2026-03-01T00:00:00.000Z","2026-03-02T00:00:00.000Z"]}"#)
-        #expect(json[2] == #"{"method":"limit","values":[50]}"#)
-        #expect(json[3].contains("\"highlight_id\"") && !json[3].contains("embed_url"))
+        #expect(json[1] == #"{"method":"or","values":[{"method":"equal","attribute":"match_home_team","values":["A","B"]},{"method":"equal","attribute":"match_away_team","values":["A","B"]}]}"#)
+        #expect(json[3] == #"{"method":"limit","values":[20]}"#)
+        #expect(json[4].contains("\"highlight_id\"") && !json[3].contains("embed_url"))
+    }
+
+    @Test func cacheServesUntilTheTTLLapsesAndKeepsEmptyResults() async {
+        let clock = LockedDate(Date(timeIntervalSince1970: 1_000))
+        let cache = HighlightCache(now: { clock.value })
+        let t = target("A", "B")
+        #expect(await cache.clips(for: t) == nil)
+        await cache.store([], for: t, ttl: 600)
+        #expect(await cache.clips(for: t) == [])
+        clock.value = Date(timeIntervalSince1970: 1_599)
+        #expect(await cache.clips(for: t) == [])
+        clock.value = Date(timeIntervalSince1970: 1_601)
+        #expect(await cache.clips(for: t) == nil)
     }
 
     @Test func dayArithmeticRejectsImpossibleDates() {

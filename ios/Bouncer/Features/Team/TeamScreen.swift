@@ -12,7 +12,8 @@ struct TeamScreen: View {
         _model = State(initialValue: TeamModel(team: name))
     }
 
-    private var acronym: String { TeamAcronym.make(name) }
+    private var shown: String { model.name }
+    private var acronym: String { TeamAcronym.make(shown) }
     private var isFavourite: Bool { env.favourites.isFavourite(name) }
 
     var body: some View {
@@ -26,7 +27,7 @@ struct TeamScreen: View {
             .padding(.bottom, Spacing.xl)
         }
         .background(BouncerColor.bg)
-        .navigationTitle(name)
+        .navigationTitle(shown)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -55,11 +56,11 @@ struct TeamScreen: View {
     private var header: some View {
         VStack(spacing: 0) {
             HStack(spacing: Spacing.lg) {
-                TeamCrest(name: name, acronym: acronym, imageURL: TeamLogoLoader.shared.getLogoUrl(for: name).flatMap(URL.init(string:)),
+                TeamCrest(name: shown, acronym: acronym, imageURL: TeamLogoLoader.shared.getLogoUrl(for: shown).flatMap(URL.init(string:)),
                           size: 56)
                 VStack(alignment: .leading, spacing: Spacing.xs) {
-                    Text(name).font(.headlineMedium).foregroundStyle(BouncerColor.inkPrimary)
-                    if acronym.caseInsensitiveCompare(name) != .orderedSame {
+                    Text(shown).font(.headlineMedium).foregroundStyle(BouncerColor.inkPrimary)
+                    if acronym.caseInsensitiveCompare(shown) != .orderedSame {
                         Text(acronym).font(.labelLarge).foregroundStyle(BouncerColor.inkSecondary)
                     }
                     if !model.form.isEmpty { FormStrip(results: model.form).padding(.top, Spacing.xs) }
@@ -76,7 +77,7 @@ struct TeamScreen: View {
         if !model.loaded && model.current.isEmpty && model.results.isEmpty {
             group(nil) { SkeletonRow(); Divider(); SkeletonRow(); Divider(); SkeletonRow() }
         } else if model.current.isEmpty && model.results.isEmpty {
-            EmptyState(title: "No current matches", message: "Live, upcoming and recent \(name) matches will appear here",
+            EmptyState(title: "No current matches", message: "Live, upcoming and recent \(shown) matches will appear here",
                        systemImage: "sportscourt")
         } else {
             if !model.current.isEmpty {
@@ -113,7 +114,7 @@ struct TeamScreen: View {
 
     @ViewBuilder private var lastEleven: some View {
         if let last = model.results.first, !model.lastEleven.isEmpty {
-            let opponent = last.teams.first { $0.name.caseInsensitiveCompare(name) != .orderedSame }
+            let opponent = last.teams.first { !TeamPage.isTeam($0.name, name) }
             group("Last XI, against \(opponent?.acronym ?? "")") {
                 ForEach(model.lastEleven) { p in
                     NavigationLink(value: Route.player(id: p.id.isEmpty ? nil : p.id, name: p.name)) { elevenRow(p) }

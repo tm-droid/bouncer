@@ -95,6 +95,17 @@ struct TeamPageTests {
         #expect(TeamPage.formResult(match("1", "Match abandoned"), team: "India") == .noResult)
     }
 
+    @Test func acronymFavouriteMatchesTheTeam() {
+        let m = match("1", "India won by 5 wkts")
+        #expect(TeamPage.split([m], team: "IND").results.map(\.id) == ["1"])
+        #expect(TeamPage.formResult(m, team: "IND") == .won)
+        #expect(TeamPage.formResult(m, team: "AUS") == .lost)
+        #expect(TeamPage.lastEleven(m, team: "IND", squads: nil).isEmpty)
+        #expect(TeamPage.fullName("IND", known: ["Indonesia", "India", "India Women"]) == "India")
+        #expect(TeamPage.fullName("India", known: ["India"]) == "India")
+        #expect(TeamPage.fullName("XYZ", known: ["India"]) == "XYZ")
+    }
+
     @Test func formIsNilWhenGuessing() {
         // Winner named by a code that is neither side as the app spells it.
         #expect(TeamPage.formResult(match("1", "IND won by 5 wkts"), team: "India") == nil)

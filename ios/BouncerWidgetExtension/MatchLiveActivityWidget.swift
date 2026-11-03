@@ -23,7 +23,7 @@ private extension State {
 struct MatchLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: MatchActivityAttributes.self) { context in
-            LockScreenCard(attributes: context.attributes, state: context.state)
+            LockScreenCard(attributes: context.attributes, state: context.state, isStale: context.isStale)
                 .padding(Spacing.lg)
                 .activityBackgroundTint(BouncerColor.surface)
                 .activitySystemActionForegroundColor(BouncerColor.inkPrimary)
@@ -57,11 +57,14 @@ struct MatchLiveActivityWidget: Widget {
 private struct LockScreenCard: View {
     let attributes: MatchActivityAttributes
     let state: State
+    let isStale: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             HStack(spacing: Spacing.xs) {
-                if state.phase == .live {
+                if state.phase == .live && isStale {
+                    Text("NOT UPDATING").font(.overline).foregroundStyle(BouncerColor.inkSecondary)
+                } else if state.phase == .live {
                     Circle().fill(BouncerColor.live).frame(width: 6, height: 6)
                     Text("LIVE").font(.overline).foregroundStyle(BouncerColor.live)
                 }

@@ -16,6 +16,7 @@ actor PlayerRepository {
     private var searches: [String: [PlayerSearchResult]] = [:]
     private var profiles: [String: PlayerProfile] = [:]
     private var profileOrder: [String] = []
+    private var searchOrder: [String] = []
     private let searchFlight = SingleFlight<String, [PlayerSearchResult]>()
     private let profileFlight = SingleFlight<String, PlayerProfile>()
 
@@ -38,6 +39,8 @@ actor PlayerRepository {
             catch { throw AppwriteError.decoding(error.localizedDescription) }
         }
         searches[key] = results
+        searchOrder.append(key)
+        if searchOrder.count > Self.cacheLimit { searches[searchOrder.removeFirst()] = nil }
         return results
     }
 
@@ -61,8 +64,8 @@ actor PlayerRepository {
         let pid = playerId!
         if let hit = profiles[pid] { return hit }
         let loaded = try await profileFlight.run(pid) { [self] in try await load(id: pid, name: resolvedName) }
-        profiles[pid] = loaded
-        profileOrder.append(pid)
+        // Concurrent callers share one flight but each reaches here; only the first to land is new.
+        if profiles.updateValue(loaded, forKey: pid) == nil { profileOrder.append(pid) }
         if profileOrder.count > Self.cacheLimit { profiles[profileOrder.removeFirst()] = nil }
         return loaded
     }

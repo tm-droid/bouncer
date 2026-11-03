@@ -27,7 +27,7 @@ struct RootView: View {
             // Widgets and the Live Activity link to bouncer://match/{id}.
             guard url.scheme == "bouncer", url.host == "match", let id = url.pathComponents.dropFirst().first else { return }
             selection = .home
-            homePath.append(.match(id: id))
+            if homePath.last != .match(id: id) { homePath.append(.match(id: id)) }
         }
         .fullScreenCover(isPresented: .constant(!onboardingComplete && env.favourites.teams.isEmpty)) {
             OnboardingScreen { onboardingComplete = true }

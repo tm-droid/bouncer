@@ -16,6 +16,9 @@ final class TeamModel {
 
     private let team: String
 
+    /// The team's full name: a favourite can be stored as an acronym ("IND"), which records and display need spelled out.
+    var name: String { TeamPage.fullName(team, known: Array(TeamLogoLoader.shared.teamLogos.keys)) }
+
     init(team: String) { self.team = team }
 
     /// All three lists, cache first; then the last XI from the newest result.
@@ -38,7 +41,7 @@ final class TeamModel {
     }
 
     func loadRecords(repo: TeamRecordsRepository = .shared) async {
-        let loaded = await repo.records(for: team) ?? []
+        let loaded = await repo.records(for: name) ?? []
         guard !Task.isCancelled else { return }
         records = loaded
     }

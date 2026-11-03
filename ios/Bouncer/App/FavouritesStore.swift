@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import WidgetKit
 
 /// Favourite teams (names or acronyms), persisted in the app-group defaults under the legacy key.
 @Observable @MainActor
@@ -53,5 +54,9 @@ final class FavouritesStore {
         }
     }
 
-    private func save() { defaults?.set(teams, forKey: Self.key) }
+    /// Widgets filter by favourites, so they reload when the list changes.
+    private func save() {
+        defaults?.set(teams, forKey: Self.key)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
 }

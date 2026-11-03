@@ -7,6 +7,9 @@ import Foundation
 final class LiveActivityController {
     static let shared = LiveActivityController()
 
+    /// Past this with no update the system marks the activity stale, so a frozen card stops reading as live.
+    static let staleAfter: TimeInterval = 5 * 60
+
     private var activities: [String: Activity<MatchActivityAttributes>] = [:]
 
     private init() {}
@@ -20,7 +23,7 @@ final class LiveActivityController {
     func start(summary: MatchSummary) -> Bool {
         if isActive(matchId: summary.id) { return true }
         guard ActivityAuthorizationInfo().areActivitiesEnabled, let attributes = Self.attributes(for: summary) else { return false }
-        let content = ActivityContent(state: Self.state(for: summary), staleDate: nil)
+        let content = ActivityContent(state: Self.state(for: summary), staleDate: .now + Self.staleAfter)
         guard let activity = try? Activity.request(attributes: attributes, content: content, pushType: nil) else { return false }
         activities[summary.id] = activity
         return true
@@ -34,7 +37,7 @@ final class LiveActivityController {
         guard state != activity.content.state else { return }
         let finished = state.phase == .finished
         Task {
-            await activity.update(ActivityContent(state: state, staleDate: nil))
+            await activity.update(ActivityContent(state: state, staleDate: .now + Self.staleAfter))
             if finished { await activity.end(nil, dismissalPolicy: .after(.now + 300)) }
         }
         if finished { activities[matchId] = nil }

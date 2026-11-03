@@ -225,7 +225,7 @@ struct SearchScreen: View {
         guard (try? await Task.sleep(for: Self.localDebounce)) != nil else { return }
         results = localSearch()
         guard typed.count >= SearchRepository.minPlayerQueryLength else { players = []; lookup = .idle; return }
-        lookup = .searching
+        players = []; lookup = .searching
         guard (try? await Task.sleep(for: Self.playerDebounce)) != nil else { return }
         do {
             let hits = try await PlayerRepository.shared.search(query)
