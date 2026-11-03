@@ -66,7 +66,13 @@ struct HomeScreen: View {
         .background(BouncerColor.bg)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .principal) { BouncerWordmark() } }
+        .toolbar {
+            ToolbarItem(placement: .principal) { BouncerWordmark() }
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink(value: Route.search) { Image(systemName: "magnifyingglass") }
+                    .tint(BouncerColor.inkPrimary).accessibilityLabel("Search")
+            }
+        }
         .onAppear { visible = true }
         .onDisappear { visible = false }
         .task(id: RefreshKey(tab: tab, active: scenePhase == .active, visible: visible)) {

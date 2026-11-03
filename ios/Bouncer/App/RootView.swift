@@ -8,6 +8,8 @@ struct RootView: View {
     @State private var seriesPath: [Route] = []
     @State private var newsPath: [Route] = []
     @State private var morePath: [Route] = []
+    @Environment(AppEnvironment.self) private var env
+    @AppStorage("onboardingComplete") private var onboardingComplete = false
 
     var body: some View {
         TabView(selection: $selection) {
@@ -21,6 +23,9 @@ struct RootView: View {
                 .tabItem { Label("More", systemImage: "ellipsis") }.tag(Tab.more)
         }
         .tint(BouncerColor.goldInk)
+        .fullScreenCover(isPresented: .constant(!onboardingComplete && env.favourites.teams.isEmpty)) {
+            OnboardingScreen { onboardingComplete = true }
+        }
     }
 
     private func stack<Content: View>(_ path: Binding<[Route]>, @ViewBuilder _ root: () -> Content) -> some View {
@@ -30,7 +35,10 @@ struct RootView: View {
                     switch route {
                     case .match(let id): MatchDetailScreen(matchId: id)
                     case .news(let id): NewsArticleScreen(storyId: id)
-                    case .series(let id): SeriesMatchesScreen(seriesId: id)
+                    case .series(let id): SeriesDetailScreen(seriesId: id)
+                    case .player(let id, let name): PlayerScreen(playerId: id, name: name)
+                    case .team(let name): TeamScreen(name: name)
+                    case .search: SearchScreen()
                     }
                 }
         }
