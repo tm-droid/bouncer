@@ -51,20 +51,26 @@ struct SquadsTab: View {
     private func list(_ players: [SquadPlayer]) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(players.enumerated()), id: \.offset) { i, p in
-                HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
-                    Text(p.name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary)
-                    if p.captain || p.keeper {
-                        Text([p.captain ? "(c)" : nil, p.keeper ? "(wk)" : nil].compactMap { $0 }.joined(separator: " "))
-                            .font(.labelMedium).foregroundStyle(BouncerColor.inkSecondary)
-                    }
-                    Spacer(minLength: Spacing.sm)
-                    if !p.role.isEmpty { Text(p.role).font(.bodySmall).foregroundStyle(BouncerColor.inkSecondary).multilineTextAlignment(.trailing) }
-                }
-                .padding(.horizontal, Spacing.lg).padding(.vertical, Spacing.sm)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(p.name)\(p.captain ? ", captain" : "")\(p.keeper ? ", wicketkeeper" : "")\(p.role.isEmpty ? "" : ", \(p.role)")")
+                NavigationLink(value: Route.player(id: p.id.isEmpty ? nil : p.id, name: p.name)) { playerRow(p) }
+                    .buttonStyle(.plain)
                 if i < players.count - 1 { Divider().overlay(BouncerColor.divider) }
             }
         }
+    }
+
+    private func playerRow(_ p: SquadPlayer) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
+            Text(p.name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary)
+            if p.captain || p.keeper {
+                Text([p.captain ? "(c)" : nil, p.keeper ? "(wk)" : nil].compactMap { $0 }.joined(separator: " "))
+                    .font(.labelMedium).foregroundStyle(BouncerColor.inkSecondary)
+            }
+            Spacer(minLength: Spacing.sm)
+            if !p.role.isEmpty { Text(p.role).font(.bodySmall).foregroundStyle(BouncerColor.inkSecondary).multilineTextAlignment(.trailing) }
+        }
+        .padding(.horizontal, Spacing.lg).padding(.vertical, Spacing.sm)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(p.name)\(p.captain ? ", captain" : "")\(p.keeper ? ", wicketkeeper" : "")\(p.role.isEmpty ? "" : ", \(p.role)")")
     }
 }

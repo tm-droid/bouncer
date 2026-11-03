@@ -57,7 +57,9 @@ struct MatchDetailScreen: View {
 
     @ViewBuilder private func content(_ store: MatchDetailStore) -> some View {
         let hero = HeroModel(store: store)
-        let tabs = DetailTab.tabs(for: hero.phase)
+        let graphs = GraphsModel(store: store)
+        let showGraphs = (hero.teams.count >= 2 && graphs.hasWinProbability) || graphs.worm != nil || !graphs.wheels.isEmpty
+        let tabs = DetailTab.tabs(for: hero.phase, graphs: showGraphs, highlights: !store.highlights.isEmpty)
         let current = selectedTab.flatMap { tabs.contains($0) ? $0 : nil } ?? tabs[0]
         let hasData = store.summary != nil || store.live != nil || store.context != nil
         VStack(spacing: 0) {
@@ -80,7 +82,7 @@ struct MatchDetailScreen: View {
                                 Task { await store.stop(); await store.start() }
                             }
                         } else {
-                            tabContent(current, store: store, hero: hero)
+                            tabContent(current, store: store, hero: hero, graphs: graphs)
                         }
                     } header: {
                         TextTabBar(tabs: tabs.map(title), selection: Binding(
@@ -100,20 +102,23 @@ struct MatchDetailScreen: View {
                 }
             }
         }
+        .task(id: hero.phase == .upcoming ? nil : hero.highlightTarget) { await store.loadHighlights(for: hero.highlightTarget) }
     }
 
     private func title(_ tab: DetailTab) -> String {
         tab == .squads && squads?.hasPlayingXI == true ? "Playing XI" : tab.title
     }
 
-    @ViewBuilder private func tabContent(_ tab: DetailTab, store: MatchDetailStore, hero: HeroModel) -> some View {
+    @ViewBuilder private func tabContent(_ tab: DetailTab, store: MatchDetailStore, hero: HeroModel, graphs: GraphsModel) -> some View {
         switch tab {
         case .live: LiveTab(store: store) { selectedTab = .commentary }
         case .summary: SummaryTab(store: store, hero: hero)
         case .scorecard: ScorecardTab(store: store)
         case .commentary: CommentaryTab(store: store)
+        case .graphs: GraphsTab(model: graphs, teams: hero.teams)
         case .squads: SquadsTab(squads: squads, isLoading: squadsLoading, context: store.context) { Task { await loadSquads() } }
         case .info: InfoTab(store: store)
+        case .highlights: HighlightsTab(clips: store.highlights)
         }
     }
 

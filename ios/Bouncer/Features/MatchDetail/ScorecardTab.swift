@@ -109,19 +109,26 @@ struct ScorecardTab: View {
                         ForEach(Array(inn.bowlers.enumerated()), id: \.offset) { i, b in
                             let isBest = i == best
                             HStack(spacing: Spacing.xs) {
-                                Text(b.name).font(isBest ? .bouncer(14, .semibold, relativeTo: .subheadline) : .titleSmall)
-                                    .foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                StatCell(text: b.overs, width: 34)
-                                StatCell(text: b.maidens, width: 28)
-                                StatCell(text: b.runs, width: 34)
-                                StatCell(text: b.wickets, width: 28, emphasised: true)
-                                StatCell(text: b.economy, width: 48)
+                                NavigationLink(value: Route.player(id: nil, name: b.name)) {
+                                    Text(b.name).font(isBest ? .bouncer(14, .semibold, relativeTo: .subheadline) : .titleSmall)
+                                        .foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("\(b.name)\(isBest ? ", best bowler" : "")")
+                                HStack(spacing: Spacing.xs) {
+                                    StatCell(text: b.overs, width: 34)
+                                    StatCell(text: b.maidens, width: 28)
+                                    StatCell(text: b.runs, width: 34)
+                                    StatCell(text: b.wickets, width: 28, emphasised: true)
+                                    StatCell(text: b.economy, width: 48)
+                                }
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel("\(b.overs) overs, \(b.maidens) maidens, \(b.runs) runs, \(b.wickets) wickets, economy \(b.economy)")
                             }
                             .padding(.horizontal, Spacing.lg).padding(.vertical, Spacing.sm)
                             .background(isBest ? BouncerColor.surfaceVariant : .clear)
-                            .accessibilityElement(children: .ignore)
-                            .accessibilityLabel("\(b.name), \(b.overs) overs, \(b.maidens) maidens, \(b.runs) runs, \(b.wickets) wickets, economy \(b.economy)\(isBest ? ", best bowler" : "")")
                             if i < inn.bowlers.count - 1 { Divider().overlay(BouncerColor.divider) }
                         }
                     }
@@ -156,24 +163,31 @@ struct ScorecardTab: View {
 
     private func batRow(_ b: BatsmanStats) -> some View {
         HStack(alignment: .top, spacing: Spacing.xs) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(b.name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
-                if !b.dismissal.isEmpty {
-                    Text(b.dismissal).font(.bodySmall).foregroundStyle(BouncerColor.inkSecondary).lineLimit(3)
+            NavigationLink(value: Route.player(id: nil, name: b.name)) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(b.name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
+                    if !b.dismissal.isEmpty {
+                        Text(b.dismissal).font(.bodySmall).foregroundStyle(BouncerColor.inkSecondary).lineLimit(3)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            StatCell(text: b.runs, width: 34, emphasised: true)
-            StatCell(text: b.balls, width: 34)
-            if !compact {
-                StatCell(text: b.fours, width: 28)
-                StatCell(text: b.sixes, width: 28)
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(b.name), \(b.dismissal)")
+            HStack(spacing: Spacing.xs) {
+                StatCell(text: b.runs, width: 34, emphasised: true)
+                StatCell(text: b.balls, width: 34)
+                if !compact {
+                    StatCell(text: b.fours, width: 28)
+                    StatCell(text: b.sixes, width: 28)
+                }
+                StatCell(text: b.strikeRate, width: 48)
             }
-            StatCell(text: b.strikeRate, width: 48)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(b.runs) runs from \(b.balls) balls, \(b.fours) fours, \(b.sixes) sixes, strike rate \(b.strikeRate)")
         }
         .padding(.horizontal, Spacing.lg).padding(.vertical, Spacing.sm)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(b.name), \(b.dismissal), \(b.runs) runs from \(b.balls) balls, \(b.fours) fours, \(b.sixes) sixes, strike rate \(b.strikeRate)")
     }
 
     private func summaryRow(_ label: String, _ value: String, bold: Bool = false) -> some View {
