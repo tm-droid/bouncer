@@ -64,11 +64,14 @@ struct MoreScreen: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Spacing.lg) {
                         ForEach(env.favourites.teams, id: \.self) { name in
-                            VStack(spacing: Spacing.xs) {
-                                TeamCrest(name: name, imageURL: logos.getLogoUrl(for: name).flatMap(URL.init(string:)), size: 56)
-                                Text(name).font(.labelSmall).foregroundStyle(BouncerColor.inkSecondary)
-                                    .lineLimit(1).frame(width: 64)
+                            NavigationLink(value: Route.team(name: name)) {
+                                VStack(spacing: Spacing.xs) {
+                                    TeamCrest(name: name, imageURL: logos.getLogoUrl(for: name).flatMap(URL.init(string:)), size: 56)
+                                    Text(name).font(.labelSmall).foregroundStyle(BouncerColor.inkSecondary)
+                                        .lineLimit(1).frame(width: 64)
+                                }
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.horizontal, Spacing.lg).padding(.bottom, Spacing.md)
