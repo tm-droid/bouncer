@@ -1,5 +1,10 @@
 import Foundation
 
+/// Scorecards tag names as "Tim Seifert (wk)" or "Shreyas Iyer (c)"; the player search wants the bare name.
+func playerNameWithoutRoleTags(_ name: String) -> String {
+    name.replacing(#/\s*\([^)]*\)/#, with: "").trimmingCharacters(in: .whitespaces)
+}
+
 /// One hit of the `player-search` function.
 struct PlayerSearchResult: Equatable, Hashable, Sendable, Identifiable, Decodable {
     var id: String

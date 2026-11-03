@@ -17,6 +17,13 @@ struct PlayerTests {
         #expect(PlayerRepository.bestMatch(for: "x", in: []) == nil)
     }
 
+    @Test func roleTagsAreStrippedForLookup() {
+        #expect(playerNameWithoutRoleTags("Tim Seifert (wk)") == "Tim Seifert")
+        #expect(playerNameWithoutRoleTags("Shreyas Iyer (c)") == "Shreyas Iyer")
+        #expect(playerNameWithoutRoleTags("Jos Buttler (c) (wk)") == "Jos Buttler")
+        #expect(playerNameWithoutRoleTags("Finn Allen") == "Finn Allen")
+    }
+
     @Test func profileFromTableRow() throws {
         let row = try Fixture.data("player-profile-row.json")
         let now = ISO8601DateFormatter().date(from: "2026-10-25T00:00:00Z")!

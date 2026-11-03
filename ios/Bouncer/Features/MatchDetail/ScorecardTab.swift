@@ -109,7 +109,7 @@ struct ScorecardTab: View {
                         ForEach(Array(inn.bowlers.enumerated()), id: \.offset) { i, b in
                             let isBest = i == best
                             HStack(spacing: Spacing.xs) {
-                                NavigationLink(value: Route.player(id: nil, name: b.name)) {
+                                NavigationLink(value: Route.player(id: nil, name: playerNameWithoutRoleTags(b.name))) {
                                     Text(b.name).font(isBest ? .bouncer(14, .semibold, relativeTo: .subheadline) : .titleSmall)
                                         .foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
                                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -163,7 +163,7 @@ struct ScorecardTab: View {
 
     private func batRow(_ b: BatsmanStats) -> some View {
         HStack(alignment: .top, spacing: Spacing.xs) {
-            NavigationLink(value: Route.player(id: nil, name: b.name)) {
+            NavigationLink(value: Route.player(id: nil, name: playerNameWithoutRoleTags(b.name))) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(b.name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
                     if !b.dismissal.isEmpty {
