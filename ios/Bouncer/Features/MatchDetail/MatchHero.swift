@@ -29,7 +29,8 @@ struct MatchHero: View {
                     .multilineTextAlignment(.center).frame(maxWidth: .infinity)
             }
             if let p = model.winProbability, model.teams.count >= 2 {
-                WinProbabilityBar(probability: p, team1: model.teams[0].acronym, team2: model.teams[1].acronym)
+                WinProbabilityBar(probability: p, team1: model.teams[0].acronym, team2: model.teams[1].acronym,
+                                  names: (model.teams[0].name, model.teams[1].name))
             }
             if !model.recentBalls.isEmpty { RecentBallsStrip(balls: model.recentBalls) }
         }
@@ -122,17 +123,23 @@ struct WinProbabilityBar: View {
     let probability: WinProbability
     let team1: String
     let team2: String
+    /// Full names, for the team-colour lookup: an acronym is only known when the alias table lists it.
+    var names: (String, String)?
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let total = probability.team1 + probability.team2 + (probability.draw ?? 0)
+        // Team colours only when the registry knows both sides (WinProbabilityBar.kt); otherwise a
+        // strong and a faint neutral, two shares with no claim to be a team.
+        let teamFills = TeamColorRegistry.segmentColors(names?.0, names?.1, scheme: scheme, minContrast: 2.2)
         VStack(spacing: 4) {
             GeometryReader { geo in
                 HStack(spacing: 1) {
-                    Rectangle().fill(BouncerColor.inkPrimary).frame(width: geo.size.width * probability.team1 / total)
+                    Rectangle().fill(teamFills?.0.color ?? BouncerColor.inkPrimary).frame(width: geo.size.width * probability.team1 / total)
                     if let d = probability.draw {
                         Rectangle().fill(BouncerColor.border).frame(width: geo.size.width * d / total)
                     }
-                    Rectangle().fill(BouncerColor.inkSecondary.opacity(0.45))
+                    Rectangle().fill(teamFills?.1.color ?? BouncerColor.inkSecondary.opacity(0.45))
                 }
                 .clipShape(Capsule())
             }

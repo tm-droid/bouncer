@@ -6,18 +6,21 @@ import Charts
 struct GraphsTab: View {
     let model: GraphsModel
     let teams: [HeroTeam]
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
+        let ink = ChartInk(teams: teams, scheme: scheme)
+        let wormInk = model.worm.map { ink.ordered(firstLabel: $0.team1Name, teams: teams) } ?? ink
         VStack(spacing: 0) {
             if model.hasWinProbability, teams.count >= 2 {
                 DetailSection(title: "Win probability") {
-                    WinProbabilityChart(points: model.probability, team1: teams[0].acronym, team2: teams[1].acronym)
+                    WinProbabilityChart(points: model.probability, team1: teams[0].acronym, team2: teams[1].acronym, ink: ink)
                 }
             }
             if let worm = model.worm {
-                DetailSection(title: "Worm") { WormChart(worm: worm) }
+                DetailSection(title: "Worm") { WormChart(worm: worm, ink: wormInk) }
                 if !worm.perOver.isEmpty {
-                    DetailSection(title: "Runs per over") { RunsPerOverChart(worm: worm, requiredRunRate: model.requiredRunRate) }
+                    DetailSection(title: "Runs per over") { RunsPerOverChart(worm: worm, requiredRunRate: model.requiredRunRate, ink: wormInk) }
                 }
             }
             ForEach(model.wheels) { innings in
@@ -29,11 +32,37 @@ struct GraphsTab: View {
 }
 
 /// The one colour pair every chart on a match uses: first side, second side (MatchChartColors.kt).
-/// iOS has no team colour registry yet, so this is the neutral pair Android falls back to: two
-/// opaque inks that stay distinguishable in light and dark.
-private enum ChartInk {
-    static let first = BouncerColor.inkPrimary
-    static let second = BouncerColor.inkSecondary
+/// The teams' colours when the registry knows both; otherwise two opaque inks, not the hero bar's
+/// faint second share, because charts label their series in these colours as well as drawing them.
+private struct ChartInk {
+    var first = BouncerColor.inkPrimary
+    var second = BouncerColor.inkSecondary
+
+    /// WCAG's floor for graphics and large text: these colours draw lines and label them.
+    private static let minContrast = 3.0
+
+    init(teams: [HeroTeam], scheme: ColorScheme) {
+        guard teams.count >= 2,
+              let pair = TeamColorRegistry.segmentColors(teams[0].name, teams[1].name, scheme: scheme, minContrast: Self.minContrast)
+        else { return }
+        (first, second) = (pair.0.color, pair.1.color)
+    }
+
+    private init(first: Color, second: Color) {
+        self.first = first
+        self.second = second
+    }
+
+    /// Ordered for a series whose first line is `label`: the worm names its innings by the batting
+    /// side, which is not always `teams[0]`. A label naming neither team keeps the match order.
+    func ordered(firstLabel label: String, teams: [HeroTeam]) -> ChartInk {
+        guard teams.count >= 2 else { return self }
+        let l = label.trimmingCharacters(in: .whitespaces)
+        let second = teams[1]
+        let swapped = !l.isEmpty && (l.caseInsensitiveCompare(second.name) == .orderedSame
+            || l.caseInsensitiveCompare(second.acronym) == .orderedSame)
+        return swapped ? ChartInk(first: self.second, second: first) : self
+    }
 }
 
 private struct ChartLegend: View {
@@ -74,20 +103,21 @@ private struct WinProbabilityChart: View {
     let points: [ProbabilityPoint]
     let team1: String
     let team2: String
+    let ink: ChartInk
 
     var body: some View {
         let last = points.last
         let n1 = team1.isEmpty ? "Team 1" : team1
         let n2 = team2.isEmpty || team2 == team1 ? "Team 2" : team2
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            ChartLegend(entries: [("\(n1) \(percent(last?.team1 ?? 0))", ChartInk.first),
-                                  ("\(n2) \(percent(1 - (last?.team1 ?? 0)))", ChartInk.second)])
+            ChartLegend(entries: [("\(n1) \(percent(last?.team1 ?? 0))", ink.first),
+                                  ("\(n2) \(percent(1 - (last?.team1 ?? 0)))", ink.second)])
             Chart {
                 ForEach(Array(points.enumerated()), id: \.offset) { _, p in
                     LineMark(x: .value("Over", p.over), y: .value("Probability", p.team1), series: .value("Team", n1))
-                        .foregroundStyle(ChartInk.first)
+                        .foregroundStyle(ink.first)
                     LineMark(x: .value("Over", p.over), y: .value("Probability", 1 - p.team1), series: .value("Team", n2))
-                        .foregroundStyle(ChartInk.second)
+                        .foregroundStyle(ink.second)
                 }
             }
             .chartYScale(domain: 0...1)
@@ -115,19 +145,20 @@ private struct WinProbabilityChart: View {
 
 private struct WormChart: View {
     let worm: OverWorm
+    let ink: ChartInk
 
     var body: some View {
         let (n1, n2) = WormNames.of(worm)
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            ChartLegend(entries: worm.team2Scores.isEmpty ? [(n1, ChartInk.first)] : [(n1, ChartInk.first), (n2, ChartInk.second)])
+            ChartLegend(entries: worm.team2Scores.isEmpty ? [(n1, ink.first)] : [(n1, ink.first), (n2, ink.second)])
             Chart {
                 ForEach(Array(worm.team1Scores.enumerated()), id: \.offset) { i, score in
                     LineMark(x: .value("Over", i + 1), y: .value("Runs", score), series: .value("Innings", n1))
-                        .foregroundStyle(ChartInk.first)
+                        .foregroundStyle(ink.first)
                 }
                 ForEach(Array(worm.team2Scores.enumerated()), id: \.offset) { i, score in
                     LineMark(x: .value("Over", i + 1), y: .value("Runs", score), series: .value("Innings", n2))
-                        .foregroundStyle(ChartInk.second)
+                        .foregroundStyle(ink.second)
                 }
             }
             .chartAxisStyle()
@@ -141,19 +172,20 @@ private struct WormChart: View {
 private struct RunsPerOverChart: View {
     let worm: OverWorm
     let requiredRunRate: Double?
+    let ink: ChartInk
 
     var body: some View {
         let (n1, n2) = WormNames.of(worm)
         let hasSecond = worm.perOver.contains { $0.team2Runs != nil }
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            ChartLegend(entries: hasSecond ? [(n1, ChartInk.first), (n2, ChartInk.second)] : [(n1, ChartInk.first)])
+            ChartLegend(entries: hasSecond ? [(n1, ink.first), (n2, ink.second)] : [(n1, ink.first)])
             Chart {
                 ForEach(worm.perOver, id: \.over) { o in
                     BarMark(x: .value("Over", o.over), y: .value("Runs", o.team1Runs))
-                        .foregroundStyle(ChartInk.first).position(by: .value("Innings", n1))
+                        .foregroundStyle(ink.first).position(by: .value("Innings", n1))
                     if let r = o.team2Runs {
                         BarMark(x: .value("Over", o.over), y: .value("Runs", r))
-                            .foregroundStyle(ChartInk.second).position(by: .value("Innings", n2))
+                            .foregroundStyle(ink.second).position(by: .value("Innings", n2))
                     }
                 }
                 if let rrr = requiredRunRate {

@@ -1,0 +1,2230 @@
+{
+ "AWS World": [
+  "#F63505",
+  "#F63505"
+ ],
+ "Abu Dhabi Knight Riders": [
+  "#3A225D",
+  "#3A225D"
+ ],
+ "Adani Trivandrum Royals": [
+  "#D60155",
+  "#D60155"
+ ],
+ "Adelaide Strikers": [
+  "#2AA1DA",
+  "#2AA1DA"
+ ],
+ "Adelaide Strikers Women": [
+  "#0085CA",
+  "#0085CA"
+ ],
+ "Afghanistan": [
+  "#A87D36",
+  "#09844A"
+ ],
+ "Afghanistan A": [
+  "#A87D36",
+  "#09844A"
+ ],
+ "Afghanistan Pathans": [
+  "#FFDF3C",
+  "#FFDF3C"
+ ],
+ "Afghanistan U19": [
+  "#A87D36",
+  "#09844A"
+ ],
+ "Afghanistan U23": [
+  "#A87D36",
+  "#09844A"
+ ],
+ "Ajman Titans": [
+  "#6C1CB8",
+  "#6C1CB8"
+ ],
+ "Alleppey Ripples": [
+  "#CBFADA",
+  "#99BCFC"
+ ],
+ "Amaravati Royals": [
+  "#860028",
+  "#860028"
+ ],
+ "Antigua and Barbuda Falcons": [
+  "#44D8F6",
+  "#D9212B"
+ ],
+ "Argentina": [
+  "#74ACDD",
+  "#74ACDD"
+ ],
+ "Argentina Women": [
+  "#75ACDD",
+  "#75ACDD"
+ ],
+ "Aspin Stallions": [
+  "#B80314",
+  "#B80314"
+ ],
+ "Atlanta Riders": [
+  "#EDC36F",
+  "#EDC36F"
+ ],
+ "Australia": [
+  "#014F27",
+  "#FCB912"
+ ],
+ "Australia A": [
+  "#014F27",
+  "#FCB912"
+ ],
+ "Australia A Women": [
+  "#014F27",
+  "#FCB912"
+ ],
+ "Australia Champions": [
+  "#F9D03F",
+  "#F9D03F"
+ ],
+ "Australia Legends": [
+  "#014F27",
+  "#FCB912"
+ ],
+ "Australia Masters": [
+  "#014F27",
+  "#FCB912"
+ ],
+ "Australia U19": [
+  "#014F27",
+  "#FCB912"
+ ],
+ "Australia Women": [
+  "#014F27",
+  "#FCB912"
+ ],
+ "Australia Women U19": [
+  "#014F27",
+  "#FCB912"
+ ],
+ "Australian Capital Territory Women": [
+  "#1343A8",
+  "#FEF31D"
+ ],
+ "Australians": [
+  "#00008B",
+  "#FF0101"
+ ],
+ "Austria": [
+  "#EC2738",
+  "#EC2738"
+ ],
+ "Austria Women": [
+  "#EC2738",
+  "#EC2738"
+ ],
+ "Bahamas": [
+  "#03ABCB",
+  "#FBDF46"
+ ],
+ "Bahrain": [
+  "#D01027",
+  "#D01027"
+ ],
+ "Bahrain Women": [
+  "#D01027",
+  "#D01027"
+ ],
+ "Bangla Tigers": [
+  "#005A26",
+  "#005A26"
+ ],
+ "Bangla Tigers Mississauga": [
+  "#F6F6B5",
+  "#262546"
+ ],
+ "Bangladesh": [
+  "#17663C",
+  "#D0792D"
+ ],
+ "Bangladesh A": [
+  "#17663C",
+  "#D0792D"
+ ],
+ "Bangladesh A Women": [
+  "#17663C",
+  "#D0792D"
+ ],
+ "Bangladesh Legends": [
+  "#17663C",
+  "#D0792D"
+ ],
+ "Bangladesh Tigers": [
+  "#FFB866",
+  "#FFB866"
+ ],
+ "Bangladesh U19": [
+  "#17663C",
+  "#D0792D"
+ ],
+ "Bangladesh U23": [
+  "#17663C",
+  "#D0792D"
+ ],
+ "Bangladesh Women": [
+  "#17663C",
+  "#D0792D"
+ ],
+ "Bangladesh Women U19": [
+  "#17663C",
+  "#D0792D"
+ ],
+ "Barbados Royals": [
+  "#034EA2",
+  "#E5BD20"
+ ],
+ "Barbados Royals Women": [
+  "#004E8A",
+  "#FBDB01"
+ ],
+ "Barbados Tridents": [
+  "#034EA2",
+  "#E5BD20"
+ ],
+ "Barbados Tridents Women": [
+  "#E2178F",
+  "#E2178F"
+ ],
+ "Barbados Women": [
+  "#E2178F",
+  "#E2178F"
+ ],
+ "Bathinda Royals": [
+  "#175596",
+  "#175596"
+ ],
+ "Belagavi Panthers": [
+  "#F90304",
+  "#F90304"
+ ],
+ "Belfast Titans": [
+  "#F85B3C",
+  "#F85B3C"
+ ],
+ "Belgium": [
+  "#F31830",
+  "#FFD90C"
+ ],
+ "Belgium Women": [
+  "#F31830",
+  "#FFD90C"
+ ],
+ "Belize": [
+  "#033E87",
+  "#033E87"
+ ],
+ "Belize Women": [
+  "#033E87",
+  "#033E87"
+ ],
+ "Bermuda": [
+  "#CE142B",
+  "#020166"
+ ],
+ "Bhilwara Bulls": [
+  "#00005B",
+  "#00005B"
+ ],
+ "Bhopal Leopards": [
+  "#885B00",
+  "#885B00"
+ ],
+ "Bhutan": [
+  "#FE4D13",
+  "#FE4D13"
+ ],
+ "Bhutan Women": [
+  "#FD480B",
+  "#FD480B"
+ ],
+ "Biratnagar Kings": [
+  "#1B294D",
+  "#DEBE17"
+ ],
+ "Birmingham Bears": [
+  "#266199",
+  "#FCD800"
+ ],
+ "Birmingham Phoenix": [
+  "#FF8C00",
+  "#FF8C00"
+ ],
+ "Birmingham Phoenix Women": [
+  "#FF8C00",
+  "#FF8C00"
+ ],
+ "Botswana": [
+  "#00CBFF",
+  "#00CBFF"
+ ],
+ "Botswana Women": [
+  "#00CBFF",
+  "#00CBFF"
+ ],
+ "Brazil": [
+  "#019B3C",
+  "#FCDC02"
+ ],
+ "Brazil Women": [
+  "#019B3C",
+  "#FDDD03"
+ ],
+ "Brisbane Heat": [
+  "#27A7B0",
+  "#27A7B0"
+ ],
+ "Brisbane Heat Women": [
+  "#00B3C4",
+  "#00B3C4"
+ ],
+ "Bulgaria": [
+  "#02966C",
+  "#D62612"
+ ],
+ "Bulgaria Women": [
+  "#016F4A",
+  "#C5112E"
+ ],
+ "Bundelkhand Bulls": [
+  "#560C1D",
+  "#560C1D"
+ ],
+ "California Knights": [
+  "#946EB8",
+  "#E8D888"
+ ],
+ "Cambodia": [
+  "#0101CD",
+  "#FB0103"
+ ],
+ "Cambodia Women": [
+  "#0101CD",
+  "#FB0103"
+ ],
+ "Cameroon": [
+  "#FDD013",
+  "#027765"
+ ],
+ "Cameroon Women": [
+  "#CC1227",
+  "#FFCF19"
+ ],
+ "Canada": [
+  "#C91F26",
+  "#C91F26"
+ ],
+ "Canada U19": [
+  "#C91F26",
+  "#C91F26"
+ ],
+ "Canada Women": [
+  "#C91F26",
+  "#C91F26"
+ ],
+ "Capital Amaravati Royals": [
+  "#860028",
+  "#860028"
+ ],
+ "Cayman Islands": [
+  "#032167",
+  "#032167"
+ ],
+ "Cayman Islands Women": [
+  "#012169",
+  "#C8102E"
+ ],
+ "Central Delhi Kings": [
+  "#FEE302",
+  "#FEE302"
+ ],
+ "Central Stags": [
+  "#127B5B",
+  "#127B5B"
+ ],
+ "Chandigarh": [
+  "#0366FC",
+  "#0366FC"
+ ],
+ "Chattogram Royals": [
+  "#394FA2",
+  "#FAD50A"
+ ],
+ "Chennai Brave Jaguars": [
+  "#0A2354",
+  "#0A2354"
+ ],
+ "Chennai Super Kings": [
+  "#F15B18",
+  "#1D418C"
+ ],
+ "Chile": [
+  "#D32B20",
+  "#0238A6"
+ ],
+ "Chile Women": [
+  "#D42B20",
+  "#0238A6"
+ ],
+ "China": [
+  "#E02712",
+  "#E02712"
+ ],
+ "China Women": [
+  "#E02712",
+  "#E02712"
+ ],
+ "Chittagong Kings": [
+  "#394FA2",
+  "#FAD50A"
+ ],
+ "City Kaitak": [
+  "#FDDD15",
+  "#FDDD15"
+ ],
+ "Colombo Kaps": [
+  "#FF48E3",
+  "#B200BB"
+ ],
+ "Colombo Kings": [
+  "#072658",
+  "#072658"
+ ],
+ "Colombo Lions": [
+  "#010478",
+  "#010478"
+ ],
+ "Colombo Strikers": [
+  "#FF48E3",
+  "#B200BB"
+ ],
+ "Cook Islands": [
+  "#302C7B",
+  "#302C7B"
+ ],
+ "Cook Islands Women": [
+  "#302C7B",
+  "#302C7B"
+ ],
+ "Costa Rica": [
+  "#022B7E",
+  "#D11127"
+ ],
+ "Costa Rica Women": [
+  "#022B7E",
+  "#D11127"
+ ],
+ "Cricket South Africa Invitation XI": [
+  "#007847",
+  "#000C8A"
+ ],
+ "Croatia": [
+  "#161696",
+  "#FD0102"
+ ],
+ "Croatia Women": [
+  "#171897",
+  "#FD0102"
+ ],
+ "Cyprus": [
+  "#D57802",
+  "#D57802"
+ ],
+ "Cyprus Women": [
+  "#D57800",
+  "#D57800"
+ ],
+ "Czech Republic": [
+  "#D71219",
+  "#0E467C"
+ ],
+ "Czech Republic Women": [
+  "#D7141A",
+  "#11457E"
+ ],
+ "Dambulla Sixers": [
+  "#FCDD07",
+  "#16478C"
+ ],
+ "Dambulla Viiking": [
+  "#0A3246",
+  "#0A3246"
+ ],
+ "Deccan Gladiators": [
+  "#0403B9",
+  "#0403B9"
+ ],
+ "Delhi Bulls": [
+  "#291C5D",
+  "#291C5D"
+ ],
+ "Delhi Capitals": [
+  "#282968",
+  "#282968"
+ ],
+ "Delhi Capitals Women": [
+  "#252471",
+  "#252471"
+ ],
+ "Denmark": [
+  "#D7251A",
+  "#D7251A"
+ ],
+ "Denmark Women": [
+  "#D7251A",
+  "#D7251A"
+ ],
+ "Derbyshire": [
+  "#0F2B53",
+  "#DE900E"
+ ],
+ "Desert Vipers": [
+  "#EACD86",
+  "#C82129"
+ ],
+ "Dhaka Capitals": [
+  "#12375C",
+  "#12375C"
+ ],
+ "Dolphins": [
+  "#019548",
+  "#019548"
+ ],
+ "Dubai Capitals": [
+  "#2A327A",
+  "#EA0B2A"
+ ],
+ "Dubai Giants": [
+  "#FEBC03",
+  "#FEBC03"
+ ],
+ "Dubai Royals": [
+  "#006263",
+  "#006263"
+ ],
+ "Dublin Guardians": [
+  "#0E8446",
+  "#0E8446"
+ ],
+ "Durbans Super Giants": [
+  "#3578BC",
+  "#3578BC"
+ ],
+ "Durdanto Dhaka": [
+  "#DCD9AA",
+  "#DCD9AA"
+ ],
+ "Durham": [
+  "#FBEC18",
+  "#0551F4"
+ ],
+ "Eagle Nashik Titans": [
+  "#292563",
+  "#292563"
+ ],
+ "East Africa": [
+  "#0388FC",
+  "#FBFA0A"
+ ],
+ "England": [
+  "#27245E",
+  "#27245E"
+ ],
+ "England A Women": [
+  "#27245E",
+  "#27245E"
+ ],
+ "England Champions": [
+  "#4A75A1",
+  "#4A75A1"
+ ],
+ "England Cricket Board XI": [
+  "#CE1124",
+  "#CE1124"
+ ],
+ "England Legends": [
+  "#27245E",
+  "#27245E"
+ ],
+ "England Lions": [
+  "#CE1124",
+  "#CE1124"
+ ],
+ "England Masters": [
+  "#27245E",
+  "#27245E"
+ ],
+ "England U19": [
+  "#27245E",
+  "#27245E"
+ ],
+ "England Women": [
+  "#27245E",
+  "#27245E"
+ ],
+ "England Women U19": [
+  "#27245E",
+  "#27245E"
+ ],
+ "England XI": [
+  "#27245E",
+  "#27245E"
+ ],
+ "Essex": [
+  "#B72027",
+  "#F4C829"
+ ],
+ "Estonia": [
+  "#0071CF",
+  "#0071CF"
+ ],
+ "Estonia Women": [
+  "#0071CF",
+  "#0071CF"
+ ],
+ "Estonia XI": [
+  "#128EFD",
+  "#128EFD"
+ ],
+ "Eswatini": [
+  "#3D5DB8",
+  "#B30B0A"
+ ],
+ "Eswatini Women": [
+  "#B30C0B",
+  "#F9D907"
+ ],
+ "Falkland Islands": [
+  "#012169",
+  "#C8102E"
+ ],
+ "Fiji": [
+  "#68BFE5",
+  "#C8102E"
+ ],
+ "Fiji U19": [
+  "#68BFE5",
+  "#C8102E"
+ ],
+ "Fiji Women": [
+  "#68BFE5",
+  "#C8102E"
+ ],
+ "Finland": [
+  "#1C5C9A",
+  "#1C5C9A"
+ ],
+ "Finland Women": [
+  "#1C5C9A",
+  "#1C5C9A"
+ ],
+ "France": [
+  "#ED2838",
+  "#002497"
+ ],
+ "France Women": [
+  "#012496",
+  "#ED2738"
+ ],
+ "Galle Marvels": [
+  "#72BF44",
+  "#FFFFFF"
+ ],
+ "Gambia": [
+  "#3C7728",
+  "#D01027"
+ ],
+ "Garden Route Badgers": [
+  "#018C3C",
+  "#018C3C"
+ ],
+ "Gaur Gorakhapur Lions": [
+  "#161541",
+  "#161541"
+ ],
+ "Gazi Group Chattogram": [
+  "#480A09",
+  "#480A09"
+ ],
+ "Genid Yanam Royals": [
+  "#144900",
+  "#144900"
+ ],
+ "Germany": [
+  "#FF0000",
+  "#FFCC00"
+ ],
+ "Germany Women": [
+  "#FF0000",
+  "#FFCC00"
+ ],
+ "Ghana": [
+  "#D01027",
+  "#016B3E"
+ ],
+ "Ghana Women": [
+  "#D01027",
+  "#016B3E"
+ ],
+ "Gibraltar": [
+  "#D90109",
+  "#D90109"
+ ],
+ "Gibraltar Women": [
+  "#D90109",
+  "#D90109"
+ ],
+ "Glamorgan": [
+  "#182847",
+  "#50A432"
+ ],
+ "Gohilwad Gladiators": [
+  "#11173B",
+  "#11173B"
+ ],
+ "Greece": [
+  "#0C5DAC",
+  "#0C5DAC"
+ ],
+ "Greece Women": [
+  "#0D5EB3",
+  "#0D5EB3"
+ ],
+ "Guernsey": [
+  "#E7132C",
+  "#E7132C"
+ ],
+ "Guernsey Women": [
+  "#D60226",
+  "#FCC603"
+ ],
+ "Gujarat Giants Women": [
+  "#5C2A19",
+  "#5C2A19"
+ ],
+ "Gujarat Greats": [
+  "#431E0B",
+  "#431E0B"
+ ],
+ "Gujarat Lions": [
+  "#7F3B0E",
+  "#7F3B0E"
+ ],
+ "Gujarat Titans": [
+  "#B38C4A",
+  "#B38C4A"
+ ],
+ "Guyana Amazon Warriors": [
+  "#FDD204",
+  "#02A850"
+ ],
+ "Guyana Amazon Warriors Women": [
+  "#E11836",
+  "#E11836"
+ ],
+ "Halar Heroes": [
+  "#263B75",
+  "#263B75"
+ ],
+ "Hobart Hurricanes": [
+  "#684397",
+  "#684397"
+ ],
+ "Hobart Hurricanes Women": [
+  "#5F259F",
+  "#5F259F"
+ ],
+ "Hong Kong": [
+  "#CC0033",
+  "#CC0033"
+ ],
+ "Hong Kong A": [
+  "#CC0033",
+  "#CC0033"
+ ],
+ "Hong Kong U19": [
+  "#CC0033",
+  "#CC0033"
+ ],
+ "Hong Kong Women": [
+  "#CC0033",
+  "#CC0033"
+ ],
+ "Hong Kong, China": [
+  "#EC1B2E",
+  "#EC1B2E"
+ ],
+ "Hong Kong, China A": [
+  "#EC1B2E",
+  "#EC1B2E"
+ ],
+ "Hong Kong, China U19": [
+  "#EC1B2E",
+  "#EC1B2E"
+ ],
+ "Hong Kong, China Women": [
+  "#EC1B2E",
+  "#EC1B2E"
+ ],
+ "Hungary": [
+  "#CE283D",
+  "#CE283D"
+ ],
+ "Hyderabad Kingsmen": [
+  "#000000",
+  "#D8A355"
+ ],
+ "India": [
+  "#D6B268",
+  "#2255A4"
+ ],
+ "India A": [
+  "#D6B268",
+  "#2255A4"
+ ],
+ "India A Women": [
+  "#D6B268",
+  "#2255A4"
+ ],
+ "India B": [
+  "#4478DC",
+  "#4478DC"
+ ],
+ "India Champions": [
+  "#1A5287",
+  "#1A5287"
+ ],
+ "India Legends": [
+  "#D6B268",
+  "#2255A4"
+ ],
+ "India Maharajas": [
+  "#00184B",
+  "#00184B"
+ ],
+ "India Masters": [
+  "#D6B268",
+  "#2255A4"
+ ],
+ "India Senior": [
+  "#FF9933",
+  "#128807"
+ ],
+ "India U19": [
+  "#D6B268",
+  "#2255A4"
+ ],
+ "India U19 A": [
+  "#D6B268",
+  "#2255A4"
+ ],
+ "India U23": [
+  "#D6B268",
+  "#2255A4"
+ ],
+ "India Women": [
+  "#D6B268",
+  "#2255A4"
+ ],
+ "India Women U19": [
+  "#D6B268",
+  "#2255A4"
+ ],
+ "Indian Royals": [
+  "#12376E",
+  "#12376E"
+ ],
+ "Indians": [
+  "#FD9A35",
+  "#138808"
+ ],
+ "Indonesia": [
+  "#FC0102",
+  "#FC0102"
+ ],
+ "Indonesia Women": [
+  "#FD0002",
+  "#FD0002"
+ ],
+ "Indonesia Women U19": [
+  "#FC0102",
+  "#FC0102"
+ ],
+ "Iran": [
+  "#DA0000",
+  "#239F40"
+ ],
+ "Ireland": [
+  "#307539",
+  "#307539"
+ ],
+ "Ireland A": [
+  "#307539",
+  "#307539"
+ ],
+ "Ireland U19": [
+  "#307539",
+  "#307539"
+ ],
+ "Ireland Women": [
+  "#307539",
+  "#307539"
+ ],
+ "Ireland Women U19": [
+  "#307539",
+  "#307539"
+ ],
+ "Islamabad United": [
+  "#F1613A",
+  "#F1613A"
+ ],
+ "Isle of Man": [
+  "#CE142C",
+  "#CE142C"
+ ],
+ "Isle of Man Women": [
+  "#E60817",
+  "#E60817"
+ ],
+ "Israel": [
+  "#0239B7",
+  "#0239B7"
+ ],
+ "Italy": [
+  "#0040CD",
+  "#0040CD"
+ ],
+ "Italy Women": [
+  "#1677BC",
+  "#E0BF71"
+ ],
+ "Jaanbaaz Kota Challengers": [
+  "#00005B",
+  "#00005B"
+ ],
+ "Jaffna Kings": [
+  "#222550",
+  "#F2C05C"
+ ],
+ "Jaffna Stallions": [
+  "#042569",
+  "#042569"
+ ],
+ "Jaipur Indians": [
+  "#00005C",
+  "#00005C"
+ ],
+ "Jamaica Empress Women": [
+  "#211659",
+  "#211659"
+ ],
+ "Janakpur Bolts": [
+  "#162648",
+  "#162648"
+ ],
+ "Japan": [
+  "#B90129",
+  "#B90129"
+ ],
+ "Japan U19": [
+  "#B90129",
+  "#B90129"
+ ],
+ "Japan Women": [
+  "#B90129",
+  "#B90129"
+ ],
+ "Jersey": [
+  "#CF142B",
+  "#CF142B"
+ ],
+ "Jersey Women": [
+  "#CF142B",
+  "#CF142B"
+ ],
+ "Joburg Super Kings": [
+  "#F07125",
+  "#0B713D"
+ ],
+ "Jodhpur Sunrisers": [
+  "#00005C",
+  "#00005C"
+ ],
+ "Kakinada Kings": [
+  "#012352",
+  "#012352"
+ ],
+ "Kandy Falcons": [
+  "#EF170B",
+  "#EFB14D"
+ ],
+ "Kandy Royals": [
+  "#EF170B",
+  "#EFB14D"
+ ],
+ "Kandy Samp Army": [
+  "#593419",
+  "#593419"
+ ],
+ "Kandy Tuskers": [
+  "#3C1444",
+  "#3C1444"
+ ],
+ "Kanpur Superstars": [
+  "#EB2127",
+  "#EB2127"
+ ],
+ "Karachi Kings": [
+  "#01359D",
+  "#E1A800"
+ ],
+ "Karaikal Kniights": [
+  "#D9AA5A",
+  "#581677"
+ ],
+ "Kashi Rudras": [
+  "#091C45",
+  "#091C45"
+ ],
+ "Kathmandu Gorkhas": [
+  "#1E7A72",
+  "#1E7A72"
+ ],
+ "Kent": [
+  "#A71734",
+  "#082249"
+ ],
+ "Kenya": [
+  "#FF0000",
+  "#005425"
+ ],
+ "Kenya U19": [
+  "#FF0000",
+  "#005425"
+ ],
+ "Kenya Women": [
+  "#FF0000",
+  "#005425"
+ ],
+ "Khulna Tigers": [
+  "#1C1E47",
+  "#1C1E47"
+ ],
+ "Kochi Blue Tigers": [
+  "#02B6E9",
+  "#02B6E9"
+ ],
+ "Kolhapur Tuskers": [
+  "#47378A",
+  "#47378A"
+ ],
+ "Kolkata Knight Riders": [
+  "#3A225D",
+  "#F2C028"
+ ],
+ "Kutch Warriors": [
+  "#192656",
+  "#192656"
+ ],
+ "Kuwait": [
+  "#00D941",
+  "#F31830"
+ ],
+ "Kuwait U19": [
+  "#00D941",
+  "#F31830"
+ ],
+ "Kuwait Women": [
+  "#00D941",
+  "#F31830"
+ ],
+ "KwaZulu-Natal Inland": [
+  "#154196",
+  "#154196"
+ ],
+ "Leicestershire": [
+  "#E30613",
+  "#E30613"
+ ],
+ "Lesotho": [
+  "#009541",
+  "#03209E"
+ ],
+ "Lesotho Women": [
+  "#019541",
+  "#011E9C"
+ ],
+ "London Spirit": [
+  "#0000FF",
+  "#0000FF"
+ ],
+ "London Spirit Women": [
+  "#0000FF",
+  "#0000FF"
+ ],
+ "Los Angeles Knight Riders": [
+  "#39225D",
+  "#39225D"
+ ],
+ "Lumbini Lions": [
+  "#0E1B42",
+  "#0E1B42"
+ ],
+ "Luxembourg": [
+  "#EE2837",
+  "#039FE1"
+ ],
+ "Luxembourg Women": [
+  "#EC2838",
+  "#01A1DC"
+ ],
+ "MI Cape Town": [
+  "#0D5EA3",
+  "#E6B745"
+ ],
+ "MI London": [
+  "#01FF97",
+  "#01FF97"
+ ],
+ "MI London Women": [
+  "#01FF97",
+  "#01FF97"
+ ],
+ "Malawi": [
+  "#D01027",
+  "#349E36"
+ ],
+ "Malawi Women": [
+  "#349D36",
+  "#D01027"
+ ],
+ "Malaysia": [
+  "#EC1C24",
+  "#2E3291"
+ ],
+ "Malaysia U19": [
+  "#EC1C24",
+  "#2E3291"
+ ],
+ "Malaysia Women": [
+  "#EC1C24",
+  "#2E3291"
+ ],
+ "Malaysia Women U19": [
+  "#EC1C24",
+  "#2E3291"
+ ],
+ "Maldives": [
+  "#D21033",
+  "#037E39"
+ ],
+ "Maldives Women": [
+  "#D21033",
+  "#037E39"
+ ],
+ "Mali": [
+  "#FCD116",
+  "#14B53A"
+ ],
+ "Mali Women": [
+  "#FCD116",
+  "#14B53A"
+ ],
+ "Malta": [
+  "#98012B",
+  "#98012B"
+ ],
+ "Malta Women": [
+  "#98012B",
+  "#98012B"
+ ],
+ "Manchester Super Giants": [
+  "#C62828",
+  "#C62828"
+ ],
+ "Manchester Super Giants Women": [
+  "#C62828",
+  "#C62828"
+ ],
+ "Maratha Arabians": [
+  "#FD5801",
+  "#FD5801"
+ ],
+ "Mauritius": [
+  "#02A44F",
+  "#FDD602"
+ ],
+ "Melbourne Renegades": [
+  "#EC333E",
+  "#EC333E"
+ ],
+ "Melbourne Renegades Women": [
+  "#E4002B",
+  "#E4002B"
+ ],
+ "Melbourne Stars Women": [
+  "#01B040",
+  "#01B040"
+ ],
+ "Mexico": [
+  "#016745",
+  "#D01027"
+ ],
+ "Mexico Women": [
+  "#016745",
+  "#D01027"
+ ],
+ "Middlesex": [
+  "#273C6A",
+  "#273C6A"
+ ],
+ "Middlesex Women": [
+  "#183B66",
+  "#183B66"
+ ],
+ "Mongolia": [
+  "#FF0135",
+  "#0070BC"
+ ],
+ "Mongolia Women": [
+  "#FF0135",
+  "#0070BC"
+ ],
+ "Morocco": [
+  "#D50223",
+  "#D50223"
+ ],
+ "Morrisville Unity": [
+  "#857AFA",
+  "#DC9925"
+ ],
+ "Mozambique": [
+  "#017069",
+  "#FDE101"
+ ],
+ "Mozambique Women": [
+  "#017069",
+  "#FCE202"
+ ],
+ "Multan Sultans": [
+  "#022354",
+  "#1EA305"
+ ],
+ "Mumbai Indians Women": [
+  "#0860A0",
+  "#0860A0"
+ ],
+ "Myanmar": [
+  "#FECB01",
+  "#EA273A"
+ ],
+ "Myanmar Women": [
+  "#FECB01",
+  "#EA273A"
+ ],
+ "Namibia": [
+  "#C70000",
+  "#38A100"
+ ],
+ "Namibia  U19": [
+  "#C70000",
+  "#38A100"
+ ],
+ "Namibia U19": [
+  "#C70000",
+  "#38A100"
+ ],
+ "Namibia Women": [
+  "#C70000",
+  "#38A100"
+ ],
+ "Nepal": [
+  "#DC143C",
+  "#003893"
+ ],
+ "Nepal U19": [
+  "#DC143C",
+  "#003893"
+ ],
+ "Nepal Women": [
+  "#DC143C",
+  "#003893"
+ ],
+ "Netherlands": [
+  "#E85528",
+  "#203A71"
+ ],
+ "Netherlands Women": [
+  "#EE7B26",
+  "#EE7B26"
+ ],
+ "New Jersey Legends": [
+  "#E8C78B",
+  "#E8C78B"
+ ],
+ "New South Wales": [
+  "#8ED8F8",
+  "#8ED8F8"
+ ],
+ "New York Superstar Strikers": [
+  "#2C014B",
+  "#2C014B"
+ ],
+ "New York Warriors": [
+  "#D8A56D",
+  "#D8A56D"
+ ],
+ "New Zealand": [
+  "#00247D",
+  "#C8102E"
+ ],
+ "New Zealand A": [
+  "#00247D",
+  "#C8102E"
+ ],
+ "New Zealand A Women": [
+  "#00247D",
+  "#C8102E"
+ ],
+ "New Zealand Legends": [
+  "#00247D",
+  "#C8102E"
+ ],
+ "New Zealand U19": [
+  "#00247D",
+  "#C8102E"
+ ],
+ "New Zealand Women": [
+  "#00247D",
+  "#C8102E"
+ ],
+ "New Zealand Women U19": [
+  "#00247D",
+  "#C8102E"
+ ],
+ "New Zealand XI": [
+  "#00247D",
+  "#C8102E"
+ ],
+ "New Zealand XI Women": [
+  "#00247D",
+  "#C8102E"
+ ],
+ "Nigeria": [
+  "#008751",
+  "#008751"
+ ],
+ "Nigeria U19": [
+  "#008751",
+  "#008751"
+ ],
+ "Nigeria Women": [
+  "#008751",
+  "#008751"
+ ],
+ "Nigeria Women U19": [
+  "#008751",
+  "#008751"
+ ],
+ "Noakhali Express": [
+  "#034568",
+  "#034568"
+ ],
+ "Noida Kings": [
+  "#FBE612",
+  "#FBE612"
+ ],
+ "Nondescripts Cricket Club": [
+  "#040675",
+  "#040675"
+ ],
+ "North West": [
+  "#913B4E",
+  "#913B4E"
+ ],
+ "Northamptonshire": [
+  "#990401",
+  "#990401"
+ ],
+ "Northern Knights": [
+  "#EE1C26",
+  "#291A1B"
+ ],
+ "Northern Superchargers": [
+  "#4C026A",
+  "#4C026A"
+ ],
+ "Northern Superchargers Women": [
+  "#4C026A",
+  "#4C026A"
+ ],
+ "Northern Warriors": [
+  "#7B0B17",
+  "#7B0B17"
+ ],
+ "Norway": [
+  "#E91C23",
+  "#293396"
+ ],
+ "Norway Women": [
+  "#E91C23",
+  "#293396"
+ ],
+ "Nottinghamshire": [
+  "#016341",
+  "#016341"
+ ],
+ "Oman": [
+  "#EF2D29",
+  "#009025"
+ ],
+ "Oman A": [
+  "#EF2D29",
+  "#009025"
+ ],
+ "Oman Women": [
+  "#EF2D29",
+  "#009025"
+ ],
+ "Ossudu Accord Warriors": [
+  "#4066AF",
+  "#4066AF"
+ ],
+ "Outer Delhi Warriors": [
+  "#A68719",
+  "#A68719"
+ ],
+ "Oval Invincibles": [
+  "#03FEA9",
+  "#03FEA9"
+ ],
+ "Oval Invincibles Women": [
+  "#03FEA9",
+  "#03FEA9"
+ ],
+ "Paarl Royals": [
+  "#E3118F",
+  "#2D2E7A"
+ ],
+ "Pakistan": [
+  "#A38056",
+  "#A38056"
+ ],
+ "Pakistan A": [
+  "#A38056",
+  "#A38056"
+ ],
+ "Pakistan A Women": [
+  "#A38056",
+  "#A38056"
+ ],
+ "Pakistan All Star XI": [
+  "#0C590B",
+  "#0C590B"
+ ],
+ "Pakistan Champions": [
+  "#186033",
+  "#186033"
+ ],
+ "Pakistan U19": [
+  "#A38056",
+  "#A38056"
+ ],
+ "Pakistan U23": [
+  "#A38056",
+  "#A38056"
+ ],
+ "Pakistan Women": [
+  "#A38056",
+  "#A38056"
+ ],
+ "Pakistan Women U19": [
+  "#A38056",
+  "#A38056"
+ ],
+ "Panama": [
+  "#015193",
+  "#D21033"
+ ],
+ "Papua New Guinea": [
+  "#FEF102",
+  "#D92127"
+ ],
+ "Papua New Guinea U19": [
+  "#FEF102",
+  "#D92127"
+ ],
+ "Papua New Guinea Women": [
+  "#FEF102",
+  "#D92127"
+ ],
+ "Pearl Gladiators": [
+  "#D88646",
+  "#D88646"
+ ],
+ "Perth Scorchers Women": [
+  "#E85612",
+  "#E85612"
+ ],
+ "Perth Scorchers XI": [
+  "#E85712",
+  "#E85712"
+ ],
+ "Peru": [
+  "#DA0F25",
+  "#DA0F25"
+ ],
+ "Peru Women": [
+  "#DA0F25",
+  "#DA0F25"
+ ],
+ "Peshawar Zalmi": [
+  "#FDC42B",
+  "#FDC42B"
+ ],
+ "Philippines": [
+  "#0237A7",
+  "#D01027"
+ ],
+ "Philippines Women": [
+  "#0237A7",
+  "#D01027"
+ ],
+ "Pokhara Avengers": [
+  "#161438",
+  "#161438"
+ ],
+ "Portugal": [
+  "#FE0002",
+  "#016601"
+ ],
+ "Portugal Women": [
+  "#FF0000",
+  "#006600"
+ ],
+ "Pretoria Capitals": [
+  "#2958A5",
+  "#C82127"
+ ],
+ "Professional County Club Select XI": [
+  "#CD1227",
+  "#CD1227"
+ ],
+ "Pune Devils": [
+  "#490833",
+  "#490833"
+ ],
+ "Puneri Bappa": [
+  "#1A224D",
+  "#1A224D"
+ ],
+ "Punjab Kings": [
+  "#E31C1E",
+  "#E31C1E"
+ ],
+ "Purani Dilli 6": [
+  "#FFE023",
+  "#FFE023"
+ ],
+ "Qalandars": [
+  "#8D0707",
+  "#8D0707"
+ ],
+ "Qatar": [
+  "#65141D",
+  "#65141D"
+ ],
+ "Qatar Women": [
+  "#65141D",
+  "#65141D"
+ ],
+ "Quetta Gladiators": [
+  "#533A88",
+  "#533A88"
+ ],
+ "Quetta Qavalry": [
+  "#271A68",
+  "#271A68"
+ ],
+ "Raigad Royals": [
+  "#E11F8F",
+  "#0B105A"
+ ],
+ "Rajasthan Lions": [
+  "#006162",
+  "#006162"
+ ],
+ "Rajasthan Royals": [
+  "#254AA5",
+  "#CAA82B"
+ ],
+ "Ratnagiri Jets": [
+  "#16283E",
+  "#16283E"
+ ],
+ "Rawalpindiz": [
+  "#FF4500",
+  "#AAFD3C"
+ ],
+ "Rising Pune Supergiant": [
+  "#451166",
+  "#451166"
+ ],
+ "Romania": [
+  "#D01027",
+  "#012B7F"
+ ],
+ "Romania Women": [
+  "#FFCF18",
+  "#CD1127"
+ ],
+ "Royal Challengers Bengaluru": [
+  "#E5B582",
+  "#E5B582"
+ ],
+ "Royal Challengers Bengaluru Women": [
+  "#CC0F2C",
+  "#CC0F2C"
+ ],
+ "Royal Champs": [
+  "#58A679",
+  "#58A679"
+ ],
+ "Royal Desert Champions": [
+  "#58A679",
+  "#58A679"
+ ],
+ "Royal Nimar Eagles": [
+  "#611D5B",
+  "#FEFAA6"
+ ],
+ "Royals of Rayalaseema": [
+  "#701F02",
+  "#701F02"
+ ],
+ "Ruby White Town Legends": [
+  "#AF0500",
+  "#AF0500"
+ ],
+ "Ruhuna Reds": [
+  "#C90328",
+  "#C90328"
+ ],
+ "Rwanda": [
+  "#02A1DD",
+  "#F9D203"
+ ],
+ "Rwanda Women": [
+  "#01A1DD",
+  "#F9D304"
+ ],
+ "Rwanda Women U19": [
+  "#02A1DD",
+  "#F9D203"
+ ],
+ "Saint Helena": [
+  "#01237D",
+  "#01237D"
+ ],
+ "Saint Lucia Kings": [
+  "#00A0E5",
+  "#00A0E5"
+ ],
+ "Samoa": [
+  "#D01027",
+  "#032A7D"
+ ],
+ "Samoa Women": [
+  "#D01027",
+  "#022B7E"
+ ],
+ "Samoa Women U19": [
+  "#D01027",
+  "#022B7E"
+ ],
+ "San Francisco Unicorns": [
+  "#F2633A",
+  "#0B233F"
+ ],
+ "Satara Warriors": [
+  "#D0B763",
+  "#D0B763"
+ ],
+ "Saudi Arabia": [
+  "#016B37",
+  "#016B37"
+ ],
+ "Saudi Arabia Women": [
+  "#026C38",
+  "#026C38"
+ ],
+ "Scotland": [
+  "#0065BD",
+  "#FFFFFF"
+ ],
+ "Scotland U19": [
+  "#0065BD",
+  "#FFFFFF"
+ ],
+ "Scotland Women": [
+  "#0065BD",
+  "#FFFFFF"
+ ],
+ "Scotland Women U19": [
+  "#0065BD",
+  "#FFFFFF"
+ ],
+ "Serbia": [
+  "#C7363D",
+  "#0A4076"
+ ],
+ "Serbia Women": [
+  "#F23142",
+  "#004783"
+ ],
+ "Seychelles": [
+  "#D62828",
+  "#FCD856"
+ ],
+ "Sharjah Warriorz": [
+  "#4C2F83",
+  "#931A1C"
+ ],
+ "Shekhawati Soldiers Sikar": [
+  "#00005C",
+  "#00005C"
+ ],
+ "Sierra Leone": [
+  "#1DB63A",
+  "#0171C7"
+ ],
+ "Sierra Leone Women": [
+  "#1DB639",
+  "#0071C6"
+ ],
+ "Singapore": [
+  "#DF0000",
+  "#DF0000"
+ ],
+ "Singapore U19": [
+  "#DF0000",
+  "#DF0000"
+ ],
+ "Singapore Women": [
+  "#DF0000",
+  "#DF0000"
+ ],
+ "Slovenia": [
+  "#D81B41",
+  "#0153BD"
+ ],
+ "SoBo Mumbai Falcons": [
+  "#182769",
+  "#F47C01"
+ ],
+ "Somerset": [
+  "#782D3B",
+  "#782D3B"
+ ],
+ "Sorath Lions": [
+  "#13183B",
+  "#13183B"
+ ],
+ "South Africa": [
+  "#0C562E",
+  "#F3B71A"
+ ],
+ "South Africa A": [
+  "#0C562E",
+  "#F3B71A"
+ ],
+ "South Africa Champions": [
+  "#205247",
+  "#205247"
+ ],
+ "South Africa Emerging Players": [
+  "#007847",
+  "#000C8A"
+ ],
+ "South Africa Emerging Players Women": [
+  "#007847",
+  "#000C8A"
+ ],
+ "South Africa Legends": [
+  "#0C562E",
+  "#F3B71A"
+ ],
+ "South Africa Masters": [
+  "#0C562E",
+  "#F3B71A"
+ ],
+ "South Africa U19": [
+  "#0C562E",
+  "#F3B71A"
+ ],
+ "South Africa Women": [
+  "#0C562E",
+  "#F3B71A"
+ ],
+ "South Africa Women U19": [
+  "#0C562E",
+  "#F3B71A"
+ ],
+ "South African Invitation XI": [
+  "#007847",
+  "#000C8A"
+ ],
+ "South Korea": [
+  "#CD2E3A",
+  "#0047A0"
+ ],
+ "South Korea Women": [
+  "#033D87",
+  "#D01027"
+ ],
+ "Southern Brave": [
+  "#27AA4A",
+  "#27AA4A"
+ ],
+ "Southern Brave Women": [
+  "#27AA4A",
+  "#27AA4A"
+ ],
+ "Spain": [
+  "#C40A1F",
+  "#FEC402"
+ ],
+ "Spain Women": [
+  "#C40A1F",
+  "#FEC402"
+ ],
+ "Sri Lanka": [
+  "#FECB00",
+  "#8C0126"
+ ],
+ "Sri Lanka A": [
+  "#FECB00",
+  "#8C0126"
+ ],
+ "Sri Lanka A Women": [
+  "#FECB00",
+  "#8C0126"
+ ],
+ "Sri Lanka Cricket Presidents XI": [
+  "#8D2029",
+  "#FEB800"
+ ],
+ "Sri Lanka Cricket XI": [
+  "#8D2029",
+  "#FEB800"
+ ],
+ "Sri Lanka Legends": [
+  "#FECB00",
+  "#8C0126"
+ ],
+ "Sri Lanka Masters": [
+  "#FECB00",
+  "#8C0126"
+ ],
+ "Sri Lanka U19": [
+  "#FECB00",
+  "#8C0126"
+ ],
+ "Sri Lanka U23": [
+  "#FECB00",
+  "#8C0126"
+ ],
+ "Sri Lanka Women": [
+  "#FECB00",
+  "#8C0126"
+ ],
+ "Sri Lanka Women U19": [
+  "#FECB00",
+  "#8C0126"
+ ],
+ "Sri Lankan Lions": [
+  "#0053CB",
+  "#0053CB"
+ ],
+ "St Helena": [
+  "#243A83",
+  "#243A83"
+ ],
+ "Sudur Paschim Royals": [
+  "#FEC755",
+  "#FEC755"
+ ],
+ "Sunrisers Eastern Cape": [
+  "#F57521",
+  "#F57521"
+ ],
+ "Sunrisers Leeds": [
+  "#FF4C02",
+  "#FF4C02"
+ ],
+ "Sunrisers Leeds Women": [
+  "#FF4C02",
+  "#FF4C02"
+ ],
+ "Supernovas": [
+  "#03D5EB",
+  "#03D5EB"
+ ],
+ "Suriname": [
+  "#387E40",
+  "#B40A2F"
+ ],
+ "Surrey": [
+  "#582705",
+  "#582705"
+ ],
+ "Surrey Jaguars": [
+  "#4B174B",
+  "#4B174B"
+ ],
+ "Surrey Women": [
+  "#572808",
+  "#572808"
+ ],
+ "Sussex": [
+  "#024CF5",
+  "#024CF5"
+ ],
+ "Swaziland": [
+  "#3E5DB8",
+  "#B30B0B"
+ ],
+ "Swaziland Women": [
+  "#3E5DB8",
+  "#B40A09"
+ ],
+ "Sweden": [
+  "#026AA8",
+  "#FECB02"
+ ],
+ "Sweden Women": [
+  "#026AA8",
+  "#FECB02"
+ ],
+ "Switzerland": [
+  "#FE0002",
+  "#FE0002"
+ ],
+ "Switzerland Women": [
+  "#C5001C",
+  "#C5001C"
+ ],
+ "Sydney Sixers Women": [
+  "#EA008B",
+  "#EA008B"
+ ],
+ "Sydney Thunder Women": [
+  "#D5ED28",
+  "#D5ED28"
+ ],
+ "Tanzania": [
+  "#02A2DD",
+  "#1DB63A"
+ ],
+ "Tanzania U19": [
+  "#1EB63A",
+  "#01A3DD"
+ ],
+ "Tanzania Women": [
+  "#1DB63A",
+  "#01A2DD"
+ ],
+ "Tasmania": [
+  "#EE1A24",
+  "#FEC313"
+ ],
+ "Team Abu Dhabi": [
+  "#E8D62B",
+  "#CD163E"
+ ],
+ "Texas Chargers": [
+  "#79A2FB",
+  "#79A2FB"
+ ],
+ "Texas Super Kings": [
+  "#202657",
+  "#F37021"
+ ],
+ "Thailand": [
+  "#241B52",
+  "#F90306"
+ ],
+ "Thailand A Women": [
+  "#241B52",
+  "#F90306"
+ ],
+ "Thailand Women": [
+  "#241B52",
+  "#F90306"
+ ],
+ "Thrissur Titans": [
+  "#FAE108",
+  "#FAE108"
+ ],
+ "Timor Leste": [
+  "#ED0000",
+  "#FCC503"
+ ],
+ "Titans": [
+  "#0164AA",
+  "#E31F26"
+ ],
+ "Toyam Hyderabad": [
+  "#991418",
+  "#991418"
+ ],
+ "Trailblazers": [
+  "#FB039C",
+  "#FB039C"
+ ],
+ "Trent Rockets": [
+  "#FFE600",
+  "#FFE600"
+ ],
+ "Trent Rockets Women": [
+  "#FFE600",
+  "#FFE600"
+ ],
+ "Trinbago Knight Riders": [
+  "#3B225D",
+  "#3B225D"
+ ],
+ "Trinbago Knight Riders Women": [
+  "#3A225D",
+  "#3A225D"
+ ],
+ "Turkey": [
+  "#E30917",
+  "#E30917"
+ ],
+ "Turkey Women": [
+  "#E30917",
+  "#E30917"
+ ],
+ "Turks and Caicos Island": [
+  "#002868",
+  "#CE1227"
+ ],
+ "UAE Bulls": [
+  "#E4E41C",
+  "#26214E"
+ ],
+ "UP Warriorz Women": [
+  "#510273",
+  "#FFC758"
+ ],
+ "Udaipur Lakecity Warriors": [
+  "#00005C",
+  "#00005C"
+ ],
+ "Uganda": [
+  "#FFE700",
+  "#DE3908"
+ ],
+ "Uganda U19": [
+  "#FFE700",
+  "#DE3908"
+ ],
+ "Uganda Women": [
+  "#FFE700",
+  "#DE3908"
+ ],
+ "Ujjain Falcons": [
+  "#FACC2E",
+  "#304D79"
+ ],
+ "United Arab Emirates": [
+  "#FF0000",
+  "#00732F"
+ ],
+ "United Arab Emirates A": [
+  "#FF0000",
+  "#00732F"
+ ],
+ "United Arab Emirates U19": [
+  "#FF0000",
+  "#00732F"
+ ],
+ "United Arab Emirates Women": [
+  "#FF0000",
+  "#00732F"
+ ],
+ "United Arab Emirates Women U19": [
+  "#FF0000",
+  "#00732F"
+ ],
+ "United States of America": [
+  "#BD3D44",
+  "#182E5C"
+ ],
+ "United States of America U19": [
+  "#BD3D44",
+  "#182E5C"
+ ],
+ "United States of America Women": [
+  "#BD3D44",
+  "#182E5C"
+ ],
+ "United States of America Women U19": [
+  "#BD3D44",
+  "#182E5C"
+ ],
+ "Uthura Yellows": [
+  "#FDEB23",
+  "#FDEB23"
+ ],
+ "Uzbekistan": [
+  "#1DB63A",
+  "#0198B6"
+ ],
+ "VTEX India": [
+  "#F63505",
+  "#F63505"
+ ],
+ "Vanuatu": [
+  "#009543",
+  "#D21034"
+ ],
+ "Vanuatu Women": [
+  "#009543",
+  "#D21034"
+ ],
+ "Velocity": [
+  "#68238E",
+  "#68238E"
+ ],
+ "Vijayawada Sunshiners": [
+  "#154283",
+  "#154283"
+ ],
+ "Villianur Mohit Kings": [
+  "#FC8C1F",
+  "#FC8C1F"
+ ],
+ "Vista Riders": [
+  "#3BABCA",
+  "#3BABCA"
+ ],
+ "Warwickshire": [
+  "#002562",
+  "#002562"
+ ],
+ "Washington Freedom": [
+  "#101C3E",
+  "#E91D2C"
+ ],
+ "Welsh Fire": [
+  "#FF0082",
+  "#FF0082"
+ ],
+ "Welsh Fire Women": [
+  "#FF0082",
+  "#FF0082"
+ ],
+ "West Delhi Lions": [
+  "#FD6503",
+  "#FD6503"
+ ],
+ "West Indians": [
+  "#7A0343",
+  "#7A0343"
+ ],
+ "West Indies": [
+  "#951A42",
+  "#00C1F4"
+ ],
+ "West Indies A": [
+  "#951A42",
+  "#00C1F4"
+ ],
+ "West Indies Champions": [
+  "#6F0A2A",
+  "#6F0A2A"
+ ],
+ "West Indies Cricket Board President XI": [
+  "#951A42",
+  "#00C1F4"
+ ],
+ "West Indies Select XI": [
+  "#961A45",
+  "#04C2F6"
+ ],
+ "West Indies U19": [
+  "#951A42",
+  "#00C1F4"
+ ],
+ "West Indies Women": [
+  "#951A42",
+  "#00C1F4"
+ ],
+ "West Indies Women U19": [
+  "#951A42",
+  "#00C1F4"
+ ],
+ "Western Province": [
+  "#029278",
+  "#029278"
+ ],
+ "Windward Islands": [
+  "#66CDFC",
+  "#FAD418"
+ ],
+ "Worcestershire": [
+  "#116030",
+  "#116030"
+ ],
+ "Zalawad Royals": [
+  "#1A2C66",
+  "#FA0203"
+ ],
+ "Zambia": [
+  "#198A00",
+  "#DE2010"
+ ],
+ "Zambia Women": [
+  "#198A00",
+  "#F27D02"
+ ],
+ "Zimbabwe": [
+  "#2E9846",
+  "#FECC0A"
+ ],
+ "Zimbabwe A": [
+  "#2E9846",
+  "#FECC0A"
+ ],
+ "Zimbabwe Select XI": [
+  "#2E9846",
+  "#FECC0A"
+ ],
+ "Zimbabwe U19": [
+  "#2E9846",
+  "#FECC0A"
+ ],
+ "Zimbabwe Women": [
+  "#2E9846",
+  "#FECC0A"
+ ],
+ "Zimbabwe Women U19": [
+  "#2E9846",
+  "#FECC0A"
+ ],
+ "Zimbabwe XI": [
+  "#2E9846",
+  "#FECC0A"
+ ]
+}
