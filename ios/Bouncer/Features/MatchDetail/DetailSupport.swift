@@ -139,3 +139,12 @@ struct CommentaryLine: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+extension Route {
+    /// Profile route for a name from match data. Carries the Cricbuzz id once a squad taught it, so
+    /// the profile opens directly instead of searching the name (a billed call that can pick a namesake).
+    @MainActor static func player(named raw: String) -> Route {
+        let name = playerNameWithoutRoleTags(raw)
+        return .player(id: PlayerImages.shared.playerId(forName: name), name: name)
+    }
+}

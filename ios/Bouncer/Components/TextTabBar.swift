@@ -6,6 +6,8 @@ struct TextTabBar: View {
     @Binding var selection: Int
     var accent: Color = BouncerColor.goldInk
     @Namespace private var underline
+    /// Bumped per tap so only taps buzz, not programmatic switches.
+    @State private var taps = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -13,7 +15,10 @@ struct TextTabBar: View {
                 HStack(spacing: 0) {
                     ForEach(tabs.indices, id: \.self) { i in
                         let selected = i == selection
-                        Button { withAnimation(.snappy(duration: 0.2)) { selection = i } } label: {
+                        Button {
+                            if i != selection { taps += 1 }
+                            withAnimation(.snappy(duration: 0.2)) { selection = i }
+                        } label: {
                             Text(tabs[i]).font(.labelLarge)
                                 .foregroundStyle(selected ? accent : BouncerColor.inkSecondary)
                                 .padding(.horizontal, Spacing.lg).frame(minHeight: 48)
@@ -33,6 +38,7 @@ struct TextTabBar: View {
             Divider().overlay(BouncerColor.divider)
         }
         .background(BouncerColor.topBar)
+        .sensoryFeedback(.selection, trigger: taps)
     }
 }
 

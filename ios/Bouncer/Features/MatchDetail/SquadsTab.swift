@@ -59,11 +59,14 @@ struct SquadsTab: View {
     }
 
     private func playerRow(_ p: SquadPlayer) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
-            Text(p.name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary)
-            if p.captain || p.keeper {
-                Text([p.captain ? "(c)" : nil, p.keeper ? "(wk)" : nil].compactMap { $0 }.joined(separator: " "))
-                    .font(.labelMedium).foregroundStyle(BouncerColor.inkSecondary)
+        HStack(spacing: Spacing.sm) {
+            PlayerAvatar(name: p.name, id: p.id, imageURL: p.imageURL, size: 36)
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
+                Text(p.name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary)
+                if p.captain || p.keeper {
+                    Text([p.captain ? "(c)" : nil, p.keeper ? "(wk)" : nil].compactMap { $0 }.joined(separator: " "))
+                        .font(.labelMedium).foregroundStyle(BouncerColor.inkSecondary)
+                }
             }
             Spacer(minLength: Spacing.sm)
             if !p.role.isEmpty { Text(p.role).font(.bodySmall).foregroundStyle(BouncerColor.inkSecondary).multilineTextAlignment(.trailing) }

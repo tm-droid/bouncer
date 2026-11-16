@@ -6,7 +6,7 @@ struct PlayerHeader: View {
 
     var body: some View {
         HStack(spacing: Spacing.lg) {
-            PlayerAvatar(name: profile.name, imageURL: profile.imageURL, size: 72)
+            PlayerAvatar(name: profile.name, id: profile.id, imageURL: profile.imageURL, size: 72)
             VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(profile.name).font(.headlineMedium).foregroundStyle(BouncerColor.inkPrimary)
                 HStack(spacing: 6) {
@@ -18,31 +18,6 @@ struct PlayerHeader: View {
             Spacer(minLength: 0)
         }
         .accessibilityElement(children: .combine)
-    }
-}
-
-struct PlayerAvatar: View {
-    let name: String
-    let imageURL: URL?
-    var size: CGFloat = 72
-
-    var body: some View {
-        ZStack {
-            Circle().fill(BouncerColor.surfaceVariant)
-            initials
-            if let imageURL {
-                AsyncImage(url: imageURL) { phase in
-                    if let image = phase.image { image.resizable().scaledToFill() }
-                }
-            }
-        }
-        .frame(width: size, height: size).clipShape(Circle())
-        .accessibilityHidden(true)
-    }
-
-    private var initials: some View {
-        let letters = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
-        return Text(letters).font(.custom(BouncerFonts.bold, fixedSize: size * 0.34)).foregroundStyle(BouncerColor.inkSecondary)
     }
 }
 

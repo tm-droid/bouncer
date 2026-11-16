@@ -47,7 +47,7 @@ struct MoreScreen: View {
         .sheet(isPresented: $editingTeams) { TeamPickerSheet().environment(env) }
         .confirmationDialog("Clear cache?", isPresented: $confirmClear, titleVisibility: .visible) {
             Button("Clear cache", role: .destructive) {
-                URLCache.shared.removeAllCachedResponses(); cleared = true
+                URLCache.shared.removeAllCachedResponses(); RemoteImageCache.clear(); cleared = true
             }
             Button("Cancel", role: .cancel) {}
         } message: { Text("Saved responses and images will be downloaded again.") }

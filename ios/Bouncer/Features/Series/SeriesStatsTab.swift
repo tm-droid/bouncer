@@ -91,7 +91,7 @@ struct SeriesStatsTab: View {
 private struct StatsTable: View {
     let table: SeriesStatsTable
     let rowHeight: CGFloat
-    private let rankWidth: CGFloat = 28, nameWidth: CGFloat = 148, cellWidth: CGFloat = 60
+    private let rankWidth: CGFloat = 28, nameWidth: CGFloat = 176, cellWidth: CGFloat = 60
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
@@ -105,8 +105,12 @@ private struct StatsTable: View {
                         HStack(spacing: 0) {
                             Text("\(i + 1)").font(.numeric).foregroundStyle(BouncerColor.inkSecondary)
                                 .frame(width: rankWidth, alignment: .leading)
-                            Text(row.playerName).font(.bodyMedium.weight(.semibold)).foregroundStyle(BouncerColor.inkPrimary)
-                                .lineLimit(1).frame(width: nameWidth, alignment: .leading)
+                            HStack(spacing: Spacing.sm) {
+                                PlayerAvatar(name: row.playerName, id: row.playerId, size: 26)
+                                Text(row.playerName).font(.bodyMedium.weight(.semibold)).foregroundStyle(BouncerColor.inkPrimary)
+                                    .lineLimit(1)
+                            }
+                            .frame(width: nameWidth, alignment: .leading)
                         }
                         .padding(.leading, Spacing.lg).frame(height: rowHeight)
                         .contentShape(Rectangle())

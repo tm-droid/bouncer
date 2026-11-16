@@ -83,6 +83,9 @@ struct SeriesScreen: View {
             EmptyState(title: tab == 0 ? "No current series" : "No past series",
                        message: "Pull down to refresh.", systemImage: "trophy")
         } else {
+            if failed {
+                StaleBanner(message: "Couldn't refresh series. Showing earlier data.") { Task { await load(force: true) } }
+            }
             LazyVStack(spacing: 0) {
                 ForEach(shown) { s in
                     NavigationLink(value: Route.series(id: s.id)) { SeriesRow(series: s) }.buttonStyle(.plain)

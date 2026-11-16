@@ -12,7 +12,7 @@ struct RootView: View {
     @AppStorage("onboardingComplete") private var onboardingComplete = false
 
     var body: some View {
-        TabView(selection: $selection) {
+        TabView(selection: tabSelection) {
             stack($homePath) { HomeScreen() }
                 .tabItem { Label("Home", systemImage: "house") }.tag(Tab.home)
             stack($seriesPath) { SeriesScreen() }
@@ -32,6 +32,21 @@ struct RootView: View {
         .fullScreenCover(isPresented: .constant(!onboardingComplete && env.favourites.teams.isEmpty)) {
             OnboardingScreen { onboardingComplete = true }
         }
+    }
+
+    /// Tapping the tab that is already showing pops its stack back to the root, as system apps do.
+    private var tabSelection: Binding<Tab> {
+        Binding(get: { selection }, set: { tapped in
+            if tapped == selection {
+                switch tapped {
+                case .home: homePath = []
+                case .series: seriesPath = []
+                case .news: newsPath = []
+                case .more: morePath = []
+                }
+            }
+            selection = tapped
+        })
     }
 
     private func stack<Content: View>(_ path: Binding<[Route]>, @ViewBuilder _ root: () -> Content) -> some View {

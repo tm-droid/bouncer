@@ -25,6 +25,22 @@ enum MatchRowText {
         return winners[0].name == team.name ? .won : .lost
     }
 
+    /// Cricbuzz's public page for the match, for sharing.
+    static func shareURL(_ m: MatchSummary) -> URL? {
+        URL(string: "https://www.cricbuzz.com/live-cricket-scores/\(m.id.filter(\.isNumber))")
+    }
+
+    /// "2nd ODI: India 245/6 (42.1 ov) vs Australia – India won by 35 runs".
+    static func shareText(_ m: MatchSummary) -> String {
+        let sides = m.teams.filter { !$0.name.isEmpty }.map { t in
+            t.hasScore ? "\(t.name) \(t.score)\(t.overs.isEmpty || t.overs == "0.0" ? "" : " (\(displayOvers(t.overs)) ov)")" : t.name
+        }
+        var text = sides.joined(separator: " vs ")
+        if !m.matchDesc.isEmpty { text = "\(m.matchDesc): \(text)" }
+        if !m.status.isEmpty { text += " \u{2013} \(m.status)" }
+        return text
+    }
+
     static func spoken(_ t: TeamScore) -> String {
         var s = t.name
         if t.hasScore { s += " " + t.score.replacingOccurrences(of: "/", with: " for ").replacingOccurrences(of: "&", with: "and") }
@@ -145,6 +161,29 @@ struct MatchRow: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .contextMenu { MatchActions(match: match) }
         Divider().overlay(BouncerColor.divider)
+    }
+}
+
+/// Long-press actions on a match: share, copy the score, follow or unfollow either side.
+struct MatchActions: View {
+    let match: MatchSummary
+    @Environment(AppEnvironment.self) private var env
+
+    var body: some View {
+        let text = MatchRowText.shareText(match)
+        if let url = MatchRowText.shareURL(match) {
+            ShareLink(item: url, message: Text(text)) { Label("Share", systemImage: "square.and.arrow.up") }
+        }
+        Button { UIPasteboard.general.string = text } label: { Label("Copy score", systemImage: "doc.on.doc") }
+        ForEach(match.teams.filter { !$0.name.isEmpty }, id: \.name) { t in
+            let following = env.favourites.isFavourite(t.name)
+            if following || env.favourites.teams.count < FavouritesStore.maxTeams {
+                Button { env.favourites.toggle(t.name) } label: {
+                    Label(following ? "Unfollow \(t.name)" : "Follow \(t.name)", systemImage: following ? "star.slash" : "star")
+                }
+            }
+        }
     }
 }

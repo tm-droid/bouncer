@@ -38,6 +38,15 @@ struct ScrapeTests {
         #expect(nz.squad.isEmpty)
     }
 
+    @Test func squadPhotosSkipTheStockSilhouette() throws {
+        let squads = try #require(SquadsParser.parse(html: try Fixture.string("squads.html")))
+        let everyone = [squads.team1, squads.team2].flatMap { $0.playingXI + $0.bench + $0.squad }
+        let clarke = try #require(everyone.first { $0.name == "Kristian Clarke" })
+        #expect(clarke.imageURL == PlayerProfile.imageURL(faceImageId: "829847"))
+        // Rhys Mariu has only Cricbuzz's placeholder photo, so the row shows initials.
+        #expect(try #require(everyone.first { $0.name == "Rhys Mariu" }).imageURL == nil)
+    }
+
     @Test func noSquadsInUnrelatedHTML() {
         #expect(SquadsParser.parse(html: "<html><script>self.__next_f.push([1,\"1:[1]\"])</script></html>") == nil)
     }

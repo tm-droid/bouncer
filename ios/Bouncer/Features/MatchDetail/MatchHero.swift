@@ -40,7 +40,15 @@ struct MatchHero: View {
         .accessibilityElement(children: .contain)
     }
 
+    /// Tapping a side opens its team page.
     private func column(_ t: HeroTeam) -> some View {
+        NavigationLink(value: Route.team(name: t.name)) { columnContent(t) }
+            .buttonStyle(.plain)
+            .disabled(t.name.isEmpty)
+            .accessibilityHint("Opens the team page")
+    }
+
+    private func columnContent(_ t: HeroTeam) -> some View {
         VStack(spacing: Spacing.xs) {
             TeamCrest(name: t.name, acronym: t.acronym, imageURL: t.logoURL, size: 56)
             Text(t.acronym).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary)
@@ -58,6 +66,7 @@ struct MatchHero: View {
             }
         }
         .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
         .opacity(model.phase == .live && !t.isBatting && model.teams.contains(where: \.isBatting) ? 0.75 : 1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spoken(t))

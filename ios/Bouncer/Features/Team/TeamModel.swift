@@ -35,7 +35,9 @@ final class TeamModel {
         if !all.isEmpty { apply(all) }
         loaded = true
         guard let last = results.first else { lastEleven = []; return }
-        let xi = TeamPage.lastEleven(last, team: team, squads: await squads.squads(matchId: last.id))
+        let sheet = await squads.squads(matchId: last.id)
+        if let sheet { PlayerImages.shared.register(sheet) }
+        let xi = TeamPage.lastEleven(last, team: team, squads: sheet)
         guard !Task.isCancelled else { return }
         lastEleven = xi
     }

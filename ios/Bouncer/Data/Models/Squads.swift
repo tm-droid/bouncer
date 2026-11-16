@@ -7,6 +7,8 @@ struct SquadPlayer: Equatable, Hashable, Sendable, Identifiable {
     var role: String
     var captain: Bool
     var keeper: Bool
+    /// Cricbuzz head-shot; nil when the player has none.
+    var imageURL: URL? = nil
 }
 
 /// One side's team sheet. `playingXI`/`bench` exist once the toss is done; before it only `squad`.

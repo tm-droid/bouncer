@@ -117,3 +117,43 @@ struct PlayerTests {
         await #expect(throws: AppwriteError.notFound) { try await repo.profile(id: nil, name: "Nobody") }
     }
 }
+
+@MainActor
+struct PlayerImagesTests {
+    private let kohli = URL(string: "https://example.com/kohli.jpg")!
+
+    @Test func matchesScorecardNamesWithRoleTagsCaseAndAccents() {
+        let images = PlayerImages(fileURL: nil)
+        images.register(id: "1413", name: "Virat Kohli", url: kohli)
+        images.register(id: "9", name: "Beth Mooney", url: nil)
+        #expect(images.url(name: "Virat Kohli (c)") == kohli)
+        #expect(images.url(name: "  virat   KOHLI ") == kohli)
+        #expect(images.playerId(forName: "Beth Mooney (c & wk)") == "9")
+        #expect(images.url(name: "Beth Mooney") == nil)
+        images.register(id: "50", name: "José Buttler", url: kohli)
+        #expect(images.playerId(forName: "Jose Buttler") == "50")
+    }
+
+    @Test func noFuzzyMatchOnSurnameAlone() {
+        let images = PlayerImages(fileURL: nil)
+        images.register(id: "1413", name: "Virat Kohli", url: kohli)
+        #expect(images.url(name: "Kohli") == nil)
+        #expect(images.playerId(forName: "V Kohli") == nil)
+    }
+
+    @Test func idWinsAndANilURLKeepsAKnownPhoto() {
+        let images = PlayerImages(fileURL: nil)
+        images.register(id: "1413", name: "Virat Kohli", url: kohli)
+        images.register(id: "1413", name: "Virat Kohli", url: nil)
+        #expect(images.url(id: "1413", name: "Someone Else") == kohli)
+    }
+
+    @Test func persistsAcrossInstances() async throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("player-images-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let writer = PlayerImages(fileURL: file)
+        writer.register(id: "1413", name: "Virat Kohli", url: kohli)
+        await writer.save()
+        #expect(PlayerImages(fileURL: file).url(name: "Virat Kohli") == kohli)
+    }
+}

@@ -41,6 +41,8 @@ struct TeamScreen: View {
         .alert("Favourites are full", isPresented: $favouritesFull) {
             Button("OK", role: .cancel) {}
         } message: { Text("Remove a team first.") }
+        .sensoryFeedback(trigger: isFavourite) { _, now in now ? .success : .selection }
+        .sensoryFeedback(.warning, trigger: favouritesFull) { _, now in now }
         .task(id: name) { await model.loadMatches(repo: env.matches) }
         .task(id: name) { await model.loadRecords() }
         .refreshable { await model.loadMatches(repo: env.matches, force: true) }
@@ -127,10 +129,13 @@ struct TeamScreen: View {
 
     private func elevenRow(_ p: SquadPlayer) -> some View {
         let marks = [p.captain ? "c" : nil, p.keeper ? "wk" : nil].compactMap { $0 }
-        return VStack(alignment: .leading, spacing: Spacing.xxs) {
-            Text(marks.isEmpty ? p.name : "\(p.name) (\(marks.joined(separator: ", ")))")
-                .font(.bodyMedium).foregroundStyle(BouncerColor.inkPrimary).lineLimit(1)
-            if !p.role.isEmpty { Text(p.role).font(.labelMedium).foregroundStyle(BouncerColor.inkSecondary).lineLimit(1) }
+        return HStack(spacing: Spacing.md) {
+            PlayerAvatar(name: p.name, id: p.id, imageURL: p.imageURL, size: 36)
+            VStack(alignment: .leading, spacing: Spacing.xxs) {
+                Text(marks.isEmpty ? p.name : "\(p.name) (\(marks.joined(separator: ", ")))")
+                    .font(.bodyMedium).foregroundStyle(BouncerColor.inkPrimary).lineLimit(1)
+                if !p.role.isEmpty { Text(p.role).font(.labelMedium).foregroundStyle(BouncerColor.inkSecondary).lineLimit(1) }
+            }
         }
         .padding(.horizontal, Spacing.rowH).padding(.vertical, Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)

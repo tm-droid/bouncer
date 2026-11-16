@@ -24,7 +24,7 @@ struct PlayerScreen: View {
             }
         }
         .background(BouncerColor.bg)
-        .navigationTitle("Player")
+        .navigationTitle(playerNameWithoutRoleTags(name))
         .navigationBarTitleDisplayMode(.inline)
         .task(id: attempt) { await load() }
     }
@@ -33,6 +33,7 @@ struct PlayerScreen: View {
         phase = .loading
         do {
             let profile = try await PlayerRepository.shared.profile(id: playerId, name: name)
+            PlayerImages.shared.register(id: profile.id, name: profile.name, url: profile.imageURL)
             // Open on the first format that has stats.
             format = profile.formatsWithStats.first
             phase = .loaded(profile)

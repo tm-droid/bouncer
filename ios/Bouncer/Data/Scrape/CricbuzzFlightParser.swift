@@ -146,8 +146,18 @@ enum SquadsParser {
         return arr.compactMap { el in
             guard let p = el as? [String: Any], let name = string(p["name"]) else { return nil }
             return SquadPlayer(id: string(p["id"]) ?? "", name: name, role: string(p["role"]) ?? "",
-                               captain: bool(p["captain"]), keeper: bool(p["keeper"]))
+                               captain: bool(p["captain"]), keeper: bool(p["keeper"]), imageURL: headshot(p))
         }
+    }
+
+    /// Cricbuzz serves one stock silhouette under this id for players without a photo.
+    static let placeholderImageId = "182026"
+
+    /// The head-shot for a squad player (`imageDetails.imageId`, else `faceImageId`); nil for the stock silhouette.
+    private static func headshot(_ p: [String: Any]) -> URL? {
+        let id = string((p["imageDetails"] as? [String: Any])?["imageId"]) ?? string(p["faceImageId"])
+        guard let id, id != placeholderImageId else { return nil }
+        return PlayerProfile.imageURL(faceImageId: id)
     }
 
     /// Scalar to string; blank and React `$undefined`-style markers are treated as absent.

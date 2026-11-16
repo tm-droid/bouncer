@@ -241,6 +241,7 @@ private struct HeroCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .contextMenu { MatchActions(match: match) }
         .padding(Spacing.lg)
     }
 }

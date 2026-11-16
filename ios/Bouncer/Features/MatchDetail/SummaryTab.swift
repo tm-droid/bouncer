@@ -57,16 +57,21 @@ struct SummaryTab: View {
 
     private func row(_ name: String, _ main: String, _ sub: String, divider: Bool) -> some View {
         VStack(spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
-                    Text(sub).font(.bodySmall).tabularFigures().foregroundStyle(BouncerColor.inkSecondary)
+            NavigationLink(value: Route.player(named: name)) {
+                HStack(spacing: Spacing.md) {
+                    PlayerAvatar(name: name, size: 36)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
+                        Text(sub).font(.bodySmall).tabularFigures().foregroundStyle(BouncerColor.inkSecondary)
+                    }
+                    Spacer()
+                    Text(main).font(.scoreMedium).tabularFigures().foregroundStyle(BouncerColor.inkPrimary)
                 }
-                Spacer()
-                Text(main).font(.scoreMedium).tabularFigures().foregroundStyle(BouncerColor.inkPrimary)
+                .padding(.horizontal, Spacing.lg).padding(.vertical, Spacing.sm)
+                .contentShape(Rectangle())
+                .accessibilityElement(children: .combine)
             }
-            .padding(.horizontal, Spacing.lg).padding(.vertical, Spacing.sm)
-            .accessibilityElement(children: .combine)
+            .buttonStyle(.plain)
             if divider { Divider().overlay(BouncerColor.divider) }
         }
     }

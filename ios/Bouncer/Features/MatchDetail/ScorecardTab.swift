@@ -70,11 +70,14 @@ struct ScorecardTab: View {
                 DetailSection(title: "Fall of wickets") {
                     VStack(spacing: 0) {
                         ForEach(Array(inn.fallOfWickets.enumerated()), id: \.offset) { i, f in
-                            HStack(alignment: .firstTextBaseline) {
+                            HStack {
                                 Text("\(f.number > 0 ? f.number : i + 1)").font(.numeric).foregroundStyle(BouncerColor.inkSecondary)
                                     .frame(width: 24, alignment: .leading)
-                                Text(f.batsman).font(.bodyMedium).foregroundStyle(BouncerColor.inkPrimary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                HStack(spacing: Spacing.sm) {
+                                    PlayerAvatar(name: f.batsman, size: 22)
+                                    Text(f.batsman).font(.bodyMedium).foregroundStyle(BouncerColor.inkPrimary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 Text("\(f.score)\(f.overs.isEmpty ? "" : " (\(f.overs) ov)")").font(.numeric).tabularFigures()
                                     .foregroundStyle(BouncerColor.inkPrimary)
                             }
@@ -109,11 +112,14 @@ struct ScorecardTab: View {
                         ForEach(Array(inn.bowlers.enumerated()), id: \.offset) { i, b in
                             let isBest = i == best
                             HStack(spacing: Spacing.xs) {
-                                NavigationLink(value: Route.player(id: nil, name: playerNameWithoutRoleTags(b.name))) {
-                                    Text(b.name).font(isBest ? .bouncer(14, .semibold, relativeTo: .subheadline) : .titleSmall)
-                                        .foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .contentShape(Rectangle())
+                                NavigationLink(value: Route.player(named: b.name)) {
+                                    HStack(spacing: Spacing.sm) {
+                                        PlayerAvatar(name: b.name, size: 28)
+                                        Text(b.name).font(isBest ? .bouncer(14, .semibold, relativeTo: .subheadline) : .titleSmall)
+                                            .foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityLabel("\(b.name)\(isBest ? ", best bowler" : "")")
@@ -163,11 +169,14 @@ struct ScorecardTab: View {
 
     private func batRow(_ b: BatsmanStats) -> some View {
         HStack(alignment: .top, spacing: Spacing.xs) {
-            NavigationLink(value: Route.player(id: nil, name: playerNameWithoutRoleTags(b.name))) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(b.name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
-                    if !b.dismissal.isEmpty {
-                        Text(b.dismissal).font(.bodySmall).foregroundStyle(BouncerColor.inkSecondary).lineLimit(3)
+            NavigationLink(value: Route.player(named: b.name)) {
+                HStack(alignment: .top, spacing: Spacing.sm) {
+                    PlayerAvatar(name: b.name, size: 28)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(b.name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
+                        if !b.dismissal.isEmpty {
+                            Text(b.dismissal).font(.bodySmall).foregroundStyle(BouncerColor.inkSecondary).lineLimit(3)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

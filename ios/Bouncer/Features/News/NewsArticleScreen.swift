@@ -36,7 +36,7 @@ struct NewsArticleScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if let url = story?.articleURL {
-                ToolbarItem(placement: .topBarTrailing) { ShareLink(item: url, subject: Text(story?.headline ?? "")) }
+                ToolbarItem(placement: .topBarTrailing) { ShareLink(item: url, subject: Text(story?.headline ?? "")).accessibilityLabel("Share article") }
             }
         }
         .task { await load() }

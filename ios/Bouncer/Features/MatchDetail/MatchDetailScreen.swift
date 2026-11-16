@@ -11,6 +11,7 @@ struct MatchDetailScreen: View {
     @State private var squads: Squads?
     @State private var squadsLoading = false
     @State private var following = false
+    @State private var followTaps = 0
 
     private var shareURL: URL? { URL(string: "https://www.cricbuzz.com/live-cricket-scores/\(matchId)") }
 
@@ -26,10 +27,15 @@ struct MatchDetailScreen: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { toggleFollow(store, summary) } label: { Image(systemName: following ? "bell.fill" : "bell") }
                         .accessibilityLabel(following ? "Stop following on Lock Screen" : "Follow on Lock Screen")
+                        .sensoryFeedback(following ? .success : .selection, trigger: followTaps)
                 }
             }
             if let shareURL {
-                ToolbarItem(placement: .topBarTrailing) { ShareLink(item: shareURL) }
+                ToolbarItem(placement: .topBarTrailing) {
+                    // The score travels with the link, so the message reads without opening it.
+                    ShareLink(item: shareURL, message: Text(store?.summary.map(MatchRowText.shareText) ?? ""))
+                        .accessibilityLabel("Share match")
+                }
             }
         }
         .task(id: matchId) {
@@ -53,6 +59,7 @@ struct MatchDetailScreen: View {
     /// Starts or ends the Live Activity; a new one is seeded with the freshest payload, not the list snapshot.
     private func toggleFollow(_ store: MatchDetailStore, _ summary: MatchSummary) {
         let controller = LiveActivityController.shared
+        followTaps += 1
         if following {
             controller.end(matchId: matchId)
             following = false
@@ -116,6 +123,10 @@ struct MatchDetailScreen: View {
                     }
                 }
             }
+            .refreshable {
+                await store.catchUp()
+                if squads?.hasPlayingXI != true { await loadSquads() }
+            }
             .onScrollGeometryChange(for: Bool.self) { geo in
                 geo.contentOffset.y + geo.contentInsets.top > heroHeight * 0.6
             } action: { _, isCollapsed in
@@ -150,6 +161,7 @@ struct MatchDetailScreen: View {
     private func loadSquads() async {
         squadsLoading = true
         squads = await SquadsRepository.shared.squads(matchId: matchId)
+        if let squads { PlayerImages.shared.register(squads) }
         squadsLoading = false
     }
 }

@@ -67,5 +67,6 @@ struct TeamPickerSheet: View {
         .listRowBackground(BouncerColor.surface)
         .listRowSeparatorTint(BouncerColor.divider)
         .accessibilityValue(selected ? "Selected" : "Not selected")
+        .sensoryFeedback(.selection, trigger: selected)
     }
 }

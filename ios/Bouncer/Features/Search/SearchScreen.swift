@@ -169,6 +169,8 @@ struct SearchScreen: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // Opening a result counts as using the query, not just pressing Search.
+            .simultaneousGesture(TapGesture().onEnded { remember(query) })
             Divider().overlay(BouncerColor.divider)
         }
     }
@@ -190,12 +192,7 @@ struct SearchScreen: View {
 
     private func playerRow(_ p: PlayerSearchResult) -> some View {
         row(.player(id: p.id, name: p.name), title: p.name, subtitle: p.country) {
-            AsyncImage(url: p.imageURL) { phase in
-                if let img = phase.image { img.resizable().scaledToFill() }
-                else { Image(systemName: "person.fill").foregroundStyle(BouncerColor.inkSecondary) }
-            }
-            .frame(width: 36, height: 36).background(BouncerColor.surfaceVariant).clipShape(Circle())
-            .accessibilityHidden(true)
+            PlayerAvatar(name: p.name, id: p.id, imageURL: p.imageURL, size: 36)
         }
     }
 
@@ -230,6 +227,7 @@ struct SearchScreen: View {
         do {
             let hits = try await PlayerRepository.shared.search(query)
             guard !Task.isCancelled else { return }
+            for h in hits { PlayerImages.shared.register(id: h.id, name: h.name, url: h.imageURL) }
             players = hits; lookup = .idle
         } catch {
             guard !Task.isCancelled else { return }

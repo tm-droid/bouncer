@@ -23,21 +23,26 @@ struct LiveTab: View {
             VStack(spacing: 0) {
                 header(["R (B)", "4s", "6s", "SR"], widths: [64, 30, 30, 48])
                 ForEach(Array(live.batsmen.enumerated()), id: \.offset) { i, b in
-                    HStack(spacing: Spacing.xs) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "circle.fill").font(.system(size: 6))
-                                .foregroundStyle(b.isStriker ? BouncerColor.inkPrimary : .clear).accessibilityHidden(true)
-                            Text(b.name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
+                    NavigationLink(value: Route.player(named: b.name)) {
+                        HStack(spacing: Spacing.xs) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "circle.fill").font(.system(size: 6))
+                                    .foregroundStyle(b.isStriker ? BouncerColor.inkPrimary : .clear).accessibilityHidden(true)
+                                PlayerAvatar(name: b.name, size: 32)
+                                Text(b.name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            StatCell(text: "\(b.runs) (\(b.balls))", width: 64, emphasised: true)
+                            StatCell(text: b.fours, width: 30)
+                            StatCell(text: b.sixes, width: 30)
+                            StatCell(text: b.strikeRate, width: 48)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        StatCell(text: "\(b.runs) (\(b.balls))", width: 64, emphasised: true)
-                        StatCell(text: b.fours, width: 30)
-                        StatCell(text: b.sixes, width: 30)
-                        StatCell(text: b.strikeRate, width: 48)
+                        .padding(.horizontal, Spacing.lg).padding(.vertical, Spacing.sm)
+                        .contentShape(Rectangle())
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(b.name)\(b.isStriker ? ", on strike" : ""), \(b.runs) runs from \(b.balls) balls, \(b.fours) fours, \(b.sixes) sixes, strike rate \(b.strikeRate)")
                     }
-                    .padding(.horizontal, Spacing.lg).padding(.vertical, Spacing.sm)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(b.name)\(b.isStriker ? ", on strike" : ""), \(b.runs) runs from \(b.balls) balls, \(b.fours) fours, \(b.sixes) sixes, strike rate \(b.strikeRate)")
+                    .buttonStyle(.plain)
                     if i < live.batsmen.count - 1 { Divider().overlay(BouncerColor.divider) }
                 }
                 if let p = partnership(live) {
@@ -66,13 +71,20 @@ struct LiveTab: View {
         DetailSection(title: "Bowling") {
             VStack(spacing: 0) {
                 header(["O-M-R-W", "Econ"], widths: [84, 48])
-                HStack(spacing: Spacing.xs) {
-                    Text(b.name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
+                NavigationLink(value: Route.player(named: b.name)) {
+                    HStack(spacing: Spacing.xs) {
+                        HStack(spacing: Spacing.sm) {
+                            PlayerAvatar(name: b.name, size: 32)
+                            Text(b.name).font(.titleSmall).foregroundStyle(BouncerColor.inkPrimary).lineLimit(2)
+                        }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    StatCell(text: "\(b.overs)-\(b.maidens)-\(b.runs)-\(b.wickets)", width: 84, emphasised: true)
-                    StatCell(text: b.economy, width: 48)
+                        StatCell(text: "\(b.overs)-\(b.maidens)-\(b.runs)-\(b.wickets)", width: 84, emphasised: true)
+                        StatCell(text: b.economy, width: 48)
+                    }
+                    .padding(.horizontal, Spacing.lg).padding(.vertical, Spacing.sm)
+                    .contentShape(Rectangle())
                 }
-                .padding(.horizontal, Spacing.lg).padding(.vertical, Spacing.sm)
+                .buttonStyle(.plain)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(b.name), \(b.overs) overs, \(b.maidens) maidens, \(b.runs) runs, \(b.wickets) wickets, economy \(b.economy)")
             }
