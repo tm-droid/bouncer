@@ -841,8 +841,8 @@ object ShareCardGenerator {
      * Saves and shares [bitmap], telling the user when it could not. A failed share used to do
      * nothing at all: the button stopped spinning and no sheet appeared.
      */
-    suspend fun shareBitmap(context: Context, bitmap: Bitmap) {
-        val shared = saveBitmapForSharing(context, bitmap)?.let { shareImage(context, it) } == true
+    suspend fun shareBitmap(context: Context, bitmap: Bitmap, text: String? = null) {
+        val shared = saveBitmapForSharing(context, bitmap)?.let { shareImage(context, it, text) } == true
         if (!shared) {
             android.widget.Toast.makeText(
                 context, com.tanush.bouncer.R.string.share_failed, android.widget.Toast.LENGTH_SHORT

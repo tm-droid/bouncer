@@ -16,14 +16,12 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Sports
 import androidx.compose.material.icons.filled.SportsCricket
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -43,7 +41,6 @@ import com.tanush.bouncer.ui.components.v2.SettingsItemV2
 import com.tanush.bouncer.ui.components.v2.SettingsTrailing
 import com.tanush.bouncer.ui.components.v2.rememberNotificationAccess
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import com.tanush.bouncer.ui.widgets.WidgetUpdateWorker
 import com.tanush.bouncer.utils.PreferencesHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -77,6 +74,20 @@ internal fun NotificationSettingsGroup() {
         Icons.Default.Sports, R.string.settings_wicket_alerts,
         R.string.settings_never_miss_a_crucial_wicket, PreferencesHelper.KEY_WICKET_ALERTS,
     )
+    SettingsItemV2(
+        icon = Icons.Default.Vibration,
+        title = stringResource(R.string.settings_sounds_vibration),
+        subtitle = stringResource(R.string.settings_sounds_vibration_subtitle),
+        trailing = SettingsTrailing.Navigation,
+        onClick = { context.openAppNotificationSettings() },
+    )
+    QuietHoursItems()
+}
+
+/** The system's notification screen for this app, where channel sound and vibration are set. */
+private fun Context.openAppNotificationSettings() {
+    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+    if (intent.resolveActivity(packageManager) != null) runCatching { startActivity(intent) }
 }
 
 /** How the app behaves on this device, and what it keeps. */
@@ -110,35 +121,6 @@ private fun PrefToggle(icon: ImageVector, title: Int, subtitle: Int, key: String
         },
     )
 }
-
-/**
- * Minutes, matching `WidgetUpdateWorker.resolveUpdateDelayMs`: how often the widgets' fallback poll
- * runs when push is unavailable. 5m, 15m, 30m, 60m, round again.
- */
-@Composable
-private fun RefreshIntervalItem() {
-    val context = LocalContext.current
-    var minutes by remember {
-        mutableIntStateOf(
-            PreferencesHelper.getInt(context, PreferencesHelper.KEY_REFRESH_INTERVAL, WidgetUpdateWorker.DEFAULT_INTERVAL_MIN)
-                .coerceIn(WidgetUpdateWorker.MIN_INTERVAL_MIN, WidgetUpdateWorker.MAX_INTERVAL_MIN),
-        )
-    }
-    SettingsItemV2(
-        icon = Icons.Default.Timer,
-        title = stringResource(R.string.settings_refresh_interval),
-        subtitle = stringResource(R.string.settings_refresh_interval_subtitle, minutes),
-        trailing = SettingsTrailing.Value(stringResource(R.string.settings_minutes_short, minutes)),
-        onClick = {
-            minutes = REFRESH_STEPS.getOrNull(REFRESH_STEPS.indexOf(minutes) + 1) ?: REFRESH_STEPS.first()
-            PreferencesHelper.setInt(context, PreferencesHelper.KEY_REFRESH_INTERVAL, minutes)
-            // Re-armed now, so the new interval does not wait out the old one.
-            WidgetUpdateWorker.schedulePeriodicUpdates(context)
-        },
-    )
-}
-
-private val REFRESH_STEPS = listOf(5, 15, 30, 60)
 
 @Composable
 private fun DiagnosticsItem() {

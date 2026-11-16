@@ -1,8 +1,6 @@
 package com.tanush.bouncer.ui.screens.news
 
-import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -40,9 +38,9 @@ import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.NewsImage
 import com.tanush.bouncer.ui.components.v2.ShimmerBox
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.utils.openLink
+import com.tanush.bouncer.utils.shareText
 import com.tanush.bouncer.viewmodels.NewsViewModel
-import io.sentry.Sentry
-import androidx.core.net.toUri
 
 /**
  * One article: its photograph and credit, what kind of story it is, the headline, who published it
@@ -106,28 +104,13 @@ private fun ArticleActions(article: NewsArticleData) {
     IconButton(onClick = { context.shareArticle(article) }) {
         Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.news_share))
     }
-    IconButton(onClick = { context.openOriginal(article) }) {
+    IconButton(onClick = { context.openLink(article.articleUrl) }) {
         Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = stringResource(R.string.news_open_original))
     }
 }
 
-private fun Context.shareArticle(article: NewsArticleData) {
-    val send = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, article.headline)
-        putExtra(Intent.EXTRA_TEXT, "${article.headline}\n${article.articleUrl}")
-    }
-    startActivity(Intent.createChooser(send, null))
-}
-
-private fun Context.openOriginal(article: NewsArticleData) {
-    try {
-        startActivity(Intent(Intent.ACTION_VIEW, article.articleUrl.toUri()))
-    } catch (e: ActivityNotFoundException) {
-        // A device with no browser. Nothing to open it in, and not a reason to crash the screen.
-        Sentry.captureException(e)
-    }
-}
+private fun Context.shareArticle(article: NewsArticleData) =
+    shareText("${article.headline}\n${article.articleUrl}", subject = article.headline)
 
 private fun LazyListScope.articleHeader(article: NewsArticleData) {
     if (article.imageUrl != null) {

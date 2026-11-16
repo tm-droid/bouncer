@@ -8,9 +8,11 @@ import androidx.core.net.toUri
 
 /** The app's Play listing, where "What's new" is published. Play Store first, a browser if there is none. */
 fun Context.openStoreListing() {
-    val listing = "details?id=$packageName"
-    if (!open("market://$listing")) open("https://play.google.com/store/apps/$listing")
+    if (!open("market://details?id=$packageName")) open(storeListingUrl())
 }
+
+/** The listing's web address, for sharing. */
+fun Context.storeListingUrl(): String = "https://play.google.com/store/apps/details?id=$packageName"
 
 /** Opens [uri] in whatever handles it. False when nothing on the device does. */
 fun Context.open(uri: String): Boolean = try {

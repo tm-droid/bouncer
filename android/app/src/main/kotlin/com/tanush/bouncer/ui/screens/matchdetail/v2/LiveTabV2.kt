@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -45,10 +46,14 @@ internal fun LiveTabV2(
     derived: OverviewDerivedData,
     streamingCommentary: String,
     onOpenCommentary: () -> Unit,
+    scrollToTop: Int = 0,
 ) {
     val spacing = BouncerThemeV2.spacing
     val partnership = remember(scorecard) { scorecard?.innings?.lastOrNull()?.let(::currentPartnership) }
+    val listState = rememberLazyListState()
+    ScrollToTopEffect(scrollToTop, listState)
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = spacing.lg, vertical = spacing.md),
         verticalArrangement = Arrangement.spacedBy(spacing.md),

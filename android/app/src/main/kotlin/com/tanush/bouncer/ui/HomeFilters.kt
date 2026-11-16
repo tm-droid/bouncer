@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui
 
+import android.content.Context
+import androidx.annotation.StringRes
 import com.tanush.bouncer.models.CricketMatch
 
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -23,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.R
@@ -52,12 +55,45 @@ internal data class HomeFilters(
 
     /** How the empty state names what it is showing: "women's league T20", "your teams'". */
     val label: String
-        get() = listOfNotNull(
-            gender.takeIf { it != FILTER_ALL }?.let { "${it.lowercase()}'s" },
-            competition.takeIf { it != FILTER_ALL }?.lowercase(),
-            format.takeIf { it != FILTER_ALL },
-            "your teams'".takeIf { myTeams },
+        get() = labelWith(show = { it }, possessive = { "$it's" }, myTeamsText = "your teams'")
+
+    /** [label] with [show] turning a stored option key into its display text. */
+    fun labelWith(show: (String) -> String, possessive: (String) -> String, myTeamsText: String): String =
+        listOfNotNull(
+            gender.takeIf { it != FILTER_ALL }?.let { possessive(show(it).lowercase()) },
+            competition.takeIf { it != FILTER_ALL }?.let { show(it).lowercase() },
+            format.takeIf { it != FILTER_ALL }?.let(show),
+            myTeamsText.takeIf { myTeams },
         ).joinToString(" ")
+}
+
+/** Display text for the stored option keys, which stay as they are: they key prefs and the ViewModel. */
+private val OPTION_LABELS = mapOf(
+    FILTER_ALL to R.string.home_filter_all,
+    "International" to R.string.home_filter_international,
+    "League" to R.string.home_filter_league,
+    "Domestic" to R.string.home_filter_domestic,
+    GENDER_MEN to R.string.home_filter_men,
+    GENDER_WOMEN to R.string.home_filter_women,
+    "T20" to R.string.home_format_t20,
+    "ODI" to R.string.home_format_odi,
+    "Test" to R.string.home_format_test,
+    "First Class" to R.string.home_format_first_class,
+)
+
+private fun optionLabel(context: Context, key: String): String =
+    OPTION_LABELS[key]?.let(context::getString) ?: key
+
+/** [HomeFilters.label] in the user's language, for the empty state. */
+@Composable
+internal fun HomeFilters.displayLabel(): String {
+    val context = LocalContext.current
+    val resources = LocalResources.current
+    return labelWith(
+        show = { optionLabel(context, it) },
+        possessive = { resources.getString(R.string.home_filter_label_possessive, it) },
+        myTeamsText = stringResource(R.string.home_filter_label_my_teams),
+    )
 }
 
 /** [matches] narrowed by the filters Home applies itself. [favouriteNames] are trimmed and lowercased. */
@@ -119,35 +155,41 @@ internal fun HomeFilterMenu(filters: HomeFilters, onFiltersChanged: (HomeFilters
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, containerColor = colors.surface) {
-            FilterMenuLabel(stringResource(R.string.home_filter_competition))
-            CATEGORY_OPTIONS.forEach { option ->
-                FilterMenuItem(option = option, selected = option == filters.competition) {
-                    expanded = false
-                    onFiltersChanged(filters.copy(competition = option))
-                }
+            val pick: (HomeFilters) -> Unit = {
+                expanded = false
+                onFiltersChanged(it)
+            }
+            FilterOptionGroup(R.string.home_filter_competition, CATEGORY_OPTIONS, filters.competition) {
+                pick(filters.copy(competition = it))
             }
             HorizontalDivider(color = colors.divider)
-            FilterMenuLabel(stringResource(R.string.home_filter_teams))
-            GENDER_OPTIONS.forEach { option ->
-                FilterMenuItem(option = option, selected = option == filters.gender) {
-                    expanded = false
-                    onFiltersChanged(filters.copy(gender = option))
-                }
+            FilterOptionGroup(R.string.home_filter_teams, GENDER_OPTIONS, filters.gender) {
+                pick(filters.copy(gender = it))
             }
             HorizontalDivider(color = colors.divider)
-            FilterMenuLabel(stringResource(R.string.matches_filter_format))
-            FORMAT_OPTIONS.forEach { option ->
-                FilterMenuItem(option = option, selected = option == filters.format) {
-                    expanded = false
-                    onFiltersChanged(filters.copy(format = option))
-                }
+            FilterOptionGroup(R.string.matches_filter_format, FORMAT_OPTIONS, filters.format) {
+                pick(filters.copy(format = it))
             }
             HorizontalDivider(color = colors.divider)
             FilterMenuItem(option = stringResource(R.string.home_filter_my_teams), selected = filters.myTeams) {
-                expanded = false
-                onFiltersChanged(filters.copy(myTeams = !filters.myTeams))
+                pick(filters.copy(myTeams = !filters.myTeams))
+            }
+            if (filters.active) {
+                HorizontalDivider(color = colors.divider)
+                FilterMenuItem(option = stringResource(R.string.home_filter_clear), selected = false) {
+                    pick(HomeFilters())
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun FilterOptionGroup(@StringRes titleRes: Int, options: List<String>, selected: String, onPick: (String) -> Unit) {
+    val context = LocalContext.current
+    FilterMenuLabel(stringResource(titleRes))
+    options.forEach { option ->
+        FilterMenuItem(option = optionLabel(context, option), selected = option == selected) { onPick(option) }
     }
 }
 

@@ -45,6 +45,7 @@ fun PointsTableTab(
     val entries by viewModel.entries.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    val failureKind by viewModel.failureKind.collectAsStateWithLifecycle()
 
     LaunchedEffect(seriesId) { viewModel.load(seriesId) }
 
@@ -66,7 +67,7 @@ fun PointsTableTab(
             },
             label = "pointsTableState",
         ) { state ->
-            PointsTableBody(state, entries, viewModel::retry, onTeamClick)
+            PointsTableBody(state, entries, failureKind, viewModel::retry, onTeamClick)
         }
     }
 }
@@ -75,6 +76,7 @@ fun PointsTableTab(
 private fun PointsTableBody(
     state: PointsTableState,
     entries: List<PointsTableEntry>,
+    failureKind: FailureKind,
     onRetry: () -> Unit,
     onTeamClick: (String) -> Unit,
 ) {
@@ -82,7 +84,7 @@ private fun PointsTableBody(
         PointsTableState.Loading -> DelayedSkeleton(isLoading = true) {
             ShimmerTableRows(modifier = Modifier.fillMaxSize())
         }
-        PointsTableState.Error -> FailedState(FailureKind.Server, onRetry, Modifier.fillMaxSize())
+        PointsTableState.Error -> FailedState(failureKind, onRetry, Modifier.fillMaxSize())
         PointsTableState.Empty -> EmptyStateV2(
             icon = Icons.Outlined.TableChart,
             title = stringResource(R.string.points_no_standings_available),

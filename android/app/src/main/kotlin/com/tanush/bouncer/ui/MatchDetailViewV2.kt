@@ -37,7 +37,14 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import android.content.Context
+import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
+import com.tanush.bouncer.ui.components.v2.matchShareText
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -133,9 +140,18 @@ fun MatchDetailViewV2(
     val highlights by highlightsViewModel.highlights.collectAsStateWithLifecycle()
 
     val scope = rememberCoroutineScope()
+    // Bumped when the selected tab is tapped again; the tabs that scroll read it.
+    var topSignal by remember { mutableIntStateOf(0) }
+    // Pull-to-refresh runs the retry load; it ends when both loads have cleared. The VM's own
+    // state is read, since the collected copy lags the synchronous update the retry makes.
+    var refreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(refreshing, uiState.scorecardLoading, uiState.commentaryLoading) {
+        val state = vm.uiState.value
+        if (refreshing && !state.scorecardLoading && !state.commentaryLoading) refreshing = false
+    }
 
-    var showReminderSheet by remember { mutableStateOf(false) }
-    var showNotifPrefsSheet by remember { mutableStateOf(false) }
+    var showReminderSheet by rememberSaveable { mutableStateOf(false) }
+    var showNotifPrefsSheet by rememberSaveable { mutableStateOf(false) }
     val followedCards by MatchSubscriptionManager.subscriptions.collectAsStateWithLifecycle()
     val followedAlerts by MatchSubscriptionManager.alertPrefs.collectAsStateWithLifecycle()
     val isFollowing = match.id in followedCards || followedAlerts[match.id]?.anyOn == true
@@ -257,8 +273,14 @@ fun MatchDetailViewV2(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "${team1?.acronym ?: team1?.name ?: ""} vs ${team2?.acronym ?: team2?.name ?: ""}",
+                        text = stringResource(
+                            R.string.match_title_vs,
+                            team1?.acronym ?: team1?.name ?: "",
+                            team2?.acronym ?: team2?.name ?: "",
+                        ),
                         style = typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 },
                 navigationIcon = {
@@ -276,35 +298,21 @@ fun MatchDetailViewV2(
                             if (!isSharingCard) {
                                 isSharingCard = true
                                 scope.launch {
-                                    val t1 = liveMatch.teams.getOrNull(0)
-                                    val t2 = liveMatch.teams.getOrNull(1)
-                                    val data = ShareCardData(
-                                        team1Name = t1?.acronym?.ifEmpty { t1.name.take(3) } ?: "T1",
-                                        team2Name = t2?.acronym?.ifEmpty { t2.name.take(3) } ?: "T2",
-                                        team1Score = t1?.score ?: "-",
-                                        team2Score = t2?.score,
-                                        matchStatus = liveMatch.status,
-                                        matchType = liveMatch.matchType,
-                                        venue = liveMatch.venue,
-                                        winProbability = liveMatch.winProbabilityFraction,
-                                        isLive = liveMatch.isLive,
-                                        team1FullName = t1?.name,
-                                        team2FullName = t2?.name,
-                                    )
-                                    val bitmap = ShareCardGenerator.generateShareBitmap(
-                                        data,
-                                        typeface = ResourcesCompat.getFont(context, R.font.ibm_plex_sans_bold),
-                                    )
-                                    ShareCardGenerator.shareBitmap(context, bitmap)
-                                    isSharingCard = false
+                                    // Cleared on every exit: a failure used to leave the spinner on.
+                                    try {
+                                        shareMatchCard(context, liveMatch)
+                                    } finally {
+                                        isSharingCard = false
+                                    }
                                 }
                             }
                         },
                         enabled = !isSharingCard,
                     ) {
                         if (isSharingCard) {
+                            val preparing = stringResource(R.string.share_card_preparing)
                             androidx.compose.material3.CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(20.dp).semantics { contentDescription = preparing },
                                 strokeWidth = 2.dp,
                                 color = colors.onSurface,
                             )
@@ -394,7 +402,12 @@ fun MatchDetailViewV2(
                     Tab(
                         selected = pagerState.currentPage == index,
                         onClick = {
-                            scope.launch { pagerState.animateScrollToPage(index) }
+                            if (pagerState.currentPage == index) {
+                                topSignal++
+                                collapse.expand()
+                            } else {
+                                scope.launch { pagerState.animateScrollToPage(index) }
+                            }
                         },
                         text = {
                             Text(
@@ -409,10 +422,19 @@ fun MatchDetailViewV2(
             }
 
             // ── Tab Content ──
+            // Inside the collapse connection: the header takes the pull first, then the refresh.
+            PullRefreshWrapperV2(
+                isRefreshing = refreshing,
+                onRefresh = {
+                    refreshing = true
+                    vm.retryInitialLoad()
+                },
+                modifier = Modifier.weight(1f),
+            ) {
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxSize()
                     .bouncerScreenBackground(),
             ) { page ->
                 when (tabs.getOrNull(page) ?: return@HorizontalPager) {
@@ -425,6 +447,7 @@ fun MatchDetailViewV2(
                         derived = derived,
                         streamingCommentary = streamingCommentary,
                         onOpenCommentary = openCommentary,
+                        scrollToTop = topSignal,
                     )
                     MatchTab.SUMMARY -> SummaryTabV2(
                         match = liveMatch,
@@ -439,6 +462,7 @@ fun MatchDetailViewV2(
                         // reads "India opt to bowl" for the whole first innings.
                         isLive = phase == MatchPhase.IN_PLAY,
                         squads = uiState.squads,
+                        onRetry = vm::retryInitialLoad,
                     )
                     MatchTab.COMMENTARY -> CommentaryTabV2(
                         commentary = uiState.commentary,
@@ -460,6 +484,8 @@ fun MatchDetailViewV2(
                             PastFeedSource.ARCHIVE_DELIVERIES -> archiveDeliveriesCaption(uiState.pastFeedPartial)
                             else -> null
                         },
+                        isLive = phase == MatchPhase.IN_PLAY,
+                        scrollToTop = topSignal,
                     )
                     MatchTab.GRAPHS -> GraphsTabV2(
                         match = liveMatch,
@@ -486,6 +512,7 @@ fun MatchDetailViewV2(
                 }
             }
             }
+            }
 
             uiState.batsmanMilestone?.let { milestone ->
                 BatsmanMilestoneCard(
@@ -502,7 +529,7 @@ fun MatchDetailViewV2(
             ReminderBottomSheet(
                 matchId = match.id,
                 matchTitle = match.matchTitle,
-                matchStartTime = 0L, // Will be populated when available
+                matchStartTime = match.startDateMs ?: 0L,
                 onDismiss = { showReminderSheet = false },
             )
         }
@@ -515,6 +542,30 @@ fun MatchDetailViewV2(
             )
         }
     }
+}
+
+/** Renders the share card for [match] and opens the share sheet with the score text beside it. */
+private suspend fun shareMatchCard(context: Context, match: CricketMatch) {
+    val t1 = match.teams.getOrNull(0)
+    val t2 = match.teams.getOrNull(1)
+    val data = ShareCardData(
+        team1Name = t1?.acronym?.ifEmpty { t1.name.take(3) } ?: "T1",
+        team2Name = t2?.acronym?.ifEmpty { t2.name.take(3) } ?: "T2",
+        team1Score = t1?.score ?: "-",
+        team2Score = t2?.score,
+        matchStatus = match.status,
+        matchType = match.matchType,
+        venue = match.venue,
+        winProbability = match.winProbabilityFraction,
+        isLive = match.isLive,
+        team1FullName = t1?.name,
+        team2FullName = t2?.name,
+    )
+    val bitmap = ShareCardGenerator.generateShareBitmap(
+        data,
+        typeface = ResourcesCompat.getFont(context, R.font.ibm_plex_sans_bold),
+    )
+    ShareCardGenerator.shareBitmap(context, bitmap, matchShareText(match))
 }
 
 /** The caption under a backfilled match's ball-by-ball lines, with a note for an innings the source only partly has. */

@@ -33,8 +33,12 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -122,7 +126,8 @@ fun HomeScreenV2(
                 failure = (loadingState as? LoadingState.Error)?.kind,
                 savedAtMs = savedAtMs,
                 nextUp = nextUp,
-                filtered = if (filters.active) FilteredList(filters.label) { onFiltersChanged(HomeFilters()) } else null,
+                filtered = if (filters.active) FilteredList(filters.displayLabel()) { onFiltersChanged(HomeFilters()) } else null,
+                scrollKey = selectedStatus to filters,
                 onMatchClick = onMatchClick,
                 onRetry = { viewModel.refreshMatches() },
                 onSeeUpcoming = { viewModel.setAndFetchMatches(MatchCacheService.UPCOMING) }
@@ -220,7 +225,9 @@ private fun HomeFilterBar(
                     Tab(
                         selected = index == selectedIndex,
                         onClick = { onStatusSelected(STATUS_BY_TAB.getValue(tab)) },
-                        text = { Text(tab, style = BouncerThemeV2.typography.labelLarge) },
+                        text = {
+                            Text(stringResource(STATUS_LABELS.getValue(tab)), style = BouncerThemeV2.typography.labelLarge)
+                        },
                         selectedContentColor = colors.primaryText,
                         unselectedContentColor = colors.textSecondary,
                     )
@@ -245,8 +252,15 @@ private fun HomeMatchList(
     onMatchClick: (CricketMatch) -> Unit,
     onRetry: () -> Unit,
     onSeeUpcoming: (() -> Unit)?,
+    scrollKey: Any,
 ) {
     val spacing = BouncerThemeV2.spacing
+    val listState = rememberLazyListState()
+    // A new tab or filter is a different list: start it at the top. Not on first composition.
+    var firstKey by remember { mutableStateOf(true) }
+    LaunchedEffect(scrollKey) {
+        if (firstKey) firstKey = false else listState.scrollToItem(0)
+    }
     val favourites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
     val (featured, rows) = remember(matches, favourites) {
         featuredFor(
@@ -264,6 +278,7 @@ private fun HomeMatchList(
     )
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize().bouncerScreenBackground(),
         contentPadding = PaddingValues(bottom = 80.dp),
     ) {
@@ -281,29 +296,39 @@ private fun HomeMatchList(
             }
             is ScreenState.Failed -> item(key = "load_error") { FailedState(state.kind, onRetry) }
             ScreenState.Empty -> homeEmptyItems(filtered, nextUp, onSeeUpcoming)
-            else -> {
-                if (state is ScreenState.ContentWithBanner) {
-                    item(key = "stale", contentType = "stale") { StaleDataBanner(state.kind, state.savedAtMs, onRetry) }
-                }
-                featured?.let { hero ->
-                    val fm = hero.match
-                    item(key = "hero_${fm.id}", contentType = "hero") {
-                        HeroMatchCard(
-                            match = fm,
-                            kind = hero.kind,
-                            lastFetchedMs = { MatchCacheService.savedAtMs(listOf(MatchCacheService.LIVE)) },
-                            onClick = { onMatchClick(fm) },
-                            modifier = Modifier.animateItem(),
-                        )
-                    }
-                }
-                if (byDay == DayOrder.NONE) {
-                    matchRows(rows, "all", rowContext)
-                } else {
-                    dayGroupedRows(rows, byDay == DayOrder.DESCENDING, rowContext)
-                }
-            }
+            else -> homeContentItems(state, featured, rows, byDay, rowContext, onRetry)
         }
+    }
+}
+
+/** Home's loaded list: the stale banner, the hero card, then the match rows. */
+private fun LazyListScope.homeContentItems(
+    state: ScreenState,
+    featured: Featured?,
+    rows: List<CricketMatch>,
+    byDay: DayOrder,
+    rowContext: RowContext,
+    onRetry: () -> Unit,
+) {
+    if (state is ScreenState.ContentWithBanner) {
+        item(key = "stale", contentType = "stale") { StaleDataBanner(state.kind, state.savedAtMs, onRetry) }
+    }
+    featured?.let { hero ->
+        val fm = hero.match
+        item(key = "hero_${fm.id}", contentType = "hero") {
+            HeroMatchCard(
+                match = fm,
+                kind = hero.kind,
+                lastFetchedMs = { MatchCacheService.savedAtMs(listOf(MatchCacheService.LIVE)) },
+                onClick = { rowContext.onMatchClick(fm) },
+                modifier = Modifier.animateItem(),
+            )
+        }
+    }
+    if (byDay == DayOrder.NONE) {
+        matchRows(rows, "all", rowContext)
+    } else {
+        dayGroupedRows(rows, byDay == DayOrder.DESCENDING, rowContext)
     }
 }
 
@@ -374,5 +399,13 @@ internal fun tabForStatus(vmStatus: String): String = when (vmStatus) {
 // broken: the highlight jumped to Live and the feed never changed.
 private val STATUS_BY_TAB = linkedMapOf("All" to STATUS_ALL, "Live" to "Live", "Upcoming" to "Upcoming", "Recent" to "Recent")
 private val STATUS_TABS = STATUS_BY_TAB.keys.toList()
+
+/** Displayed text per tab key; the keys themselves stay as they are. */
+private val STATUS_LABELS = mapOf(
+    "All" to R.string.home_status_all,
+    "Live" to R.string.tab_live,
+    "Upcoming" to R.string.home_status_upcoming,
+    "Recent" to R.string.home_status_recent,
+)
 private const val SHIMMER_ROWS = 3
 private const val MAX_BADGE_COUNT = 9

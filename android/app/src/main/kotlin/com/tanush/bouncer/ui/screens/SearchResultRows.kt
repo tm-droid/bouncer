@@ -45,6 +45,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -252,7 +253,8 @@ internal fun SearchSuggestionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .semantics(mergeDescendants = true) {}
+            .clickable(onClickLabel = stringResource(R.string.search_suggestion_click_label, text), onClick = onClick)
             .padding(start = spacing.lg, end = spacing.sm)
             .height(48.dp),
         verticalAlignment = Alignment.CenterVertically,

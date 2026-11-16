@@ -71,10 +71,10 @@ class RefreshWidgetCallback : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters
     ) {
-        val intent = Intent(context, LiveMatchWidgetProvider::class.java).apply {
-            action = LiveMatchWidgetProvider.ACTION_REFRESH
-        }
-        context.sendBroadcast(intent)
+        // The same refresh the periodic worker and a score push run: it rebuilds the snapshot and
+        // redraws every widget (Glance, lock screen and RemoteViews). The RemoteViews-only
+        // broadcast this sent before left both Glance widgets showing what they had.
+        WidgetUpdateWorker.triggerImmediateUpdate(context)
     }
 }
 
@@ -598,6 +598,18 @@ private fun LiveCompact(modifier: GlanceModifier = GlanceModifier) {
 // ===========================================
 // WIDGET REFRESH BUTTON
 // ===========================================
+
+/** A bare refresh glyph for a widget header row: no plate, so it fits a one-line header. */
+@Composable
+fun WidgetRefreshGlyph(modifier: GlanceModifier = GlanceModifier) {
+    Text(
+        text = "↻",
+        modifier = modifier
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .clickable(actionRunCallback<RefreshWidgetCallback>()),
+        style = TextStyle(fontSize = 16.sp, color = WidgetColorScheme.textSecondary),
+    )
+}
 
 /**
  * Manual refresh button for widget

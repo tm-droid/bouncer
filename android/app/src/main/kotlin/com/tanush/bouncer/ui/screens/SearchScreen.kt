@@ -292,7 +292,7 @@ private fun LazyListScope.searchSuggestions(state: SearchListState, viewModel: S
                 onAction = viewModel::clearRecentQueries,
             )
         }
-        itemsIndexed(recentQueries, key = { index, q -> "recent_${index}_$q" }) { _, q ->
+        itemsIndexed(recentQueries.distinct(), key = { _, q -> "recent_$q" }) { _, q ->
             SearchSuggestionRow(
                 text = q,
                 onClick = { onQuery(q) },
@@ -312,7 +312,7 @@ private fun LazyListScope.searchSuggestions(state: SearchListState, viewModel: S
             )
         )
     }
-    itemsIndexed(state.suggestions, key = { index, s -> "suggest_${index}_$s" }) { _, suggestion ->
+    itemsIndexed(state.suggestions.distinct(), key = { _, s -> "suggest_$s" }) { _, suggestion ->
         SearchSuggestionRow(
             text = suggestion,
             onClick = { onQuery(suggestion) },

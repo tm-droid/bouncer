@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,6 +17,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -24,22 +29,27 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.R
 import com.tanush.bouncer.managers.MatchSubscriptionManager
+import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.MatchCardV2
 import com.tanush.bouncer.ui.components.v2.TextTabBarV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.utils.Reminder
 import com.tanush.bouncer.utils.ReminderScheduler
 import com.tanush.bouncer.utils.RemindersManager
+import kotlinx.coroutines.launch
 
 /** The Alerts screen's tabs, in order. */
 enum class AlertsTab { INBOX, FOLLOWING, REMINDERS }
@@ -62,40 +72,99 @@ fun AlertsScreen(
     val context = LocalContext.current
     var tab by rememberSaveable { mutableIntStateOf(initialTab.ordinal) }
     var reminders by remember { mutableStateOf(RemindersManager.upcoming(context, System.currentTimeMillis())) }
+    val inbox by NotificationInboxManager.items.collectAsStateWithLifecycle()
+    val snackbar = remember { SnackbarHostState() }
+    val offerUndo = rememberOfferUndo(snackbar)
+    val removeReminders: (List<Reminder>) -> Unit = { removed ->
+        cancelReminders(context, removed)
+        reminders = RemindersManager.upcoming(context, System.currentTimeMillis())
+        offerUndo(R.string.alerts_reminders_removed) {
+            restoreReminders(context, removed)
+            reminders = RemindersManager.upcoming(context, System.currentTimeMillis())
+        }
+    }
+    val clearInbox: () -> Unit = {
+        val removed = inbox
+        NotificationInboxManager.clear()
+        offerUndo(R.string.alerts_inbox_cleared) { NotificationInboxManager.restore(removed) }
+    }
+    val onInboxTab = tab == AlertsTab.INBOX.ordinal
+    val showClearAll = if (onInboxTab) inbox.isNotEmpty() else tab == AlertsTab.REMINDERS.ordinal && reminders.isNotEmpty()
 
     Scaffold(
         topBar = {
-            AlertsTopBar(showClearAll = tab == AlertsTab.REMINDERS.ordinal && reminders.isNotEmpty(), onBack = onBack) {
-                reminders.forEach { ReminderScheduler.cancelReminder(context, it.id) }
-                RemindersManager.clearAll(context)
-                reminders = emptyList()
+            AlertsTopBar(showClearAll = showClearAll, onBack = onBack) {
+                if (onInboxTab) clearInbox() else removeReminders(reminders)
             }
         },
+        snackbarHost = { SnackbarHost(snackbar) },
         containerColor = colors.background,
     ) { innerPadding ->
         Column(Modifier.fillMaxSize().padding(innerPadding)) {
             TextTabBarV2(
-                tabs = listOf(
-                    stringResource(R.string.alerts_inbox),
-                    stringResource(R.string.alerts_following),
-                    stringResource(R.string.reminders_scheduled_reminders),
-                ),
+                tabs = alertsTabTitles(),
                 selectedIndex = tab,
                 onSelect = { tab = it },
             )
             when (AlertsTab.entries[tab]) {
-                AlertsTab.INBOX -> NotificationInbox(onOpenMatch)
+                AlertsTab.INBOX -> NotificationInbox(onOpenMatch) { removed ->
+                    NotificationInboxManager.remove(removed.id)
+                    offerUndo(R.string.alerts_notification_removed) { NotificationInboxManager.restore(listOf(removed)) }
+                }
                 AlertsTab.FOLLOWING -> FollowingList(matches, onOpenMatch)
                 AlertsTab.REMINDERS -> ReminderList(
                     reminders = reminders,
-                    onCancel = { reminder ->
-                        ReminderScheduler.cancelReminder(context, reminder.id)
-                        RemindersManager.deleteReminder(context, reminder.id)
-                        reminders = RemindersManager.upcoming(context, System.currentTimeMillis())
-                    },
+                    onCancel = { reminder -> removeReminders(listOf(reminder)) },
                     onOpenMatch = onOpenMatch,
                 )
             }
+        }
+    }
+}
+
+/** Shows a message with Undo on [snackbar]; the undo lambda runs only if the reader taps it. */
+@Composable
+private fun rememberOfferUndo(snackbar: SnackbarHostState): (Int, () -> Unit) -> Unit {
+    val scope = rememberCoroutineScope()
+    val resources = LocalResources.current
+    return { message, undo ->
+        scope.launch {
+            val result = snackbar.showSnackbar(
+                message = resources.getString(message),
+                actionLabel = resources.getString(R.string.common_undo),
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) undo()
+        }
+    }
+}
+
+/** The tab labels, in [AlertsTab] order. */
+@Composable
+private fun alertsTabTitles(): List<String> = listOf(
+    stringResource(R.string.alerts_inbox),
+    stringResource(R.string.alerts_following),
+    stringResource(R.string.reminders_scheduled_reminders),
+)
+
+/** Cancels each reminder's alarm and deletes its record. */
+private fun cancelReminders(context: Context, removed: List<Reminder>) {
+    removed.forEach {
+        ReminderScheduler.cancelReminder(context, it.id)
+        RemindersManager.deleteReminder(context, it.id)
+    }
+}
+
+/** Undo for a cancelled reminder: its record and its alarm, unless its time has passed meanwhile. */
+private fun restoreReminders(context: Context, removed: List<Reminder>) {
+    val now = System.currentTimeMillis()
+    removed.filter { it.triggerAt > now }.forEach { reminder ->
+        // ReminderScheduler reports its own failures; one bad alarm must not strand the others.
+        runCatching {
+            ReminderScheduler.scheduleReminder(
+                context, reminder.id, reminder.title, reminder.body, reminder.triggerAt - now, reminder.matchId,
+            )
+            RemindersManager.updateReminder(context, reminder)
         }
     }
 }

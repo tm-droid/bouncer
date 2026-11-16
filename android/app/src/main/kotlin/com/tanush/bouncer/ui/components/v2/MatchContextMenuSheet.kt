@@ -3,7 +3,6 @@ package com.tanush.bouncer.ui.components.v2
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,6 +36,7 @@ import com.tanush.bouncer.network.CricBuzzUrls
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.PreferencesHelper
 import com.tanush.bouncer.utils.rememberHapticFeedback
+import com.tanush.bouncer.utils.shareText
 
 /**
  * Long-press actions for a match row.
@@ -144,11 +144,9 @@ private fun SheetItem(label: String, icon: ImageVector, onClick: () -> Unit) {
 private fun scoreText(match: CricketMatch) =
     match.teams.joinToString(" vs ") { "${it.name} ${it.score.ifBlank { "-" }}" }
 
-private fun shareScore(context: Context, match: CricketMatch) {
-    val send = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        val link = CricBuzzUrls.liveScoresUrl(match.id)
-        putExtra(Intent.EXTRA_TEXT, "${scoreText(match)}\n$link\n#cricket #bouncer")
-    }
-    context.startActivity(Intent.createChooser(send, context.getString(R.string.match_share_score)))
-}
+/** The text shared for a match: the score line, its live-scores link and hashtags. */
+fun matchShareText(match: CricketMatch): String =
+    "${scoreText(match)}\n${CricBuzzUrls.liveScoresUrl(match.id)}\n#cricket #bouncer"
+
+private fun shareScore(context: Context, match: CricketMatch) =
+    context.shareText(matchShareText(match), context.getString(R.string.match_share_score))

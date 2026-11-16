@@ -100,6 +100,7 @@ object WidgetSnapshotStore {
             apply()
         }
         context.getSharedPreferences(BouncerGlanceWidget.PREF_NAME, Context.MODE_PRIVATE).edit().apply {
+            putString("match_id", snapshot.matchId)
             putString("team1_name", snapshot.team1Abbr)
             putString("team1_score", snapshot.team1Score)
             putString("team2_name", snapshot.team2Abbr)

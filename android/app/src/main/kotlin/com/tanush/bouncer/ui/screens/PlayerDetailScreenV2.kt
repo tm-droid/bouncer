@@ -29,6 +29,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.outlined.Share
+import com.tanush.bouncer.network.CricBuzzUrls
+import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
+import com.tanush.bouncer.utils.shareText
 import android.content.Context
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -96,7 +100,7 @@ fun PlayerDetailScreenV2(
     var selectedFormat by rememberSaveable { mutableStateOf("Test") }
     var profile by remember { mutableStateOf<PlayerProfile?>(null) }
     var loadState by remember { mutableStateOf(LoadState.Loading) }
-    var retryCount by remember { mutableIntStateOf(0) }
+    var retryCount by rememberSaveable { mutableIntStateOf(0) }
     val careerRow = careerRowFor(profile)
 
     LaunchedEffect(playerName, cricbuzzId, retryCount) {
@@ -114,36 +118,69 @@ fun PlayerDetailScreenV2(
 
     Scaffold(
         topBar = {
-            BouncerTopBarV2(
-                title = stringResource(R.string.player_player),
-                showBack = true,
+            PlayerTopBar(
                 onBack = onBackClick,
-                actions = {
-                    if (onCompareClick != null) {
-                        IconButton(onClick = onCompareClick) {
-                            Icon(Icons.Default.SwapHoriz, "Compare", tint = colors.textSecondary)
-                        }
-                    }
-                }
+                onShare = { context.sharePlayer(profile, playerName, cricbuzzId) },
+                onCompareClick = onCompareClick,
             )
         },
         containerColor = colors.background,
     ) { padding ->
         val loaded = profile
-        when {
-            loadState == LoadState.Loading -> DelayedSkeleton(isLoading = true) { PlayerLoading(padding) }
-            loaded == null -> PlayerLoadError(padding, playerName) { retryCount++ }
-            else -> PlayerProfileList(
-                padding = padding,
-                profile = loaded,
-                header = PlayerHeaderInfo(playerRole, playerImageUrl, isCaptain, isWicketKeeper),
-                selectedFormat = selectedFormat,
-                onFormatSelected = { selectedFormat = it },
-                careerLink = careerRow?.let { row -> onHistoryCareerClick?.let { open -> { open(row.id, loaded.name) } } },
-            )
+        PullRefreshWrapperV2(
+            isRefreshing = loadState == LoadState.Loading,
+            onRefresh = { retryCount++ },
+        ) {
+            when {
+                loadState == LoadState.Loading -> DelayedSkeleton(isLoading = true) { PlayerLoading(padding) }
+                loaded == null -> PlayerLoadError(padding, playerName) { retryCount++ }
+                else -> PlayerProfileList(
+                    padding = padding,
+                    profile = loaded,
+                    header = PlayerHeaderInfo(playerRole, playerImageUrl, isCaptain, isWicketKeeper),
+                    selectedFormat = selectedFormat,
+                    onFormatSelected = { selectedFormat = it },
+                    careerLink = careerLinkFor(careerRow, onHistoryCareerClick, loaded.name),
+                )
+            }
         }
     }
 }
+
+@Composable
+private fun PlayerTopBar(onBack: () -> Unit, onShare: () -> Unit, onCompareClick: (() -> Unit)?) {
+    val colors = BouncerThemeV2.colors
+    BouncerTopBarV2(
+        title = stringResource(R.string.player_player),
+        showBack = true,
+        onBack = onBack,
+        actions = {
+            IconButton(onClick = onShare) {
+                Icon(Icons.Outlined.Share, stringResource(R.string.common_share), tint = colors.textSecondary)
+            }
+            if (onCompareClick != null) {
+                IconButton(onClick = onCompareClick) {
+                    Icon(Icons.Default.SwapHoriz, stringResource(R.string.player_compare), tint = colors.textSecondary)
+                }
+            }
+        }
+    )
+}
+
+/** Shares the player's name and, when a numeric Cricbuzz id is known, the profile link. */
+private fun Context.sharePlayer(profile: PlayerProfile?, playerName: String, cricbuzzId: String?) {
+    val name = profile?.name ?: playerName
+    val id = (cricbuzzId ?: profile?.id)?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) }
+    val text = if (id == null) name else "$name\n${CricBuzzUrls.BASE}/profiles/$id"
+    shareText(text, subject = name)
+}
+
+/** Opens the Cricsheet career of [row] under [name]; null when there is no safe join or no handler. */
+private fun careerLinkFor(
+    row: HistoryNameRow?,
+    open: ((id: String, name: String) -> Unit)?,
+    name: String,
+): (() -> Unit)? = row?.let { r -> open?.let { o -> { o(r.id, name) } } }
 
 /**
  * Room, then the shared Appwrite table, then Cricbuzz — the order `PlayerCacheWorker` already uses.

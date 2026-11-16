@@ -16,10 +16,15 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -158,6 +163,20 @@ private fun ThemeModeV2.label(): Int = when (this) {
 
 @Composable
 private fun AboutRows(onAboutClick: () -> Unit, onRedoSetup: () -> Unit, onDevToolsClick: () -> Unit) {
+    var confirmingRedo by remember { mutableStateOf(false) }
+    if (confirmingRedo) {
+        AlertDialog(
+            onDismissRequest = { confirmingRedo = false },
+            title = { Text(stringResource(R.string.settings_redo_setup)) },
+            text = { Text(stringResource(R.string.settings_redo_setup_confirm)) },
+            confirmButton = {
+                TextButton(onClick = { confirmingRedo = false; onRedoSetup() }) {
+                    Text(stringResource(R.string.settings_redo_setup_action))
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmingRedo = false }) { Text(stringResource(R.string.common_cancel)) } },
+        )
+    }
     SettingsItemV2(
         icon = Icons.Default.Info,
         title = stringResource(R.string.settings_about_bouncer),
@@ -170,7 +189,7 @@ private fun AboutRows(onAboutClick: () -> Unit, onRedoSetup: () -> Unit, onDevTo
         title = stringResource(R.string.settings_redo_setup),
         subtitle = stringResource(R.string.settings_re_run_the_onboarding_flow_to),
         trailing = SettingsTrailing.Navigation,
-        onClick = onRedoSetup,
+        onClick = { confirmingRedo = true },
     )
     // Debug builds only. This row shipped in release, and the screen behind it led with an "Echo"
     // button wired to a placeholder MCP client.

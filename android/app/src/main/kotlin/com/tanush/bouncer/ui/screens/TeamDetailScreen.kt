@@ -40,6 +40,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SportsCricket
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -79,6 +80,7 @@ import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.PreferencesHelper
 import com.tanush.bouncer.utils.rememberHapticFeedback
+import com.tanush.bouncer.utils.shareText
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 
 private const val MAX_RESULTS = 10
@@ -312,7 +314,13 @@ private fun TeamTopBar(teamName: String, onBackClick: () -> Unit) {
             }
         },
         // Following a side is done here, on its page, rather than from a match's menu.
-        actions = { FavouriteAction(teamName) },
+        actions = {
+            val context = LocalContext.current
+            IconButton(onClick = { context.shareText(teamName, subject = teamName) }) {
+                Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.common_share))
+            }
+            FavouriteAction(teamName)
+        },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = colors.topBar,
             titleContentColor = colors.onTopBar,

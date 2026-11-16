@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="search"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_search"
+        android:shortcutShortLabel="@string/shortcut_search_short"
+        android:shortcutLongLabel="@string/shortcut_search_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="app://bouncer/search"
+            android:targetClass="com.tanush.bouncer.BouncerActivity"
+            android:targetPackage="com.tanush.bouncer" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="alerts"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_alerts"
+        android:shortcutShortLabel="@string/shortcut_alerts_short"
+        android:shortcutLongLabel="@string/shortcut_alerts_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="app://bouncer/alerts"
+            android:targetClass="com.tanush.bouncer.BouncerActivity"
+            android:targetPackage="com.tanush.bouncer" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="series"
+        android:enabled="true"
+        android:icon="@drawable/ic_cricket_ball"
+        android:shortcutShortLabel="@string/shortcut_series_short"
+        android:shortcutLongLabel="@string/shortcut_series_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="app://bouncer/series"
+            android:targetClass="com.tanush.bouncer.BouncerActivity"
+            android:targetPackage="com.tanush.bouncer" />
+    </shortcut>
+</shortcuts>

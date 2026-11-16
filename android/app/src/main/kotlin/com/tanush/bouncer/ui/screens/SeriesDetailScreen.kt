@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -34,18 +33,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.net.toUri
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
 import com.tanush.bouncer.network.CricBuzzUrls
-import io.sentry.Sentry
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -73,6 +69,8 @@ import com.tanush.bouncer.ui.components.v2.ShimmerListItem
 import com.tanush.bouncer.ui.components.v2.TextMenuV2
 import com.tanush.bouncer.ui.components.v2.TextTabBarV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.utils.openLink
+import com.tanush.bouncer.utils.shareText
 import com.tanush.bouncer.viewmodels.SeriesDetailViewModel
 import com.tanush.bouncer.viewmodels.SeriesTabState
 
@@ -112,16 +110,11 @@ fun SeriesDetailScreen(
                 val context = LocalContext.current
                 val url = "${CricBuzzUrls.BASE}/cricket-series/$seriesId"
                 IconButton(onClick = {
-                    val send = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, title)
-                        putExtra(Intent.EXTRA_TEXT, "$title\n$url")
-                    }
-                    context.startActivity(Intent.createChooser(send, null))
+                    context.shareText("$title\n$url", subject = title)
                 }) {
                     Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.common_share))
                 }
-                IconButton(onClick = { context.openSeries(url) }) {
+                IconButton(onClick = { context.openLink(url) }) {
                     Icon(
                         Icons.AutoMirrored.Outlined.OpenInNew,
                         contentDescription = stringResource(R.string.news_open_original),
@@ -194,7 +187,10 @@ private fun ScheduleList(days: List<SeriesMatchDay>, onMatchClick: (CricketMatch
                 } ?: day.label
                 SectionHeaderV2(title = pluralStringResource(R.plurals.day_match_count, day.matches.size, label, day.matches.size))
             }
-            itemsIndexed(day.matches, key = { i, match -> "match_${dayIndex}_${i}_${match.id}" }) { _, match ->
+            itemsIndexed(
+                day.matches,
+                key = { i, match -> "match_${dayIndex}_${i}_${match.id}" },
+            ) { _, match ->
                 MatchCardV2(match = match, onClick = { onMatchClick(match) }, modifier = Modifier.fillMaxWidth())
             }
         }
@@ -301,7 +297,7 @@ private fun StatsContent(
                 subtitle = stringResource(R.string.series_no_players_for_stat),
             )
         } else {
-            StatsTable(table, onPlayerClick)
+            StatsTable(table, selectedType, onPlayerClick)
         }
     }
 }
@@ -312,18 +308,42 @@ private fun StatsContent(
  * which does not fit a phone. Every row shares one [ScrollState], so the columns stay aligned.
  */
 @Composable
-private fun StatsTable(table: SeriesStatsTable, onPlayerClick: (name: String, cricbuzzId: String?) -> Unit) {
+private fun StatsTable(
+    table: SeriesStatsTable,
+    statType: String,
+    onPlayerClick: (name: String, cricbuzzId: String?) -> Unit,
+) {
     val colors = BouncerThemeV2.colors
     val spacing = BouncerThemeV2.spacing
-    val scroll = rememberScrollState()
+    val scroll = rememberSaveable(saver = ScrollState.Saver) { ScrollState(0) }
+    val listState = rememberSaveable(statType, table.format, saver = LazyListState.Saver) { LazyListState() }
     val figureHeaders = table.headers.drop(1)
+    // Descending on the first tap of a column, ascending on the second; a new stat starts unsorted.
+    var sortColumn by rememberSaveable(statType, table.format) { mutableIntStateOf(NO_SORT) }
+    var descending by rememberSaveable(statType, table.format) { mutableStateOf(true) }
+    val rows = remember(table.rows, sortColumn, descending) { sortedStatRows(table.rows, sortColumn, descending) }
+    val keys = remember(rows) { statRowKeys(rows) }
 
-    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 80.dp)) {
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 80.dp)) {
         item(key = "header") {
-            StatsHeaderRow(name = table.headers.firstOrNull().orEmpty(), cells = figureHeaders, scroll = scroll)
+            StatsHeaderRow(
+                name = table.headers.firstOrNull().orEmpty(),
+                cells = figureHeaders,
+                scroll = scroll,
+                sortColumn = sortColumn,
+                descending = descending,
+                onSort = { column ->
+                    if (column == sortColumn) {
+                        descending = !descending
+                    } else {
+                        sortColumn = column
+                        descending = true
+                    }
+                },
+            )
             HorizontalDivider(color = colors.divider)
         }
-        itemsIndexed(table.rows, key = { i, row -> "row_${i}_${row.playerId}" }) { i, row ->
+        itemsIndexed(rows, key = { i, _ -> keys[i] }) { i, row ->
             StatsRow(
                 rank = i + 1,
                 name = row.playerName,
@@ -358,14 +378,5 @@ private fun CenteredEmpty(
 ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         EmptyStateV2(icon = icon, title = title, subtitle = subtitle)
-    }
-}
-
-private fun Context.openSeries(url: String) {
-    try {
-        startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-    } catch (e: ActivityNotFoundException) {
-        // A device with no browser: nothing to open it in, and not a reason to crash the screen.
-        Sentry.captureException(e)
     }
 }

@@ -2,7 +2,6 @@ package com.tanush.bouncer.ui.widgets
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -12,14 +11,14 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
+import androidx.core.net.toUri
 import androidx.glance.action.Action
-import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
@@ -99,10 +98,11 @@ class BouncerGlanceWidget : GlanceAppWidget() {
         }
 
         fun createMatchDeepLinkAction(context: Context, matchId: String): Action {
-            return actionStartActivity<BouncerActivity>(
-                actionParametersOf(
-                    ActionParameters.Key<String>(LiveMatchWidgetProvider.EXTRA_MATCH_ID) to matchId
-                )
+            // The activity reads the link from the intent's data (`dataString`), as a notification
+            // tap supplies it; the `match_id` extra this used to pass was read by nothing, so the
+            // countdown widget opened the app on Home.
+            return actionStartActivity(
+                Intent(Intent.ACTION_VIEW, "app://bouncer/match/$matchId".toUri()).setPackage(context.packageName),
             )
         }
 
@@ -160,6 +160,7 @@ class BouncerGlanceWidget : GlanceAppWidget() {
         val recentBallsRaw = prefs.getString("recent_balls", null)
         val battingPairRaw = prefs.getString("batting_pair", null)
         val currentBowlerRaw = prefs.getString("current_bowler", null)
+        val matchId = prefs.getString("match_id", null)?.takeIf { it.isNotBlank() }
 
         val size = LocalSize.current
         val isMediumOrLarger = size.height >= 100.dp
@@ -170,7 +171,10 @@ class BouncerGlanceWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .background(WidgetColorScheme.background)
                 .cornerRadius(WidgetTheme.radiusLarge)
-                .clickable(actionStartActivity<BouncerActivity>())
+                .clickable(
+                    // The match on show, when the snapshot names one; the app's front door otherwise.
+                    if (matchId != null) createMatchDeepLinkAction(context, matchId) else actionStartActivity<BouncerActivity>(),
+                )
         ) {
             if (team1Name != null && team2Name != null) {
                 LiveMatchLayout(
@@ -251,6 +255,10 @@ class BouncerGlanceWidget : GlanceAppWidget() {
                         fontWeight = if (isLive) FontWeight.Medium else FontWeight.Normal
                     )
                 )
+                if (showRichData) {
+                    Spacer(modifier = GlanceModifier.defaultWeight())
+                    WidgetRefreshGlyph()
+                }
             }
 
             Spacer(modifier = GlanceModifier.height(12.dp))

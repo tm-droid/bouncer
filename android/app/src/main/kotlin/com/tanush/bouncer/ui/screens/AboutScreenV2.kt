@@ -17,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NewReleases
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -37,6 +39,8 @@ import com.tanush.bouncer.ui.components.v2.SettingsTrailing
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.open
 import com.tanush.bouncer.utils.openStoreListing
+import com.tanush.bouncer.utils.shareText
+import com.tanush.bouncer.utils.storeListingUrl
 import androidx.compose.ui.platform.LocalContext
 
 /**
@@ -106,6 +110,26 @@ fun AboutScreenV2(onBackClick: () -> Unit) {
                     subtitle = stringResource(R.string.about_changelog_on_play),
                     trailing = SettingsTrailing.Navigation,
                     onClick = { context.openStoreListing() },
+                )
+            }
+            // No "Send feedback" row: the app carries no support address to mail, and one is not invented.
+            item(key = "rate") {
+                SettingsItemV2(
+                    icon = Icons.Default.Star,
+                    title = stringResource(R.string.about_rate),
+                    subtitle = stringResource(R.string.about_changelog_on_play),
+                    trailing = SettingsTrailing.Navigation,
+                    onClick = { context.openStoreListing() },
+                )
+            }
+            item(key = "share") {
+                val shareMessage = stringResource(R.string.about_share_message, context.storeListingUrl())
+                val shareTitle = stringResource(R.string.common_share)
+                SettingsItemV2(
+                    icon = Icons.Default.Share,
+                    title = stringResource(R.string.about_share),
+                    trailing = SettingsTrailing.Navigation,
+                    onClick = { context.shareText(text = shareMessage, chooserTitle = shareTitle) },
                 )
             }
             item(key = "privacy") {

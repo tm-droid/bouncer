@@ -38,6 +38,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -63,7 +66,7 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
  * read. A row about a match opens it; the rows used to be dead ends although each carried its id.
  */
 @Composable
-internal fun NotificationInbox(onOpenMatch: (String) -> Unit) {
+internal fun NotificationInbox(onOpenMatch: (String) -> Unit, onRemoved: (NotificationItem) -> Unit) {
     val colors = BouncerThemeV2.colors
     val spacing = BouncerThemeV2.spacing
     val items by NotificationInboxManager.items.collectAsStateWithLifecycle()
@@ -81,12 +84,34 @@ internal fun NotificationInbox(onOpenMatch: (String) -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = spacing.sm)) {
         items(items, key = { it.id }) { item ->
             val matchId = item.matchId
-            Box(if (matchId.isNullOrBlank()) Modifier else Modifier.clickable { onOpenMatch(matchId) }) {
-                NotificationRow(item = item)
+            SwipeAwayRow(onDismissed = { onRemoved(item) }) {
+                Box(if (matchId.isNullOrBlank()) Modifier else Modifier.clickable { onOpenMatch(matchId) }) {
+                    NotificationRow(item = item)
+                }
             }
             HorizontalDivider(color = colors.divider, modifier = Modifier.padding(start = spacing.lg + CHIP + spacing.md))
         }
         item { Spacer(Modifier.height(80.dp)) }
+    }
+}
+
+/** A row that leaves the list when swiped either way; the caller removes it and offers Undo. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeAwayRow(onDismissed: () -> Unit, content: @Composable () -> Unit) {
+    val colors = BouncerThemeV2.colors
+    val state = rememberSwipeToDismissBoxState(
+        confirmValueChange = { target ->
+            val dismissed = target != SwipeToDismissBoxValue.Settled
+            if (dismissed) onDismissed()
+            dismissed
+        },
+    )
+    SwipeToDismissBox(
+        state = state,
+        backgroundContent = { Box(Modifier.fillMaxSize().background(colors.surfaceVariant)) },
+    ) {
+        Box(Modifier.background(colors.background)) { content() }
     }
 }
 

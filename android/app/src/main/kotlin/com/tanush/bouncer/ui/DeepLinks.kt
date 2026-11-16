@@ -82,6 +82,9 @@ private val DEEP_LINK_TABS = mapOf(
 // …and to the page it pushes.
 private val DEEP_LINK_PAGES = mapOf(
     "about" to BouncerScreen.About.route,
+    // The launcher shortcuts (res/xml/shortcuts.xml) open these two.
+    "search" to BouncerScreen.Search.route,
+    "alerts" to BouncerScreen.Notifications.route,
 )
 
 private fun handleExternalDeepLink(

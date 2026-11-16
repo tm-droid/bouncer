@@ -78,6 +78,21 @@ object NotificationInboxManager {
     }
 
     @Synchronized
+    fun remove(id: String) {
+        val updated = _items.value.filterNot { it.id == id }
+        saveToPrefs(updated)
+        _items.value = updated
+    }
+
+    /** Puts back items removed by [remove] or [clear] (Undo), newest first, without duplicates. */
+    @Synchronized
+    fun restore(removed: List<NotificationItem>) {
+        val updated = (_items.value + removed).distinctBy { it.id }.sortedByDescending { it.timestamp }.take(MAX_ITEMS)
+        saveToPrefs(updated)
+        _items.value = updated
+    }
+
+    @Synchronized
     fun clear() {
         prefs?.edit()?.remove(KEY_ITEMS)?.apply()
         _items.value = emptyList()

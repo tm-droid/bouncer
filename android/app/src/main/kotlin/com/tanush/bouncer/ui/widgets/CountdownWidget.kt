@@ -283,6 +283,8 @@ class CountdownWidget : GlanceAppWidget() {
                         fontSize = 10.sp
                     )
                 )
+                Spacer(modifier = GlanceModifier.defaultWeight())
+                WidgetRefreshGlyph()
             }
 
             Spacer(modifier = GlanceModifier.height(8.dp))

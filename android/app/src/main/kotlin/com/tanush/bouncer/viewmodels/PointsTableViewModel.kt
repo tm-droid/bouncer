@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.models.PointsTableEntry
 import com.tanush.bouncer.network.PointsTableScraper
 import com.tanush.bouncer.network.isReportableScrapeFailure
+import com.tanush.bouncer.ui.components.v2.FailureKind
+import com.tanush.bouncer.ui.components.v2.failureKindOf
 import io.sentry.Sentry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +24,10 @@ class PointsTableViewModel : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _failureKind = MutableStateFlow(FailureKind.Server)
+    /** What the last failed load was: offline or a server problem; read only while [error] is set. */
+    val failureKind: StateFlow<FailureKind> = _failureKind.asStateFlow()
+
     private var lastSeriesId: String? = null
 
     fun load(seriesId: String) {
@@ -36,6 +42,7 @@ class PointsTableViewModel : ViewModel() {
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 if (isReportableScrapeFailure(e)) Sentry.captureException(e)
+                _failureKind.value = failureKindOf(e)
                 _error.value = "Rain delay — couldn't reach the scorers. Check your connection and retry."
             } finally {
                 _isLoading.value = false

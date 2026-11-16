@@ -6,6 +6,10 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -79,6 +83,10 @@ fun CommentaryTabV2(
     onLoadOlderEvents: ((CommentaryEventKind) -> Unit)? = null,
     /** Shown under the filters when the feed is not the table's own lines (Cricsheet's ball-by-ball). */
     sourceCaption: String? = null,
+    /** Offers a "Latest" pill once the reader has scrolled off the newest line. */
+    isLive: Boolean = false,
+    /** Bumped each time the selected tab is tapped again; the feed scrolls to its top. */
+    scrollToTop: Int = 0,
 ) {
     if (isLoading) {
         DelayedSkeleton(isLoading) { ShimmerCommentaryList(modifier = Modifier.fillMaxSize()) }
@@ -103,6 +111,8 @@ fun CommentaryTabV2(
         onOpenEvents = onOpenEvents,
         onLoadOlderEvents = onLoadOlderEvents,
         sourceCaption = sourceCaption,
+        isLive = isLive,
+        scrollToTop = scrollToTop,
     )
 }
 
@@ -114,6 +124,8 @@ private fun CommentaryFeedBody(
     onOpenEvents: ((CommentaryEventKind) -> Unit)?,
     onLoadOlderEvents: ((CommentaryEventKind) -> Unit)?,
     sourceCaption: String?,
+    isLive: Boolean,
+    scrollToTop: Int,
 ) {
     val spacing = BouncerThemeV2.spacing
     var selectedFilter by rememberSaveable { mutableStateOf(CommentaryFilter.ALL) }
@@ -143,23 +155,12 @@ private fun CommentaryFeedBody(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        FilterChipRowV2(
-            items = filterLabels,
-            selectedItem = filterLabels[selectedFilter.ordinal],
-            onItemSelected = { label ->
-                filterLabels.indexOf(label).takeIf { it >= 0 }
-                    ?.let { selectedFilter = CommentaryFilter.entries[it] }
-            },
-            modifier = Modifier.padding(vertical = spacing.sm),
+        CommentaryFilterBar(
+            filterLabels = filterLabels,
+            selectedFilter = selectedFilter,
+            onFilterSelected = { selectedFilter = it },
+            sourceCaption = sourceCaption,
         )
-        sourceCaption?.let {
-            Text(
-                text = it,
-                style = BouncerThemeV2.typography.labelMedium,
-                color = BouncerThemeV2.colors.textSecondary,
-                modifier = Modifier.padding(horizontal = spacing.lg),
-            )
-        }
 
         // A filter that matched nothing in the loaded feed used to render an empty LazyColumn — a
         // blank page with no message and no way forward, because "load older" is offered under All
@@ -172,18 +173,58 @@ private fun CommentaryFeedBody(
 
         val older = olderPagingFor(selectedFilter, feedPaging, eventPage, onLoadOlderEvents)
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(vertical = spacing.md),
-        ) {
-            commentaryFeedItems(
-                feed = feed,
-                selectedFilter = selectedFilter,
-                spacing = spacing,
-                onLoadOlder = older.onLoad,
-                isLoadingOlder = older.isLoading,
+        val listState = rememberLazyListState()
+        ScrollToTopEffect(scrollToTop, listState)
+        val scope = rememberCoroutineScope()
+        val offLatest by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = spacing.md),
+            ) {
+                commentaryFeedItems(
+                    feed = feed,
+                    selectedFilter = selectedFilter,
+                    spacing = spacing,
+                    onLoadOlder = older.onLoad,
+                    isLoadingOlder = older.isLoading,
+                )
+            }
+            LatestPill(
+                visible = isLive && offLatest,
+                onClick = { scope.launch { listState.animateScrollToItem(0) } },
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = spacing.md),
             )
         }
+    }
+}
+
+/** The filter chips and, under them, the caption naming a non-table source. */
+@Composable
+private fun CommentaryFilterBar(
+    filterLabels: List<String>,
+    selectedFilter: CommentaryFilter,
+    onFilterSelected: (CommentaryFilter) -> Unit,
+    sourceCaption: String?,
+) {
+    val spacing = BouncerThemeV2.spacing
+    FilterChipRowV2(
+        items = filterLabels,
+        selectedItem = filterLabels[selectedFilter.ordinal],
+        onItemSelected = { label ->
+            filterLabels.indexOf(label).takeIf { it >= 0 }
+                ?.let { onFilterSelected(CommentaryFilter.entries[it]) }
+        },
+        modifier = Modifier.padding(vertical = spacing.sm),
+    )
+    sourceCaption?.let {
+        Text(
+            text = it,
+            style = BouncerThemeV2.typography.labelMedium,
+            color = BouncerThemeV2.colors.textSecondary,
+            modifier = Modifier.padding(horizontal = spacing.lg),
+        )
     }
 }
 

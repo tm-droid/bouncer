@@ -18,7 +18,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalContext
+import com.tanush.bouncer.utils.openLink
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -156,9 +157,9 @@ private fun CareerList(
 @Composable
 private fun BioBlock(bio: PlayerBio) {
     val spacing = BouncerThemeV2.spacing
-    val uriHandler = LocalUriHandler.current
-    // A device with no browser throws from openUri; there is nothing to open it in.
-    val open = { url: String -> runCatching { uriHandler.openUri(url) }; Unit }
+    val context = LocalContext.current
+    // openLink toasts when the device has nothing to open the link in.
+    val open = { url: String -> context.openLink(url) }
     Column(Modifier.fillMaxWidth().padding(horizontal = spacing.lg)) {
         bornText(bio)?.let { Text(it, style = BouncerThemeV2.typography.bodyMedium, color = BouncerThemeV2.colors.textSecondary) }
         bio.wikipediaUrl?.let { url ->
