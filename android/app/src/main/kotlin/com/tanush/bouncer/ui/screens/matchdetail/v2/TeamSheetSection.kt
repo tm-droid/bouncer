@@ -143,7 +143,7 @@ private fun SideHeader(team: TeamSquad, modifier: Modifier) {
 }
 
 /**
- * A player: initials, name, and the captain and keeper marks as their own tags after it. The marks
+ * A player: photo or initials, name, and the captain and keeper marks as their own tags after it. The marks
  * used to be appended to the name in brackets, so a long name ellipsized them away.
  */
 @Composable
@@ -152,7 +152,7 @@ private fun PlayerCell(player: SquadPlayer?, modifier: Modifier) {
     val typography = BouncerThemeV2.typography
     Row(modifier.profileLink(player), verticalAlignment = Alignment.CenterVertically) {
         if (player == null) return@Row
-        PersonAvatar(name = player.name, size = 28.dp)
+        PersonAvatar(name = player.name, imageUrl = player.imageUrl, id = player.id, size = 28.dp)
         Spacer(Modifier.width(BouncerThemeV2.spacing.sm))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

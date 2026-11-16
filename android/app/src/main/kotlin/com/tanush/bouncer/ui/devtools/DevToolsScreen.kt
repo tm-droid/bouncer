@@ -3,7 +3,7 @@ package com.tanush.bouncer.ui.devtools
 import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -80,7 +80,10 @@ fun DevToolsScreen(
         Card(modifier = Modifier.fillMaxWidth().height(140.dp)) {
             LazyColumn(modifier = Modifier.padding(8.dp)) {
                 val recent = logs.takeLast(200)
-                items(recent, key = { it.hashCode() }) { l -> Text(l, style = MaterialTheme.typography.bodySmall) }
+                // Log lines repeat, so the key carries the index.
+                itemsIndexed(recent, key = { i, l -> "${i}_${l.hashCode()}" }) { _, l ->
+                    Text(l, style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
 

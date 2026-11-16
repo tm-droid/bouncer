@@ -142,12 +142,9 @@ object PlayerProfileScraper {
         val id = item.optString("id", "")
         val name = item.optString("name", "")
         if (id.isEmpty() || name.isEmpty()) return null
-        return PlayerSearchResult(
-            id = id,
-            name = name,
-            country = item.optString("country", ""),
-            imageUrl = item.optString("imageUrl", "").ifEmpty { null },
-        )
+        val imageUrl = item.optString("imageUrl", "").ifEmpty { null }
+        PlayerImages.register(id, name, imageUrl)
+        return PlayerSearchResult(id = id, name = name, country = item.optString("country", ""), imageUrl = imageUrl)
     }
 
     /**

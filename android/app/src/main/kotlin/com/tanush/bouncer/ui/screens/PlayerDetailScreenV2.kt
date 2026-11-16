@@ -55,6 +55,7 @@ import coil.compose.AsyncImage
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.FormatStats
 import com.tanush.bouncer.models.PlayerProfile
+import com.tanush.bouncer.network.PlayerImages
 import com.tanush.bouncer.network.PlayerProfileScraper
 import com.tanush.bouncer.services.PlayerCacheWorker
 import com.tanush.bouncer.ui.screens.player.playerBioItems
@@ -103,6 +104,7 @@ fun PlayerDetailScreenV2(
         profile = null
         loadPlayerProfile(context, playerName, cricbuzzId) { loaded ->
             profile = loaded
+            PlayerImages.register(loaded.id, loaded.name, loaded.imageUrl)
             // Open on the first format that has stats.
             PROFILE_FORMATS.firstOrNull { loaded.stats.containsKey(it) }?.let { selectedFormat = it }
             loadState = LoadState.Success
@@ -211,7 +213,7 @@ private fun PlayerLoadError(padding: PaddingValues, playerName: String, onRetry:
     EmptyStateV2(
         modifier = Modifier.padding(padding),
         icon = Icons.Default.Person,
-        title = "Couldn't load $playerName",
+        title = stringResource(R.string.player_couldn_t_load, playerName),
         subtitle = stringResource(R.string.player_the_profile_isn_t_available_right),
         onRetry = onRetry,
     )
@@ -250,6 +252,7 @@ private fun PlayerProfileList(
                     imageUrl = profile.imageUrl ?: header.imageUrl,
                     isCaptain = header.isCaptain,
                     isKeeper = header.isWicketKeeper,
+                    id = profile.id.ifBlank { null },
                 )
             }
         }

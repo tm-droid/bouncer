@@ -13,6 +13,8 @@ data class SquadPlayer(
     val role: String,
     val captain: Boolean,
     val keeper: Boolean,
+    /** Cricbuzz head-shot; null when the player has none (Cricbuzz's stock silhouette included). */
+    val imageUrl: String? = null,
 )
 
 /**
@@ -45,6 +47,9 @@ internal object MatchSquadsRsc {
     private const val GROUP_XI = "playing XI"
     private const val GROUP_BENCH = "bench"
     private const val GROUP_SQUAD = "Squad"
+
+    /** The grey silhouette Cricbuzz gives every player without a photo. */
+    const val PLACEHOLDER_IMAGE_ID = "182026"
 
     /** The team sheets on this page, or null when it carries none in the expected shape. */
     fun parse(html: String): MatchSquads? {
@@ -85,8 +90,15 @@ internal object MatchSquadsRsc {
                 role = p.str("role").orEmpty(),
                 captain = p.bool("captain"),
                 keeper = p.bool("keeper"),
+                imageUrl = headshot(p),
             )
         }
+    }
+
+    private fun headshot(p: JsonObject): String? {
+        val details = p.get("imageDetails")?.takeIf { it.isJsonObject }?.asJsonObject
+        val id = details?.str("imageId") ?: p.str("faceImageId")
+        return id?.takeIf { it != PLACEHOLDER_IMAGE_ID }?.let(PlayerImageRegistry::headshotUrl)
     }
 
     private fun findObject(element: JsonElement, predicate: (JsonObject) -> Boolean): JsonObject? {
@@ -130,6 +142,7 @@ object MatchSquadsSource {
             }.getOrNull()
         } ?: return synchronized(cache) { cache[matchId]?.second }
         synchronized(cache) { cache[matchId] = nowMs to parsed }
+        PlayerImages.register(parsed)
         return parsed
     }
 }

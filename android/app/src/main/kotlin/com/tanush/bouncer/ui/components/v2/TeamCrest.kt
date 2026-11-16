@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -31,6 +32,8 @@ import coil.compose.AsyncImagePainter
 import com.tanush.bouncer.managers.LogoInk
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.managers.TeamLogoManager
+import com.tanush.bouncer.network.PlayerImageRegistry
+import com.tanush.bouncer.network.PlayerImages
 import com.tanush.bouncer.ui.theme.TeamColorRegistry
 import com.tanush.bouncer.ui.theme.rememberTeamColors
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -110,7 +113,9 @@ fun rememberCrestTint(url: String?): ColorFilter? {
 /**
  * A person's photo on a circular plate, or their initials when there is none or it fails to load.
  * Replaces the generic person glyph every player row used, which made a list of players a column of
- * identical silhouettes.
+ * identical silhouettes. With no [imageUrl] the photo is whatever [PlayerImages] learned for the
+ * Cricbuzz [id] or the [name], so a scorecard row shows the face its squad carried. Decorative for
+ * TalkBack: every caller shows the name beside it, which would otherwise be read twice.
  */
 @Composable
 fun PersonAvatar(
@@ -118,21 +123,24 @@ fun PersonAvatar(
     modifier: Modifier = Modifier,
     imageUrl: String? = null,
     size: Dp = 40.dp,
+    id: String? = null,
 ) {
     val colors = BouncerThemeV2.colors
+    val imageUrl = imageUrl?.takeIf { it.isNotBlank() } ?: PlayerImages.url(id, name)
     var loaded by remember(imageUrl) { mutableStateOf(false) }
     Box(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(colors.surfaceVariant),
+            .background(colors.surfaceVariant)
+            .clearAndSetSemantics {},
         contentAlignment = Alignment.Center,
     ) {
         if (!loaded) Monogram(text = personInitials(name), size = size)
         if (!imageUrl.isNullOrBlank()) {
             AsyncImage(
                 model = imageUrl,
-                contentDescription = name,
+                contentDescription = null,
                 contentScale = ContentScale.Crop,
                 onState = { loaded = it is AsyncImagePainter.State.Success },
                 modifier = Modifier
@@ -167,7 +175,7 @@ internal fun crestMonogram(acronym: String?, teamName: String): String {
 
 /** "Virat Kohli" -> "VK", "Rashid Khan Arman" -> "RA", "Shakib" -> "S". */
 internal fun personInitials(name: String): String {
-    val words = name.trim().split(Regex("\\s+")).filter { w -> w.firstOrNull()?.isLetter() == true }
+    val words = PlayerImageRegistry.withoutRoleTags(name).split(Regex("\\s+")).filter { w -> w.firstOrNull()?.isLetter() == true }
     return when {
         words.isEmpty() -> ""
         words.size == 1 -> words[0].take(1).uppercase()

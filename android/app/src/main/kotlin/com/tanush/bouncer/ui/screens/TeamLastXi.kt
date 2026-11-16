@@ -68,7 +68,7 @@ private fun ElevenRow(player: SquadPlayer, onClick: () -> Unit) {
             .padding(horizontal = spacing.md, vertical = spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PersonAvatar(name = player.name, size = 28.dp)
+        PersonAvatar(name = player.name, imageUrl = player.imageUrl, id = player.id, size = 28.dp)
         Spacer(Modifier.width(spacing.sm))
         Column(Modifier.weight(1f)) {
             val marks = listOfNotNull(

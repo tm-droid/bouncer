@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -32,7 +33,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.R
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.network.CricBuzzUrls
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.utils.PreferencesHelper
+import com.tanush.bouncer.utils.rememberHapticFeedback
 
 /**
  * Long-press actions for a match row.
@@ -70,6 +74,11 @@ fun MatchContextMenuSheet(
                 shareScore(context, match)
                 onDismiss()
             }
+            SheetItem(stringResource(R.string.match_copy_score), Icons.Default.ContentCopy) {
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("Score", scoreText(match)))
+                onDismiss()
+            }
             if (onSubscribeToggle != null) {
                 LiveUpdatesItem(isSubscribed = isSubscribed, onToggle = onSubscribeToggle, onDismiss = onDismiss)
             }
@@ -105,12 +114,18 @@ private fun LiveUpdatesItem(isSubscribed: Boolean, onToggle: () -> Unit, onDismi
 @Composable
 private fun FavouriteItems(match: CricketMatch, onDismiss: () -> Unit) {
     val favorites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val hapticEnabled = remember {
+        PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true)
+    }
+    val haptics = rememberHapticFeedback()
     match.teams.map { it.name }.filter { it.isNotBlank() }.distinct().forEach { name ->
         val isFavorite = name in favorites
         SheetItem(
             label = stringResource(if (isFavorite) R.string.favourite_remove_team else R.string.favourite_add_team, name),
             icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
         ) {
+            if (hapticEnabled) haptics.toggle(turningOn = !isFavorite)
             if (isFavorite) FavouriteTeamsManager.remove(name) else FavouriteTeamsManager.add(name)
             onDismiss()
         }
@@ -126,11 +141,14 @@ private fun SheetItem(label: String, icon: ImageVector, onClick: () -> Unit) {
     )
 }
 
+private fun scoreText(match: CricketMatch) =
+    match.teams.joinToString(" vs ") { "${it.name} ${it.score.ifBlank { "-" }}" }
+
 private fun shareScore(context: Context, match: CricketMatch) {
-    val scoreText = match.teams.joinToString(" vs ") { "${it.name} ${it.score.ifBlank { "-" }}" }
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, "$scoreText\n#cricket #bouncer")
+        val link = CricBuzzUrls.liveScoresUrl(match.id)
+        putExtra(Intent.EXTRA_TEXT, "${scoreText(match)}\n$link\n#cricket #bouncer")
     }
-    context.startActivity(Intent.createChooser(send, "Share Score"))
+    context.startActivity(Intent.createChooser(send, context.getString(R.string.match_share_score)))
 }

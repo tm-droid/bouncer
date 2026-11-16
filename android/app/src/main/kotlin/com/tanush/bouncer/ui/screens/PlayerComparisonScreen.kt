@@ -64,7 +64,11 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -329,6 +333,7 @@ private fun PlayerSearchBox(
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
+    val keyboardController = LocalSoftwareKeyboardController.current
     var query by rememberSaveable { mutableStateOf("") }
     // Null until a search for the current query has answered.
     var outcome by remember { mutableStateOf<PlayerSearchOutcome?>(null) }
@@ -358,6 +363,8 @@ private fun PlayerSearchBox(
             placeholder = { Text(stringResource(R.string.player_search_player), style = typography.bodyMedium) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = colors.textSecondary) },
             singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = colors.primary,

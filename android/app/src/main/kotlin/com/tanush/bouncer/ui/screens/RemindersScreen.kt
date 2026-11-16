@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Box
 
 import androidx.compose.foundation.clickable
@@ -42,7 +43,9 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.Reminder
 import com.tanush.bouncer.utils.ReminderScheduler
 import com.tanush.bouncer.utils.RemindersManager
-import java.text.DateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Date
 
 /**
@@ -80,8 +83,12 @@ private fun ReminderRow(reminder: Reminder, onCancel: () -> Unit) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
+    val context = LocalContext.current
     val whenText = remember(reminder.triggerAt) {
-        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(reminder.triggerAt))
+        val zone = ZoneId.systemDefault()
+        val day = Instant.ofEpochMilli(reminder.triggerAt).atZone(zone).toLocalDate()
+        val time = DateFormat.getTimeFormat(context).format(Date(reminder.triggerAt))
+        "${dayLabel(day, LocalDate.now(zone))} $time"
     }
     Row(
         modifier = Modifier

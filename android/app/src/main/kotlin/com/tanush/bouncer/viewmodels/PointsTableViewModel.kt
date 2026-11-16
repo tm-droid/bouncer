@@ -33,7 +33,6 @@ class PointsTableViewModel : ViewModel() {
             try {
                 val result = PointsTableScraper().fetchPointsTable(seriesId)
                 _entries.value = result
-                if (result.isEmpty()) _error.value = "No points table available for this series"
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 if (isReportableScrapeFailure(e)) Sentry.captureException(e)

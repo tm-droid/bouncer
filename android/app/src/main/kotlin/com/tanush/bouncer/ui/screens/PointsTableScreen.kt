@@ -1,7 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
 import androidx.compose.animation.Crossfade
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,7 +12,6 @@ import androidx.compose.material.icons.outlined.TableChart
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -23,6 +21,8 @@ import com.tanush.bouncer.R
 import com.tanush.bouncer.models.PointsTableEntry
 import com.tanush.bouncer.ui.components.v2.DelayedSkeleton
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
+import com.tanush.bouncer.ui.components.v2.FailedState
+import com.tanush.bouncer.ui.components.v2.FailureKind
 import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.ShimmerTableRows
 import com.tanush.bouncer.ui.theme.BouncerMotion
@@ -51,6 +51,8 @@ fun PointsTableTab(
     val screenState = when {
         isLoading -> PointsTableState.Loading
         error != null && entries.isEmpty() -> PointsTableState.Error
+        // Fetched fine, but the series has no table (knockouts, bilateral tours): not a failure.
+        entries.isEmpty() -> PointsTableState.Empty
         else -> PointsTableState.Content
     }
     PullRefreshWrapperV2(isRefreshing = isLoading, onRefresh = viewModel::retry) {
@@ -64,7 +66,7 @@ fun PointsTableTab(
             },
             label = "pointsTableState",
         ) { state ->
-            PointsTableBody(state, entries, error, viewModel::retry, onTeamClick)
+            PointsTableBody(state, entries, viewModel::retry, onTeamClick)
         }
     }
 }
@@ -73,7 +75,6 @@ fun PointsTableTab(
 private fun PointsTableBody(
     state: PointsTableState,
     entries: List<PointsTableEntry>,
-    error: String?,
     onRetry: () -> Unit,
     onTeamClick: (String) -> Unit,
 ) {
@@ -81,14 +82,13 @@ private fun PointsTableBody(
         PointsTableState.Loading -> DelayedSkeleton(isLoading = true) {
             ShimmerTableRows(modifier = Modifier.fillMaxSize())
         }
-        PointsTableState.Error -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            EmptyStateV2(
-                icon = Icons.Outlined.TableChart,
-                title = stringResource(R.string.points_no_standings_available),
-                subtitle = error ?: "",
-                onRetry = onRetry,
-            )
-        }
+        PointsTableState.Error -> FailedState(FailureKind.Server, onRetry, Modifier.fillMaxSize())
+        PointsTableState.Empty -> EmptyStateV2(
+            icon = Icons.Outlined.TableChart,
+            title = stringResource(R.string.points_no_standings_available),
+            subtitle = stringResource(R.string.points_no_table_for_series),
+            modifier = Modifier.fillMaxSize(),
+        )
         PointsTableState.Content -> StandingsList(entries = entries, onTeamClick = onTeamClick)
     }
 }
@@ -117,4 +117,4 @@ private fun StandingsList(entries: List<PointsTableEntry>, onTeamClick: (String)
     }
 }
 
-private enum class PointsTableState { Loading, Error, Content }
+private enum class PointsTableState { Loading, Error, Empty, Content }

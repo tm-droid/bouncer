@@ -39,6 +39,9 @@ private val ROW_PADDING_V = 10.dp
 private val COL_NARROW = 30.dp
 private val COL_MID = 38.dp
 private val COL_WIDE = 50.dp
+private val AVATAR_SIZE = 28.dp
+private val FOW_AVATAR_SIZE = 22.dp
+internal val AVATAR_GAP = 8.dp
 
 @Composable
 private fun RowScope.Cell(text: String, width: Dp, style: TextStyle, color: Color, weight: FontWeight? = null) {
@@ -58,7 +61,13 @@ private fun ColumnLabels(first: String, labels: List<Pair<String, Dp>>) {
     val colors = BouncerThemeV2.colors
     val style = BouncerThemeV2.typography.labelMedium
     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = ROW_PADDING_H, vertical = 6.dp)) {
-        Text(text = first, style = style, color = colors.textSecondary, modifier = Modifier.weight(1f))
+        // Inset past the rows' avatar so the label sits over the names.
+        Text(
+            text = first,
+            style = style,
+            color = colors.textSecondary,
+            modifier = Modifier.weight(1f).padding(start = AVATAR_SIZE + AVATAR_GAP),
+        )
         labels.forEach { (label, width) -> Cell(label, width, style, colors.textSecondary) }
     }
     HorizontalDivider(color = colors.divider)
@@ -94,6 +103,7 @@ internal fun BattingRow(batsman: BatsmanStats, battingNow: Boolean, isTopScore: 
             .padding(horizontal = ROW_PADDING_H, vertical = ROW_PADDING_V),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        RowAvatar(batsman.name, batsman.profileUrl, AVATAR_SIZE)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = if (notOut) "${batsman.name} *" else batsman.name,
@@ -179,7 +189,10 @@ internal fun FallOfWicketRow(fow: FallOfWicket, number: Int) {
     val typography = BouncerThemeV2.typography
     val runs = fow.score.substringBefore("-").substringBefore("/").trim()
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = ROW_PADDING_H, vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .playerLink(fow.batsman, "")
+            .padding(horizontal = ROW_PADDING_H, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -189,6 +202,7 @@ internal fun FallOfWicketRow(fow: FallOfWicket, number: Int) {
             color = colors.onSurface,
             modifier = Modifier.width(64.dp),
         )
+        RowAvatar(fow.batsman, "", FOW_AVATAR_SIZE)
         Text(
             text = fow.batsman,
             style = typography.bodyMedium,
@@ -218,6 +232,7 @@ internal fun BowlingRow(bowler: BowlerStats, isBest: Boolean) {
             .padding(horizontal = ROW_PADDING_H, vertical = ROW_PADDING_V),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        RowAvatar(bowler.name, bowler.profileUrl, AVATAR_SIZE)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = bowler.name,

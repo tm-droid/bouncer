@@ -24,6 +24,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.remember
+import android.text.format.DateFormat
+import androidx.compose.ui.platform.LocalContext
 import com.tanush.bouncer.data.remote.MatchContextStore
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.ForecastSummary
@@ -231,8 +233,11 @@ private fun ForecastCard(forecast: ForecastSummary) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val pad = Modifier
+    val context = LocalContext.current
     val fetched = remember(forecast.fetchedAt) {
-        DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(forecast.fetchedAt))
+        val pattern = if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm a"
+        DateTimeFormatter.ofPattern(pattern).withZone(ZoneId.systemDefault())
+            .format(Instant.ofEpochMilli(forecast.fetchedAt))
     }
     BouncerCard {
         Spacer(Modifier.height(spacing.sm))

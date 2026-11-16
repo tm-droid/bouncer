@@ -28,7 +28,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import com.tanush.bouncer.network.CricBuzzUrls
+import io.sentry.Sentry
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -96,7 +107,28 @@ fun SeriesDetailScreen(
         ?: stringResource(R.string.series_series_detail)
 
     Scaffold(
-        topBar = { BouncerTopBarV2(title = title, showBack = true, onBack = onBackClick) },
+        topBar = {
+            BouncerTopBarV2(title = title, showBack = true, onBack = onBackClick) {
+                val context = LocalContext.current
+                val url = "${CricBuzzUrls.BASE}/cricket-series/$seriesId"
+                IconButton(onClick = {
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, title)
+                        putExtra(Intent.EXTRA_TEXT, "$title\n$url")
+                    }
+                    context.startActivity(Intent.createChooser(send, null))
+                }) {
+                    Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.common_share))
+                }
+                IconButton(onClick = { context.openSeries(url) }) {
+                    Icon(
+                        Icons.AutoMirrored.Outlined.OpenInNew,
+                        contentDescription = stringResource(R.string.news_open_original),
+                    )
+                }
+            }
+        },
         containerColor = colors.background,
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
@@ -329,3 +361,11 @@ private fun CenteredEmpty(
     }
 }
 
+private fun Context.openSeries(url: String) {
+    try {
+        startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+    } catch (e: ActivityNotFoundException) {
+        // A device with no browser: nothing to open it in, and not a reason to crash the screen.
+        Sentry.captureException(e)
+    }
+}

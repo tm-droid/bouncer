@@ -44,12 +44,13 @@ internal fun PlayerHeader(
     imageUrl: String?,
     isCaptain: Boolean,
     isKeeper: Boolean,
+    id: String? = null,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        PersonAvatar(name = name, imageUrl = imageUrl, size = 72.dp)
+        PersonAvatar(name = name, imageUrl = imageUrl, size = 72.dp, id = id)
         Spacer(Modifier.width(spacing.lg))
         Column(modifier = Modifier.weight(1f)) {
             Text(name, style = typography.headlineMedium, fontWeight = FontWeight.Bold, color = colors.onSurface)

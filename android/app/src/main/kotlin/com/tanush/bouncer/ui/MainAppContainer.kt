@@ -339,9 +339,7 @@ fun MainAppContainer(
         if (showBottomNav) {
             BottomNavBarV2(
                 currentRoute = bottomNavRoute,
-                onTabSelected = { route ->
-                    navController.navigateToTab(route)
-                },
+                onTabSelected = { route -> navController.selectTab(route, bottomNavRoute, currentRoute) },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
@@ -353,3 +351,9 @@ private val OpenMatchSaver = Saver<CricketMatch?, String>(
     save = { match -> match?.let { AppJson.encodeToString(CricketMatch.serializer(), it) } },
     restore = { json -> runCatching { AppJson.decodeFromString(CricketMatch.serializer(), json) }.getOrNull() },
 )
+
+/** Tapping the tab you are in, from a page opened inside it, goes back to the tab. */
+private fun NavHostController.selectTab(route: String, litTab: String?, currentRoute: String?) {
+    val reselected = route == litTab && currentRoute != route
+    if (!reselected || !popBackStack(route, inclusive = false)) navigateToTab(route)
+}

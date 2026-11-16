@@ -828,7 +828,7 @@ object ShareCardGenerator {
             text?.let { putExtra(Intent.EXTRA_TEXT, it) }
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(shareIntent, "Share Match Update"))
+        context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.common_share)))
         true
     } catch (e: Exception) {
         // Reported, not rethrown: the caller runs in a composition scope, where a rethrow is a

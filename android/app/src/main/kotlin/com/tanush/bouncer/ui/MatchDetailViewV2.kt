@@ -88,6 +88,8 @@ import com.tanush.bouncer.ui.theme.v2.bouncerScreenBackground
 import com.tanush.bouncer.ui.components.BatsmanMilestoneCard
 import com.tanush.bouncer.ui.components.ShareCardData
 import com.tanush.bouncer.ui.components.ShareCardGenerator
+import com.tanush.bouncer.utils.PreferencesHelper
+import com.tanush.bouncer.utils.rememberHapticFeedback
 import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
@@ -108,6 +110,8 @@ fun MatchDetailViewV2(
     val spacing = BouncerThemeV2.spacing
 
     val context = LocalContext.current
+    val hapticEnabled = remember { PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true) }
+    val haptics = rememberHapticFeedback()
     val vm: MatchDetailViewModel = viewModel(
         key = MatchDetailViewModel.storeKey(match.id),
         factory = MatchDetailViewModel.factory(match),
@@ -268,6 +272,7 @@ fun MatchDetailViewV2(
                 actions = {
                     IconButton(
                         onClick = {
+                            if (hapticEnabled) haptics.click()
                             if (!isSharingCard) {
                                 isSharingCard = true
                                 scope.launch {
@@ -304,15 +309,25 @@ fun MatchDetailViewV2(
                                 color = colors.onSurface,
                             )
                         } else {
-                            Icon(Icons.Default.Share, "Share", tint = colors.onSurface)
+                            Icon(Icons.Default.Share, stringResource(R.string.common_share), tint = colors.onSurface)
                         }
                     }
                     // A Cricsheet-only match is long over and has no id any alert could name.
                     if (!match.isCricsheetOnly) {
-                        IconButton(onClick = { showReminderSheet = true }) {
-                            Icon(Icons.Default.Alarm, "Reminder", tint = colors.onSurface)
+                        IconButton(onClick = {
+                            if (hapticEnabled) haptics.click()
+                            showReminderSheet = true
+                        }) {
+                            Icon(
+                                Icons.Default.Alarm,
+                                stringResource(R.string.common_set_reminder),
+                                tint = colors.onSurface,
+                            )
                         }
-                        IconButton(onClick = { showNotifPrefsSheet = true }) {
+                        IconButton(onClick = {
+                            if (hapticEnabled) haptics.click()
+                            showNotifPrefsSheet = true
+                        }) {
                             Icon(
                                 imageVector = if (isFollowing) Icons.Filled.Notifications else Icons.Outlined.Notifications,
                                 contentDescription = stringResource(

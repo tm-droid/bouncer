@@ -4,6 +4,7 @@ import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.analysis.MatchProjections
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -12,6 +13,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.Icons
@@ -29,7 +32,10 @@ import com.tanush.bouncer.ui.components.MatchPredictionInfo
 import com.tanush.bouncer.ui.components.PredictionTrend
 import com.tanush.bouncer.ui.components.premium.MomentumEvent
 import com.tanush.bouncer.ui.components.v2.AnimatedScoreText
+import com.tanush.bouncer.network.CricBuzzUrls
+import com.tanush.bouncer.ui.components.premium.playerLink
 import com.tanush.bouncer.ui.components.v2.BouncerCard
+import com.tanush.bouncer.ui.components.v2.PersonAvatar
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.Gold400
 import com.tanush.bouncer.ui.theme.StatusInfo
@@ -101,6 +107,8 @@ internal fun predictionFactorsFor(
 
 private const val PERCENT = 100
 
+private val CreaseAvatarSize = 32.dp
+
 internal fun predictionInfoFor(
     match: CricketMatch,
     probabilityHistory: List<WinProbabilityPoint>,
@@ -142,33 +150,40 @@ internal fun BatsmanCreaseRow(bat: ScrapedBatsman) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
-    Column(modifier = Modifier.padding(spacing.md)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+    Row(
+        modifier = Modifier.playerLink(bat.name, "").padding(spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PersonAvatar(name = bat.name, size = CreaseAvatarSize, modifier = Modifier.clearAndSetSemantics {})
+        Spacer(Modifier.width(spacing.sm))
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = bat.name + if (bat.isStriker) " *" else "",
+                    style = typography.titleSmall,
+                    color = colors.onSurface,
+                    fontWeight = if (bat.isStriker) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                AnimatedScoreText(
+                    text = "${bat.runs} (${bat.balls})",
+                    style = typography.scoreMedium,
+                    color = colors.onSurface,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Spacer(Modifier.height(spacing.xs))
             Text(
-                text = bat.name + if (bat.isStriker) " *" else "",
-                style = typography.titleSmall,
-                color = colors.onSurface,
-                fontWeight = if (bat.isStriker) FontWeight.Bold else FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            AnimatedScoreText(
-                text = "${bat.runs} (${bat.balls})",
-                style = typography.scoreMedium,
-                color = colors.onSurface,
-                fontWeight = FontWeight.Bold,
+                text = "SR ${bat.strikeRate} • 4s ${bat.fours} • 6s ${bat.sixes}",
+                style = typography.numericSmall,
+                color = colors.textSecondary,
             )
         }
-        Spacer(Modifier.height(spacing.xs))
-        Text(
-            text = "SR ${bat.strikeRate} • 4s ${bat.fours} • 6s ${bat.sixes}",
-            style = typography.numericSmall,
-            color = colors.textSecondary,
-        )
     }
 }
 
@@ -178,37 +193,49 @@ internal fun FallbackBatsmanRow(bat: BatsmanStats) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
-    Column(modifier = Modifier.padding(spacing.md)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = bat.name,
-                style = typography.titleSmall,
-                color = colors.onSurface,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = "${bat.runs} (${bat.balls})",
-                style = typography.scoreMedium,
-                color = colors.onSurface,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        Spacer(Modifier.height(spacing.xs))
-        val details = buildString {
-            append("SR: ${bat.strikeRate}")
-            if (bat.fours != "0") append(" • 4s: ${bat.fours}")
-            if (bat.sixes != "0") append(" • 6s: ${bat.sixes}")
-            if (bat.dismissal.isNotBlank() && !bat.dismissal.lowercase().contains("not out")) {
-                append(" • ${bat.dismissal}")
-            }
-        }
-        Text(
-            text = details,
-            style = typography.numericSmall,
-            color = colors.textSecondary,
+    Row(
+        modifier = Modifier.playerLink(bat.name, bat.profileUrl).padding(spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PersonAvatar(
+            name = bat.name,
+            size = CreaseAvatarSize,
+            id = CricBuzzUrls.profileIdOf(bat.profileUrl),
+            modifier = Modifier.clearAndSetSemantics {},
         )
+        Spacer(Modifier.width(spacing.sm))
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = bat.name,
+                    style = typography.titleSmall,
+                    color = colors.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = "${bat.runs} (${bat.balls})",
+                    style = typography.scoreMedium,
+                    color = colors.onSurface,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Spacer(Modifier.height(spacing.xs))
+            val details = buildString {
+                append("SR: ${bat.strikeRate}")
+                if (bat.fours != "0") append(" • 4s: ${bat.fours}")
+                if (bat.sixes != "0") append(" • 6s: ${bat.sixes}")
+                if (bat.dismissal.isNotBlank() && !bat.dismissal.lowercase().contains("not out")) {
+                    append(" • ${bat.dismissal}")
+                }
+            }
+            Text(
+                text = details,
+                style = typography.numericSmall,
+                color = colors.textSecondary,
+            )
+        }
     }
 }

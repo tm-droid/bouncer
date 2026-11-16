@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -36,7 +38,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.SportsCricket
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -51,7 +52,6 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -66,8 +66,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -98,25 +101,6 @@ private fun TeamLogoCircle(teamName: String, size: Int) {
 }
 
 @Composable
-private fun RemoveTeamDialog(
-    teamName: String,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.favorites_remove_team)) },
-        text = { Text("Remove $teamName from favorites?") },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.common_remove)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-        },
-    )
-}
-
-@Composable
 fun FavoritesScreen(
     onBackClick: () -> Unit,
     onTeamClick: (String) -> Unit
@@ -125,6 +109,7 @@ fun FavoritesScreen(
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     val favorites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
     var showAddTeamSheet by rememberSaveable { mutableStateOf(false) }
@@ -132,6 +117,21 @@ fun FavoritesScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var lastRemovedTeam by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val removeWithUndo: (String) -> Unit = { teamName ->
+        lastRemovedTeam = teamName
+        FavouriteTeamsManager.remove(teamName)
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = resources.getString(R.string.favorites_team_removed, teamName),
+                actionLabel = resources.getString(R.string.common_undo),
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                lastRemovedTeam?.let { FavouriteTeamsManager.add(it) }
+                lastRemovedTeam = null
+            }
+        }
+    }
 
     var reorderableFavorites by remember(favorites) { mutableStateOf(favorites.toList()) }
     val haptic = LocalHapticFeedback.current
@@ -265,19 +265,7 @@ fun FavoritesScreen(
                             val swipeState = rememberSwipeToDismissBoxState(
                                 confirmValueChange = { value ->
                                     if (value == SwipeToDismissBoxValue.EndToStart) {
-                                        lastRemovedTeam = teamName
-                                        FavouriteTeamsManager.remove(teamName)
-                                        scope.launch {
-                                            val result = snackbarHostState.showSnackbar(
-                                                message = "$teamName removed",
-                                                actionLabel = "Undo",
-                                                duration = SnackbarDuration.Short,
-                                            )
-                                            if (result == SnackbarResult.ActionPerformed) {
-                                                lastRemovedTeam?.let { FavouriteTeamsManager.add(it) }
-                                                lastRemovedTeam = null
-                                            }
-                                        }
+                                        removeWithUndo(teamName)
                                         true
                                     } else {
                                         false
@@ -309,7 +297,7 @@ fun FavoritesScreen(
                                     teamName = teamName,
                                     position = index + 1,
                                     onClick = { onTeamClick(teamName) },
-                                    onRemove = { FavouriteTeamsManager.remove(teamName) },
+                                    onRemove = { removeWithUndo(teamName) },
                                 )
                             }
                         }
@@ -469,7 +457,6 @@ private fun FavoriteTeamListRow(
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val hapticEnabled = remember { PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true) }
-    var showRemoveDialog by remember { mutableStateOf(false) }
 
     BouncerCard(
         modifier = Modifier.fillMaxWidth(),
@@ -497,7 +484,12 @@ private fun FavoriteTeamListRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            IconButton(onClick = { showRemoveDialog = true }) {
+            IconButton(
+                onClick = {
+                    if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onRemove()
+                },
+            ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = stringResource(R.string.common_remove),
@@ -505,18 +497,6 @@ private fun FavoriteTeamListRow(
                 )
             }
         }
-    }
-
-    if (showRemoveDialog) {
-        RemoveTeamDialog(
-            teamName = teamName,
-            onDismiss = { showRemoveDialog = false },
-            onConfirm = {
-                if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onRemove()
-                showRemoveDialog = false
-            },
-        )
     }
 }
 
@@ -545,6 +525,7 @@ private fun AddTeamBottomSheet(
     val spacing = BouncerThemeV2.spacing
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var searchQuery by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
 
     val popularTeams = listOf(
         "India", "Australia", "England", "South Africa", "Pakistan",
@@ -580,6 +561,8 @@ private fun AddTeamBottomSheet(
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                 shape = BouncerThemeV2.shapes.small,
             )
             LazyColumn(

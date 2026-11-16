@@ -26,6 +26,7 @@ import com.tanush.bouncer.data.remote.AppwritePlayerProfilesClient
 import com.tanush.bouncer.data.remote.AppwriteReadGuard
 import com.tanush.bouncer.data.repository.HighlightsRepository
 import com.tanush.bouncer.network.HttpClientProvider
+import com.tanush.bouncer.network.PlayerImages
 import com.google.firebase.messaging.FirebaseMessaging
 import com.tanush.bouncer.services.AICacheService
 import com.tanush.bouncer.services.DatabaseCleanupWorker
@@ -126,6 +127,9 @@ class BouncerApp : Application() {
         }
         initializeSafely("TeamAcronymManager") { TeamAcronymManager.initialize(this) }
         initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }
+        applicationScope.launch(Dispatchers.IO) {
+            initializeSafely("PlayerImages") { PlayerImages.initialize(applicationContext, applicationScope) }
+        }
         applicationScope.launch(Dispatchers.IO) {
             initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this@BouncerApp) }
             // Alarms do not survive a restore onto a new phone, an app update on some devices, or

@@ -297,6 +297,7 @@
     <string name="common_remove">Remove</string>
     <string name="common_set_reminder">Set Reminder</string>
     <string name="common_share">Share</string>
+    <string name="common_undo">Undo</string>
     <string name="common_wickets">Wickets</string>
     <string name="common_win_probability">Win probability</string>
     <string name="drs_review_in_progress">REVIEW IN PROGRESS</string>
@@ -310,7 +311,7 @@
     <string name="favorites_move_up">Move up</string>
     <string name="favorites_no_favorite_teams_yet">No favorite teams yet</string>
     <string name="favorites_quick_access_to_your_teams">Quick access to your teams</string>
-    <string name="favorites_remove_team">Remove Team</string>
+    <string name="favorites_team_removed">%1$s removed</string>
     <string name="favorites_search_teams">Search teams...</string>
     <string name="h2h_draws">Draws</string>
     <string name="h2h_ties">Ties</string>
@@ -369,8 +370,10 @@
     <string name="player_player_2">Player 2</string>
     <string name="player_search_player">Search player…</string>
     <string name="player_tap_to_search">Tap to search</string>
+    <string name="player_couldn_t_load">Couldn\'t load %1$s</string>
     <string name="player_the_profile_isn_t_available_right">The profile isn\'t available right now. Check your connection and try again.</string>
     <string name="points_no_standings_available">No standings available</string>
+    <string name="points_no_table_for_series">This series has no points table.</string>
     <string name="premium_batter">Batter</string>
     <string name="premium_batting">Batting</string>
     <string name="premium_bowler">Bowler</string>

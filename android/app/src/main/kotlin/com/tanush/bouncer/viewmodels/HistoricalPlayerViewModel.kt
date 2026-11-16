@@ -54,7 +54,7 @@ class HistoricalPlayerViewModel(
      * replaced it) keeps the record's own fields.
      */
     private suspend fun recentRows(career: PlayerCareer): List<PastMatchRow> {
-        val recent = career.matches.sortedByDescending { it.date }.take(RECENT_MATCHES)
+        val recent = career.matches.distinctBy { it.id }.sortedByDescending { it.date }.take(RECENT_MATCHES)
         val known = indexedRows(recent.map { it.id })
         return recent.map { known[it.id] ?: it.toRow() }
     }

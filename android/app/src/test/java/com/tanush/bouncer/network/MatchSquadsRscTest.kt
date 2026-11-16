@@ -28,7 +28,13 @@ class MatchSquadsRscTest {
             assertEquals(11, playingXi.size)
             assertEquals(4, bench.size)
             assertTrue(squad.isEmpty())
-            assertEquals(SquadPlayer("576", "Rohit Sharma", "Batter", captain = false, keeper = false), playingXi.first())
+            assertEquals(
+                SquadPlayer(
+                    "576", "Rohit Sharma", "Batter", captain = false, keeper = false,
+                    imageUrl = "https://www.cricbuzz.com/a/img/v1/152x152/i1/c616514/player.jpg",
+                ),
+                playingXi.first(),
+            )
             assertEquals("Shubman Gill", playingXi.single { it.captain }.name)
             assertEquals("KL Rahul", playingXi.single { it.keeper }.name)
         }
@@ -57,5 +63,14 @@ class MatchSquadsRscTest {
     @Test
     fun `a page without team sheets is null, not an empty squad`() {
         assertNull(MatchSquadsRsc.parse(fixture("cricbuzz_points_table.html")))
+    }
+
+    @Test
+    fun `a player on cricbuzz's stock silhouette has no photo`() {
+        val squads = checkNotNull(MatchSquadsRsc.parse(fixture("cricbuzz_match_squads_xi.html")))
+        val everyone = listOf(squads.team1, squads.team2).flatMap { it.playingXi + it.bench + it.squad }
+        assertNull(everyone.single { it.name == "Amir Jangoo" }.imageUrl)
+        assertTrue(everyone.none { it.imageUrl.orEmpty().contains(MatchSquadsRsc.PLACEHOLDER_IMAGE_ID) })
+        assertTrue(everyone.count { it.imageUrl != null } > everyone.size / 2)
     }
 }
