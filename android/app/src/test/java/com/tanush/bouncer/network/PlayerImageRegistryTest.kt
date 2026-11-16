@@ -70,6 +70,19 @@ class PlayerImageRegistryTest {
     }
 
     @Test
+    fun `a shared name stays shared when either player registers again`() {
+        val registry = PlayerImageRegistry()
+        registry.register("10", "Mohammad Nabi", "https://example.com/nabi.jpg")
+        registry.register("20", "Mohammad Nabi", "https://example.com/other.jpg")
+        registry.register("10", "Mohammad Nabi", "https://example.com/nabi2.jpg")
+        registry.register("20", "Mohammad Nabi", null)
+
+        assertNull(registry.playerId("Mohammad Nabi"))
+        assertNull(registry.url(name = "Mohammad Nabi"))
+        assertEquals("https://example.com/nabi2.jpg", registry.url(id = "10", name = "Mohammad Nabi"))
+    }
+
+    @Test
     fun `the oldest entries go past the limit`() {
         val registry = PlayerImageRegistry(limit = 2)
         registry.register("1", "One Player", "https://example.com/1.jpg")

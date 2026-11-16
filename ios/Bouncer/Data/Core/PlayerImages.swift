@@ -11,6 +11,8 @@ final class PlayerImages {
     static let shared = PlayerImages(fileURL: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?
         .appendingPathComponent("player-images.json"))
     static let limit = 3000
+    /// Marks a name held by more than one id. Never a real id: blank ids are not registered.
+    private static let ambiguous = ""
 
     struct Entry: Codable, Equatable {
         var id: String
@@ -42,12 +44,12 @@ final class PlayerImages {
     /// The photo for a player: by id when known, else by name.
     func url(id: String? = nil, name: String) -> URL? {
         if let id, !id.isEmpty, let url = byId[id]?.url { return url }
-        return idByName[Self.key(name)].flatMap { byId[$0]?.url }
+        return playerId(forName: name).flatMap { byId[$0]?.url }
     }
 
-    /// Cricbuzz id for a name seen in a squad, search or profile; nil when unknown.
+    /// Cricbuzz id for a name seen in a squad, search or profile; nil when unknown or shared by two ids.
     func playerId(forName name: String) -> String? {
-        idByName[Self.key(name)]
+        idByName[Self.key(name)].flatMap { $0 == Self.ambiguous ? nil : $0 }
     }
 
     func register(_ squads: Squads) {
@@ -60,7 +62,8 @@ final class PlayerImages {
     func register(id: String, name: String, url: URL?) {
         guard !id.isEmpty, !Self.key(name).isEmpty else { return }
         let entry = Entry(id: id, name: name, url: url ?? byId[id]?.url)
-        guard byId[id] != entry || idByName[Self.key(name)] != id else { return }
+        let holder = idByName[Self.key(name)]
+        guard byId[id] != entry || (holder != id && holder != Self.ambiguous) else { return }
         insert(entry)
         scheduleSave()
     }
@@ -71,7 +74,14 @@ final class PlayerImages {
             order.removeAll { $0 == e.id }
         }
         byId[e.id] = e
-        idByName[Self.key(e.name)] = e.id
+        // Two players with one name: the name answers neither, rather than whichever came last, and
+        // re-registering either one must not hand it back.
+        let k = Self.key(e.name)
+        switch idByName[k] {
+        case Self.ambiguous: break
+        case nil, e.id: idByName[k] = e.id
+        case let holder?: idByName[k] = byId[holder] == nil ? e.id : Self.ambiguous
+        }
         order.append(e.id)
         while order.count > Self.limit {
             let dropped = order.removeFirst()

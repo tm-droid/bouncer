@@ -148,6 +148,18 @@ struct PlayerImagesTests {
         #expect(images.url(id: "1413", name: "Someone Else") == kohli)
     }
 
+    @Test func aSharedNameOpensNeitherEvenAfterReRegistering() {
+        let images = PlayerImages(fileURL: nil)
+        let other = URL(string: "https://example.com/other.jpg")!
+        images.register(id: "10", name: "Mohammad Nabi", url: kohli)
+        images.register(id: "20", name: "Mohammad Nabi", url: other)
+        images.register(id: "10", name: "Mohammad Nabi", url: other)
+        images.register(id: "20", name: "Mohammad Nabi", url: nil)
+        #expect(images.playerId(forName: "Mohammad Nabi") == nil)
+        #expect(images.url(name: "Mohammad Nabi") == nil)
+        #expect(images.url(id: "20", name: "Mohammad Nabi") == other)
+    }
+
     @Test func persistsAcrossInstances() async throws {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("player-images-\(UUID().uuidString).json")
         defer { try? FileManager.default.removeItem(at: file) }

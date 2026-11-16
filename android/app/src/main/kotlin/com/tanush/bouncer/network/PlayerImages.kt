@@ -55,7 +55,7 @@ open class PlayerImageRegistry(private val limit: Int = LIMIT) {
         if (id.isBlank() || key(name).isEmpty()) return
         val changed = synchronized(lock) {
             val entry = Entry(id, name, url?.takeIf { it.isNotBlank() && PLACEHOLDER_PATH !in it } ?: byId[id]?.url)
-            if (byId[id] == entry && idByName[key(name)] == id) {
+            if (byId[id] == entry && nameHolder(idByName[key(name)], id) == idByName[key(name)]) {
                 false
             } else {
                 insert(entry)
@@ -75,7 +75,7 @@ open class PlayerImageRegistry(private val limit: Int = LIMIT) {
         // Two players with one name: the name answers neither, rather than whichever came last.
         val k = key(e.name)
         val holder = idByName[k]
-        idByName[k] = if (holder == null || holder == e.id || byId[holder] == null) e.id else AMBIGUOUS
+        idByName[k] = nameHolder(holder, e.id)
         order.add(e.id)
         while (order.size > limit) {
             val dropped = order.first()
@@ -83,6 +83,16 @@ open class PlayerImageRegistry(private val limit: Int = LIMIT) {
             val gone = byId.remove(dropped)
             if (gone != null && idByName[key(gone.name)] == dropped) idByName.remove(key(gone.name))
         }
+    }
+
+    /**
+     * Who a name answers to once [id] takes it. A shared name stays shared: re-registering either
+     * player must not hand it to one of them.
+     */
+    private fun nameHolder(holder: String?, id: String): String = when {
+        holder == AMBIGUOUS -> AMBIGUOUS
+        holder == null || holder == id || byId[holder] == null -> id
+        else -> AMBIGUOUS
     }
 
     /** Entries oldest first as JSON, read back by [decode]. Gson's tree API, so R8 renames nothing it reads. */
