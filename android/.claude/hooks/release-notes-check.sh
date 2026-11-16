@@ -11,10 +11,12 @@ cmd=$(jq -r '.tool_input.command // empty')
 [[ "$cmd" =~ (^|[;&|[:space:]])git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+commit([[:space:]]|$) ]] || exit 0
 [[ "$cmd" == *SKIP_RELEASE_NOTES=1* ]] && exit 0
 
-cd "${CLAUDE_PROJECT_DIR:-.}"
+# The android/ folder this hook lives in. The git root is its parent, so paths are listed relative
+# to android/ (`--relative`); root-relative paths ("android/app/...") never matched the patterns below.
+cd "$(dirname "$0")/../.."
 
 # Staged plus unstaged: the command may be `git add … && git commit`, which stages after this runs.
-changed=$( { git diff --cached --name-only; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u )
+changed=$( { git diff --cached --name-only --relative; git diff --name-only --relative; git ls-files --others --exclude-standard; } | sort -u )
 
 grep -q '^app/src/main/' <<<"$changed" || exit 0
 grep -q '^distribution/whatsnew/whatsnew-en-US$' <<<"$changed" && exit 0
