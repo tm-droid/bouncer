@@ -1,4 +1,8 @@
 {
+ "AFGHANISTAN": [
+  "#A87D36",
+  "#09844A"
+ ],
  "AWS World": [
   "#F63505",
   "#F63505"
@@ -782,6 +786,10 @@
  "Hyderabad Kingsmen": [
   "#000000",
   "#D8A355"
+ ],
+ "IRELAND": [
+  "#307539",
+  "#307539"
  ],
  "India": [
   "#D6B268",
@@ -1599,10 +1607,6 @@
   "#58A679",
   "#58A679"
  ],
- "Royal Desert Champions": [
-  "#58A679",
-  "#58A679"
- ],
  "Royal Nimar Eagles": [
   "#611D5B",
   "#FEFAA6"
@@ -2018,10 +2022,6 @@
  "Turks and Caicos Island": [
   "#002868",
   "#CE1227"
- ],
- "UAE Bulls": [
-  "#E4E41C",
-  "#26214E"
  ],
  "UP Warriorz Women": [
   "#510273",
