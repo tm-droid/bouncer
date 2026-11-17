@@ -25,6 +25,7 @@ coil = "2.7.0"
 jsoup = "1.23.2"
 appwrite = "25.1.0"
 play-app-update = "2.1.0"
+play-billing = "9.1.0"
 
 # ── Serialization & Logging ───────────────────────────────────────────────────
 gson = "2.13.2"
@@ -96,6 +97,7 @@ coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 appwrite = { module = "io.appwrite:sdk-for-android", version.ref = "appwrite" }
 play-app-update-ktx = { module = "com.google.android.play:app-update-ktx", version.ref = "play-app-update" }
+play-billing-ktx = { module = "com.android.billingclient:billing-ktx", version.ref = "play-billing" }
 
 # ── UI & Layout ────────────────────────────────────────────────────────────────
 palette = { module = "androidx.palette:palette", version.ref = "palette" }

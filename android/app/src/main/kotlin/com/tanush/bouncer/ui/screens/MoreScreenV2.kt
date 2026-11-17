@@ -38,6 +38,7 @@ import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.ui.components.v2.BouncerRowGroup
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
+import com.tanush.bouncer.ui.components.v2.TipJarSheet
 import com.tanush.bouncer.ui.components.v2.SettingsItemV2
 import com.tanush.bouncer.ui.components.v2.SettingsTrailing
 import com.tanush.bouncer.ui.components.v2.TeamCrest
@@ -177,6 +178,15 @@ private fun AboutRows(onAboutClick: () -> Unit, onRedoSetup: () -> Unit, onDevTo
             dismissButton = { TextButton(onClick = { confirmingRedo = false }) { Text(stringResource(R.string.common_cancel)) } },
         )
     }
+    var showTips by remember { mutableStateOf(false) }
+    if (showTips) TipJarSheet(onDismiss = { showTips = false })
+    SettingsItemV2(
+        icon = Icons.Default.Favorite,
+        title = stringResource(R.string.tip_jar_row_title),
+        subtitle = stringResource(R.string.tip_jar_row_subtitle),
+        trailing = SettingsTrailing.Navigation,
+        onClick = { showTips = true },
+    )
     SettingsItemV2(
         icon = Icons.Default.Info,
         title = stringResource(R.string.settings_about_bouncer),

@@ -387,6 +387,7 @@ dependencies {
     implementation(libs.appwrite)
     // Play in-app updates: a release uploaded at priority 5 replaces every Play install (AppUpdateGate).
     implementation(libs.play.app.update.ktx)
+    implementation(libs.play.billing.ktx)
 
     // UI & Layout
     implementation(libs.palette)
