@@ -31,6 +31,8 @@ import {
   mergeRows,
   monthOf,
   parsedColumn,
+  rowKey,
+  stalePublish,
   yearsOf,
 } from "./src/archive.js";
 
@@ -78,6 +80,14 @@ const matchPath = (id) => {
 const now = Date.now();
 const db = appwrite({ endpoint: APPWRITE_ENDPOINT, project: APPWRITE_PROJECT_ID, key: APPWRITE_API_KEY });
 const state = readJson("state.json", { v: SCHEMA_VERSION, watermark: null, pending: {} });
+
+// 0. Nothing is read while earlier pushes are failing: the watermark lives in the site, so each
+// such run would re-read every row since the last good push.
+const stale = stalePublish(readJson("manifest.json", null), now, process.env.ARCHIVE_CATCH_UP === "1");
+if (stale) {
+  console.error(stale);
+  process.exit(1);
+}
 
 // 1. The match lists: who each match is, and which have finished. A match's entry is remembered
 // from the first list it appears on (upcoming, usually), because the recent list holds 20 matches
@@ -142,7 +152,7 @@ let added = 0;
 for (const [id, { rows, lastMs }] of incoming) {
   const file = readJson(matchPath(id), { v: SCHEMA_VERSION, id, final: false, rows: [] });
   const before = file.rows.length;
-  const known = new Set(file.rows.map((r) => r.id));
+  const known = new Set(file.rows.map((r) => rowKey(r.id)));
   state.cycle.rows += countSince(rows.filter((r) => !known.has(r.id)), cycle.start);
   file.rows = mergeRows(file.rows, rows);
   added += file.rows.length - before;

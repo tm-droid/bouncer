@@ -11,6 +11,11 @@
 # The site is the `gh-pages` branch, appended to, never rebuilt: its source is pruned from Appwrite.
 #
 # Required secret: APPWRITE_API_KEY, a key with only `rows.read` and `files.read`.
+#
+# The read watermark lives in the site, so a run whose push fails re-reads every row since the last
+# good push. The archiver therefore refuses to read once the site's last publish is 12 h old. After
+# fixing a failed publish, run it once by hand with `catch_up` (`gh workflow run archive.yml -f
+# catch_up=true`).
 
 name: Archive matches
 
@@ -18,6 +23,11 @@ on:
   schedule:
     - cron: '17 */3 * * *'
   workflow_dispatch:
+    inputs:
+      catch_up:
+        description: Read even though the last publish is stale (after fixing a failed push)
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -51,6 +61,7 @@ jobs:
           APPWRITE_ENDPOINT: https://sgp.cloud.appwrite.io/v1
           APPWRITE_PROJECT_ID: 6a02f7f3000e6e100b19
           APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+          ARCHIVE_CATCH_UP: ${{ inputs.catch_up && '1' || '' }}
         run: node archive.mjs site
 
       - name: Publish

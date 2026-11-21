@@ -54,16 +54,49 @@ const ROW_FIELDS = ["innings", "ball", "sort_key", "commentary", "ai_generated",
 export function archivedRow(row) {
   if (!row || typeof row.commentary !== "string" || !row.commentary.trim()) return null;
   if (String(row.provider ?? "").startsWith("cricbuzz")) return null;
-  const out = { id: row.$id };
+  const out = { id: rowKey(row.$id) };
   for (const f of ROW_FIELDS) if (row[f] !== undefined && row[f] !== null) out[f] = row[f];
   return out;
 }
 
-/** Rows merged by id, in feed order (`sort_key`, then id so the order is stable). */
+// An archived row's id: the first 16 characters of its Appwrite id. A full id is 36 hex
+// characters, and about 0.3% of them fit GitHub's "Databricks token" pattern (`d`, three of a-f, 32
+// hex). Push protection then refused every `gh-pages` push from 2026-11-04 to 2026-11-21. Each
+// failed run re-read every row since, about 25k rows a run. Sixteen characters fit no 32-hex token
+// pattern and are still unique within a match. The app never reads the id.
+export const ROW_KEY_LENGTH = 16;
+export const rowKey = (id) => String(id ?? "").slice(0, ROW_KEY_LENGTH);
+
+/**
+ * Rows merged by id, in feed order (`sort_key`, then id so the order is stable). Ids are reduced
+ * to `rowKey` on both sides, so a file archived with full ids is rewritten without them, and a
+ * re-read row merges into its old full-id copy.
+ */
 export function mergeRows(existing, incoming) {
-  const byId = new Map(existing.map((r) => [r.id, r]));
-  for (const r of incoming) byId.set(r.id, r);
+  const byId = new Map();
+  for (const r of [...existing, ...incoming]) {
+    const id = rowKey(r.id);
+    byId.set(id, { ...r, id });
+  }
   return [...byId.values()].sort((a, b) => (a.sort_key ?? 0) - (b.sort_key ?? 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
+
+// A run refuses to read Appwrite when the site's last publish is older than this. The site holds
+// the read watermark, so a run whose push fails re-reads everything since the last good push.
+// Twelve hours allows about four runs of that before the job fails cheaply, still emailing the
+// owner. A deliberate catch-up (`ARCHIVE_CATCH_UP=1`, the workflow's `catch_up` input) skips the
+// check.
+export const STALE_PUBLISH_MS = 12 * 3_600_000;
+
+/** Why a run must not read, or null when it may: `manifest` is the site's, null on a new site. */
+export function stalePublish(manifest, now, catchUp) {
+  if (catchUp || !manifest?.updated) return null;
+  const age = now - Date.parse(manifest.updated);
+  if (!(age > STALE_PUBLISH_MS)) return null;
+  return (
+    `last publish ${manifest.updated} is ${(age / 3_600_000).toFixed(1)} h old: earlier pushes failed, ` +
+    `and reading now would re-read every row since. Fix the publish, then run the workflow with catch_up.`
+  );
 }
 
 export const isTerminal = (status) => classifyStatus(status) === "TERMINAL";

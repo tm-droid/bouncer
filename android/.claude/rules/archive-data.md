@@ -25,6 +25,9 @@ It is a different thing from the Cricsheet site (`history-data.md`): that one is
 - **Each commentary row is read once.**
   - Rows are read by a `$createdAt` watermark in `state.json`, with a 5-minute overlap merged by row id. Reads bill per row returned.
   - A run reads at most `ARCHIVE_MAX_ROWS` (60,000). A run that hits the cap finalises nothing, because it has not seen every match's newest rows.
+  - **The watermark lives in the site, so a failed push re-reads everything.** From 2026-11-04 to 2026-11-21, GitHub push protection refused every `gh-pages` push. Every run re-read all rows since Nov 4 (25,551 rows in the last one, at 8 runs a day), and that spent the month's Appwrite read quota. Two rules followed:
+    - **The archiver refuses to read when the site's `manifest.updated` is over 12 h old** (`stalePublish`). After fixing a publish, run it once with `gh workflow run archive.yml -R tm-droid/bouncer-archive -f catch_up=true`.
+    - **An archived row's `id` is the first 16 characters of its Appwrite id** (`rowKey`). A 36-hex id fits GitHub's "Databricks token" pattern about 0.3% of the time, and a match file is one line, so the whole file is rescanned on every rewrite. `mergeRows` shortens old full ids on rewrite. The app never reads `id`.
 - **When a match is final.**
   - **Ended:** the recent list (20 rows, about a day) calls it finished, or, once its rows have been quiet for 6 h, its detail row's status does. It is final after 6 h of quiet and 6 h since it was seen ended, which leaves room for the rewrite backlog and the finalising run's summary and `wpe-` log.
   - **Stale:** a match nothing calls finished is final after 4 days with no rows.

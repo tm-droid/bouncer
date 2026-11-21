@@ -14,6 +14,8 @@ import {
   mergeIndex,
   mergeRows,
   monthOf,
+  rowKey,
+  stalePublish,
   yearsOf,
 } from "../src/archive.js";
 import { appwrite } from "../src/appwrite.js";
@@ -138,4 +140,31 @@ test("the billing cycle is the Console's 30-day period from 2026-10-14", () => {
 test("a cycle counts only rows created inside it", () => {
   const rows = [{ created_at: "2026-10-13T23:59:59.999Z" }, { created_at: "2026-10-14T00:00:00.000Z" }, { created_at: "2026-10-20T10:00:00Z" }, {}];
   assert.equal(countSince(rows, "2026-10-14T00:00:00.000Z"), 2);
+});
+
+test("an archived row keeps 16 characters of its id, which no 32-hex token pattern can match", () => {
+  const full = "dbac9e1b909a2d3244a197b8a4b909186527";
+  const kept = archivedRow({ $id: full, commentary: "36.2: four", provider: "groq", sort_key: 1 });
+  assert.equal(kept.id, "dbac9e1b909a2d32");
+  assert.doesNotMatch(JSON.stringify(kept), /[0-9a-f]{32}/);
+});
+
+test("a full-id row already in a file and its re-read short-id copy merge into one short-id row", () => {
+  const full = "dbac9e1b909a2d3244a197b8a4b909186527";
+  const merged = mergeRows(
+    [{ id: full, sort_key: 1, commentary: "old" }, { id: "0123456789abcdef0123", sort_key: 2 }],
+    [{ id: rowKey(full), sort_key: 1, commentary: "new" }]
+  );
+  assert.deepEqual(merged.map((r) => r.id), ["dbac9e1b909a2d32", "0123456789abcdef"]);
+  assert.equal(merged[0].commentary, "new");
+});
+
+test("a run does not read while the last publish is stale, unless it is a catch-up or a new site", () => {
+  const now = Date.parse("2026-11-21T12:00:00Z");
+  const fresh = { updated: "2026-11-21T03:00:00Z" };
+  const stale = { updated: "2026-11-04T06:20:00Z" };
+  assert.equal(stalePublish(fresh, now, false), null);
+  assert.match(stalePublish(stale, now, false), /catch_up/);
+  assert.equal(stalePublish(stale, now, true), null);
+  assert.equal(stalePublish(null, now, false), null);
 });
