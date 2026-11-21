@@ -63,7 +63,11 @@ jobs:
           out=/tmp/archiver
           mkdir -p "$out/.github/workflows"
           cp -R appwrite/tools/archive/archive.mjs appwrite/tools/archive/package.json \
-            appwrite/tools/archive/src appwrite/tools/archive/test "$out/"
+            appwrite/tools/archive/src "$out/"
+          # Only the archiver's own tests. The backfill and records tests import scripts and the
+          # history tool that are not published (they run from a Mac), so they fail there.
+          mkdir -p "$out/test"
+          cp appwrite/tools/archive/test/archive.test.js "$out/test/"
           # archive.yml, and appwrite-alive.yml, the Appwrite pause alarm, which runs there because
           # that repo's minutes are free.
           cp appwrite/tools/archive/workflow/*.yml "$out/.github/workflows/"
