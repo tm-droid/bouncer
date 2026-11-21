@@ -38,6 +38,13 @@ jobs:
         with:
           node-version: '22'
 
+      # The vendored-copy tests import match-sync's own modules, which need its dependencies
+      # (cheerio). Without them every publish failed from 2026-10-24, so the archive repo kept a stale
+      # archiver.
+      - name: Install match-sync dependencies
+        working-directory: android/appwrite/functions/match-sync
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
       # Here the vendored classifier is checked against match-sync's; in the public repo it cannot be.
       - name: Test
         working-directory: android/appwrite/tools/archive
