@@ -1,10 +1,11 @@
-name: Weekly Logo Update
+name: Monthly Logo Update
 
 on:
   schedule:
-    # 09:00 UTC on Mondays. It was daily, but the logos rarely change and this repo's Actions minutes
-    # are billed; a week's delay costs nothing.
-    - cron: '0 9 * * 1'
+    # 09:00 UTC on the 1st of each month. It was daily, then weekly, but the logos rarely change and
+    # this repo's Actions minutes are billed: a run spends 8-10 of them, mostly waiting out the
+    # sources' rate limits. MAX_LOOKUPS still drains any backlog, just over months instead of weeks.
+    - cron: '0 9 1 * *'
   workflow_dispatch: # Allow manual triggering
 
 jobs:
