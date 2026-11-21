@@ -12,7 +12,7 @@ logo job ~37). The scheduled data jobs already run free in the public `bouncer-a
 
 | # | What | Where | Verdict |
 |---|---|---|---|
-| 1 | RapidAPI key (`cricket-api-free-data.p.rapidapi.com`) | `app/src/main/kotlin/com/tanush/bouncer/managers/TeamDirectory.kt`, commit `c939b754`, 2026-02-28. Not in the current tree. | **Blocker.** Rotate or revoke the key in the RapidAPI dashboard before the repo goes public. History stays readable after a visibility flip. |
+| 1 | RapidAPI key (`cricket-api-free-data.p.rapidapi.com`) | `app/src/main/kotlin/com/tanush/bouncer/managers/TeamDirectory.kt`, commit `c939b754`, 2026-02-28. Not in the current tree. | **Resolved.** The key still answered on 2026-11-21 and was then revoked: it now gets HTTP 403. It stays readable in history but no longer works. |
 | 2 | Firebase Android API key (`AIza…`) | `app/google-services.json` (history), `android/app/google-services.json` (current tree) | Not a secret by design: it ships inside every APK. Before going public, restrict it in Google Cloud Console (Android app restriction: package name and SHA-1, and limit it to the Firebase APIs used). |
 | 3 | `SENTRY_CLI_SHA256` flagged as a Sentry token | `.github/workflows/ci.yml` | False positive. It is a checksum of the Sentry CLI download. |
 
@@ -32,12 +32,16 @@ the Appwrite API key exist only as Actions secrets, and those stay private on a 
   `pull_request_target`.
 - Public repositories get free Copilot code review and Dependabot runs too.
 
-## Checklist before flipping visibility
+## Checklist
+
+The repository went public on 2026-11-21, after items 1 and 3. Items 2, 4 and 5 are still open.
 
 1. Revoke the RapidAPI key from finding 1 (or confirm it was already revoked).
 2. Restrict the Firebase API key from finding 2.
 3. Re-run `gitleaks git --redact` on a fresh mirror clone. Expect only findings 2 and 3.
 4. Add a LICENSE (or an all-rights-reserved note).
-5. Review `android/.claude/` and `android/other-apps/` for anything personal.
+5. Review `android/.claude/` and `android/other-apps/` for anything personal. `.claude/` holds only
+   agent rules, skills, hooks and settings. `other-apps/` holds 23 screenshots (28 MB) of Cricbuzz,
+   Cricinfo and Cricket Guru, which are better kept out of a public repository.
 6. Settings → General → Danger Zone → Change visibility. This is reversible, but anything cloned or
    cached while the repo is public stays public.
