@@ -340,7 +340,11 @@ export function mergeTables(shards) {
 /** The surname pools worth fetching: one per first letter of a surname no roster resolved. */
 export function surnameLettersFor(squads, tables, teams, gender) {
   const letters = new Set();
-  for (const [side, team] of [[squads?.team1, teams[0]], [squads?.team2, teams[1]]]) {
+  const sides = [squads?.team1, squads?.team2];
+  for (const team of teams) {
+    // The sheet's two sides come in the page's order, not the match's: pair by team id, else by name.
+    const side = sides.find((s) => s && team?.id != null && s.teamId !== "" && String(s.teamId) === String(team.id))
+      ?? sides.find((s) => s?.name && team?.name && squash(s.name) === squash(team.name));
     const roster = rosterEntries(tables.rosters?.[`${team?.key}|${gender}`]);
     for (const p of side?.playingXi ?? []) {
       if (resolvePlayer(roster, p.name)) continue;

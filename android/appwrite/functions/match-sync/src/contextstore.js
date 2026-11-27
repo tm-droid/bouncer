@@ -48,11 +48,26 @@ export function createContextStore(deps) {
   const shards = new Map();
   const now = () => (deps.now ? deps.now() : Date.now());
 
-  async function shard(id) {
+  // Contexts built while a shard read failed (not a 404). They are served from memory but never
+  // stored, and are built again on a later run: a missing shard would otherwise stay missing for
+  // the life of the match.
+  const degraded = new Set();
+
+  /** A shard's contents; null when it does not exist. A read that fails otherwise is pushed to `failed`. */
+  async function shard(id, failed) {
     const cached = shards.get(id);
     if (cached && now() - cached.at < SHARD_TTL_MS) return cached.data;
-    const data = await deps.readJson(id).catch(() => null);
-    // A failed read is remembered too, briefly, so a missing file is not asked for every minute.
+    let data = null;
+    try {
+      data = await deps.readJson(id);
+    } catch (e) {
+      if (e?.code !== 404) {
+        failed.push(id);
+        deps.log(`Context shard ${id}: read failed (${e?.message})`);
+        return null;
+      }
+    }
+    // A missing file is remembered, briefly, so it is not asked for every minute.
     shards.set(id, { data, at: data ? now() : now() - SHARD_TTL_MS + 5 * 60_000 });
     return data;
   }
@@ -69,16 +84,17 @@ export function createContextStore(deps) {
       });
 
     const teamKeys = (meta?.teams ?? []).map((t) => archiveTeamName(t.name, model?.teamStats, gender, format));
-    const files = await Promise.all(shardIdsFor({ teamKeys, gender, format, venue: meta?.venue }).map(shard));
+    const failed = [];
+    const files = await Promise.all(shardIdsFor({ teamKeys, gender, format, venue: meta?.venue }).map((id) => shard(id, failed)));
     const tables = mergeTables(files);
     if (squads?.hasPlayingXi) {
-      const teams = teamKeys.map((key) => ({ key }));
+      const teams = (meta?.teams ?? []).map((t, i) => ({ key: teamKeys[i], id: t.id, name: t.name }));
       for (const letter of surnameLettersFor(squads, tables, teams, gender)) {
-        const pool = await shard(`wps-${letter}`);
+        const pool = await shard(`wps-${letter}`, failed);
         if (pool?.people) tables.surnames[letter] = rosterEntries(pool.people);
       }
     }
-    return buildContext({ matchId, meta, squads, model, format, gender, tables, previous, now: now() });
+    return { built: buildContext({ matchId, meta, squads, model, format, gender, tables, previous, now: now() }), failed };
   }
 
   /**
@@ -99,16 +115,21 @@ export function createContextStore(deps) {
       const stale = context && (context.modelAsOf !== (model?.asOf ?? null) || context.v !== CONTEXT_VERSION);
       const wait = SQUAD_RETRY_MS * Math.min(6, 1 + (squadMisses.get(id) ?? 0));
       const wantsEleven = context && !hasElevens(context) && live && now() - (lastSquadTry.get(id) ?? 0) >= wait;
-      if ((!context || stale || wantsEleven) && budget.builds > 0 && model) {
+      if ((!context || stale || wantsEleven || degraded.has(id)) && budget.builds > 0 && model) {
         budget.builds -= 1;
         const page = meta ?? deps.parseMatchMeta(await deps.fetchPage(deps.matchUrl(id)));
         if (page?.teams?.length === 2) {
-          const built = await build({ matchId: id, meta: page, model, format, gender, previous: context });
+          const { built, failed } = await build({ matchId: id, meta: page, model, format, gender, previous: context });
           squadMisses.set(id, hasElevens(built) ? 0 : (squadMisses.get(id) ?? 0) + 1);
-          if (!context || comparable(built) !== comparable(context)) {
+          if (failed.length) degraded.add(id);
+          else degraded.delete(id);
+          // A build on a failed read replaces nothing already held, and is never stored.
+          if (failed.length && context) {
+            // keep what is held; the next run tries again
+          } else if (!context || comparable(built) !== comparable(context)) {
             context = built;
             contexts.set(id, context);
-            await deps.writeJson(contextFileId(id), context);
+            if (!failed.length) await deps.writeJson(contextFileId(id), context);
             deps.log(
               `Context ${id}: built rev ${context.rev} — teams ${context.teams.map((t) => (t.known ? "known" : "unknown")).join("/")}, ` +
               `ground ${context.venue?.known ? "known" : "unknown"}, elevens ${context.teams.map((t) => `${t.joined}/${t.listed}`).join(" ")}`
@@ -125,7 +146,7 @@ export function createContextStore(deps) {
         if (forecast) {
           context = { ...context, forecast, rev: context.rev + 1 };
           contexts.set(id, context);
-          await deps.writeJson(contextFileId(id), context);
+          if (!degraded.has(id)) await deps.writeJson(contextFileId(id), context);
         }
       }
     } catch (e) {

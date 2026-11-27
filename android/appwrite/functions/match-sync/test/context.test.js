@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 
 import {
   archiveTeamName, buildContext, contextFileId, fetchForecast, hasElevens, joinEleven, mergeTables,
-  pickGround, shardIdsFor, sideContextFor, FORECAST_TTL_MS, SQUAD_RETRY_MS,
+  pickGround, shardIdsFor, sideContextFor, surnameLettersFor, FORECAST_TTL_MS, SQUAD_RETRY_MS,
 } from "../src/context.js";
 import { BUILDS_PER_RUN, createContextStore, newBudget } from "../src/contextstore.js";
 import { pairKey, shardOf } from "../src/contextmath.js";
@@ -177,10 +177,12 @@ function harness({ squadsHtml = fixture("cricbuzz_match_squads_xi.html") } = {})
     [`wpx-${shardOf("v:eden gardens")}`, { venues: tables.venues }],
   ]);
   const calls = { pages: [], writes: [], forecasts: 0, reads: [] };
+  const failing = new Map(); // file id -> the error code its read throws with
   let clock = 1_790_000_000_000;
   const store = createContextStore({
     readJson: async (id) => {
       calls.reads.push(id);
+      if (failing.has(id)) throw Object.assign(new Error(`read ${id} failed`), { code: failing.get(id) });
       return files.get(id) ?? null;
     },
     writeJson: async (id, value) => {
@@ -203,7 +205,7 @@ function harness({ squadsHtml = fixture("cricbuzz_match_squads_xi.html") } = {})
     error: (m) => { throw new Error(m); },
     now: () => clock,
   });
-  return { store, calls, files, advance: (ms) => { clock += ms; } };
+  return { store, calls, files, failing, advance: (ms) => { clock += ms; } };
 }
 const ask = (h, extra = {}) => h.store.ensure({ matchId: "151543", meta, model, format: "ODI", gender: "male", budget: newBudget(), ...extra });
 
@@ -278,6 +280,44 @@ test("a forecast is refreshed hourly, and a new model rebuilds the context", asy
   const rebuilt = await ask(h, { model: retrained });
   assert.equal(rebuilt.modelAsOf, "2026-10-05");
   assert.ok(rebuilt.forecast, "a rebuild keeps the forecast it already had");
+});
+
+test("a shard that fails to read leaves a context that is not stored as final, and a later run rebuilds it", async () => {
+  const h = harness();
+  h.failing.set(`wpx-${shardOf("r:India|male")}`, 503);
+  const first = await ask(h);
+  assert.ok(first, "the match is still scored this run");
+  assert.equal(hasElevens(first), false, "India's roster did not load");
+  assert.equal(h.calls.writes.includes("mc-151543"), false, "a context built on a failed read is not stored");
+
+  h.failing.clear();
+  const second = await ask(h);
+  assert.equal(h.calls.pages.length, 2, "the next run builds it again");
+  assert.equal(hasElevens(second), true);
+  assert.ok(h.calls.writes.includes("mc-151543"), "the whole build is stored");
+  const writes = h.calls.writes.length;
+  await ask(h);
+  assert.equal(h.calls.writes.length, writes, "and then it is left alone");
+});
+
+test("a shard that does not exist is an empty shard, not a failure", async () => {
+  const h = harness();
+  h.failing.set(`wpx-${shardOf("r:India|male")}`, 404);
+  await ask(h);
+  assert.ok(h.calls.writes.includes("mc-151543"), "a genuine 404 is stored as the context it is");
+  const pages = h.calls.pages.length;
+  await ask(h);
+  assert.equal(h.calls.pages.length, pages, "and not rebuilt");
+});
+
+test("squads listed in the other order from the match's teams still join each player to his own side", () => {
+  const teams = [{ key: "India", id: "2", name: "India" }, { key: "West Indies", id: "10", name: "West Indies" }];
+  const swapped = { ...squads, team1: squads.team2, team2: squads.team1 };
+  const straight = surnameLettersFor(squads, tables, teams, "male").sort();
+  assert.ok(straight.length > 0, "West Indies' unrostered players need a surname pool");
+  assert.deepEqual(surnameLettersFor(swapped, tables, teams, "male").sort(), straight);
+  const byName = teams.map(({ id, ...t }) => t);
+  assert.deepEqual(surnameLettersFor(swapped, tables, byName, "male").sort(), straight, "by name when the team has no id");
 });
 
 test("pruning deletes only old context files, and re-checks every candidate itself", async () => {
