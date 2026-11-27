@@ -350,3 +350,53 @@ test("the clamp the gate applies is the one match-sync serves", () => {
   assert.equal(Number(/PROB_FLOOR\s*=\s*([\d.]+)/.exec(src)[1]), SERVED_FLOOR);
   assert.equal(Number(/PROB_CEILING\s*=\s*([\d.]+)/.exec(src)[1]), SERVED_CEILING);
 });
+
+// The lab's "mov120" rule (winprob-lab.mjs ELO_SPECS): K0 120, multiplier ln(1+margin)*2.2/(lead*0.001+2.2).
+const eloOf = (state, name) => state.teams.get([...state.teams.keys()].find((k) => k.startsWith(`${name}|`))).elo;
+const walk = (games) => {
+  const state = new AsOfState();
+  for (const g of games) state.update(richSkeletonOf(rawMatch(g)));
+  return state;
+};
+
+test("Elo moves with the margin of victory, numbers from the lab formula", () => {
+  const big = eloOf(walk([{ date: "2024-01-01", first: "A", second: "B", winner: "A", runs: [160, 100] }]), "A");
+  const narrow = eloOf(walk([{ date: "2024-01-01", first: "A", second: "B", winner: "A", runs: [160, 156] }]), "A");
+  // margin (160-100)/160 = 0.375; equal ratings: 120 * ln(1.375) * 0.5
+  assert.ok(Math.abs(big - 1500 - 19.1071) < 1e-3, `big win moved ${big - 1500}`);
+  // the 156-run side is the one the fixture chases with: margin 4/160 = 0.025: 120 * ln(1.025) * 0.5
+  assert.ok(Math.abs(narrow - 1500 - 1.4816) < 1e-3, `narrow win moved ${narrow - 1500}`);
+  assert.ok(big - 1500 > 5 * (narrow - 1500));
+});
+
+test("a chasing win is measured in wickets and balls in hand", () => {
+  // No wicket lost and the fixture bowls all 120 balls: 0.5 * 10/10 + 0.5 * 0/120 = 0.5 margin.
+  const a = eloOf(walk([{ date: "2024-01-01", first: "B", second: "A", winner: "A", runs: [160, 160] }]), "A");
+  assert.ok(Math.abs(a - 1500 - 60 * Math.log(1.5)) < 1e-3, `chase moved ${a - 1500}`);
+});
+
+test("a favourite winning moves Elo less than an underdog winning by the same margin", () => {
+  const history = [{ date: "2024-01-01", first: "A", second: "B", winner: "A", runs: [160, 100] }];
+  const same = { first: "A", second: "B", runs: [160, 100] };
+  const fav = walk([...history, { date: "2024-01-08", ...same, winner: "A" }]);
+  const dog = walk([...history, { date: "2024-01-08", ...same, winner: "B" }]);
+  // Before: A 1519.1071, B 1480.8929. Favourite A wins: lead 38.2142, mult 0.31845*2.2/2.23821.
+  const favMove = eloOf(fav, "A") - 1519.1071;
+  const dogMove = eloOf(dog, "B") - 1480.8929;
+  assert.ok(favMove > 0 && dogMove > 0);
+  assert.ok(favMove < dogMove, `favourite ${favMove} vs underdog ${dogMove}`);
+  // The same two matches, margin held equal (A won by 0.375, B "won" with the same margin as the chasing/first side differ):
+  // exact favourite figure: 120 * (ln 1.375 * 2.2 / (38.2142 * 0.001 + 2.2)) * (1 - expected)
+  const expected = 1 / (1 + 10 ** ((1480.8929 - 1519.1071) / 400));
+  const mult = (Math.log(1.375) * 2.2) / (38.2142 * 0.001 + 2.2);
+  assert.ok(Math.abs(favMove - 120 * mult * (1 - expected)) < 1e-3);
+});
+
+test("a match's own result does not reach its Elo context (read before update)", () => {
+  const state = walk([{ date: "2024-01-01", first: "A", second: "B", winner: "A", runs: [160, 100] }]);
+  const next = richSkeletonOf(rawMatch({ date: "2024-01-08", first: "A", second: "B", winner: "B", runs: [300, 10] }));
+  const before = state.contextFor(next).teams.A.elo;
+  state.update(next);
+  assert.ok(Math.abs(before - 1519.1071) < 1e-3, "context must show Elo before the match");
+  assert.ok(eloOf(state, "A") < before);
+});
