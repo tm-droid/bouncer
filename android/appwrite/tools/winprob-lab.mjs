@@ -121,6 +121,7 @@ const COLUMNS = {
     ...col("recent", ["last5RateDelta", "last5Wickets", "hasLast5", "last5VsRequired", "lateLast5VsRequired"]),
     ...col("partnership", ["partnershipRuns", "partnershipBalls", "hasPartnership"]),
     ...WEATHER,
+    ...crrExtraColumns("chase"),
   ],
   first: [
     ...shipped(T.FIRST_INNINGS_FEATURE_NAMES),
@@ -132,6 +133,7 @@ const COLUMNS = {
     ...col("recent", ["last5RateDelta", "last5Wickets", "hasLast5"]),
     ...col("partnership", ["partnershipRuns", "partnershipBalls", "hasPartnership"]),
     ...WEATHER,
+    ...crrExtraColumns("first"),
   ],
   long: [
     ...shipped(T.LONG_FEATURE_NAMES),
@@ -326,6 +328,106 @@ function* inningsStates(match, inning, ctx, recentBalls) {
 
 // ── row builders ─────────────────────────────────────────────────────────────
 
+/** The shrunk-rate variants (balls of par-rate prior) and the runs-above-par one, for the crr experiment. */
+const CRR_K = [12, 24, 48, 96];
+const CRR_VARIANTS = ["a", ...CRR_K.map((k) => `k${k}`), "par"];
+/** Baseline columns that read the current run rate; a variant drops them and, but for "a", adds its own `name@variant`. */
+const CRR_DROP = {
+  chase: ["logRateRatio", "currentRateOverPar", "rateGapOverPar", "urgentRateGap", "last5RateDelta"],
+  first: ["currentRateOverPar", "projectedOverPar", "projectedVsVenue", "last5RateDelta"],
+};
+const crrExtraColumns = (head) => {
+  const out = [];
+  for (const v of CRR_VARIANTS.slice(1)) {
+    const par = v === "par";
+    if (head === "chase") {
+      out.push(...(par
+        ? [["aboveParRuns@par", "base"], ["aboveParUrgent@par", "base"], ["last5VsPar@par", "recent"]]
+        : [[`logRateRatio@${v}`, "base"], [`currentRateOverPar@${v}`, "base"], [`rateGapOverPar@${v}`, "base"], [`urgentRateGap@${v}`, "base"], [`last5RateDelta@${v}`, "recent"]]));
+    } else {
+      out.push(...(par
+        ? [["aboveParRuns@par", "base"], ["projectedOverPar@par", "base"], ["projectedVsVenue@par", "venue"], ["last5VsPar@par", "recent"]]
+        : [[`currentRateOverPar@${v}`, "base"], [`projectedOverPar@${v}`, "base"], [`projectedVsVenue@${v}`, "venue"], [`last5RateDelta@${v}`, "recent"]]));
+    }
+  }
+  return out;
+};
+
+/**
+ * One limited-overs feature vector in COLUMNS order, from a state and a context. Shared by the row
+ * builder and the fixed-chase probe, so both read the same code. `servingStart` sets the current rate to the
+ * required rate, as serving does at the first ball of a chase; otherwise it is runs per over so far.
+ */
+function limitedVector(o) {
+  const { chase, s, budget, par, target, strength, team, scoring, venueKnown, fam, toss, xi, recentBalls, weather } = o;
+  const parTotal = (par * budget) / 6;
+  const ballsRemaining = budget - s.legalBalls;
+  const runsNeeded = target - s.runs;
+  const wf = (10 - s.wickets) / 10;
+  const requiredRunRate = Math.max((runsNeeded * 6) / ballsRemaining, 0.1);
+  const currentRunRate = o.servingStart ? requiredRunRate : (s.runs * 6) / Math.max(s.legalBalls, 1);
+  let base;
+  let venueShape;
+  if (chase) {
+    base = T.chaseFeatures({
+      currentRunRate, requiredRunRate, wicketsInHand: 10 - s.wickets, ballsRemaining, ballsBudget: budget,
+      runsNeeded, target, teamStrengthDiff: strength, parRunRate: par, format: o.format,
+    });
+    venueShape = target / parTotal / scoring - target / parTotal;
+  } else {
+    base = T.firstInningsFeatures({
+      runsScored: s.runs, currentRunRate, wicketsInHand: 10 - s.wickets, ballsRemaining, ballsBudget: budget,
+      teamStrengthDiff: strength, parRunRate: par, format: o.format,
+    });
+    const projected = s.runs + currentRunRate * (ballsRemaining / 6) * (0.55 + 0.45 * wf);
+    venueShape = projected / parTotal / scoring - projected / parTotal;
+  }
+  const recentRate = (s.recentRuns * 6) / recentBalls;
+  // Momentum against what the chase still asks for, not against the innings so far.
+  const vsRequired = chase && s.haveRecent ? clamp((recentRate - (runsNeeded * 6) / ballsRemaining) / par, -3, 3) : 0;
+
+  // Variant columns. Every crr term, interactions included, recomputed from a different rate.
+  const extras = [];
+  const bf = Math.max(ballsRemaining, chase ? 1 : 0) / budget;
+  const recentVs = (rate) => (s.haveRecent ? (recentRate - rate) / par : 0);
+  const projectedAt = (rate) => s.runs + rate * (Math.max(ballsRemaining, 0) / 6) * (0.55 + 0.45 * wf);
+  const venueAt = (projected) => projected / parTotal / scoring - projected / parTotal;
+  for (const v of CRR_VARIANTS.slice(1)) {
+    if (v === "par") {
+      const above = (s.runs - (par * s.legalBalls) / 6) / parTotal;
+      if (chase) extras.push(above, above / (0.2 + bf), recentVs(par));
+      else {
+        const projected = projectedAt(par);
+        extras.push(above, projected / parTotal, venueAt(projected), recentVs(par));
+      }
+    } else {
+      const k = Number(v.slice(1));
+      const crr = (s.runs * 6 + k * par) / (s.legalBalls + k);
+      if (chase) {
+        const gap = (requiredRunRate - crr) / par;
+        extras.push(Math.log((crr + 0.5) / (requiredRunRate + 0.5)), crr / par, gap, gap / (0.2 + bf), recentVs(crr));
+      } else {
+        const projected = projectedAt(crr);
+        extras.push(crr / par, projected / parTotal, venueAt(projected), recentVs(crr));
+      }
+    }
+  }
+
+  return [
+    ...base,
+    ...team,
+    scoring - 1, o.chaseAdvantage, venueShape, fam, venueKnown,
+    ...toss,
+    ...xi,
+    ...s.state,
+    recentVs(currentRunRate), s.haveRecent ? s.recentWickets / 3 : 0, s.haveRecent ? 1 : 0,
+    ...(chase ? [vsRequired, vsRequired * (1 - ballsRemaining / budget)] : []),
+    s.partnershipRuns / (par * 5), Math.min(s.partnershipBalls, 120) / 60, 1,
+    ...weather,
+    ...extras,
+  ];
+}
+
 function limitedOversRows(match, ctx, winRateFor, kind, weather, emit, random) {
   if (!T.isLimitedOvers(match.formatClass) || !match.winner || match.innings.length < 2) return;
   const chase = kind === "chase";
@@ -335,7 +437,6 @@ function limitedOversRows(match, ctx, winRateFor, kind, weather, emit, random) {
   if (!ctx.teams[batting] || !ctx.teams[bowling]) return;
   const budget = match.ballsBudget;
   const par = T.parRunRateFor(match.formatClass);
-  const parTotal = (par * budget) / 6;
   const target = chase ? T.inningsTotals(match.innings[0]).runs + 1 : 0;
   const label = match.winner === batting ? 1 : 0;
   const strength = winRateFor(batting) - winRateFor(bowling);
@@ -358,60 +459,15 @@ function limitedOversRows(match, ctx, winRateFor, kind, weather, emit, random) {
     if (chase && runsNeeded <= 0) continue;
     if (random() >= ROW_RATE[kind]) continue;
 
-    const currentRunRate = (s.runs * 6) / Math.max(s.legalBalls, 1);
-    const wf = (10 - s.wickets) / 10;
-    let base;
-    let venueShape;
-    if (chase) {
-      base = T.chaseFeatures({
-        currentRunRate,
-        requiredRunRate: Math.max((runsNeeded * 6) / ballsRemaining, 0.1),
-        wicketsInHand: 10 - s.wickets,
-        ballsRemaining,
-        ballsBudget: budget,
-        runsNeeded,
-        target,
-        teamStrengthDiff: strength,
-        parRunRate: par,
-        format: match.formatClass,
-      });
-      venueShape = target / parTotal / scoring - target / parTotal;
-    } else {
-      base = T.firstInningsFeatures({
-        runsScored: s.runs,
-        currentRunRate,
-        wicketsInHand: 10 - s.wickets,
-        ballsRemaining,
-        ballsBudget: budget,
-        teamStrengthDiff: strength,
-        parRunRate: par,
-        format: match.formatClass,
-      });
-      const projected = s.runs + currentRunRate * (ballsRemaining / 6) * (0.55 + 0.45 * wf);
-      venueShape = projected / parTotal / scoring - projected / parTotal;
-    }
-
     const xi = chase
       ? [own?.batAvg ?? 0, own?.batStrike ?? 0, own?.batRecent ?? 0, opp?.bowl ?? 0, coverage, xiKnown]
       : [own?.batAvg ?? 0, own?.batStrike ?? 0, own?.batRecent ?? 0, opp?.bowl ?? 0,
         opp?.batAvg ?? 0, opp?.batStrike ?? 0, own?.bowl ?? 0, coverage, xiKnown];
-    const recentRate = (s.recentRuns * 6) / recentBalls;
-    // Momentum against what the chase still asks for, not against the innings so far.
-    const vsRequired = chase && s.haveRecent ? clamp((recentRate - (runsNeeded * 6) / ballsRemaining) / par, -3, 3) : 0;
-
     emit(
-      [
-        ...base,
-        ...team,
-        scoring - 1, ctx.venue.chaseAdvantage, venueShape, fam, venueKnown,
-        ...toss,
-        ...xi,
-        ...s.state,
-        s.haveRecent ? (recentRate - currentRunRate) / par : 0, s.haveRecent ? s.recentWickets / 3 : 0, s.haveRecent ? 1 : 0,
-        ...(chase ? [vsRequired, vsRequired * (1 - ballsRemaining / budget)] : []),
-        s.partnershipRuns / (par * 5), Math.min(s.partnershipBalls, 120) / 60, 1,
-        ...weather,
-      ],
+      limitedVector({
+        chase, s, budget, par, target, strength, team, scoring, chaseAdvantage: ctx.venue.chaseAdvantage,
+        venueKnown, fam, toss, xi, recentBalls, weather, format: match.formatClass,
+      }),
       label,
       batting,
       ballsRemaining,
@@ -811,6 +867,7 @@ function standardize(sinks) {
   for (const sink of Object.values(sinks)) {
     for (let i = 0; i < sink.length; i++) for (let j = 0; j < k; j++) sink.X[i * k + j] = (sink.X[i * k + j] - means[j]) / stds[j];
   }
+  return { means, stds };
 }
 
 /** Per-row loss, the stated probability of the outcome the bar shows, and whether it happened. */
@@ -877,16 +934,22 @@ function summarise(parts) {
 
 const foldCache = new Map();
 
-function fit(store, groups, modelClass, classes, windowsList = null) {
+function fit(store, groups, modelClass, classes, windowsList = null, variant = null) {
   const columns = [];
-  store.columns.forEach(([, group], idx) => {
-    if (groups.includes(group)) columns.push(idx);
+  // A crr variant swaps the run-rate columns for its own `name@variant` ones; "a" only drops them.
+  const dropped = variant ? CRR_DROP[store.name] ?? [] : [];
+  store.columns.forEach(([name, group], idx) => {
+    if (!groups.includes(group)) return;
+    const at = name.indexOf("@");
+    if (at >= 0 ? name.slice(at + 1) !== variant : dropped.includes(name)) return;
+    columns.push(idx);
   });
   if (!windowsList && !foldCache.has(store)) foldCache.set(store, foldWindows(store));
   const parts = { full: [], mix: [], bare: [] };
   const matchOf = [];
   const indexOf = [];
   const details = [];
+  const models = [];
   for (const windows of windowsList ?? foldCache.get(store)) {
     const sinks = {
       train: slice(store, windows, WINDOW.train, columns, "mix"),
@@ -897,10 +960,11 @@ function fit(store, groups, modelClass, classes, windowsList = null) {
     };
     let probsOf;
     if (modelClass === "linear") {
-      standardize(sinks);
+      const { means, stds } = standardize(sinks);
       if (classes === 1) {
         const model = T.trainBinary(sinks.train, sinks.valid, BINARY_OPTIONS);
         const temperature = T.fitTemperature(sinks.valid, model.weights, model.bias);
+        models.push({ columns, means, stds, weights: model.weights, bias: model.bias, temperature });
         probsOf = (f) => {
           let z = model.bias;
           for (let j = 0; j < f.length; j++) z += model.weights[j] * f[j];
@@ -944,6 +1008,7 @@ function fit(store, groups, modelClass, classes, windowsList = null) {
     bare: summarise(parts.bare),
     matchOf: allMatches,
     index: cat(indexOf),
+    models,
   };
 }
 
@@ -971,6 +1036,28 @@ function bootstrap(baseline, candidate, matchOf, rounds = 400, seed = 31) {
   }
   samples.sort();
   return { lo: samples[Math.floor(rounds * 0.025)], hi: samples[Math.floor(rounds * 0.975)], matches: list.length };
+}
+
+/** P(chasing side wins) in a neutral 172-run T20 chase, from the last fold's fitted linear model. */
+const PROBE_STATES = [["0 balls", 0, 0], ["1 dot ball", 0, 1], ["1 single", 1, 1], ["15-run over", 15, 6]];
+function chaseProbe(store, r) {
+  const m = r.models.at(-1);
+  if (!m) return null;
+  const out = {};
+  for (const [label, runs, balls] of PROBE_STATES) {
+    const v = limitedVector({
+      chase: true,
+      s: { runs, legalBalls: balls, wickets: 0, partnershipRuns: runs, partnershipBalls: balls, recentRuns: 0, recentWickets: 0, haveRecent: false, state: [0, 0, 0, 0] },
+      budget: 120, par: T.parRunRateFor("T20"), target: 172, strength: 0, team: [0, 0, 0, 0], scoring: 1, chaseAdvantage: 0,
+      venueKnown: 0, fam: 0, toss: [0], xi: [0, 0, 0, 0, 0, 0], recentBalls: 30, weather: [0, 0, 0, 0, 0, 0],
+      format: "T20", servingStart: balls === 0,
+    });
+    if (v.length !== store.k) throw new Error(`probe vector ${v.length} for ${store.k} columns`);
+    let z = m.bias;
+    m.columns.forEach((c, j) => { z += (m.weights[j] * (v[c] - m.means[j])) / m.stds[j]; });
+    out[label] = 1 / (1 + Math.exp(-z / m.temperature));
+  }
+  return out;
 }
 
 const report = { cutoffs: { validCutoff, holdoutCutoff }, masks: MASK, joinFail: JOIN_FAIL, folds: FOLDS, models: {} };
@@ -1231,6 +1318,46 @@ for (const name of wanted) {
       ece: all.full.ece,
     };
     console.log(`  latest season (>= ${latest.cut}): base ${fmt(base.full.logLoss)} as-of ${fmt(asOfLatest.full.logLoss)} all ${fmt(all.full.logLoss)} (${base.full.rows} rows)`);
+  }
+
+  if (name === "chase" || name === "first") {
+    // The run-rate experiment: each variant at all groups against the baseline at all groups.
+    const all = [...root, ...optional];
+    const one = latestSeason ? [latest.windows] : null;
+    const baseLatest = one ? fit(store, all, "linear", classes, one) : null;
+    const cal = (r) => calibrationOf(r.full.stated, r.full.happened, r.matchOf);
+    const entry = (label, r, variant) => {
+      const row = line(`crr ${label}`, r, everything);
+      const out = {
+        ...row,
+        deltaEce: r.full.ece - everything.full.ece,
+        bands: bandsOf(store, everything, r),
+        calibration: (({ slope, slopeCI, intercept }) => ({ slope, slopeCI, intercept }))(cal(r)),
+        probe: name === "chase" ? chaseProbe(store, r) : null,
+      };
+      out.earlyBand = out.bands[2];
+      if (one) {
+        const l = fit(store, all, "linear", classes, one, variant);
+        const ci = bootstrap(baseLatest.full.loss, l.full.loss, l.matchOf);
+        out.latestSeason = { logLoss: l.full.logLoss, delta: l.full.logLoss - baseLatest.full.logLoss, ci: [ci.lo, ci.hi], ece: l.full.ece, deltaEce: l.full.ece - baseLatest.full.ece };
+      }
+      out.gate = row.delta <= -0.001 && row.ci[1] < 0 && out.deltaEce <= 0.005 ? "PASS" : "FAIL";
+      return out;
+    };
+    const baseOut = {
+      logLoss: everything.full.logLoss,
+      ece: everything.full.ece,
+      bands: bandsOf(store, everything, everything),
+      calibration: (({ slope, slopeCI, intercept }) => ({ slope, slopeCI, intercept }))(cal(everything)),
+      probe: name === "chase" ? chaseProbe(store, everything) : null,
+      latestSeason: baseLatest ? { logLoss: baseLatest.full.logLoss, ece: baseLatest.full.ece } : null,
+    };
+    const variants = {};
+    for (const v of CRR_VARIANTS) variants[v] = entry(v, fit(store, all, "linear", classes, null, v), v);
+    report.crr = report.crr ?? {};
+    report.crr[name] = { baseline: baseOut, variants };
+    console.log(`  probe baseline ${JSON.stringify(baseOut.probe)}`);
+    for (const v of CRR_VARIANTS) console.log(`  probe ${v} ${JSON.stringify(variants[v].probe)} gate ${variants[v].gate}`);
   }
   report.models[name] = { rows, selected: chosen.slice(root.length) };
 }
