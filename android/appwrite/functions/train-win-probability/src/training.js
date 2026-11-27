@@ -616,8 +616,10 @@ export function longRows(match, winRateFor) {
  * full keeps the cap from biasing toward whatever was streamed first.
  */
 export class RowSink {
-  constructor(capacity, numFeatures, seed = 20260806) {
+  constructor(capacity, numFeatures, seed = 20260806, trackMatch = false) {
     this.capacity = capacity;
+    /** Per-row match id, kept in step with reservoir replacement; only when `trackMatch`. */
+    this.matchIds = trackMatch ? new Uint32Array(capacity) : null;
     this.numFeatures = numFeatures;
     this.X = new Float32Array(capacity * numFeatures);
     this.y = new Uint8Array(capacity);
@@ -631,7 +633,7 @@ export class RowSink {
     return this.rng / 4294967296;
   }
 
-  push(features, label) {
+  push(features, label, matchId = 0) {
     this.seen++;
     let slot;
     if (this.length < this.capacity) {
@@ -643,6 +645,7 @@ export class RowSink {
     }
     this.X.set(features, slot * this.numFeatures);
     this.y[slot] = label;
+    if (this.matchIds) this.matchIds[slot] = matchId;
   }
 
   /** Mean/std per feature over the rows held here. */
@@ -695,6 +698,25 @@ export function softmax(logits) {
   const exps = logits.map((l) => Math.exp(l - max));
   const sum = exps.reduce((a, b) => a + b, 0) || 1;
   return exps.map((e) => e / sum);
+}
+
+/**
+ * Row weights n^-power per match (n = the match's rows in this sink), scaled to mean 1. Rows of one
+ * match are near-duplicates, so power 0.5 makes a match's total weight grow as sqrt(n), not n.
+ */
+export function matchRowWeights(sink, power = 0.5) {
+  const out = new Float64Array(sink.length);
+  if (sink.length === 0) return out;
+  const counts = new Map();
+  for (let r = 0; r < sink.length; r++) counts.set(sink.matchIds[r], (counts.get(sink.matchIds[r]) ?? 0) + 1);
+  let sum = 0;
+  for (let r = 0; r < sink.length; r++) {
+    out[r] = counts.get(sink.matchIds[r]) ** -power;
+    sum += out[r];
+  }
+  const scale = sink.length / sum;
+  for (let r = 0; r < sink.length; r++) out[r] *= scale;
+  return out;
 }
 
 function logitAt(X, row, numFeatures, weights, bias) {
@@ -787,7 +809,7 @@ const ADAM_EPS = 1e-8;
 export function trainBinary(train, valid, options = {}) {
   const {
     epochs = 100, batchSize = 512, learningRate = 0.05, l2 = 1e-4, patience = 8, seed = 12345,
-    fitBias = true,
+    fitBias = true, rowWeight = null,
   } = options;
   const k = train.numFeatures;
   const weights = new Float64Array(k);
@@ -825,7 +847,7 @@ export function trainBinary(train, valid, options = {}) {
         const off = row * k;
         let z = bias;
         for (let j = 0; j < k; j++) z += weights[j] * train.X[off + j];
-        const err = sigmoid(z) - train.y[row];
+        const err = (sigmoid(z) - train.y[row]) * (rowWeight ? rowWeight[row] : 1);
         gradB += err;
         for (let j = 0; j < k; j++) gradW[j] += err * train.X[off + j];
       }

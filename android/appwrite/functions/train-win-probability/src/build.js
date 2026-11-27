@@ -74,6 +74,7 @@ import {
   firstInningsFeatures,
   walkLongRows,
   fitTemperature,
+  matchRowWeights,
   holdoutCutoffDate,
   inningsTotals,
   isLimitedOvers,
@@ -273,7 +274,8 @@ function fitTier({ label, sinks, featureNames, log }) {
   const standardizer = sinks.train.fitStandardizer();
   for (const sink of Object.values(sinks)) sink.applyStandardizer(standardizer);
 
-  const fit = trainBinary(sinks.train, sinks.valid, BINARY_OPTIONS);
+  const rowWeight = sinks.train.matchIds ? matchRowWeights(sinks.train, 0.5) : null;
+  const fit = trainBinary(sinks.train, sinks.valid, { ...BINARY_OPTIONS, rowWeight });
   const temperature = fitTemperature(sinks.valid, fit.weights, fit.bias);
   const holdout = binaryMetrics(sinks.holdout, fit.weights, fit.bias, temperature);
   const ece = expectedCalibrationError(sinks.holdout, fit.weights, fit.bias, temperature);
@@ -310,6 +312,41 @@ function fitTier({ label, sinks, featureNames, log }) {
   };
 }
 
+/** True when a match must not train or validate this head: a DLS match on the first innings. */
+export function dropsDls(head, window, match) {
+  return head === "firstInnings" && window !== "holdout" && match.method != null;
+}
+
+export function headSinks({ head, coreNames, fullNames, matches, windowOf, rowsFor }) {
+  // Chase rows of one match are near-duplicates: weight each row 1/sqrt(n) (lab E6).
+  const weighted = head === "chase";
+  const core = {
+    train: new RowSink(CAP_TRAIN, coreNames.length, 20260806, weighted),
+    valid: new RowSink(CAP_VALID, coreNames.length),
+    holdout: new RowSink(CAP_HOLDOUT, coreNames.length),
+    // Holdout rows that will be served by `core` because their match has no eleven.
+    rest: new RowSink(CAP_HOLDOUT, coreNames.length, 77),
+  };
+  const full = {
+    train: new RowSink(CAP_TRAIN, fullNames.length, 5, weighted),
+    valid: new RowSink(CAP_VALID, fullNames.length, 6),
+    holdout: new RowSink(CAP_HOLDOUT, fullNames.length, 7),
+  };
+  let matchId = 0;
+  for (const match of matches) {
+    const window = windowOf(match.date);
+    matchId++;
+    // Rain-reduced matches distort the first innings' scoring-rate curve: out of train and valid only (lab E6).
+    if (dropsDls(head, window, match)) continue;
+    for (const row of rowsFor(match)) {
+      core[window].push(row.core, row.label, matchId);
+      if (row.full) full[window].push(row.full, row.label, matchId);
+      else if (window === "holdout") core.rest.push(row.core, row.label);
+    }
+  }
+  return { core, full };
+}
+
 /**
  * Fit one head's two models and say what the pair scores as served.
  *
@@ -320,26 +357,7 @@ function fitHead({ label, head, baseNames, matches, windowOf, rowsFor, log }) {
   const tv = head === "firstInnings";
   const coreNames = contextFeatureNames(head, baseNames, false, tv);
   const fullNames = contextFeatureNames(head, baseNames, true, tv);
-  const core = {
-    train: new RowSink(CAP_TRAIN, coreNames.length),
-    valid: new RowSink(CAP_VALID, coreNames.length),
-    holdout: new RowSink(CAP_HOLDOUT, coreNames.length),
-    // Holdout rows that will be served by `core` because their match has no eleven.
-    rest: new RowSink(CAP_HOLDOUT, coreNames.length, 77),
-  };
-  const full = {
-    train: new RowSink(CAP_TRAIN, fullNames.length, 5),
-    valid: new RowSink(CAP_VALID, fullNames.length, 6),
-    holdout: new RowSink(CAP_HOLDOUT, fullNames.length, 7),
-  };
-  for (const match of matches) {
-    const window = windowOf(match.date);
-    for (const row of rowsFor(match)) {
-      core[window].push(row.core, row.label);
-      if (row.full) full[window].push(row.full, row.label);
-      else if (window === "holdout") core.rest.push(row.core, row.label);
-    }
-  }
+  const { core, full } = headSinks({ head, coreNames, fullNames, matches, windowOf, rowsFor });
 
   const coreFit = fitTier({ label: `${label} (teams and ground)`, sinks: core, featureNames: coreNames, log });
   const fullFit = fitTier({ label: `${label} (with elevens)`, sinks: full, featureNames: fullNames, log });
