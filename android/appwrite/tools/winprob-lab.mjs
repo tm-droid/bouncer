@@ -32,6 +32,9 @@ const AdmZip = require("adm-zip");
 const T = await import(path.join(trainerDir, "src/training.js"));
 const { richSkeletonOf, outIndex } = await import(path.join(trainerDir, "src/corpus.js"));
 const { AsOfState, playerRating, xiStrength } = await import(path.join(trainerDir, "src/asOfState.js"));
+const Build = await import(path.join(trainerDir, "src/build.js"));
+const { sideContextOf } = await import(path.join(trainerDir, "src/asOfState.js"));
+const { contextFeatureNames } = await import(path.join(trainerDir, "src/contextmath.js"));
 const { trainGbt, gbtLogits } = await import(path.join(here, "lab/gbt.js"));
 
 const argv = process.argv.slice(2);
@@ -610,6 +613,97 @@ for (let m = 0; m < matches.length; m++) {
 }
 for (const w of Object.values(wide)) log(`${w.name}: ${w.length} rows x ${w.k} columns`);
 
+// ── v6 as served ─────────────────────────────────────────────────────────────
+//
+// What the published v6 system scores on the same windows: the trainer's own feature set, context
+// and elevens (thinned at JOIN_FAILURE), a `core` and a `full` model per head, and the system
+// figure share*full + (1-share)*core.rest, clamped to the serving range. It is a second as-of walk
+// at row rate 1 with the trainer's sinks, caps and seeds, so it can be set against the trainer's
+// published figures. Nothing here reads the lab's own columns.
+const asServed = {};
+if (!argv.includes("--no-as-served")) {
+  const CAPS = { train: 400_000, valid: 200_000, holdout: 300_000 };
+  const NAME = { chase: "chase", first: "firstInnings", prematch: "prematch" };
+  const BASE = { chase: T.CHASE_FEATURE_NAMES, first: T.FIRST_INNINGS_FEATURE_NAMES, prematch: T.PREMATCH_FEATURE_NAMES };
+  const WIN = ["train", "valid", "holdout"];
+  const servedLoss = (sink, fitted, temperature) => {
+    if (sink.length === 0) return null;
+    const k = sink.numFeatures;
+    let loss = 0;
+    for (let i = 0; i < sink.length; i++) {
+      let z = fitted.bias;
+      for (let j = 0; j < k; j++) z += fitted.weights[j] * sink.X[i * k + j];
+      const p = Math.min(Build.SERVED_CEILING, Math.max(Build.SERVED_FLOOR, T.sigmoid(z / temperature)));
+      loss -= sink.y[i] === 1 ? Math.log(p) : Math.log(1 - p);
+    }
+    return loss / sink.length;
+  };
+  const tier = (sinks) => {
+    if (sinks.train.length === 0) return null;
+    const std = sinks.train.fitStandardizer();
+    for (const sink of Object.values(sinks)) sink.applyStandardizer(std);
+    const fitted = T.trainBinary(sinks.train, sinks.valid, BINARY_OPTIONS);
+    const temperature = T.fitTemperature(sinks.valid, fitted.weights, fitted.bias);
+    const holdout = T.binaryMetrics(sinks.holdout, fitted.weights, fitted.bias, temperature);
+    return {
+      temperature,
+      epoch: fitted.epoch,
+      holdout,
+      served: servedLoss(sinks.holdout, fitted, temperature),
+      ece: T.expectedCalibrationError(sinks.holdout, fitted.weights, fitted.bias, temperature),
+      rest: sinks.rest
+        ? { ...T.binaryMetrics(sinks.rest, fitted.weights, fitted.bias, temperature), served: servedLoss(sinks.rest, fitted, temperature) }
+        : null,
+    };
+  };
+
+  // The trainer's walk, verbatim: elevens thinned with one stream, context set per side.
+  const servedState = new AsOfState();
+  const servedRandom = lcg(20261003);
+  for (const match of matches) {
+    const ctx = servedState.contextFor(match);
+    const elevens = Build.thinnedElevens(match, ctx, servedRandom);
+    match.context = {};
+    for (const side of match.teams) match.context[side] = sideContextOf(ctx, match, side, (name) => elevens[name]);
+    servedState.update(match);
+  }
+
+  for (const head of ["chase", "first", "prematch"]) {
+    if (!wanted.has(head)) continue;
+    const trainerHead = NAME[head];
+    const coreK = contextFeatureNames(trainerHead, BASE[head], false).length;
+    const fullK = contextFeatureNames(trainerHead, BASE[head], true).length;
+    const core = Object.fromEntries(WIN.map((w) => [w, new T.RowSink(CAPS[w], coreK)]));
+    core.rest = new T.RowSink(CAPS.holdout, coreK, 77);
+    const full = Object.fromEntries(WIN.map((w, i) => [w, new T.RowSink(CAPS[w], fullK, 5 + i)]));
+    for (const match of matches) {
+      const w = WIN[windowOf(match.date)];
+      const rows = head === "prematch" ? Build.prematchContextRows(match) : Build.limitedOversRows(trainerHead, match);
+      for (const row of rows) {
+        core[w].push(row.core, row.label);
+        if (row.full) full[w].push(row.full, row.label);
+        else if (w === "holdout") core.rest.push(row.core, row.label);
+      }
+    }
+    const coreFit = tier(core);
+    const fullFit = tier(full);
+    const share = full.holdout.seen + core.rest.seen > 0 ? full.holdout.seen / (full.holdout.seen + core.rest.seen) : 0;
+    const mix = (a, b) => (fullFit && b != null ? share * a + (1 - share) * b : null);
+    asServed[head] = {
+      coreOnly: coreFit?.holdout.logLoss ?? null,
+      coreOnlyServed: coreFit?.served ?? null,
+      system: mix(fullFit?.holdout.logLoss, coreFit?.rest?.logLoss) ?? coreFit?.holdout.logLoss ?? null,
+      systemServed: mix(fullFit?.served, coreFit?.rest?.served) ?? coreFit?.served ?? null,
+      elevenShare: share,
+      coreEce: coreFit?.ece ?? null,
+      fullEce: fullFit?.ece ?? null,
+      rows: { core: core.holdout.seen, full: full.holdout.seen, rest: core.rest.seen },
+      epochs: { core: coreFit?.epoch, full: fullFit?.epoch },
+    };
+    log(`as served ${head}: system ${fmt(asServed[head].system)} (clamped ${fmt(asServed[head].systemServed)}), core only ${fmt(asServed[head].coreOnly)}, eleven share ${fmt(share, 3)}`);
+  }
+}
+
 // ── fitting ──────────────────────────────────────────────────────────────────
 
 const UNUSED = 3;
@@ -860,6 +954,30 @@ function bootstrap(baseline, candidate, matchOf, rounds = 400, seed = 31) {
 
 const report = { cutoffs: { validCutoff, holdoutCutoff }, masks: MASK, joinFail: JOIN_FAIL, folds: FOLDS, models: {} };
 
+// a1: the lab's holdout against the trainer's published figures (2026-11-23 windows). Pass
+// --cutoffs 2024-03-08,2025-01-27 for a like-for-like read; the corpus has since grown.
+const REFERENCE = {
+  chase: { core: 0.3765, asServed: 0.3765 },
+  first: { core: 0.566, asServed: 0.5639 },
+  prematch: { core: 0.6266, asServed: 0.6241 },
+  long: { core: 0.6034, asServed: null },
+};
+report.asServed = asServed;
+report.a1 = {};
+for (const [head, ref] of Object.entries(REFERENCE)) {
+  const mine = asServed[head];
+  const lab = report.models?.[head];
+  report.a1[head] = {
+    refCore: ref.core,
+    refAsServed: ref.asServed,
+    labCoreOnly: mine?.coreOnly ?? null,
+    labAsServed: mine?.system ?? null,
+    labAsServedClamped: mine?.systemServed ?? null,
+    diffCore: mine?.coreOnly != null ? mine.coreOnly - ref.core : null,
+    diffAsServed: mine?.system != null && ref.asServed != null ? mine.system - ref.asServed : null,
+  };
+}
+
 function line(label, r, baseline) {
   const delta = baseline ? r.full.logLoss - baseline.full.logLoss : 0;
   const ci = baseline ? bootstrap(baseline.full.loss, r.full.loss, r.matchOf) : null;
@@ -940,6 +1058,12 @@ for (const name of wanted) {
   }
   report.models[name] = { rows, selected: chosen.slice(root.length) };
 }
+
+for (const head of Object.keys(report.a1)) {
+  const row = report.models[head]?.rows?.find((r) => r.label === "all groups");
+  if (row) report.a1[head].labAllGroups = row.logLoss;
+}
+for (const head of Object.keys(report.a1)) console.log(`a1 ${head}: ${JSON.stringify(report.a1[head])}`);
 
 if (outPath) {
   fs.writeFileSync(outPath, JSON.stringify(report, null, 2));
