@@ -51,18 +51,24 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/cricsheet
-          key: cricsheet-all-json-${{ steps.week.outputs.key }}
+          key: cricsheet-all-json-v2-${{ steps.week.outputs.key }}
 
       - name: Fetch Cricsheet
         run: |
           mkdir -p ~/cricsheet
-          [ -s ~/cricsheet/all_json.zip ] || curl -fsSL --retry 3 -o ~/cricsheet/all_json.zip https://cricsheet.org/downloads/all_json.zip
+          # Node's fetch, as the trainer downloads it: curl from a runner was answered with a 12 KB HTML page.
+          if ! head -c 2 ~/cricsheet/all_json.zip 2>/dev/null | grep -q PK; then
+            node -e 'const fs=require("fs");(async()=>{const r=await fetch("https://cricsheet.org/downloads/all_json.zip",{signal:AbortSignal.timeout(300000)});if(!r.ok)throw new Error("HTTP "+r.status);fs.writeFileSync(process.argv[1],Buffer.from(await r.arrayBuffer()));})().catch(e=>{console.error(e);process.exit(1)})' ~/cricsheet/all_json.zip
+          fi
           ls -la ~/cricsheet
+          # A zip starts with PK; anything else (an HTML challenge page) must fail here, before it is cached.
+          head -c 2 ~/cricsheet/all_json.zip | grep -q PK
 
       - name: Lab
         env:
           LAB_ARGS: ${{ inputs.args }}
         run: |
+          set -o pipefail
           # shellcheck disable=SC2086
           node --max-old-space-size=12288 appwrite/tools/winprob-lab.mjs --zip ~/cricsheet/all_json.zip $LAB_ARGS --out report.json 2>&1 | tee lab.log
 
