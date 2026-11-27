@@ -73,8 +73,10 @@ import {
   inningsTotals,
   isLimitedOvers,
   isLongTrainable,
+  longFeatures,
   multiclassMetrics,
   parRunRateFor,
+  predictClasses,
   prematchFeatures,
   sigmoid,
   trainBinary,
@@ -230,6 +232,28 @@ export function* prematchContextRows(match) {
 
 // ── fitting ──────────────────────────────────────────────────────────────────
 
+/**
+ * The serving clamp (`PROB_FLOOR` / `PROB_CEILING` in match-sync's winprob.js; a test pins these to
+ * it). The reader never publishes a probability outside it, so a holdout score taken without it
+ * credits the model with confidence the app never shows.
+ */
+export const SERVED_FLOOR = 0.03;
+export const SERVED_CEILING = 0.97;
+
+/** Holdout log-loss of what is actually served: the temperature-scaled probability, clamped. */
+function servedLogLoss(sink, weights, bias, temperature) {
+  if (sink.length === 0) return null;
+  const k = sink.numFeatures;
+  let loss = 0;
+  for (let i = 0; i < sink.length; i++) {
+    let logit = bias;
+    for (let j = 0; j < k; j++) logit += weights[j] * sink.X[i * k + j];
+    const p = Math.min(SERVED_CEILING, Math.max(SERVED_FLOOR, sigmoid(logit / temperature)));
+    loss -= sink.y[i] === 1 ? Math.log(p) : Math.log(1 - p);
+  }
+  return loss / sink.length;
+}
+
 function fitTier({ label, sinks, featureNames, log }) {
   if (sinks.train.length === 0) {
     log(`${label}: no training rows — model omitted`);
@@ -248,7 +272,9 @@ function fitTier({ label, sinks, featureNames, log }) {
     `holdout log-loss ${fmt(holdout.logLoss)} (T=${temperature.toFixed(3)}), accuracy ${fmt(holdout.accuracy)}, ` +
     `Brier ${fmt(holdout.brier)}, ECE ${fmt(ece)}, base rate ${fmt(rate)}`
   );
-  const rest = sinks.rest ? binaryMetrics(sinks.rest, fit.weights, fit.bias, temperature) : null;
+  const rest = sinks.rest
+    ? { ...binaryMetrics(sinks.rest, fit.weights, fit.bias, temperature), served: servedLogLoss(sinks.rest, fit.weights, fit.bias, temperature) }
+    : null;
   return {
     model: {
       weights: fit.weights,
@@ -262,6 +288,7 @@ function fitTier({ label, sinks, featureNames, log }) {
         rows: holdout.rows,
         seen: sinks.holdout.seen,
         logLoss: holdout.logLoss,
+        servedLogLoss: servedLogLoss(sinks.holdout, fit.weights, fit.bias, temperature),
         accuracy: holdout.accuracy,
         brier: holdout.brier,
         ece,
@@ -313,12 +340,19 @@ function fitHead({ label, head, baseNames, matches, windowOf, rowsFor, log }) {
     fullFit && coreFit.rest?.logLoss != null
       ? share * fullFit.model.holdout.logLoss + (1 - share) * coreFit.rest.logLoss
       : coreFit.model.holdout.logLoss;
-  log(`${label}: as served — log-loss ${fmt(system)} (${(share * 100).toFixed(0)}% of holdout rows had both elevens)`);
+  const servedSystem =
+    fullFit && coreFit.rest?.served != null
+      ? share * fullFit.model.holdout.servedLogLoss + (1 - share) * coreFit.rest.served
+      : coreFit.model.holdout.servedLogLoss;
+  log(
+    `${label}: as served — log-loss ${fmt(system)}, clamped to [${SERVED_FLOOR}, ${SERVED_CEILING}] ${fmt(servedSystem)} ` +
+    `(${(share * 100).toFixed(0)}% of holdout rows had both elevens)`
+  );
 
   return {
     core: coreFit.model,
     full: fullFit?.model ?? null,
-    holdout: { logLoss: system, elevenShare: share, coreOnly: coreFit.model.holdout.logLoss },
+    holdout: { logLoss: system, servedLogLoss: servedSystem, elevenShare: share, coreOnly: coreFit.model.holdout.logLoss },
   };
 }
 
@@ -375,6 +409,10 @@ function fitLongModel({ matches, windowOf, log }) {
       logLoss: holdout.logLoss,
       accuracy: holdout.accuracy,
       priorLogLoss,
+      // Marks a model whose rows count only legal deliveries as balls bowled. Before that fix the
+      // Test log-loss was measured on a leaking feature, so the gate compares only against a
+      // published model that carries this mark.
+      leakFixed: true,
     },
   };
 }
@@ -564,6 +602,94 @@ function scoreTier(sub, features) {
 export const GATE_LOG_LOSS_SLACK = 0.02;
 export const GATE_MAX_ECE = 0.04;
 
+/** How far a probability may move the wrong way along a monotone axis before the grid reports it. */
+export const GATE_MONOTONE_SLACK = 0.005;
+
+/** A neutral context that also carries two empty elevens, so the `full` tier can be scored. */
+const NEUTRAL_WITH_XI = Object.freeze({ ...NEUTRAL_CONTEXT, xi: { own: xiStrength(null), opp: xiStrength(null) } });
+
+const FORMAT_BUDGET = { T20: 120, ODI: 300, HUNDRED: 100 };
+
+/** The chase head's probability for the side batting second, at a state read off the grid. */
+function chaseP(sub, ctx, withXi, format, runsNeeded, ballsRemaining, wicketsLost) {
+  const budget = FORMAT_BUDGET[format];
+  const par = PAR_RUN_RATE[format];
+  const s = {
+    currentRunRate: par,
+    requiredRunRate: Math.max((runsNeeded * 6) / ballsRemaining, 0.1),
+    wicketsInHand: 10 - wicketsLost,
+    ballsRemaining,
+    ballsBudget: budget,
+    runsNeeded,
+    target: Math.round((par * budget) / 6),
+    teamStrengthDiff: 0,
+    parRunRate: par,
+    format,
+  };
+  return scoreTier(sub, contextFeatures("chase", chaseFeatures(s), s, ctx, withXi));
+}
+
+/**
+ * More wickets in hand, or fewer runs needed off the same balls, never lowers the chasing side's
+ * probability. Returns the first violation as a sentence, or null. The grid is coarse on purpose:
+ * it is a property check, not a calibration check, and a fitted model may wobble by a hair between
+ * neighbouring cells.
+ */
+function chaseMonotonicityProblem(sub, ctx, withXi, format) {
+  const budget = FORMAT_BUDGET[format];
+  const parPerBall = PAR_RUN_RATE[format] / 6;
+  const lostGrid = [0, 3, 6, 9];
+  for (const ballFraction of [0.25, 0.6]) {
+    const balls = Math.round(budget * ballFraction);
+    const runsGrid = [0.4, 0.8, 1.2, 1.6].map((m) => Math.max(1, Math.round(parPerBall * balls * m)));
+    for (const runs of runsGrid) {
+      for (let i = 1; i < lostGrid.length; i++) {
+        const fewer = chaseP(sub, ctx, withXi, format, runs, balls, lostGrid[i - 1]);
+        const more = chaseP(sub, ctx, withXi, format, runs, balls, lostGrid[i]);
+        if (more > fewer + GATE_MONOTONE_SLACK) {
+          return `${format}: ${runs} needed off ${balls} scored ${fmt(more)} with ${lostGrid[i]} wickets lost, above ${fmt(fewer)} with ${lostGrid[i - 1]} lost`;
+        }
+      }
+    }
+    for (const lost of lostGrid) {
+      for (let i = 1; i < runsGrid.length; i++) {
+        const fewer = chaseP(sub, ctx, withXi, format, runsGrid[i - 1], balls, lost);
+        const more = chaseP(sub, ctx, withXi, format, runsGrid[i], balls, lost);
+        if (more > fewer + GATE_MONOTONE_SLACK) {
+          return `${format}: with ${lost} lost off ${balls} balls, ${runsGrid[i]} needed scored ${fmt(more)}, above ${fmt(fewer)} for ${runsGrid[i - 1]} needed`;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/** A T20 first innings `runs` for `lost` after `ballsBowled`, scored for the side batting. */
+function firstInningsP(sub, ctx, withXi, runs, lost, ballsBowled) {
+  const s = {
+    runsScored: runs,
+    currentRunRate: ballsBowled > 0 ? (runs * 6) / ballsBowled : 0,
+    wicketsInHand: 10 - lost,
+    ballsRemaining: 120 - ballsBowled,
+    ballsBudget: 120,
+    teamStrengthDiff: 0,
+    parRunRate: PAR_RUN_RATE.T20,
+    format: "T20",
+  };
+  return scoreTier(sub, contextFeatures("firstInnings", firstInningsFeatures(s), s, ctx, withXi));
+}
+
+/** The Test head's class probabilities at the first ball of a five-day match. */
+function longNeutralProbabilities(long) {
+  const s = {
+    lead: 0, wicketsInHand: 10, inningsIndex: 0, ballsRemaining: 2700, ballsTotal: 2700,
+    teamStrengthDiff: 0, isFourthInnings: false, runsNeeded: 0, followedOn: false,
+    inningsUsedDiff: 0, inningsRunRate: 3, wicketsToTake: 20, scheduledDays: 5,
+  };
+  const standardised = longFeatures(s).map((f, j) => (f - long.featureMeans[j]) / (long.featureStds[j] || 1));
+  return predictClasses(standardised, long);
+}
+
 /**
  * Reasons this model must not replace the published one; empty when it may.
  *
@@ -571,10 +697,20 @@ export const GATE_MAX_ECE = 0.04;
  * window moves a week at a time, so a refit that is suddenly 0.02 worse is a broken refit, not a
  * harder week. And a handful of positions whose answer is not in doubt are scored outright,
  * because a model can post a fine average while being wrong about a side needing one run.
+ *
+ * Every tier a head carries (`core`, and `full` when there is one) gets the same checks.
  */
 export function publishProblems(model, previous = null) {
   const problems = [];
-  const neutral = NEUTRAL_CONTEXT;
+  const tiersOf = (built) =>
+    ["core", "full"].filter((t) => built[t]).map((t) => ({
+      name: t,
+      sub: built[t],
+      ctx: t === "full" ? NEUTRAL_WITH_XI : NEUTRAL_CONTEXT,
+      withXi: t === "full",
+      tag: (head) => (t === "full" ? `${head} (with elevens)` : head),
+    }));
+
   for (const head of ["chase", "firstInnings", "prematch"]) {
     const built = model[head];
     if (!built?.core) {
@@ -585,41 +721,89 @@ export function publishProblems(model, previous = null) {
       const h = built[tier]?.holdout;
       if (h && h.ece > GATE_MAX_ECE) problems.push(`${head}.${tier}: ECE ${fmt(h.ece)} is above ${GATE_MAX_ECE}`);
     }
-    const before = previous?.[head]?.holdout?.logLoss;
-    if (typeof before === "number" && built.holdout.logLoss > before + GATE_LOG_LOSS_SLACK) {
-      problems.push(`${head}: log-loss ${fmt(built.holdout.logLoss)} against ${fmt(before)} for the published model`);
+    // Raw and as served (clamped) are each compared like with like; a regression on either blocks.
+    // The clamp can hide a raw regression, so the as-served figure never replaces the raw one.
+    const was = previous?.[head]?.holdout;
+    if (typeof was?.logLoss === "number" && built.holdout.logLoss > was.logLoss + GATE_LOG_LOSS_SLACK) {
+      problems.push(`${head}: log-loss ${fmt(built.holdout.logLoss)} against ${fmt(was.logLoss)} for the published model`);
+    }
+    const nowServed = built.holdout.servedLogLoss;
+    if (typeof nowServed === "number" && typeof was?.servedLogLoss === "number" && nowServed > was.servedLogLoss + GATE_LOG_LOSS_SLACK) {
+      problems.push(`${head}: as-served log-loss ${fmt(nowServed)} against ${fmt(was.servedLogLoss)} for the published model`);
+    }
+  }
+
+  // The Test head. A corpus without Tests has none and that is fine, but a refit that drops a head
+  // the manifest already serves is a loss, not a quiet difference.
+  const long = model.long;
+  const servingLong = previous?.long?.holdout;
+  if (!long) {
+    if (servingLong) problems.push("long: no Test model was fitted, but the published model has one");
+  } else {
+    const h = long.holdout;
+    if (!(long.trainingRows > 0)) problems.push("long: the Test model has no training rows");
+    if (!Number.isFinite(h?.logLoss)) {
+      problems.push(`long: holdout log-loss ${h?.logLoss} is not a finite number`);
+    } else if (servingLong?.leakFixed === true && typeof servingLong.logLoss === "number" && h.logLoss > servingLong.logLoss + GATE_LOG_LOSS_SLACK) {
+      // Skipped against a published model without `leakFixed`: its figure was measured on the
+      // balls-bowled leak, so a drop against it is the fix, not a regression.
+      problems.push(`long: log-loss ${fmt(h.logLoss)} against ${fmt(servingLong.logLoss)} for the published model`);
+    }
+    const probs = longNeutralProbabilities(long);
+    const sum = probs.reduce((a, b) => a + b, 0);
+    if (probs.some((p) => !Number.isFinite(p) || p < 0) || Math.abs(sum - 1) > 1e-6) {
+      problems.push(`long: class probabilities at the first ball are ${probs.map(fmt).join("/")}, which do not sum to 1`);
     }
   }
   if (problems.length) return problems;
 
-  const chaseAt = (runsNeeded, ballsRemaining, wicketsLost) => {
-    const s = {
-      currentRunRate: 8,
-      requiredRunRate: Math.max((runsNeeded * 6) / ballsRemaining, 0.1),
-      wicketsInHand: 10 - wicketsLost,
-      ballsRemaining,
-      ballsBudget: 120,
-      runsNeeded,
-      target: 160,
-      teamStrengthDiff: 0,
-      parRunRate: PAR_RUN_RATE.T20,
-      format: "T20",
+  for (const { sub, ctx, withXi, tag } of tiersOf(model.chase)) {
+    // Sanity cells keep their own current rate (8), as before, rather than the grid's par rate.
+    const cell = (runsNeeded, ballsRemaining, wicketsLost) => {
+      const s = {
+        currentRunRate: 8,
+        requiredRunRate: Math.max((runsNeeded * 6) / ballsRemaining, 0.1),
+        wicketsInHand: 10 - wicketsLost,
+        ballsRemaining,
+        ballsBudget: 120,
+        runsNeeded,
+        target: 160,
+        teamStrengthDiff: 0,
+        parRunRate: PAR_RUN_RATE.T20,
+        format: "T20",
+      };
+      return scoreTier(sub, contextFeatures("chase", chaseFeatures(s), s, ctx, withXi));
     };
-    return scoreTier(model.chase.core, contextFeatures("chase", chaseFeatures(s), s, neutral, false));
-  };
-  if (!(chaseAt(2, 30, 2) > 0.9)) problems.push(`chase: 2 needed off 30 with 8 wickets scored ${fmt(chaseAt(2, 30, 2))}`);
-  if (!(chaseAt(60, 6, 8) < 0.1)) problems.push(`chase: 60 needed off 6 scored ${fmt(chaseAt(60, 6, 8))}`);
-  if (!(chaseAt(40, 30, 2) > chaseAt(40, 30, 8))) problems.push("chase: losing six wickets did not lower the probability");
+    const name = tag("chase");
+    if (!(cell(2, 30, 2) > 0.9)) problems.push(`${name}: 2 needed off 30 with 8 wickets scored ${fmt(cell(2, 30, 2))}`);
+    if (!(cell(60, 6, 8) < 0.1)) problems.push(`${name}: 60 needed off 6 scored ${fmt(cell(60, 6, 8))}`);
+    if (!(cell(40, 30, 2) > cell(40, 30, 8))) problems.push(`${name}: losing six wickets did not lower the probability`);
+    for (const format of Object.keys(FORMAT_BUDGET)) {
+      const violation = chaseMonotonicityProblem(sub, ctx, withXi, format);
+      if (violation) {
+        problems.push(`${name}: not monotone, ${violation}`);
+        break;
+      }
+    }
+  }
 
-  const even = scoreTier(
-    model.prematch.core,
-    contextFeatures("prematch", prematchFeatures({ teamStrengthDiff: 0, format: "T20" }), { format: "T20" }, neutral, false)
-  );
-  if (!(even > 0.4 && even < 0.6)) problems.push(`pre-match: two unknown sides scored ${fmt(even)}`);
-  const stronger = scoreTier(
-    model.prematch.core,
-    contextFeatures("prematch", prematchFeatures({ teamStrengthDiff: 0, format: "T20" }), { format: "T20" }, { ...neutral, eloDiff: 0.75 }, false)
-  );
-  if (!(stronger > even)) problems.push("pre-match: a 300-point Elo lead did not raise the probability");
+  for (const { sub, ctx, withXi, tag } of tiersOf(model.firstInnings)) {
+    const name = tag("firstInnings");
+    // 230 for 4 after twenty overs, and 70 all out: positions whose side is not in doubt.
+    const big = firstInningsP(sub, ctx, withXi, 230, 4, 120);
+    const collapse = firstInningsP(sub, ctx, withXi, 70, 10, 120);
+    if (!(big > 0.6)) problems.push(`${name}: 230 for 4 after twenty overs scored ${fmt(big)}`);
+    if (!(collapse < 0.4)) problems.push(`${name}: 70 all out scored ${fmt(collapse)}`);
+  }
+
+  for (const { sub, ctx, withXi, tag } of tiersOf(model.prematch)) {
+    const name = tag("pre-match");
+    const state = { format: "T20" };
+    const base = prematchFeatures({ teamStrengthDiff: 0, format: "T20" });
+    const even = scoreTier(sub, contextFeatures("prematch", base, state, ctx, withXi));
+    if (!(even > 0.4 && even < 0.6)) problems.push(`${name}: two unknown sides scored ${fmt(even)}`);
+    const stronger = scoreTier(sub, contextFeatures("prematch", base, state, { ...ctx, eloDiff: 0.75 }, withXi));
+    if (!(stronger > even)) problems.push(`${name}: a 300-point Elo lead did not raise the probability`);
+  }
   return problems;
 }

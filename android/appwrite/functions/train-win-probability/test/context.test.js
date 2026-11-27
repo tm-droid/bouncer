@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { AsOfState, sideContextOf } from "../src/asOfState.js";
-import { buildShards, limitedOversRows, prematchContextRows, publishProblems, thinnedElevens, JOIN_FAILURE } from "../src/build.js";
+import { SERVED_CEILING, SERVED_FLOOR, buildShards, limitedOversRows, prematchContextRows, publishProblems, thinnedElevens, JOIN_FAILURE } from "../src/build.js";
 import {
   NEUTRAL_CONTEXT, SHARDS, contextFeatureNames, contextFeatures, familiarityDiff, h2hAdvantage,
   pairKey, shardOf, sideContext, venueKey, xiStrength,
 } from "../src/contextmath.js";
 import { richSkeletonOf } from "../src/corpus.js";
-import { CHASE_FEATURE_NAMES, FIRST_INNINGS_FEATURE_NAMES, PREMATCH_FEATURE_NAMES, chaseFeatures } from "../src/training.js";
+import { CHASE_FEATURE_NAMES, FIRST_INNINGS_FEATURE_NAMES, LONG_FEATURE_NAMES, PREMATCH_FEATURE_NAMES, chaseFeatures } from "../src/training.js";
 
 const here = (p) => new URL(p, import.meta.url);
 
@@ -199,7 +199,7 @@ test("an old roster is not published", () => {
 function tierWith(names, weightsByName) {
   return {
     weights: names.map((n) => weightsByName[n] ?? 0), bias: 0, temperature: 1,
-    featureMeans: names.map(() => 0), featureStds: names.map(() => 1),
+    featureMeans: names.map((n) => (n === "runsOverPar" || n === "projectedOverPar" ? 1 : 0)), featureStds: names.map(() => 1),
     holdout: { logLoss: 0.4, ece: 0.01 },
   };
 }
@@ -210,7 +210,7 @@ function sensibleModel() {
   const head = (names, w) => ({ core: tierWith(names, w), full: null, holdout: { logLoss: 0.4 } });
   return {
     chase: head(chaseNames, { logRateRatio: 3, wicketsInHand: 2, runsNeededOverPar: -6 }),
-    firstInnings: head(contextFeatureNames("firstInnings", FIRST_INNINGS_FEATURE_NAMES, false), {}),
+    firstInnings: head(contextFeatureNames("firstInnings", FIRST_INNINGS_FEATURE_NAMES, false), { runsOverPar: 1, projectedOverPar: 2 }),
     prematch: head(preNames, { eloDiff: 1 }),
   };
 }
@@ -241,4 +241,112 @@ test("a miscalibrated tier or a missing head is refused", () => {
   const missing = sensibleModel();
   missing.firstInnings = null;
   assert.ok(publishProblems(missing).some((p) => /no model was fitted/.test(p)));
+});
+
+// ── the gate's later checks ─────────────────────────────────────────────────────────────────────
+
+const fullOf = (head, base) => {
+  const names = contextFeatureNames(head, base, true);
+  return names;
+};
+
+function withFull(model) {
+  const out = sensibleModel();
+  for (const [head, base, w] of [
+    ["chase", CHASE_FEATURE_NAMES, { logRateRatio: 3, wicketsInHand: 2, runsNeededOverPar: -6 }],
+    ["firstInnings", FIRST_INNINGS_FEATURE_NAMES, { runsOverPar: 1, projectedOverPar: 2 }],
+    ["prematch", PREMATCH_FEATURE_NAMES, { eloDiff: 1 }],
+  ]) out[head].full = tierWith(fullOf(head, base), w);
+  return model ? Object.assign(out, model) : out;
+}
+
+function longModel(logLoss = 0.9, leakFixed = true) {
+  const n = LONG_FEATURE_NAMES.length;
+  return {
+    weights: [0, 1, 2].map(() => Array(n).fill(0)), biases: [0, 0, 0],
+    featureMeans: Array(n).fill(0), featureStds: Array(n).fill(1),
+    classPriors: [0.3, 0.3, 0.4], priorSettleProgress: 0.5, trainingRows: 100,
+    holdout: { rows: 50, logLoss, accuracy: 0.5, priorLogLoss: 1, leakFixed },
+  };
+}
+
+test("the full variant and the Test head pass when sensible", () => {
+  assert.deepEqual(publishProblems({ ...withFull(), long: longModel() }), []);
+});
+
+test("first innings: a big total must favour the batting side, a collapse must not", () => {
+  const flat = sensibleModel();
+  flat.firstInnings.core.weights = flat.firstInnings.core.weights.map(() => 0);
+  assert.ok(publishProblems(flat).some((p) => /230 for 4/.test(p)));
+  const inverted = sensibleModel();
+  inverted.firstInnings.core.weights = inverted.firstInnings.core.weights.map((w) => -w);
+  const found = publishProblems(inverted);
+  assert.ok(found.some((p) => /230 for 4/.test(p)) && found.some((p) => /70 all out/.test(p)));
+});
+
+test("the full variant gets the same checks as core", () => {
+  const model = withFull();
+  model.full = undefined;
+  model.chase.full.weights = model.chase.full.weights.map((w) => -w);
+  model.firstInnings.full.weights = model.firstInnings.full.weights.map((w) => -w);
+  const found = publishProblems(model);
+  assert.ok(found.some((p) => /^chase \(with elevens\):/.test(p)), found.join("|"));
+  assert.ok(found.some((p) => /^firstInnings \(with elevens\):/.test(p)));
+  const ece = withFull();
+  ece.prematch.full.holdout.ece = 0.09;
+  assert.ok(publishProblems(ece).some((p) => /prematch\.full: ECE/.test(p)));
+});
+
+test("chase monotonicity: a head that likes losing wickets or a bigger target is refused, naming the cell", () => {
+  const names = contextFeatureNames("chase", CHASE_FEATURE_NAMES, false);
+  const bad = sensibleModel();
+  // Keep the two-off-thirty and sixty-off-six sanity cells right, but make a wicket in hand
+  // a liability through a squared term the sanity cells never stress.
+  bad.chase.core.weights[names.indexOf("wicketsInHandSquared")] = -6;
+  const found = publishProblems(bad).filter((p) => /not monotone/.test(p));
+  assert.equal(found.length, 1, publishProblems(bad).join("|"));
+  assert.match(found[0], /^chase: not monotone, (T20|ODI|HUNDRED): /);
+  const harder = sensibleModel();
+  harder.chase.core.weights[names.indexOf("runsNeededOverPar")] = 12;
+  assert.ok(publishProblems(harder).some((p) => /not monotone/.test(p)), publishProblems(harder).join("|"));
+});
+
+test("the Test head: absent is fine, dropped is not, non-finite is not, a probability that is not 1 is not", () => {
+  assert.deepEqual(publishProblems(sensibleModel(), { long: undefined }), []);
+  const previous = { long: { holdout: { logLoss: 0.9, leakFixed: true } } };
+  assert.ok(publishProblems(sensibleModel(), previous).some((p) => /no Test model/.test(p)));
+  const nan = { ...sensibleModel(), long: longModel(NaN) };
+  assert.ok(publishProblems(nan).some((p) => /not a finite/.test(p)));
+  const broken = { ...sensibleModel(), long: longModel() };
+  broken.long.biases = [0, 0, Infinity];
+  assert.ok(publishProblems(broken).some((p) => /sum to 1/.test(p)));
+});
+
+test("the Test head: regresses only against a published model measured after the leak fix", () => {
+  const worse = { ...sensibleModel(), long: longModel(1.0) };
+  assert.ok(publishProblems(worse, { long: { holdout: { logLoss: 0.9, leakFixed: true } } }).some((p) => /^long: log-loss/.test(p)));
+  // The published figure was measured on the leak: skipped, not compared.
+  assert.deepEqual(publishProblems(worse, { long: { holdout: { logLoss: 0.5 } } }), []);
+  // Not comparable at all.
+  assert.deepEqual(publishProblems(worse, { long: { holdout: { leakFixed: true } } }), []);
+  assert.deepEqual(publishProblems({ ...sensibleModel(), long: longModel(0.91) }, { long: { holdout: { logLoss: 0.9, leakFixed: true } } }), []);
+});
+
+test("a regression on either the raw or the as-served log-loss blocks", () => {
+  const model = sensibleModel();
+  model.chase.holdout = { logLoss: 0.37, servedLogLoss: 0.42 };
+  // Raw figures agree, as-served ones do not: refused.
+  assert.ok(publishProblems(model, { chase: { holdout: { logLoss: 0.37, servedLogLoss: 0.37 } } }).some((p) => /as-served/.test(p)));
+  // As-served figures agree, raw ones do not (the clamp hid it): still refused.
+  model.chase.holdout = { logLoss: 0.42, servedLogLoss: 0.37 };
+  assert.ok(publishProblems(model, { chase: { holdout: { logLoss: 0.37, servedLogLoss: 0.37 } } }).some((p) => /chase: log-loss/.test(p)));
+  model.chase.holdout = { logLoss: 0.37, servedLogLoss: 0.42 };
+  // A published model with no served figure is compared on the raw one.
+  assert.deepEqual(publishProblems(model, { chase: { holdout: { logLoss: 0.37 } } }), []);
+});
+
+test("the clamp the gate applies is the one match-sync serves", () => {
+  const src = readFileSync(new URL("../../match-sync/src/winprob.js", import.meta.url), "utf8");
+  assert.equal(Number(/PROB_FLOOR\s*=\s*([\d.]+)/.exec(src)[1]), SERVED_FLOOR);
+  assert.equal(Number(/PROB_CEILING\s*=\s*([\d.]+)/.exec(src)[1]), SERVED_CEILING);
 });
