@@ -26,11 +26,13 @@ Gate: >=0.001 log-loss gain, match-bootstrap interval excluding 0, holdout ECE n
 - [ ] E8: recalibration variants | done when: lab table incl. ECE
 - [x] B2: reduced-overs serving + oversRem notation | done when: 15-over chase and x.4-overs tests pass
 - [ ] B3: format routing (FC, T10) | done when: tests pin each format's route
-- [ ] B10: train/serve skew replay | done when: report lists per-feature mean |diff|; each >0.05 explained
+- [x] B10: train/serve skew replay | done when: report lists per-feature mean |diff|; each >0.05 explained
 - [x] B11: Test scheduledDays = days played (corpus.js:94 -> training.js:549) | done when: as-of pin test passes; npm test green
 - [ ] B12: ballsBowled counts wides/no-balls (training.js:516, lab) | done when: test pins legal-ball count; lab+trainer agree with serving
 - [x] B13: contextstore swallowed shard read keeps degraded context (contextstore.js:51-110) | done when: test: failed shard read -> retry/not cached; npm test green
 - [x] B14: squad/team pairing by position (context.js:341-352) | done when: test with swapped squad order joins correctly
+- [x] B15: daily trainer refit (serving's team/ground tables lag the model's modelAsOf, B10) | files: .github/workflows/train-win-probability.yml | done when: cron daily, YAML parses
+- [ ] B16: ground join (serving venue known 77% vs trainer 91%; pickGround city mismatch / visits key) | files: match-sync/src/context.js | done when: skew re-run hasVenue lagged mean |d| < 0.03; npm test green
 - [ ] D1: adopt winners in trainer + match-sync | done when: all function npm test + ContextMathVendorParityTest pass
 - [ ] D2: push main + refit | done when: train run success, manifest moved, publishProblems empty
 - [ ] D3: deploy match-sync | done when: live-winprob from new model on a live match
@@ -43,6 +45,8 @@ Gate: >=0.001 log-loss gain, match-bootstrap interval excluding 0, holdout ECE n
 
 - A1 check could not pass as written: baseline run 45930475806 (success, 3.6 min) used 23477 matches vs the trainer's 23241 (Cricsheet grew 236 in 4 days), so the holdout moved 2025-01-27 -> 2025-03-05, and the lab has no row equal to v6's served feature set. Check kept unchanged; E0 adds `--cutoffs` pinning and a "v6 as served" row, then A1 is re-run.
 - Lab runs take ~4 min on Actions, not 15-25: E units are agent-bound, not compute-bound.
+- B3: FC and T10 return undetermined (no head trained on them; since B11 every training Test has scheduledDays 5, so a 4-day FC is out of distribution). E7 measures the Test head on Cricsheet MDM and re-enables FC if it beats the base rate.
+- E0 split: E0 landed --cutoffs and --simulate-ece (55bd4176); the as-served rows, report.a1, band deltas and calibration CIs moved to E0b.
 
 ## Log
 - U0: `git -C .claude/worktrees/winprob-v7 branch --show-current` -> winprob-v7; research doc 30,026 B.
@@ -54,3 +58,6 @@ Gate: >=0.001 log-loss gain, match-bootstrap interval excluding 0, holdout ECE n
 - B13+B14: verifier PASS. `node --test test/context.test.js` -> 22/22; `npm test` (match-sync) -> tests 477, pass 477, fail 0. HEAD contextstore.js+context.js + new tests -> exactly 2 fail (failed shard read not stored as final; swapped squad order). 404 still caches empty shard; other errors uncached, rebuild within 2-builds budget. Left: patch() preview/summary can still write a degraded held context.
 - B4+B11: verifier PASS. `npm test` (trainer) -> 62 pass, 0 fail. HEAD corpus.js + HEAD followedOn + new tests -> 2 fail (follow-on flagged from innings 3 only; scheduled length 2 !== 5). walkLongRows: lookup before record; same-date results buffered (training.js:468-483); matches date-sorted at build.js:466 before fitLongModel (528). Serving agrees: scheduledDays TEST 5 else 4 (cricbuzz.js:1153), followedOn from feed, strength from shipped winRate (0.5 unseen). Test head holdout log-loss will rise (old figures included leaks); Test head is not in publishProblems (-> B6).
 - B2: verifier PASS. `node --test test/reduced-overs.test.js` -> 4/4; `npm test` (match-sync) -> 481/481; HEAD winprob.js+main.js + new tests -> 1 pass 3 fail (x.4 -> 20 not 22; 15-over chase; reduced first innings chaseStart null). Verifier flagged the implied-balls branch could shave balls from the feed's 2-dp RRR; added a whole-over gap guard + test (1 off 90 at 0.07 -> 90): fails without the guard, `npm test` 482/482. ballNbr = legal balls (fixtures 49.3 = 297, 16.4 = 100). Limit: oversRem absent in every fixture; a reduced first innings that completes is undetectable.
+- E0 (part): `winprob-live-score.mjs --simulate-ece 2000` on 356 resolved live matches: ECE p50/p95 of a perfectly calibrated model vs observed: all 0.0548/0.0919 vs 0.0357; pre-match 0.0590/0.0936 vs 0.0351; first 0.0744/0.1216 vs 0.0535; chase 0.0589/0.0922 vs 0.0507. Observed is at or below p50: live ECE is sampling noise. 74-match synthetic: p50 0.040, p95 0.071.
+- B10: `node --max-old-space-size=3072 appwrite/tools/winprob-skew.mjs --archive <archive>` re-run by main session reproduces the report: joined 223/333; exact vs lagged mean |d|: eloDiff 0.0418->0.0036, formDiff 0.1697->0.0080, familiarityDiff 0.1279->0.0583, hasVenue 0.2152->0.0942. Causes: model-table lag (-> B15), ground join (-> B16), XI join failures (overstated: trainer side unthinned). Over state 7870/8008 exact. Known-both-sides neutralisation ruled out (99.55% known).
+- B15: cron '0 2 * * 1' -> '0 2 * * *'; `ruby -ryaml` parse -> {"schedule"=>[{"cron"=>"0 2 * * *"}], "workflow_dispatch"=>nil}. Trainer prunes to current+previous (main.js:40,121). Effect measurable after Appwrite returns.

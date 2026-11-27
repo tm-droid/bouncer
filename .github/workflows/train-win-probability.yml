@@ -1,4 +1,4 @@
-# Weekly refit of the win-probability model.
+# Daily refit of the win-probability model.
 #
 # This was the Appwrite function `bouncer-train-win-probability`. It peaks near 760 MB, and
 # Appwrite's Free plan fixes every function at 512 MB, so it runs here and writes the same
@@ -8,13 +8,16 @@
 # Required GitHub Secret:
 #   APPWRITE_API_KEY — the server key the function used (Storage read and write on `cricket-stats`)
 #
-# A scheduled workflow can start late under load; for a weekly job that is harmless.
+# Daily, because serving reads team form, Elo, head-to-head and ground tables from the published model:
+# a weekly refit left them up to 7-15 days behind the match (reports/B10.md: 91-95% of the live
+# Elo/form skew). The trainer keeps only the current and previous model files, so storage does not grow.
+# A scheduled workflow can start late under load; for a daily job that is harmless.
 
 name: Train win probability
 
 on:
   schedule:
-    - cron: '0 2 * * 1'
+    - cron: '0 2 * * *'
   workflow_dispatch:
 
 concurrency:
