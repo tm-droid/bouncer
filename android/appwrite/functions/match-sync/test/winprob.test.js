@@ -6,6 +6,7 @@ import {
   inningsBalls,
   ballsFromOvers,
   MODEL_VERSION,
+  liveRates,
 } from "../src/winprob.js";
 
 const chase = (over) => ({
@@ -252,4 +253,24 @@ test("factors say how far each context group moves the answer, and vanish withou
 
   assert.deepEqual(evaluate(args).factors, [], "no context, nothing to attribute");
   assert.equal(evaluate({ ...args, model: null }).factors, undefined, "the heuristic claims no factors");
+});
+
+test("a chase with runs needed but no required rate is scored by the chase head", () => {
+  const explicit = evaluate(chase({ runsNeeded: 80, ballsRemaining: 60, requiredRunRate: 8 }));
+  const missing = evaluate(chase({ runsNeeded: 80, ballsRemaining: 60, requiredRunRate: 0 }));
+  assert.equal(missing.battingTeamWinProbability, explicit.battingTeamWinProbability);
+  const first = evaluate(chase({ runsNeeded: 0, requiredRunRate: 0 }));
+  assert.notEqual(missing.battingTeamWinProbability, first.battingTeamWinProbability);
+});
+
+test("live rates are recomputed the way the trainer does", () => {
+  // Cricbuzz rounds: 100/12.1 overs shown as 8.26, the trainer's 100*6/73 is 8.2191.
+  const r = liveRates({ runsScored: 100, ballsBowled: 73, currentRunRate: 8.26, requiredRunRate: 9.1 }, { runsNeeded: 70, ballsRemaining: 47 });
+  assert.equal(r.currentRunRate, (100 * 6) / 73);
+  assert.equal(r.requiredRunRate, (70 * 6) / 47);
+  const first = liveRates({ runsScored: 50, ballsBowled: 30, currentRunRate: 9 }, { runsNeeded: null, ballsRemaining: 90 });
+  assert.equal(first.currentRunRate, 10);
+  assert.equal(first.requiredRunRate, 0);
+  const missing = liveRates({ runsScored: null, ballsBowled: null, currentRunRate: 7.5, requiredRunRate: 8.5 }, { runsNeeded: null, ballsRemaining: 0 });
+  assert.equal(missing.currentRunRate, 7.5);
 });

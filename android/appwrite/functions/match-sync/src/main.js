@@ -74,7 +74,7 @@ import { deliveryAlert, milestoneAlerts, resultAlert } from "./alerts.js";
 import { runPoll } from "./poll.js";
 import { STATE_FILE as HIGHLIGHTLY_STATE_FILE, createHighlightlyFallback } from "./highlightly.js";
 import { fcmConfigured, matchTopic, sendTopicMessage } from "./fcm.js";
-import { evaluate, evaluateLong, evaluatePrematch, formatFromText, ballsRemainingFor } from "./winprob.js";
+import { evaluate, evaluateLong, liveRates, evaluatePrematch, formatFromText, ballsRemainingFor } from "./winprob.js";
 import {
   resolveMatchTeams, teamStatsOf, genderFromTitle, teamsFromTitle, stripWomenSuffix, teamKey,
 } from "./teamnames.js";
@@ -2939,6 +2939,18 @@ export function chaseStart(s, format) {
   return { runsNeeded, runsScored: 0, ballsRemaining: allotment, wicketsLost: 0, currentRunRate: requiredRunRate, requiredRunRate };
 }
 
+function liveSituationArgs(s, format) {
+  const runsNeeded = s.runsNeeded ?? 0;
+  const ballsRemaining = ballsRemainingFor({ oversRemaining: s.oversRemaining, ballsBowled: s.ballsBowled, format }) ?? 0;
+  return {
+    runsNeeded,
+    runsScored: s.runsScored ?? 0,
+    ballsRemaining,
+    wicketsLost: s.wicketsLost ?? 0,
+    ...liveRates(s, { runsNeeded: s.runsNeeded, ballsRemaining }),
+  };
+}
+
 function winProbFor(detail, title, model, matchContext = null) {
   const s = detail?.situation;
   if (!s) return null;
@@ -2988,18 +3000,7 @@ function winProbFor(detail, title, model, matchContext = null) {
       model,
     })
     : evaluate({
-      ...(chase ?? {
-        runsNeeded: s.runsNeeded ?? 0,
-        runsScored: s.runsScored ?? 0,
-        ballsRemaining: ballsRemainingFor({
-          oversRemaining: s.oversRemaining,
-          ballsBowled: s.ballsBowled,
-          format,
-        }) ?? 0,
-        wicketsLost: s.wicketsLost ?? 0,
-        currentRunRate: s.currentRunRate ?? 0,
-        requiredRunRate: s.requiredRunRate ?? 0,
-      }),
+      ...(chase ?? liveSituationArgs(s, format)),
       battingTeam,
       bowlingTeam,
       gender,

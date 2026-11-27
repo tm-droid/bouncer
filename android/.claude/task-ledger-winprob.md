@@ -9,7 +9,7 @@ Gate: >=0.001 log-loss gain, match-bootstrap interval excluding 0, holdout ECE n
 - [x] U0: worktree + ledger + research doc | files: android/.claude/task-ledger-winprob.md, android/docs/winprob-research-2026-11.md | done when: branch = winprob-v7, both files exist
 - [ ] B9: second-pass audit (read-only) | files: reports/B9.md | done when: report exists; new bugs added as B units
 - [ ] A1: lab workflow + baseline | files: .github/workflows/winprob-lab.yml | done when: run success; artifact holdout log-loss per head within 0.005 of manifest
-- [ ] B1: chase head selection + recomputed rates | files: match-sync/src/winprob.js, main.js | done when: regression test (chase, missing rrr) scores via chase head; npm test green
+- [x] B1: chase head selection + recomputed rates | files: match-sync/src/winprob.js, main.js | done when: regression test (chase, missing rrr) scores via chase head; npm test green
 - [ ] B7: Android list-bar alignment + draw-safe history flip | files: LiveActivityViewModel.kt, ProbabilityHistory.kt | done when: testDebugUnitTest --tests "*Probability*" green, lintDebug + detekt clean, whatsnew updated
 - [ ] B8: iOS hero bar aligned by team id (ios-rebuild) | files: MatchHeroModel.swift + test | done when: test_sim hero-model tests pass
 - [ ] E0: eval upgrades + simulated live-ECE noise | files: winprob-lab.mjs, winprob-live-score.mjs | done when: report JSON has new fields; ECE p50/p95 at n=74 logged here
@@ -39,3 +39,5 @@ Gate: >=0.001 log-loss gain, match-bootstrap interval excluding 0, holdout ECE n
 
 ## Log
 - U0: `git -C .claude/worktrees/winprob-v7 branch --show-current` -> winprob-v7; research doc 30,026 B.
+- A1 reference (manifest not public, 403): trainer run 2026-11-23 log, winprob-v6-202611231031. Core holdout log-loss: chase 0.3765, first 0.5660, prematch 0.6266, long (Test) 0.6034. As served: chase 0.3765, first 0.5639, prematch 0.6241.
+- B1: verifier PASS. `npm test` (match-sync) -> tests 474, pass 474, fail 0. Old src + new tests -> pass 19, fail 2; (a) actual 0.5374 vs expected 0.5597 (old evaluate used first-innings head). liveRates moved above evaluate JSDoc after review; npm test still 474/0.

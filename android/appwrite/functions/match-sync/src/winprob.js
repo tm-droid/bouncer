@@ -491,6 +491,23 @@ function firstInningsLogit({ currentRunRate, wicketsInHand, parRate }) {
 // ── entry points ─────────────────────────────────────────────────────────────
 
 /**
+ * The two rates as the trainer computes them (train-win-probability/src/build.js): current from
+ * runs and legal balls bowled, required as runs needed per ball left, floored at 0.1. Cricbuzz's
+ * own figures are rounded and sometimes absent, so they are kept only when the inputs are missing.
+ */
+export function liveRates(s, { runsNeeded, ballsRemaining }) {
+  const hasBalls = Number.isFinite(s.runsScored) && Number.isFinite(s.ballsBowled);
+  const currentRunRate = hasBalls ? (s.runsScored * 6) / Math.max(s.ballsBowled, 1) : s.currentRunRate ?? 0;
+  let requiredRunRate = s.requiredRunRate ?? 0;
+  if (Number.isFinite(runsNeeded) && runsNeeded > 0 && ballsRemaining > 0) {
+    requiredRunRate = Math.max((runsNeeded * 6) / ballsRemaining, 0.1);
+  } else if (runsNeeded == null && ballsRemaining > 0) {
+    requiredRunRate = 0;
+  }
+  return { currentRunRate, requiredRunRate };
+}
+
+/**
  * Win probability for the BATTING side of a limited-overs match.
  *
  * Always batting-team-oriented. The caller owns orientation and must carry battingTeamIndex — the
@@ -544,7 +561,11 @@ export function evaluate({
   const bowlingRate = knownWinRate(teamStats, bowlingTeam, gender, format);
   const teamStrengthDiff =
     battingRate === null || bowlingRate === null ? 0 : battingRate - bowlingRate;
-  const isChase = requiredRunRate > 0;
+  // A chase is a position with runs still to get, not one whose feed happened to carry a rate:
+  // Cricbuzz omits or zeroes the required rate in some chase states, which sent them to the
+  // first-innings head.
+  const isChase = runsNeeded > 0 || requiredRunRate > 0;
+  if (isChase && !(requiredRunRate > 0)) requiredRunRate = Math.max((runsNeeded * 6) / ballsRemaining, 0.1);
 
   if (contextModel) {
     const state = {
