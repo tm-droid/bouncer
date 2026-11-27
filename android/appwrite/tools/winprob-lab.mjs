@@ -184,6 +184,7 @@ const COLUMNS = {
     ...col("toss", ["tossWonByFirst", "firstBatsFirst"]),
     ...col("xi", ["batAvgDiff", "batStrikeDiff", "batRecentDiff", "bowlDiff", "xiCoverage", "hasXi"]),
     ...WEATHER,
+    ["gamesLogDiff@e5g", "team"],
   ],
 };
 COLUMNS.fc = COLUMNS.long;
@@ -230,6 +231,105 @@ COLUMNS.chase.push(["rrr*era@eraY", "base"], ["rrr*rp@eraP", "base"]);
 // E3: zero here, overwritten per fold in slice(). `res` replaces the hand-set wicket factor.
 COLUMNS.chase.push(["runsNeededRate@res", "base"]);
 COLUMNS.first.push(["projectedOverPar@res", "base"], ["zScore@twoStage", "base"]);
+// E5: zero here, overwritten per fold in slice() when opts.e5g is set (log1p games difference).
+COLUMNS.chase.push(["gamesLogDiff@e5g", "team"]);
+COLUMNS.first.push(["gamesLogDiff@e5g", "team"]);
+
+// E5: Elo update-rule variants, each a full as-of walk (same decided-match rule as AsOfState.update).
+// K0 is the base K; `kg` makes K = K0 * max(kMin, 1/sqrt(1 + games/g0)) per side; `mov` scales the delta by
+// ln(1 + norm) * 2.2 / (winnerRatingLead * 0.001 + 2.2); `tau` pulls both ratings toward the slice mean by
+// 1 - exp(-daysIdle/tau) before the match; `m` shrinks each side's deviation from 1500 by games/(games+m).
+let ACTIVE_ELO = null;
+const ELO_SPECS = {
+  prod: { K0: 24 },
+  kg1: { K0: 48, kg: { g0: 10, kMin: 0.5 } },
+  kg2: { K0: 64, kg: { g0: 20, kMin: 0.375 } },
+  mov90: { K0: 90, mov: true },
+  mov120: { K0: 120, mov: true },
+  idle365: { K0: 24, tau: 365 },
+  idle730: { K0: 24, tau: 730 },
+  shrink10: { K0: 24, m: 10 },
+  shrink30: { K0: 24, m: 30 },
+};
+const eloTables = new Map();
+
+/** Margin of a decided limited-overs result in [0, ~1]: runs/first total batting first; (wickets in hand + balls left)/2 chasing; 0.3 when unknown. */
+function marginNorm(match) {
+  if (!match.winner || !T.isLimitedOvers(match.formatClass) || match.innings.length < 2 || !match.ballsBudget) return 0.3;
+  const a = T.inningsTotals(match.innings[0]);
+  const b = T.inningsTotals(match.innings[1]);
+  if (match.winner === match.innings[0].team) return Math.max(0, (a.runs - b.runs) / Math.max(a.runs, 1));
+  if (match.winner === match.innings[1].team) return 0.5 * (10 - b.wickets) / 10 + 0.5 * Math.max(match.ballsBudget - b.legalBalls, 0) / match.ballsBudget;
+  return 0.3;
+}
+
+/** Per match, as of the match: Elo difference teams[0] - teams[1] over 400 (shrunk if the spec says so) and each side's games. */
+function eloTable(name) {
+  if (eloTables.has(name)) return eloTables.get(name);
+  const spec = ELO_SPECS[name];
+  const teams = new Map();
+  const slices = new Map();
+  const d = new Float64Array(matches.length);
+  const g0 = new Int32Array(matches.length);
+  const g1 = new Int32Array(matches.length);
+  const get = (key, sl) => {
+    let t = teams.get(key);
+    if (!t) {
+      t = { elo: 1500, games: 0, last: null };
+      teams.set(key, t);
+      sl.sum += 1500;
+      sl.n += 1;
+    }
+    return t;
+  };
+  for (let i = 0; i < matches.length; i++) {
+    const match = matches[i];
+    const [first, second] = match.teams;
+    const sk = `${match.gender}|${match.formatClass}`;
+    let sl = slices.get(sk);
+    if (!sl) slices.set(sk, (sl = { sum: 0, n: 0 }));
+    const a = get(`${first}|${sk}`, sl);
+    const b = get(`${second}|${sk}`, sl);
+    const day = match.date ? Date.parse(match.date) / 86400000 : null;
+    if (spec.tau && day !== null) {
+      const mean = sl.sum / sl.n;
+      for (const t of [a, b]) {
+        if (t.last !== null && day > t.last) {
+          const pull = (mean - t.elo) * (1 - Math.exp(-(day - t.last) / spec.tau));
+          t.elo += pull;
+          sl.sum += pull;
+        }
+        t.last = day;
+      }
+    }
+    const shrink = (t) => (spec.m ? ((t.elo - 1500) * t.games) / (t.games + spec.m) : t.elo - 1500);
+    d[i] = (shrink(a) - shrink(b)) / 400;
+    g0[i] = a.games;
+    g1[i] = b.games;
+    const drawn = !match.winner && /^(draw|tie)$/i.test(String(match.result ?? ""));
+    if (match.winner || drawn) {
+      const scoreA = match.winner === first ? 1 : match.winner === second ? 0 : 0.5;
+      const expectedA = 1 / (1 + 10 ** ((b.elo - a.elo) / 400));
+      let mult = 1;
+      if (spec.mov) {
+        const lead = scoreA === 0.5 ? 0 : scoreA === 1 ? a.elo - b.elo : b.elo - a.elo;
+        mult = (Math.log(1 + marginNorm(match)) * 2.2) / (lead * 0.001 + 2.2);
+      }
+      const kOf = (t) => spec.K0 * (spec.kg ? Math.max(spec.kg.kMin, 1 / Math.sqrt(1 + t.games / spec.kg.g0)) : 1);
+      const base = scoreA - expectedA;
+      const da = kOf(a) * mult * base;
+      const db = kOf(b) * mult * base;
+      a.elo += da;
+      b.elo -= db;
+      sl.sum += da - db;
+      a.games += 1;
+      b.games += 1;
+    }
+  }
+  const out = { d, g0, g1 };
+  eloTables.set(name, out);
+  return out;
+}
 
 /** Which mask bits blank a group. The crease and the remaining order are unknowable without an XI. */
 const GROUP_BITS = {
@@ -499,6 +599,7 @@ function limitedVector(o) {
     v.push(rr * (o.eraYears ?? 0) / 10, rr * (rolling.rpN / par - 1));
     v.push(0);
   } else v.push(0, 0);
+  v.push(0); // E5 gamesLogDiff@e5g placeholder
   return v;
 }
 
@@ -683,6 +784,7 @@ function prematchRowWide(match, ctx, winRateFor, weather, emit) {
       (a?.batRecent ?? 0) - (b?.batRecent ?? 0), (a?.bowl ?? 0) - (b?.bowl ?? 0),
       xiKnown ? Math.min(a.coverage, b.coverage) : 0, xiKnown,
       ...weather,
+      0, // E5 gamesLogDiff@e5g placeholder
     ],
     match.winner === first ? 1 : 0,
   );
@@ -1218,6 +1320,10 @@ function slice(store, windows, window, columns, maskMode) {
   const stageColumn = columns.findIndex((c) => store.columns[c][0].endsWith("@twoStage"));
   const resTab = resColumn >= 0 ? resourcesFor(windows) : null;
   const stageOf = stageColumn >= 0 ? twoStageFor(store, windows) : null;
+  const eloCols = ["eloDiff", "eloDiff*bf@tvB", "eloDiff*wf@tvW"].map((n) => columns.findIndex((c) => store.columns[c][0] === n));
+  const gamesColumn = columns.findIndex((c) => store.columns[c][0] === "gamesLogDiff@e5g");
+  const eloT = ACTIVE_ELO && eloCols.some((c) => c >= 0) ? eloTable(ACTIVE_ELO) : null;
+  const gamesT = gamesColumn >= 0 ? eloTable(ACTIVE_ELO ?? "prod") : null;
   const rows = [];
   for (let i = 0; i < store.length; i++) if (windows[store.match[i]] === window) rows.push(i);
   const k = columns.length;
@@ -1234,6 +1340,20 @@ function slice(store, windows, window, columns, maskMode) {
       const m = matches[store.match[i]];
       const diff = rateOf(m, m.teams[0]) - rateOf(m, m.teams[1]);
       X[r * k + strengthColumn] = store.firstSide[i] ? diff : -diff;
+    }
+    if (eloT || gamesT) {
+      const sign = store.firstSide[i] ? 1 : -1;
+      const mi = store.match[i];
+      if (eloT) {
+        const e = sign * eloT.d[mi];
+        const lim = store.name === "chase" || store.name === "first";
+        const bf = lim ? Math.max(store.rem[i], 0) / store.budget[i] : 0;
+        const wf = lim ? (10 - store.raw[i * 4 + 1]) / 10 : 0;
+        if (eloCols[0] >= 0 && !(bits[eloCols[0]] & mask)) X[r * k + eloCols[0]] = e;
+        if (eloCols[1] >= 0 && !(bits[eloCols[1]] & mask)) X[r * k + eloCols[1]] = e * bf;
+        if (eloCols[2] >= 0 && !(bits[eloCols[2]] & mask)) X[r * k + eloCols[2]] = e * wf;
+      }
+      if (gamesT && !(bits[gamesColumn] & mask)) X[r * k + gamesColumn] = sign * (Math.log1p(gamesT.g0[mi]) - Math.log1p(gamesT.g1[mi]));
     }
     if (resTab) X[r * k + resColumn] = resColumnValue(store, i, resTab);
     if (stageOf) X[r * k + stageColumn] = stageOf(i);
@@ -1494,6 +1614,7 @@ function recencyWeights(train, windows, halfLifeYears) {
 }
 
 function fit(store, groups, modelClass, classes, windowsList = null, variant = null, opts = {}) {
+  ACTIVE_ELO = opts.elo ?? null;
   const columns = [];
   const terms = opts.terms ?? [];
   // A crr variant swaps the run-rate columns for its own `name@variant` ones; "a" only drops them.
@@ -1508,6 +1629,7 @@ function fit(store, groups, modelClass, classes, windowsList = null, variant = n
       const tag = name.slice(at + 1);
       if (tag === "res") { if (!opts.res) return; }
       else if (tag === "twoStage") { if (!opts.twoStage) return; }
+      else if (tag === "e5g") { if (!opts.e5g) return; }
       else if (RP_TAGS.includes(tag)) { if (tag !== opts.rp) return; }
       else if (TV_TAGS.includes(tag) ? !terms.includes(tag) : tag !== variant) return;
     } else if (dropped.includes(name)) return;
@@ -1606,7 +1728,7 @@ function fitShared(store, groups, modelClass, classes, windowsList = null, varia
     if (!windowIds.has(id)) windowIds.set(id, windowIds.size);
     w = `w${windowIds.get(id)}`;
   }
-  const key = [store.name, groups.join("+"), modelClass, classes, w, variant ?? "", (opts.terms ?? []).join("+"), opts.recal ?? "", opts.rp ?? "", opts.halfLife ?? "", opts.res ? "res" : "", opts.twoStage ? "ts" : ""].join("|");
+  const key = [store.name, groups.join("+"), modelClass, classes, w, variant ?? "", (opts.terms ?? []).join("+"), opts.recal ?? "", opts.rp ?? "", opts.halfLife ?? "", opts.res ? "res" : "", opts.twoStage ? "ts" : "", opts.elo ?? "", opts.e5g ? "e5g" : ""].join("|");
   if (!fitMemo.has(key)) fitMemo.set(key, fit(store, groups, modelClass, classes, windowsList, variant, opts));
   return fitMemo.get(key);
 }
@@ -2150,6 +2272,56 @@ for (const name of wanted) {
     };
     if (name === "chase") console.log(`  e3 earlyChase ${JSON.stringify(report.e3.chase.earlyChase.bands)}`);
     console.log(`  e3 monotonicity ${JSON.stringify(report.e3[name].monotonicity)}`);
+  }
+  {
+    // E5: Elo update-rule variants (as-of walk), scored on every head against that head's baseline.
+    // (e) fitted Elo-to-logit scale is skipped: eloDiff is a linear column in a logistic model, so its coefficient is the scale.
+    const all = [...root, ...optional];
+    const one = latestSeason ? [latest.windows] : null;
+    const baseOpts = name === "first" ? { terms: ["tvB"], rp: "rpN" } : name === "chase" ? { rp: "rpD" } : {};
+    const B = fitShared(store, all, "linear", classes, null, null, baseOpts);
+    const BL = one ? fitShared(store, all, "linear", classes, one, null, baseOpts) : null;
+    if (name === "chase") checkBaseline("chase e5 vs e3 baseline", B.full.logLoss, 0.360229);
+    if (name === "first") checkBaseline("first e5 vs e3 baseline", B.full.logLoss, 0.548808);
+    const results = {};
+    const run = (label, opts) => {
+      const o = { ...baseOpts, ...opts };
+      const r = fitShared(store, all, "linear", classes, null, null, o);
+      const row = line(label, r, B);
+      const out = { ...row, deltaEce: r.full.ece - B.full.ece, ece: r.full.ece, opts: o, spec: o.elo ? ELO_SPECS[o.elo] : null };
+      if (one) {
+        const l = fitShared(store, all, "linear", classes, one, null, o);
+        const ci = bootstrap(BL.full.loss, l.full.loss, l.matchOf);
+        out.latestSeason = { logLoss: l.full.logLoss, delta: l.full.logLoss - BL.full.logLoss, ci: [ci.lo, ci.hi], ece: l.full.ece, deltaEce: l.full.ece - BL.full.ece };
+      }
+      out.gate = row.delta <= -0.001 && row.ci[1] < 0 && out.deltaEce <= 0.005 ? "PASS" : "FAIL";
+      results[label] = out;
+      console.log(`  e5 ${name} ${label}: d ${fmt(row.delta)} [${fmt(row.ci[0])}, ${fmt(row.ci[1])}] dECE ${fmt(out.deltaEce)} ${out.gate}`);
+    };
+    run("prodRecomputed", { elo: "prod" });
+    checkBaseline(`${name} e5 prod walk vs baseline`, results.prodRecomputed.logLoss, B.full.logLoss);
+    for (const [label, key] of [["kByGames1", "kg1"], ["kByGames2", "kg2"], ["mov90", "mov90"], ["mov120", "mov120"], ["idle365", "idle365"], ["idle730", "idle730"], ["shrink10", "shrink10"], ["shrink30", "shrink30"]]) run(label, { elo: key });
+    run("gamesLog", { e5g: true });
+    const best = (labels) => labels.filter((l) => results[l].delta < 0).sort((a, b) => results[a].delta - results[b].delta)[0] ?? null;
+    const picks = [best(["kByGames1", "kByGames2"]), best(["mov90", "mov120"]), best(["idle365", "idle730"]), best(["shrink10", "shrink30"])].filter(Boolean);
+    const combo = { K0: 24 };
+    for (const l of picks) {
+      const sp = results[l].spec;
+      if (sp.kg) { combo.kg = sp.kg; combo.K0 = sp.K0; }
+      if (sp.mov) { combo.mov = true; combo.K0 = sp.K0; }
+      if (sp.tau) combo.tau = sp.tau;
+      if (sp.m) combo.m = sp.m;
+    }
+    if (combo.kg && combo.mov) combo.K0 = ELO_SPECS.mov90.K0;
+    ELO_SPECS.combo = combo;
+    if (picks.length >= 2) run("combined", { elo: "combo", e5g: results.gamesLog.delta < 0 });
+    report.e5 = report.e5 ?? {};
+    report.e5[name] = {
+      baseline: { logLoss: B.full.logLoss, ece: B.full.ece, latestSeason: BL ? { logLoss: BL.full.logLoss, ece: BL.full.ece } : null },
+      variants: results,
+      combinedFrom: picks,
+      combinedSpec: combo,
+    };
   }
   report.repro = baselineChecks;
   report.models[name] = { rows, selected: chosen.slice(root.length) };

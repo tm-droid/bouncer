@@ -274,3 +274,37 @@ test("live rates are recomputed the way the trainer does", () => {
   const missing = liveRates({ runsScored: null, ballsBowled: null, currentRunRate: 7.5, requiredRunRate: 8.5 }, { runsNeeded: null, ballsRemaining: 0 });
   assert.equal(missing.currentRunRate, 7.5);
 });
+
+// ── rolling par and time-varying terms (D1) ──────────────────────────────────
+
+const chaseArgs = { currentRunRate: 8, requiredRunRate: 10, runsNeeded: 90, ballsRemaining: 54, wicketsLost: 3, format: "T20", gender: "male" };
+const rpTier = (pick) => ({ ...tier(24, pick) });
+
+test("a chase reads the shipped rolling par, and an old model without the table serves as before", () => {
+  // Index 3 is requiredRateOverPar, one of the columns the par moves.
+  const base = { version: 6, chase: { core: rpTier(3), full: null }, teamStats: {} };
+  const constant = evaluate({ ...chaseArgs, model: base }).battingTeamWinProbability;
+  const shipped = evaluate({ ...chaseArgs, model: { ...base, rollingPar: { "T20|male": { D: 9.5 } } } }).battingTeamWinProbability;
+  const asConstant = evaluate({ ...chaseArgs, model: { ...base, parRunRate: { T20: 9.5 } } }).battingTeamWinProbability;
+  assert.notEqual(shipped, constant, "the shipped par moves the par-relative column");
+  assert.equal(shipped, asConstant, "reading the table equals a par of that value");
+  const noTable = evaluate({ ...chaseArgs, model: { ...base, rollingPar: {} } }).battingTeamWinProbability;
+  const otherKey = evaluate({ ...chaseArgs, model: { ...base, rollingPar: { "T20|female": { D: 9.5 }, "ODI|male": { D: 9.5 } } } }).battingTeamWinProbability;
+  assert.equal(noTable, constant, "no entry for the format falls back to the constant par");
+  assert.equal(otherKey, constant, "another gender or format is not read");
+});
+
+test("only the window of the head is read: chase D, first innings N", () => {
+  const first = { currentRunRate: 8, ballsRemaining: 60, wicketsLost: 3, runsScored: 90, format: "T20", gender: "male" };
+  // The width and names a shipped first-innings head really carries: 19 plain columns plus the 8 `*bf@tvB` terms.
+  const names = Array.from({ length: 19 }, (_, i) => `c${i}`).concat(Array.from({ length: 8 }, (_, i) => `t${i}*bf@tvB`));
+  const fiTier = (pick) => ({ ...tier(27, pick), featureNames: names });
+  const base = { version: 6, firstInnings: { core: fiTier(0), full: null }, teamStats: {} };
+  const constant = evaluate({ ...first, model: base });
+  assert.ok(!constant.undetermined && constant.battingTeamWinProbability !== null, "the 27-wide head is used, not rejected by usable()");
+  const withN = (n) => evaluate({ ...first, model: { ...base, rollingPar: { "T20|male": { N: n } } } }).battingTeamWinProbability;
+  const withD = evaluate({ ...first, model: { ...base, rollingPar: { "T20|male": { D: 9.5 } } } }).battingTeamWinProbability;
+  assert.notEqual(withN(9.5), constant.battingTeamWinProbability, "N is the first-innings window");
+  assert.notEqual(withN(9.5), withN(6.5), "the result follows N");
+  assert.equal(withD, constant.battingTeamWinProbability, "D is not read by the first innings");
+});

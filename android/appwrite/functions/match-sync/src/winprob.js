@@ -31,7 +31,7 @@
  * self-consistent.
  */
 
-import { NEUTRAL_CONTEXT, contextFeatures } from "./contextmath.js";
+import { NEUTRAL_CONTEXT, contextFeatures, hasTimeVaryingTerms, shippedRollingPar, withRollingPar } from "./contextmath.js";
 
 export const MODEL_VERSION = 6;
 
@@ -73,7 +73,7 @@ const BALLS_PER_LONG_DAY = 90 * 6;
 // "The Hundred" is not read as a century. Mirrors CricketConstants.FORMAT_PATTERNS on device.
 const FORMAT_PATTERNS = [
   [/\b(test|5[- ]day)\b/i, "TEST"],
-  // The Test head is trained on Tests only; domestic first-class (MDM) is deliberately excluded.
+  // First-class is its own format: it scores through the Test head with MDM team strength.
   [/\b(first[- ]class|4[- ]day)\b/i, "FC"],
   [/\b(the\s+hundred|hundred|100[- ]ball)\b/i, "HUNDRED"],
   [/\bt10\b/i, "T10"],
@@ -423,10 +423,10 @@ function longModelOf(model) {
 function scoreContextHead(headModel, head, base, state, context) {
   const c = context ?? NEUTRAL_CONTEXT;
   if (c.xi && headModel?.full) {
-    const features = contextFeatures(head, base, state, c, true);
+    const features = contextFeatures(head, base, state, c, true, hasTimeVaryingTerms(headModel.full.featureNames));
     if (usable(headModel.full, features.length)) return scoreBinary(headModel.full, features);
   }
-  const features = contextFeatures(head, base, state, c, false);
+  const features = contextFeatures(head, base, state, c, false, hasTimeVaryingTerms(headModel?.core?.featureNames));
   return usable(headModel?.core, features.length) ? scoreBinary(headModel.core, features) : null;
 }
 
@@ -598,7 +598,12 @@ export function evaluate({
     };
     const head = isChase ? "chase" : "firstInnings";
     const headModel = isChase ? contextModel.chase : contextModel.firstInnings;
-    const base = isChase ? chaseFeatures(state) : firstInningsFeatures(state);
+    const builder = isChase ? chaseFeatures : firstInningsFeatures;
+    let base = builder(state);
+    // Par-relative columns read the shipped rolling par, as the trainer did per match; a model
+    // without the table (or without this format) keeps the constant par.
+    const rolling = shippedRollingPar(contextModel.rollingPar, head, format, gender);
+    if (rolling !== null) base = withRollingPar(head, base, builder({ ...state, parRunRate: rolling }));
     const probability = scoreContextHead(headModel, head, base, state, context);
     if (probability !== null) {
       return { ...finalize(probability), factors: contextFactors(headModel, head, base, state, context, probability) };
@@ -734,8 +739,9 @@ export function evaluateLong({
   format = "TEST",
   model = null,
 } = {}) {
-  // The long head is trained on Tests only; first-class (MDM) was excluded from it.
-  if (format !== "TEST") return UNDETERMINED;
+  // The head is fitted on Tests; first-class scores through it too (lab: 0.9821 against 1.1335 for a
+  // draw-rate prior on 2,221 matches), with team strength read from the MDM key.
+  if (format !== "TEST" && format !== "FC") return UNDETERMINED;
   const learned = longModelOf(model);
   if (!usableClasses(learned?.long, 16, 3)) return UNDETERMINED;
 
@@ -748,8 +754,9 @@ export function evaluateLong({
 
   const isFourthInnings = inningsIndex === 3;
   const teamStats = learned.teamStats ?? {};
+  const strengthFormat = format === "FC" ? "MDM" : "TEST";
   const teamStrengthDiff =
-    winRateOf(teamStats, battingTeam, gender, "TEST") - winRateOf(teamStats, bowlingTeam, gender, "TEST");
+    winRateOf(teamStats, battingTeam, gender, strengthFormat) - winRateOf(teamStats, bowlingTeam, gender, strengthFormat);
 
   const probs = scoreClasses(learned.long, longFeatures({
     lead,

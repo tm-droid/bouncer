@@ -42,13 +42,18 @@ import AdmZip from "adm-zip";
 import { AsOfState, sideContextOf } from "./asOfState.js";
 import {
   NEUTRAL_CONTEXT,
+  RP_WINDOW,
   SHARDS,
   UNKNOWN_RATING,
   XI_MIN_KNOWN,
   contextFeatureNames,
   contextFeatures,
+  hasTimeVaryingTerms,
+  rollingParAsOf,
+  rollingParLatest,
   shardOf,
   squash,
+  withRollingPar,
   xiStrength,
 } from "./contextmath.js";
 import { richSkeletonOf } from "./corpus.js";
@@ -206,10 +211,16 @@ export function* limitedOversRows(head, match) {
       parRunRate: par,
       format: match.formatClass,
     };
-    const base = chase ? chaseFeatures(s) : firstInningsFeatures(s);
+    const builder = chase ? chaseFeatures : firstInningsFeatures;
+    let base = builder(s);
+    // The par-relative columns are read against the par as of the match's date; every other term
+    // (the venue shape included) keeps the constant par. Serving does the same with the shipped par.
+    const rolling = match.rollingPar?.[RP_WINDOW[head]];
+    if (rolling != null) base = withRollingPar(head, base, builder({ ...s, parRunRate: rolling }));
+    const tv = head === "firstInnings";
     yield {
-      core: contextFeatures(head, base, s, context, false),
-      full: context.xi ? contextFeatures(head, base, s, context, true) : null,
+      core: contextFeatures(head, base, s, context, false, tv),
+      full: context.xi ? contextFeatures(head, base, s, context, true, tv) : null,
       label,
     };
   }
@@ -306,8 +317,9 @@ function fitTier({ label, sinks, featureNames, log }) {
  * eleven for both sides and by `core` where it did not — which is exactly how the reader chooses.
  */
 function fitHead({ label, head, baseNames, matches, windowOf, rowsFor, log }) {
-  const coreNames = contextFeatureNames(head, baseNames, false);
-  const fullNames = contextFeatureNames(head, baseNames, true);
+  const tv = head === "firstInnings";
+  const coreNames = contextFeatureNames(head, baseNames, false, tv);
+  const fullNames = contextFeatureNames(head, baseNames, true, tv);
   const core = {
     train: new RowSink(CAP_TRAIN, coreNames.length),
     valid: new RowSink(CAP_VALID, coreNames.length),
@@ -465,6 +477,29 @@ export function buildShards(state, asOf) {
  * @returns `{ model, shards, raws, parsed, skipped }` — `raws` is handed back so the caller can
  *          build the device's head-to-head file from the same single pass over the archive.
  */
+/**
+ * Gives each limited-overs match its as-of rolling par (`match.rollingPar = {N, D}`, null for a
+ * thin window) and returns the table serving reads: the same windows taken at the end of the data.
+ * Runs and balls are counted over every innings, so this must run before innings are dropped.
+ */
+export function rollingParTable(matches) {
+  const rated = matches.filter((m) => isLimitedOvers(m.formatClass) && m.date);
+  const entries = rated.map((m) => {
+    let runs = 0;
+    let balls = 0;
+    for (const inning of m.innings) {
+      const t = inningsTotals(inning);
+      runs += t.runs;
+      balls += t.legalBalls;
+    }
+    return { formatClass: m.formatClass, gender: m.gender, date: m.date, runs, balls };
+  });
+  rollingParAsOf(entries).forEach((rp, i) => {
+    rated[i].rollingPar = rp;
+  });
+  return rollingParLatest(entries);
+}
+
 export function buildModel({ zipBuffer, log, error, onRaw = null }) {
   log("Reading the archive...");
   let zip = new AdmZip(zipBuffer);
@@ -503,6 +538,7 @@ export function buildModel({ zipBuffer, log, error, onRaw = null }) {
   // Date order is what makes "as of" mean anything; the file name only makes the order stable.
   matches.sort((a, b) => String(a.date ?? "").localeCompare(String(b.date ?? "")) || a.file.localeCompare(b.file));
   const dates = matches.map((m) => m.date).filter(Boolean);
+  const rolling = rollingParTable(matches);
   const holdoutCutoff = holdoutCutoffDate(dates, HOLDOUT_FRACTION);
   const trainingDates = holdoutCutoff ? dates.filter((d) => d < holdoutCutoff) : dates;
   const validCutoff = holdoutCutoffDate(trainingDates, VALIDATION_FRACTION);
@@ -574,6 +610,7 @@ export function buildModel({ zipBuffer, log, error, onRaw = null }) {
       trainedAt: new Date().toISOString(),
       asOf,
       parRunRate: PAR_RUN_RATE,
+      rollingPar: rolling,
       chase,
       firstInnings,
       prematch,
@@ -676,7 +713,7 @@ function firstInningsP(sub, ctx, withXi, runs, lost, ballsBowled) {
     parRunRate: PAR_RUN_RATE.T20,
     format: "T20",
   };
-  return scoreTier(sub, contextFeatures("firstInnings", firstInningsFeatures(s), s, ctx, withXi));
+  return scoreTier(sub, contextFeatures("firstInnings", firstInningsFeatures(s), s, ctx, withXi, hasTimeVaryingTerms(sub.featureNames)));
 }
 
 /** The Test head's class probabilities at the first ball of a five-day match. */

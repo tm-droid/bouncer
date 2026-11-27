@@ -209,14 +209,132 @@ const XI_NAMES = {
   prematch: ["batAvgDiff", "batStrikeDiff", "batRecentDiff", "bowlDiff", "xiCoverage"],
 };
 
+/**
+ * Time-varying base terms (tvB): on the first-innings head each team, ground and player column is
+ * also entered multiplied by the fraction of the innings still to bowl, so a side's quality can
+ * matter more early than late. The ground's own projection (`projectedVsVenue`) is not repeated.
+ */
+export const TV_SUFFIX = "*bf@tvB";
+const TV_SKIP = new Set(["projectedVsVenue"]);
+
 /** The names of a context vector, in order. `baseNames` are the head's base feature names. */
-export function contextFeatureNames(head, baseNames, withXi) {
-  return [
-    ...baseNames.filter((_, i) => i !== STRENGTH_INDEX[head]),
-    ...TEAM_NAMES,
-    ...VENUE_NAMES[head],
-    ...(withXi ? XI_NAMES[head] : []),
-  ];
+export function contextFeatureNames(head, baseNames, withXi, tv = false) {
+  const own = baseNames.filter((_, i) => i !== STRENGTH_INDEX[head]);
+  const context = [...TEAM_NAMES, ...VENUE_NAMES[head], ...(withXi ? XI_NAMES[head] : [])];
+  const names = [...own, ...context];
+  if (tv && head === "firstInnings") for (const n of context) if (!TV_SKIP.has(n)) names.push(n + TV_SUFFIX);
+  return names;
+}
+
+/** True when a model head's feature names carry the time-varying terms. */
+export function hasTimeVaryingTerms(featureNames) {
+  return Array.isArray(featureNames) && featureNames.some((n) => typeof n === "string" && n.endsWith(TV_SUFFIX));
+}
+
+// ── rolling par ──────────────────────────────────────────────────────────────
+
+/** Matches in the first-innings head's rolling par window (rpN). */
+export const RP_MATCHES = 300;
+/** Fewer matches than this in a window and the constant par is used instead. */
+export const RP_MIN_MATCHES = 30;
+/** Days in the chase head's rolling par window (rpD). */
+export const RP_DAYS = 365;
+
+/** The base columns that are measured against the par; the rest keep the constant par. */
+export const RP_INDEX = Object.freeze({ chase: [3, 4, 8, 10, 11, 12], firstInnings: [0, 1, 5] });
+
+/** Which window each head reads: the first innings the last RP_MATCHES, the chase the last RP_DAYS. */
+export const RP_WINDOW = Object.freeze({ chase: "D", firstInnings: "N" });
+
+/** `base` with the par-relative columns taken from `alt`, the same base built at the rolling par. */
+export function withRollingPar(head, base, alt) {
+  const out = base.slice();
+  for (const i of RP_INDEX[head] ?? []) out[i] = alt[i];
+  return out;
+}
+
+/** Key of the rolling par table. */
+export function rollingParKey(formatClass, gender) {
+  return `${formatClass}|${gender}`;
+}
+
+const rateOf = (cr, cb, a, b) =>
+  b - a >= RP_MIN_MATCHES && cb[b] > cb[a] ? (6 * (cr[b] - cr[a])) / (cb[b] - cb[a]) : null;
+
+/**
+ * As-of rolling par for each entry: runs per six legal balls over the previous RP_MATCHES matches
+ * (N) and the previous RP_DAYS days (D) of the same format class and gender, counting only matches
+ * dated strictly before the entry's own, so nothing from the match or later leaks in. A window with
+ * fewer than RP_MIN_MATCHES matches yields null for that window.
+ *
+ * @param entries {formatClass, gender, date: "YYYY-MM-DD", runs, balls}, sorted by date
+ * @returns an array aligned to `entries` of `{N, D}`
+ */
+export function rollingParAsOf(entries) {
+  const groups = new Map();
+  entries.forEach((e, index) => {
+    const key = rollingParKey(e.formatClass, e.gender);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({ index, date: e.date, day: Date.parse(e.date) / 864e5, runs: e.runs, balls: e.balls });
+  });
+  const out = new Array(entries.length);
+  for (const list of groups.values()) {
+    const cr = [0];
+    const cb = [0];
+    for (const e of list) {
+      cr.push(cr[cr.length - 1] + e.runs);
+      cb.push(cb[cb.length - 1] + e.balls);
+    }
+    let hi = 0;
+    let lo = 0;
+    for (const e of list) {
+      while (hi < list.length && list[hi].date < e.date) hi++;
+      while (lo < hi && list[lo].day < e.day - RP_DAYS) lo++;
+      out[e.index] = { N: rateOf(cr, cb, Math.max(0, hi - RP_MATCHES), hi), D: rateOf(cr, cb, lo, hi) };
+    }
+  }
+  return out;
+}
+
+/**
+ * The rolling par as of the end of the data, per `formatClass|gender`: what serving reads. Same
+ * windows as [rollingParAsOf], taken over everything up to and including the latest entry. A window
+ * that is too thin is left out so serving falls back to the constant par for it.
+ */
+export function rollingParLatest(entries) {
+  const groups = new Map();
+  for (const e of entries) {
+    const key = rollingParKey(e.formatClass, e.gender);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(e);
+  }
+  const table = {};
+  for (const [key, list] of groups) {
+    const cr = [0];
+    const cb = [0];
+    for (const e of list) {
+      cr.push(cr[cr.length - 1] + e.runs);
+      cb.push(cb[cb.length - 1] + e.balls);
+    }
+    const n = list.length;
+    const cutoff = Date.parse(list[n - 1].date) / 864e5 - RP_DAYS;
+    let lo = 0;
+    while (lo < n && Date.parse(list[lo].date) / 864e5 < cutoff) lo++;
+    const row = {};
+    const N = rateOf(cr, cb, Math.max(0, n - RP_MATCHES), n);
+    const D = rateOf(cr, cb, lo, n);
+    if (N !== null) row.N = N;
+    if (D !== null) row.D = D;
+    if (N !== null || D !== null) table[key] = row;
+  }
+  return table;
+}
+
+/** The shipped rolling par for a head, or null when the model carries none for this format and gender. */
+export function shippedRollingPar(table, head, formatClass, gender) {
+  const window = RP_WINDOW[head];
+  const v = window ? table?.[rollingParKey(formatClass, gender)]?.[window] : null;
+  return Number.isFinite(v) && v > 0 ? v : null;
 }
 
 /**
@@ -228,8 +346,9 @@ export function contextFeatureNames(head, baseNames, withXi) {
  * @param s      the state that base vector was built from (`target`, `runsScored`, …)
  * @param c      a `sideContext`
  */
-export function contextFeatures(head, base, s, c, withXi) {
+export function contextFeatures(head, base, s, c, withXi, tv = false) {
   const out = base.filter((_, i) => i !== STRENGTH_INDEX[head]);
+  const contextStart = out.length;
   out.push(c.eloDiff, c.formDiff, c.h2hAdvantage, c.winRateDiff);
   const scoring = c.venueScoring > 0 ? c.venueScoring : 1;
   const known = c.hasVenue ? 1 : 0;
@@ -256,6 +375,12 @@ export function contextFeatures(head, base, s, c, withXi) {
     if (head === "chase") out.push(own.batAvg, own.batStrike, own.batRecent, opp.bowl, coverage);
     else if (head === "firstInnings") out.push(own.batAvg, own.batStrike, own.batRecent, opp.bowl, opp.batAvg, opp.batStrike, own.bowl, coverage);
     else out.push(own.batAvg - opp.batAvg, own.batStrike - opp.batStrike, own.batRecent - opp.batRecent, own.bowl - opp.bowl, coverage);
+  }
+  if (tv && head === "firstInnings") {
+    const bf = Math.max(s.ballsRemaining, 0) / Math.max(s.ballsBudget, 1);
+    const skip = contextStart + TEAM_NAMES.length + VENUE_NAMES.firstInnings.indexOf("projectedVsVenue");
+    const end = out.length;
+    for (let i = contextStart; i < end; i++) if (i !== skip) out.push(out[i] * bf);
   }
   return out;
 }
