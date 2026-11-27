@@ -1613,6 +1613,51 @@ function recencyWeights(train, windows, halfLifeYears) {
   return out;
 }
 
+/** E6: data-hygiene helpers. A match remapped to 99 leaves every slice; the holdout is never touched. */
+const ANTISYM = /Diff$|Advantage$|^tossWonByFirst$|^firstBatsFirst$/;
+const isDls = (m) => m.method != null;
+const isT10 = (m) => m.formatClass === "T20" && m.ballsBudget === 60;
+const remapMemo = new Map();
+function remapWindows(windows, kind) {
+  const memo = remapMemo.get(windows) ?? remapMemo.set(windows, new Map()).get(windows);
+  if (memo.has(kind)) return memo.get(kind);
+  const out = Uint8Array.from(windows);
+  const bad = kind === "dls" ? isDls : isT10;
+  for (let m = 0; m < out.length; m++) if ((out[m] === WINDOW.train || out[m] === WINDOW.valid) && bad(matches[m])) out[m] = 99;
+  memo.set(kind, out);
+  return out;
+}
+/** Row weights 1/n^power per match (n = the match's rows in this sink), normalised to mean 1. */
+function matchRowWeights(sink, power) {
+  const n = new Map();
+  for (let r = 0; r < sink.length; r++) n.set(sink.match[r], (n.get(sink.match[r]) ?? 0) + 1);
+  const out = new Float64Array(sink.length);
+  let sum = 0;
+  for (let r = 0; r < sink.length; r++) { out[r] = n.get(sink.match[r]) ** -power; sum += out[r]; }
+  for (let r = 0; r < sink.length; r++) out[r] *= sink.length / sum;
+  return out;
+}
+/** The same match seen from the other side: flagged columns negated, label flipped. */
+function mirrorSink(sink, flip) {
+  const k = sink.numFeatures;
+  const n = sink.length;
+  const X = new Float32Array(2 * n * k);
+  X.set(sink.X, 0);
+  const y = new Uint8Array(2 * n);
+  y.set(sink.y, 0);
+  for (let r = 0; r < n; r++) {
+    for (let j = 0; j < k; j++) X[(n + r) * k + j] = flip[j] ? -sink.X[r * k + j] : sink.X[r * k + j];
+    y[n + r] = sink.y[r] ? 0 : 1;
+  }
+  const match = new Int32Array(2 * n);
+  match.set(sink.match, 0);
+  match.set(sink.match, n);
+  const index = new Int32Array(2 * n);
+  index.set(sink.index, 0);
+  index.set(sink.index, n);
+  return { X, y, match, index, length: 2 * n, numFeatures: k };
+}
+
 function fit(store, groups, modelClass, classes, windowsList = null, variant = null, opts = {}) {
   ACTIVE_ELO = opts.elo ?? null;
   const columns = [];
@@ -1634,8 +1679,11 @@ function fit(store, groups, modelClass, classes, windowsList = null, variant = n
       else if (TV_TAGS.includes(tag) ? !terms.includes(tag) : tag !== variant) return;
     } else if (dropped.includes(name)) return;
     else if (opts.rp && RP_NAMES[store.name]?.includes(name)) return;
+    if (opts.sym && !ANTISYM.test(name)) return;
     columns.push(idx);
   });
+  const flip = columns.map((c) => !!opts.sym || ANTISYM.test(store.columns[c][0]));
+  const symErr = [];
   if (!windowsList && !foldCache.has(store)) foldCache.set(store, foldWindows(store));
   const parts = { full: [], mix: [], bare: [] };
   const matchOf = [];
@@ -1643,7 +1691,8 @@ function fit(store, groups, modelClass, classes, windowsList = null, variant = n
   const details = [];
   const models = [];
   const recals = [];
-  for (const windows of windowsList ?? foldCache.get(store)) {
+  for (const baseWindows of windowsList ?? foldCache.get(store)) {
+    const windows = opts.dropDls ? remapWindows(baseWindows, "dls") : opts.dropT10 ? remapWindows(baseWindows, "t10") : baseWindows;
     const sinks = {
       train: slice(store, windows, WINDOW.train, columns, "mix"),
       valid: slice(store, windows, WINDOW.valid, columns, "mix"),
@@ -1653,11 +1702,18 @@ function fit(store, groups, modelClass, classes, windowsList = null, variant = n
     };
     let probsOf;
     if (modelClass === "linear") {
+      if (opts.sym) {
+        sinks.train = mirrorSink(sinks.train, flip);
+        sinks.valid = mirrorSink(sinks.valid, flip);
+      }
       const { means, stds } = standardize(sinks);
       if (classes === 1) {
         const model = opts.halfLife
           ? trainBinaryWeighted(sinks.train, sinks.valid, BINARY_OPTIONS, recencyWeights(sinks.train, windows, opts.halfLife))
-          : T.trainBinary(sinks.train, sinks.valid, BINARY_OPTIONS);
+          : opts.matchW
+            ? trainBinaryWeighted(sinks.train, sinks.valid, BINARY_OPTIONS, matchRowWeights(sinks.train, opts.matchW === "inv" ? 1 : 0.5))
+            : T.trainBinary(sinks.train, sinks.valid, opts.sym ? { ...BINARY_OPTIONS, fitBias: false } : BINARY_OPTIONS);
+        if (opts.sym) model.bias = 0;
         const temperature = T.fitTemperature(sinks.valid, model.weights, model.bias);
         models.push({ columns, means, stds, weights: model.weights, bias: model.bias, temperature });
         const rec = opts.recal ? fitRecal(opts.recal, sinks.valid, store, model, temperature) : null;
@@ -1672,6 +1728,19 @@ function fit(store, groups, modelClass, classes, windowsList = null, variant = n
           return [T.sigmoid(z / temperature)];
         };
         details.push(`e${model.epoch} T=${temperature.toFixed(2)}`);
+        if (store.name === "prematch") {
+          const sink = sinks.full;
+          const k = sink.numFeatures;
+          const f = new Array(k);
+          const g = new Array(k);
+          for (let i = 0; i < sink.length; i++) {
+            for (let j = 0; j < k; j++) {
+              f[j] = sink.X[i * k + j];
+              g[j] = flip[j] ? -f[j] - (2 * means[j]) / stds[j] : f[j];
+            }
+            symErr.push(Math.abs(probsOf(f, i, sink)[0] + probsOf(g, i, sink)[0] - 1));
+          }
+        }
       } else {
         const model = T.trainMulticlass(sinks.train, sinks.valid, LONG_OPTIONS);
         probsOf = (f) => T.predictClasses(f, model);
@@ -1711,6 +1780,7 @@ function fit(store, groups, modelClass, classes, windowsList = null, variant = n
     index: cat(indexOf),
     models,
     recals,
+    symErr: symErr.length ? { mean: symErr.reduce((a, b) => a + b, 0) / symErr.length, max: symErr.reduce((a, b) => Math.max(a, b), 0) } : null,
   };
 }
 
@@ -1728,7 +1798,7 @@ function fitShared(store, groups, modelClass, classes, windowsList = null, varia
     if (!windowIds.has(id)) windowIds.set(id, windowIds.size);
     w = `w${windowIds.get(id)}`;
   }
-  const key = [store.name, groups.join("+"), modelClass, classes, w, variant ?? "", (opts.terms ?? []).join("+"), opts.recal ?? "", opts.rp ?? "", opts.halfLife ?? "", opts.res ? "res" : "", opts.twoStage ? "ts" : "", opts.elo ?? "", opts.e5g ? "e5g" : ""].join("|");
+  const key = [store.name, groups.join("+"), modelClass, classes, w, variant ?? "", (opts.terms ?? []).join("+"), opts.recal ?? "", opts.rp ?? "", opts.halfLife ?? "", opts.res ? "res" : "", opts.twoStage ? "ts" : "", opts.elo ?? "", opts.e5g ? "e5g" : "", opts.dropDls ? "dls" : "", opts.dropT10 ? "t10" : "", opts.matchW ?? "", opts.sym ? "sym" : ""].join("|");
   if (!fitMemo.has(key)) fitMemo.set(key, fit(store, groups, modelClass, classes, windowsList, variant, opts));
   return fitMemo.get(key);
 }
@@ -1882,6 +1952,42 @@ function line(label, r, baseline) {
   );
   fitLog.push({ label, r });
   return row;
+}
+
+/** E6: loss, ECE and match-weighted loss over a row subset of a fit's full holdout. */
+function statsAt(r, idx) {
+  const bins = 20;
+  const sum = new Float64Array(bins), hits = new Float64Array(bins), counts = new Float64Array(bins);
+  const per = new Map();
+  let total = 0;
+  for (const i of idx) {
+    const s = r.full.stated[i], h = r.full.happened[i];
+    total += r.full.loss[i];
+    const b = Math.min(bins - 1, Math.floor(s * bins));
+    sum[b] += s; hits[b] += h; counts[b]++;
+    let e = per.get(r.matchOf[i]);
+    if (!e) per.set(r.matchOf[i], (e = { s: 0, n: 0 }));
+    e.s += r.full.loss[i]; e.n++;
+  }
+  let ece = 0;
+  for (let b = 0; b < bins; b++) if (counts[b]) ece += (counts[b] / idx.length) * Math.abs(sum[b] / counts[b] - hits[b] / counts[b]);
+  let mw = 0;
+  for (const e of per.values()) mw += e.s / e.n;
+  return { rows: idx.length, matches: per.size, logLoss: total / Math.max(idx.length, 1), ece, matchLogLoss: mw / Math.max(per.size, 1) };
+}
+const rowsWhere = (r, keep) => {
+  const idx = [];
+  for (let i = 0; i < r.matchOf.length; i++) if (keep(matches[r.matchOf[i]])) idx.push(i);
+  return idx;
+};
+/** Paired delta of a candidate against a baseline over the same row subset, with a match bootstrap. */
+function pairedAt(base, cand, idx) {
+  const b = Float64Array.from(idx, (i) => base.full.loss[i]);
+  const c = Float64Array.from(idx, (i) => cand.full.loss[i]);
+  const mo = Int32Array.from(idx, (i) => cand.matchOf[i]);
+  const ci = bootstrap(b, c, mo);
+  const sb = statsAt(base, idx), sc = statsAt(cand, idx);
+  return { rows: idx.length, matches: ci.matches, base: sb, cand: sc, delta: sc.logLoss - sb.logLoss, ci: [ci.lo, ci.hi], deltaEce: sc.ece - sb.ece, deltaMatch: sc.matchLogLoss - sb.matchLogLoss };
 }
 
 // ── bands, calibration, latest season ───────────────────────────────────────
@@ -2322,6 +2428,86 @@ for (const name of wanted) {
       combinedFrom: picks,
       combinedSpec: combo,
     };
+  }
+  if (name === "chase" || name === "first") {
+    // E6: (a) drop DLS matches from training, (b) per-match row weights, (c) T10 handling and scoring.
+    const all = [...root, ...optional];
+    const one = latestSeason ? [latest.windows] : null;
+    const baseOpts = name === "first" ? { terms: ["tvB"], rp: "rpN" } : { rp: "rpD" };
+    const B = fitShared(store, all, "linear", classes, null, null, baseOpts);
+    const BL = one ? fitShared(store, all, "linear", classes, one, null, baseOpts) : null;
+    checkBaseline(`${name} e6 baseline`, B.full.logLoss, name === "first" ? 0.548808 : 0.360229);
+    const nonDls = rowsWhere(B, (m) => m.method == null);
+    const dlsRows = rowsWhere(B, (m) => m.method != null);
+    const allRows = rowsWhere(B, () => true);
+    const t10Rows = rowsWhere(B, isT10);
+    const t20Rows = rowsWhere(B, (m) => m.formatClass === "T20" && !isT10(m));
+    const t10Stats = statsAt(B, t10Rows);
+    const t20Stats = statsAt(B, t20Rows);
+    const baseMw = statsAt(B, allRows).matchLogLoss;
+    console.log(`  e6 ${name} T10 holdout rows ${t10Stats.rows} (${t10Stats.matches} matches) ll ${fmt(t10Stats.logLoss)} ece ${fmt(t10Stats.ece)}; other T20 ${t20Stats.rows} rows (${t20Stats.matches}) ll ${fmt(t20Stats.logLoss)} ece ${fmt(t20Stats.ece)}`);
+    const results = {};
+    const run = (label, opts) => {
+      const o = { ...baseOpts, ...opts };
+      const r = fitShared(store, all, "linear", classes, null, null, o);
+      const row = line(label, r, B);
+      const out = { ...row, deltaEce: r.full.ece - B.full.ece, ece: r.full.ece, opts: o };
+      const mw = statsAt(r, allRows).matchLogLoss;
+      out.ballWeighted = { logLoss: r.full.logLoss, baseline: B.full.logLoss };
+      out.matchWeighted = { logLoss: mw, baseline: baseMw, delta: mw - baseMw };
+      out.nonDls = pairedAt(B, r, nonDls);
+      out.dlsOnly = dlsRows.length ? pairedAt(B, r, dlsRows) : null;
+      out.t10Holdout = t10Rows.length ? pairedAt(B, r, t10Rows) : null;
+      if (one) {
+        const l = fitShared(store, all, "linear", classes, one, null, o);
+        const ci = bootstrap(BL.full.loss, l.full.loss, l.matchOf);
+        out.latestSeason = { logLoss: l.full.logLoss, delta: l.full.logLoss - BL.full.logLoss, ci: [ci.lo, ci.hi], ece: l.full.ece, deltaEce: l.full.ece - BL.full.ece };
+      }
+      out.gate = row.delta <= -0.001 && row.ci[1] < 0 && out.deltaEce <= 0.005 ? "PASS" : "FAIL";
+      results[label] = out;
+      console.log(`  e6 ${name} ${label}: d ${fmt(row.delta)} [${fmt(row.ci[0])}, ${fmt(row.ci[1])}] dECE ${fmt(out.deltaEce)} matchW d ${fmt(out.matchWeighted.delta)} nonDLS d ${fmt(out.nonDls.delta)} [${fmt(out.nonDls.ci[0])}, ${fmt(out.nonDls.ci[1])}] ${out.gate}`);
+    };
+    run("dropDls", { dropDls: true });
+    run("matchW1/n", { matchW: "inv" });
+    run("matchW1/sqrt(n)", { matchW: "sqrt" });
+    run("dropT10", { dropT10: true });
+    report.e6 = report.e6 ?? {};
+    report.e6[name] = {
+      baseline: {
+        ballWeighted: B.full.logLoss, matchWeighted: baseMw, ece: B.full.ece,
+        nonDls: statsAt(B, nonDls), dlsOnly: dlsRows.length ? statsAt(B, dlsRows) : null,
+        latestSeason: BL ? { logLoss: BL.full.logLoss, ece: BL.full.ece } : null,
+      },
+      t10: {
+        handling: "T10 (formatClass T20, ballsBudget 60) is trained with T20 through the ballsBudget feature; no separate route",
+        t10Holdout: t10Stats, otherT20Holdout: t20Stats,
+      },
+      variants: results,
+    };
+  }
+  if (name === "prematch") {
+    // B5: symmetrised pre-match head against the current one.
+    const all = [...root, ...optional];
+    const one = latestSeason ? [latest.windows] : null;
+    const B = fitShared(store, all, "linear", classes, null, null, {});
+    const BL = one ? fitShared(store, all, "linear", classes, one, null, {}) : null;
+    const ag = rows.find((x) => x.label === "all groups");
+    if (ag) checkBaseline("prematch b5 baseline vs all groups", B.full.logLoss, ag.logLoss);
+    const S = fitShared(store, all, "linear", classes, null, null, { sym: true });
+    const row = line("b5 symmetric", S, B);
+    const out = {
+      baseline: { logLoss: B.full.logLoss, ece: B.full.ece, symErr: B.symErr },
+      symmetric: { ...row, deltaEce: S.full.ece - B.full.ece, symErr: S.symErr },
+    };
+    if (one) {
+      const SL = fitShared(store, all, "linear", classes, one, null, { sym: true });
+      const ci = bootstrap(BL.full.loss, SL.full.loss, SL.matchOf);
+      out.symmetric.latestSeason = { logLoss: SL.full.logLoss, delta: SL.full.logLoss - BL.full.logLoss, ci: [ci.lo, ci.hi], ece: SL.full.ece };
+      out.baseline.latestSeason = { logLoss: BL.full.logLoss, ece: BL.full.ece };
+    }
+    out.adopt = row.delta <= 0.001;
+    report.b5 = out;
+    console.log(`  b5 prematch: current ll ${fmt(B.full.logLoss)} symErr ${JSON.stringify(B.symErr)}; symmetric ll ${fmt(S.full.logLoss)} d ${fmt(row.delta)} [${fmt(row.ci[0])}, ${fmt(row.ci[1])}] dECE ${fmt(out.symmetric.deltaEce)} symErr ${JSON.stringify(S.symErr)} adopt ${out.adopt}`);
   }
   report.repro = baselineChecks;
   report.models[name] = { rows, selected: chosen.slice(root.length) };
