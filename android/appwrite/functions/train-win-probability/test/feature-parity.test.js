@@ -134,3 +134,92 @@ test("prior shrinkage behaves identically in the trainer and the reader", () => 
   }
   assert.equal(reader.MODEL_VERSION, trainer.MODEL_VERSION, "reader and writer must agree on the contract");
 });
+
+// ── rolling par and time-varying terms (D1) ──────────────────────────────────
+
+import * as ctx from "../src/contextmath.js";
+import * as readerCtx from "../../match-sync/src/contextmath.js";
+import { rollingParTable } from "../src/build.js";
+
+const entry = (date, runs, balls = 240, formatClass = "T20", gender = "male") => ({ formatClass, gender, date, runs, balls });
+const ramp = (n, start = "2024-01-01", runs = 300) =>
+  Array.from({ length: n }, (_, i) => entry(new Date(Date.parse(start) + i * 864e5).toISOString().slice(0, 10), runs));
+
+test("rolling par is as of the match date: same-day matches and later ones are excluded", () => {
+  const rows = [...ramp(40), entry("2024-02-10", 600), entry("2024-02-10", 600), entry("2024-02-11", 300)];
+  const at = ctx.rollingParAsOf(rows);
+  assert.equal(at[0].N, null, "fewer than 30 earlier matches");
+  assert.equal(at[29].N, null, "29 earlier matches is still thin");
+  assert.equal(at[30].N, 7.5, "30 earlier matches at 300 runs per 240 balls");
+  // Both 2024-02-10 high-scoring matches see only strictly earlier days, so neither sees the other.
+  assert.equal(at[40].N, at[41].N);
+  assert.equal(at[40].N, 7.5);
+  assert.ok(at[42].N > 7.5, "the next day sees both");
+});
+
+test("the window is 300 matches or 365 days, per format and gender", () => {
+  const rows = [...ramp(320, "2022-01-01", 240), ...ramp(40, "2024-01-01", 360), entry("2025-01-01", 300)];
+  const at = ctx.rollingParAsOf(rows);
+  const last = at[at.length - 1];
+  assert.ok(Math.abs(last.N - 6.4) < 1e-9, "the last 300 matches: 260 at 6.0 and 40 at 9.0");
+  assert.equal(last.D, 9, "only the 2024 matches are inside 365 days of 2025-01-01");
+  const other = ctx.rollingParAsOf([...ramp(40), entry("2025-01-01", 300, 240, "ODI"), entry("2025-01-01", 300, 240, "T20", "female")]);
+  assert.equal(other[40].N, null);
+  assert.equal(other[41].N, null);
+});
+
+test("the shipped table is the latest window, and a thin window is left out", () => {
+  const table = ctx.rollingParLatest([...ramp(35), ...ramp(5, "2024-03-01", 300).map((e) => ({ ...e, formatClass: "ODI" }))]);
+  assert.equal(table["T20|male"].N, 7.5);
+  assert.equal(table["T20|male"].D, 7.5);
+  assert.equal(table["ODI|male"], undefined);
+  assert.equal(ctx.shippedRollingPar(table, "chase", "T20", "male"), 7.5);
+  assert.equal(ctx.shippedRollingPar(table, "firstInnings", "ODI", "male"), null);
+  assert.equal(ctx.shippedRollingPar(undefined, "chase", "T20", "male"), null);
+});
+
+test("rollingParTable stamps each limited-overs match and ignores Tests and undated ones", () => {
+  const inn = (runs, balls) => ({ balls: Array.from({ length: balls }, (_, i) => ({ runs: i < runs ? 1 : 0, legal: true })) });
+  const mk = (date, formatClass = "T20") => ({ formatClass, gender: "male", date, innings: [inn(100, 120), inn(80, 120)] });
+  const matches = [mk("2024-01-01"), mk("2024-01-02"), mk("2024-01-03", "TEST"), { ...mk("2024-01-04"), date: null }];
+  const table = rollingParTable(matches);
+  assert.equal(matches[2].rollingPar, undefined);
+  assert.equal(matches[3].rollingPar, undefined);
+  assert.deepEqual(matches[0].rollingPar, { N: null, D: null });
+  assert.deepEqual(table, {}, "two matches never reach 30");
+});
+
+test("the par moves exactly the replaced columns, identically in the trainer and the reader", () => {
+  for (const [head, build, readBuild, fmt] of [
+    ["chase", trainer.chaseFeatures, reader.chaseFeatures, CHASE_STATES[60]],
+    ["firstInnings", trainer.firstInningsFeatures, reader.firstInningsFeatures, CHASE_STATES[101]],
+  ]) {
+    const a = build(fmt);
+    const b = build({ ...fmt, parRunRate: fmt.parRunRate + 1.3 });
+    const moved = a.map((v, i) => (v === b[i] ? -1 : i)).filter((i) => i >= 0);
+    assert.deepEqual(moved.sort((x, y) => x - y), ctx.RP_INDEX[head], `${head}: the par touches only the replaced columns`);
+    assert.deepEqual(readBuild({ ...fmt, parRunRate: fmt.parRunRate + 1.3 }), b);
+    assert.deepEqual(ctx.withRollingPar(head, a, b), b);
+    assert.deepEqual(readerCtx.withRollingPar(head, a, b), b);
+  }
+});
+
+test("time-varying terms are first-innings only, scale by the balls-left fraction, and agree across copies", () => {
+  const s = { ...CHASE_STATES[101], ballsRemaining: 30, ballsBudget: 120 };
+  const c = { eloDiff: 0.5, formDiff: 0.1, h2hAdvantage: 0.05, winRateDiff: 0.02, venueScoring: 1.1, venueChaseAdvantage: 0.03, venueDrawAdvantage: 0, familiarityDiff: 0.2, hasVenue: true, xi: null };
+  const base = trainer.firstInningsFeatures(s);
+  const plain = ctx.contextFeatures("firstInnings", base, s, c, false);
+  const tv = ctx.contextFeatures("firstInnings", base, s, c, false, true);
+  const names = ctx.contextFeatureNames("firstInnings", trainer.FIRST_INNINGS_FEATURE_NAMES, false, true);
+  assert.equal(tv.length, names.length);
+  assert.ok(ctx.hasTimeVaryingTerms(names));
+  assert.ok(!ctx.hasTimeVaryingTerms(ctx.contextFeatureNames("firstInnings", trainer.FIRST_INNINGS_FEATURE_NAMES, false)));
+  assert.deepEqual(tv.slice(0, plain.length), plain, "the plain columns come first, unchanged");
+  const extra = tv.slice(plain.length);
+  assert.equal(extra.length, names.filter((n) => n.endsWith(ctx.TV_SUFFIX)).length);
+  const first = names.findIndex((n) => n.endsWith(ctx.TV_SUFFIX));
+  const source = names.indexOf(names[first].slice(0, -ctx.TV_SUFFIX.length));
+  assert.ok(Math.abs(extra[0] - tv[source] * 0.25) < 1e-12, "each appended column is its context column times balls left over budget")
+  assert.deepEqual(readerCtx.contextFeatures("firstInnings", base, s, c, false, true), tv);
+  assert.deepEqual(ctx.contextFeatures("chase", trainer.chaseFeatures(s), s, c, false, true), ctx.contextFeatures("chase", trainer.chaseFeatures(s), s, c, false), "chase never takes the terms");
+});

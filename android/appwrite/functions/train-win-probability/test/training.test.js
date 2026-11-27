@@ -236,7 +236,7 @@ test("a Test never becomes a chase row, and a limited-overs match never a long o
 test("first-innings rows exist at all — v4 scored this half of the match by hand", () => {
   const rows = [...limitedOversRows("firstInnings", withContext(chaseFixture()))];
   assert.equal(rows.length, 6);
-  assert.equal(rows[0].core.length, contextFeatureNames("firstInnings", FIRST_INNINGS_FEATURE_NAMES, false).length);
+  assert.equal(rows[0].core.length, contextFeatureNames("firstInnings", FIRST_INNINGS_FEATURE_NAMES, false, true).length, "first-innings rows carry the time-varying terms");
   assert.ok(rows.every((r) => r.label === 0), "A batted first and lost");
 });
 

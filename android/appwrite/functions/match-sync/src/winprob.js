@@ -31,7 +31,7 @@
  * self-consistent.
  */
 
-import { NEUTRAL_CONTEXT, contextFeatures } from "./contextmath.js";
+import { NEUTRAL_CONTEXT, contextFeatures, hasTimeVaryingTerms, shippedRollingPar, withRollingPar } from "./contextmath.js";
 
 export const MODEL_VERSION = 6;
 
@@ -423,10 +423,10 @@ function longModelOf(model) {
 function scoreContextHead(headModel, head, base, state, context) {
   const c = context ?? NEUTRAL_CONTEXT;
   if (c.xi && headModel?.full) {
-    const features = contextFeatures(head, base, state, c, true);
+    const features = contextFeatures(head, base, state, c, true, hasTimeVaryingTerms(headModel.full.featureNames));
     if (usable(headModel.full, features.length)) return scoreBinary(headModel.full, features);
   }
-  const features = contextFeatures(head, base, state, c, false);
+  const features = contextFeatures(head, base, state, c, false, hasTimeVaryingTerms(headModel?.core?.featureNames));
   return usable(headModel?.core, features.length) ? scoreBinary(headModel.core, features) : null;
 }
 
@@ -598,7 +598,12 @@ export function evaluate({
     };
     const head = isChase ? "chase" : "firstInnings";
     const headModel = isChase ? contextModel.chase : contextModel.firstInnings;
-    const base = isChase ? chaseFeatures(state) : firstInningsFeatures(state);
+    const builder = isChase ? chaseFeatures : firstInningsFeatures;
+    let base = builder(state);
+    // Par-relative columns read the shipped rolling par, as the trainer did per match; a model
+    // without the table (or without this format) keeps the constant par.
+    const rolling = shippedRollingPar(contextModel.rollingPar, head, format, gender);
+    if (rolling !== null) base = withRollingPar(head, base, builder({ ...state, parRunRate: rolling }));
     const probability = scoreContextHead(headModel, head, base, state, context);
     if (probability !== null) {
       return { ...finalize(probability), factors: contextFactors(headModel, head, base, state, context, probability) };
