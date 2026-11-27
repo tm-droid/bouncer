@@ -222,6 +222,9 @@ for (const head of ["chase", "first"]) {
   for (const tag of RP_TAGS) COLUMNS[head].push(...RP_NAMES[head].map((n) => [`${n}@${tag}`, "base"]));
 }
 COLUMNS.chase.push(["rrr*era@eraY", "base"], ["rrr*rp@eraP", "base"]);
+// E3: zero here, overwritten per fold in slice(). `res` replaces the hand-set wicket factor.
+COLUMNS.chase.push(["runsNeededRate@res", "base"]);
+COLUMNS.first.push(["projectedOverPar@res", "base"], ["zScore@twoStage", "base"]);
 
 /** Which mask bits blank a group. The crease and the remaining order are unknowable without an XI. */
 const GROUP_BITS = {
@@ -253,10 +256,12 @@ class Wide {
     // Balls remaining and the innings' ball budget, for the balls-remaining bands (limited overs only).
     this.rem = new Uint16Array(this.capacity);
     this.budget = new Uint16Array(this.capacity);
+    // E3 raw state: runs, wickets, target (0 in a first innings), rolling-par runs per ball.
+    this.raw = new Float32Array(this.capacity * 4);
     this.length = 0;
   }
 
-  push(features, label, matchIndex, window, mask, firstSide = 1, rem = 0, budget = 0) {
+  push(features, label, matchIndex, window, mask, firstSide = 1, rem = 0, budget = 0, raw = null) {
     if (features.length !== this.k) throw new Error(`${this.name}: ${features.length} features for ${this.k} columns`);
     if (this.length === this.capacity) this.grow();
     this.X.set(features, this.length * this.k);
@@ -267,6 +272,7 @@ class Wide {
     this.firstSide[this.length] = firstSide;
     this.rem[this.length] = rem;
     this.budget[this.length] = budget;
+    if (raw) this.raw.set(raw, this.length * 4);
     this.length++;
   }
 
@@ -285,6 +291,7 @@ class Wide {
     this.firstSide = widen(this.firstSide, Uint8Array);
     this.rem = widen(this.rem, Uint16Array);
     this.budget = widen(this.budget, Uint16Array);
+    this.raw = widen(this.raw, Float32Array, 4);
     this.capacity = capacity;
   }
 }
@@ -485,7 +492,8 @@ function limitedVector(o) {
   if (chase) {
     const rr = clamp(requiredRunRate / par, 0, 4);
     v.push(rr * (o.eraYears ?? 0) / 10, rr * (rolling.rpN / par - 1));
-  }
+    v.push(0);
+  } else v.push(0, 0);
   return v;
 }
 
@@ -534,6 +542,7 @@ function limitedOversRows(match, ctx, winRateFor, kind, weather, emit, random) {
       batting,
       ballsRemaining,
       budget,
+      [s.runs, s.wickets, target ?? 0, rollingParFor.get(match)?.N ?? par],
     );
   }
 }
@@ -766,11 +775,11 @@ for (let m = 0; m < matches.length; m++) {
     (maskRandom() < MASK.weather.rate ? MASK.weather.bit : 0);
   const weather =
     (forecastByFile && window === WINDOW.holdout ? forecastByFile[match.file] : weatherByFile?.[match.file]) ?? NO_WEATHER;
-  const emitTo = (store, perRow) => (features, label, side, rem = 0, budget = 0) => {
+  const emitTo = (store, perRow) => (features, label, side, rem = 0, budget = 0, raw = null) => {
     const rowMask = perRow
       ? (maskRandom() < MASK.recent.rate ? MASK.recent.bit : 0) | (maskRandom() < MASK.partnership.rate ? MASK.partnership.bit : 0)
       : 0;
-    store.push(features, label, m, window, matchMask | rowMask, side === undefined || side === match.teams[0] ? 1 : 0, rem, budget);
+    store.push(features, label, m, window, matchMask | rowMask, side === undefined || side === match.teams[0] ? 1 : 0, rem, budget, raw);
   };
   if (wide.chase) limitedOversRows(match, ctx, winRateFor, "chase", weather, emitTo(wide.chase, true), rowRandom);
   if (wide.first) limitedOversRows(match, ctx, winRateFor, "first", weather, emitTo(wide.first, true), rowRandom);
@@ -930,9 +939,246 @@ function strengthFor(windows) {
   return rates;
 }
 
+// ── E3: estimated resources and two-stage ────────────────────────────────────
+
+/**
+ * V(balls left, wickets lost): mean runs still to come in a first innings, per format x gender, from one
+ * fold's TRAINING matches only. First innings only (a chase stops at the target and would bias V low),
+ * and only innings that ran their course (all out or the full budget). A coarse grid of RES_BINS
+ * ball-fraction bins x 10 wickets. Cells under RES_MIN_CELL states are treated as missing. The table
+ * is smoothed to be non-decreasing in balls left (weighted PAV along each wicket row) and then
+ * non-increasing in wickets lost (running minimum, which preserves the first property); queries
+ * interpolate linearly between bin centres, anchored at V(0 balls) = 0. The factor the models use is
+ * h = V(b, w) / V(b, 0): the share of the remaining resource that survives the wickets lost.
+ */
+const RES_BINS = 20;
+const RES_MIN_CELL = 30;
+const resTables = new Map();
+const resStatsLog = [];
+
+function violations(value, present) {
+  let pairs = 0;
+  for (let bin = 0; bin < RES_BINS; bin++) {
+    for (let w = 0; w < 10; w++) {
+      const a = bin * 10 + w;
+      if (!present[a]) continue;
+      if (w < 9 && present[a + 1] && value[a + 1] > value[a]) pairs++;
+      if (bin < RES_BINS - 1 && present[a + 10] && value[a + 10] < value[a]) pairs++;
+    }
+  }
+  return pairs;
+}
+
+function smoothResources(sum, n) {
+  const size = RES_BINS * 10;
+  const present = new Uint8Array(size);
+  const raw = new Float64Array(size);
+  for (let i = 0; i < size; i++) {
+    if (n[i] >= RES_MIN_CELL) { present[i] = 1; raw[i] = sum[i] / n[i]; }
+  }
+  const before = violations(raw, present);
+  const cells = present.reduce((a, b) => a + b, 0);
+  const v = new Float64Array(size);
+  for (let w = 0; w < 10; w++) {
+    const xs = [];
+    for (let bin = 0; bin < RES_BINS; bin++) if (present[bin * 10 + w]) xs.push(bin);
+    const vals = new Float64Array(RES_BINS);
+    const wts = new Float64Array(RES_BINS);
+    for (let bin = 0; bin < RES_BINS; bin++) {
+      const i = bin * 10 + w;
+      if (present[i]) { vals[bin] = raw[i]; wts[bin] = n[i]; continue; }
+      wts[bin] = 1e-6;
+      if (xs.length) {
+        const left = xs.filter((x) => x < bin).pop();
+        const right = xs.find((x) => x > bin);
+        vals[bin] = left === undefined ? raw[right * 10 + w] : right === undefined ? raw[left * 10 + w]
+          : raw[left * 10 + w] + ((raw[right * 10 + w] - raw[left * 10 + w]) * (bin - left)) / (right - left);
+      } else vals[bin] = w > 0 ? v[bin * 10 + w - 1] : 0;
+    }
+    // Weighted pool-adjacent-violators, non-decreasing in bin.
+    const blocks = [];
+    for (let bin = 0; bin < RES_BINS; bin++) {
+      blocks.push({ w: wts[bin], m: vals[bin], len: 1 });
+      while (blocks.length > 1 && blocks[blocks.length - 2].m > blocks[blocks.length - 1].m) {
+        const b = blocks.pop();
+        const a = blocks[blocks.length - 1];
+        a.m = (a.m * a.w + b.m * b.w) / (a.w + b.w);
+        a.w += b.w;
+        a.len += b.len;
+      }
+    }
+    let bin = 0;
+    for (const b of blocks) for (let j = 0; j < b.len; j++) v[(bin++) * 10 + w] = b.m;
+  }
+  for (let bin = 0; bin < RES_BINS; bin++) for (let w = 1; w < 10; w++) v[bin * 10 + w] = Math.min(v[bin * 10 + w], v[bin * 10 + w - 1]);
+  const after = violations(v, new Uint8Array(size).fill(1));
+  return { v, cells, before, after };
+}
+
+function resourcesFor(windows) {
+  const cached = resTables.get(windows);
+  if (cached) return cached;
+  const acc = new Map();
+  for (let m = 0; m < matches.length; m++) {
+    if (windows[m] !== WINDOW.train) continue;
+    const match = matches[m];
+    if (!T.isLimitedOvers(match.formatClass) || !match.innings.length || !match.ballsBudget) continue;
+    const inning = match.innings[0];
+    const budget = match.ballsBudget;
+    const total = T.inningsTotals(inning);
+    if (total.wickets < 10 && total.legalBalls < budget) continue;
+    const key = `${match.formatClass}|${match.gender}`;
+    const cell = acc.get(key) ?? acc.set(key, { sum: new Float64Array(RES_BINS * 10), n: new Float64Array(RES_BINS * 10) }).get(key);
+    let runs = 0;
+    let wickets = 0;
+    let legal = 0;
+    const add = () => {
+      const left = budget - legal;
+      if (left <= 0 || wickets > 9) return;
+      const i = Math.min(RES_BINS - 1, Math.floor((left * RES_BINS) / budget)) * 10 + wickets;
+      cell.sum[i] += total.runs - runs;
+      cell.n[i]++;
+    };
+    add();
+    for (let i = 0; i < inning.balls.length; i++) {
+      const d = T.unpackDelivery(inning.balls[i]);
+      runs += d.runs;
+      wickets += d.wickets;
+      if (d.legal) { legal++; add(); }
+    }
+  }
+  const tables = new Map();
+  const stats = { cells: 0, before: 0, after: 0, classes: 0 };
+  for (const [key, cell] of acc) {
+    const t = smoothResources(cell.sum, cell.n);
+    tables.set(key, t.v);
+    stats.cells += t.cells; stats.before += t.before; stats.after += t.after; stats.classes++;
+  }
+  const at = (v, w, f) => {
+    const x = f * RES_BINS - 0.5;
+    if (x <= 0) return (v[w] * f) / (0.5 / RES_BINS);
+    if (x >= RES_BINS - 1) return v[(RES_BINS - 1) * 10 + w];
+    const j = Math.floor(x);
+    return v[j * 10 + w] + (v[(j + 1) * 10 + w] - v[j * 10 + w]) * (x - j);
+  };
+  const out = {
+    stats,
+    factor(key, f, wickets, handSet) {
+      const v = tables.get(key);
+      if (!v) return handSet;
+      const w = Math.min(wickets, 9);
+      const full = at(v, 0, f);
+      return full > 1e-9 ? Math.min(1, Math.max(0.05, at(v, w, f) / full)) : handSet;
+    },
+  };
+  resTables.set(windows, out);
+  resStatsLog.push({ key: resStatsLog.length, ...stats });
+  console.log(`  e3 V table fold ${resStatsLog.length - 1}: ${stats.classes} classes, ${stats.cells} cells, monotone violations before smoothing ${stats.before}, after ${stats.after}`);
+  return out;
+}
+
+const STAGE1_K = 6;
+const stage1Tables = new Map();
+const finalFirst = new Map();
+
+/** Stage-1 features of a first-innings row, all in units of the as-of par total. */
+function stage1Features(store, i) {
+  const runs = store.raw[i * 4];
+  const wickets = store.raw[i * 4 + 1];
+  const parN = store.raw[i * 4 + 3];
+  const budget = store.budget[i];
+  const rem = store.rem[i];
+  const parTotal = (parN * budget) / 6;
+  const crr = (runs * 6) / Math.max(budget - rem, 1);
+  const wf = (10 - wickets) / 10;
+  const proj = (crr * (rem / 6)) / parTotal;
+  return { x: [1, proj, proj * wf, rem / budget, (wickets / 10) * (rem / budget), wickets / 10], base: runs / parTotal, bin: Math.min(RES_BINS - 1, Math.floor((rem * RES_BINS) / budget)) };
+}
+
+/**
+ * Stage 1: per format x gender, a linear model of (final total - runs) / parTotal from the training
+ * rows, and the residual SD per balls-left bin. Stage 2 is the z score
+ * (mu - parTotal) / sigma = (runs/parTotal + prediction - 1) / sigmaBin.
+ */
+function twoStageFor(store, windows) {
+  const memo = stage1Tables.get(store) ?? stage1Tables.set(store, new Map()).get(store);
+  if (memo.has(windows)) return memo.get(windows);
+  const finalOf = (m) => finalFirst.get(m) ?? finalFirst.set(m, T.inningsTotals(matches[m].innings[0]).runs).get(m);
+  const keyOf = (i) => { const m = matches[store.match[i]]; return `${m.formatClass}|${m.gender}`; };
+  const fitSet = new Map();
+  const get = (key) => fitSet.get(key) ?? fitSet.set(key, { xtx: new Float64Array(STAGE1_K * STAGE1_K), xty: new Float64Array(STAGE1_K), rows: [] }).get(key);
+  for (let i = 0; i < store.length; i++) {
+    if (windows[store.match[i]] !== WINDOW.train) continue;
+    const f = stage1Features(store, i);
+    const parTotal = (store.raw[i * 4 + 3] * store.budget[i]) / 6;
+    const y = (finalOf(store.match[i]) - store.raw[i * 4]) / parTotal;
+    const s = get(keyOf(i));
+    for (let a = 0; a < STAGE1_K; a++) {
+      s.xty[a] += f.x[a] * y;
+      for (let b = 0; b < STAGE1_K; b++) s.xtx[a * STAGE1_K + b] += f.x[a] * f.x[b];
+    }
+    s.rows.push(i);
+  }
+  const models = new Map();
+  for (const [key, s] of fitSet) {
+    const A = Array.from({ length: STAGE1_K }, (_, a) => [...Array.from({ length: STAGE1_K }, (_, b) => s.xtx[a * STAGE1_K + b] + (a === b ? 1e-6 : 0)), s.xty[a]]);
+    for (let c = 0; c < STAGE1_K; c++) {
+      let p = c;
+      for (let r = c + 1; r < STAGE1_K; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+      [A[c], A[p]] = [A[p], A[c]];
+      for (let r = 0; r < STAGE1_K; r++) {
+        if (r === c) continue;
+        const k = A[r][c] / A[c][c];
+        for (let j = c; j <= STAGE1_K; j++) A[r][j] -= k * A[c][j];
+      }
+    }
+    const beta = A.map((row, c) => row[STAGE1_K] / row[c]);
+    const sq = new Float64Array(RES_BINS);
+    const cnt = new Float64Array(RES_BINS);
+    let sqAll = 0;
+    for (const i of s.rows) {
+      const f = stage1Features(store, i);
+      const parTotal = (store.raw[i * 4 + 3] * store.budget[i]) / 6;
+      const e = (finalOf(store.match[i]) - store.raw[i * 4]) / parTotal - f.x.reduce((a, v, j) => a + v * beta[j], 0);
+      sq[f.bin] += e * e; cnt[f.bin]++; sqAll += e * e;
+    }
+    const pooled = Math.sqrt(sqAll / Math.max(s.rows.length, 1));
+    const sigma = Array.from(sq, (v, b) => Math.max(0.02, cnt[b] >= RES_MIN_CELL ? Math.sqrt(v / cnt[b]) : pooled));
+    models.set(key, { beta, sigma, pooled });
+  }
+  const out = (i) => {
+    const mod = models.get(keyOf(i));
+    if (!mod) return 0;
+    const f = stage1Features(store, i);
+    const pred = f.x.reduce((a, v, j) => a + v * mod.beta[j], 0);
+    return (f.base + pred - 1) / mod.sigma[f.bin];
+  };
+  memo.set(windows, out);
+  return out;
+}
+
+/** The per-fold value of the resource column for row i of a limited-overs store. */
+function resColumnValue(store, i, tab) {
+  const m = matches[store.match[i]];
+  const runs = store.raw[i * 4];
+  const wickets = store.raw[i * 4 + 1];
+  const budget = store.budget[i];
+  const rem = store.rem[i];
+  const wf = (10 - wickets) / 10;
+  const chase = store.name === "chase";
+  const h = tab.factor(`${m.formatClass}|${m.gender}`, rem / budget, wickets, chase ? 0.3 + 0.7 * wf : 0.55 + 0.45 * wf);
+  if (chase) return (store.raw[i * 4 + 2] - runs) / (Math.max(rem, 1) * h);
+  const crr = (runs * 6) / Math.max(budget - rem, 1);
+  return (runs + crr * (rem / 6) * h) / ((store.raw[i * 4 + 3] * budget) / 6);
+}
+
 function slice(store, windows, window, columns, maskMode) {
   const strengthColumn = FOLDS > 1 ? columns.findIndex((c) => store.columns[c][1] === "strength") : -1;
   const rateOf = strengthColumn >= 0 ? strengthFor(windows) : null;
+  const resColumn = columns.findIndex((c) => store.columns[c][0].endsWith("@res"));
+  const stageColumn = columns.findIndex((c) => store.columns[c][0].endsWith("@twoStage"));
+  const resTab = resColumn >= 0 ? resourcesFor(windows) : null;
+  const stageOf = stageColumn >= 0 ? twoStageFor(store, windows) : null;
   const rows = [];
   for (let i = 0; i < store.length; i++) if (windows[store.match[i]] === window) rows.push(i);
   const k = columns.length;
@@ -950,6 +1196,8 @@ function slice(store, windows, window, columns, maskMode) {
       const diff = rateOf(m, m.teams[0]) - rateOf(m, m.teams[1]);
       X[r * k + strengthColumn] = store.firstSide[i] ? diff : -diff;
     }
+    if (resTab) X[r * k + resColumn] = resColumnValue(store, i, resTab);
+    if (stageOf) X[r * k + stageColumn] = stageOf(i);
     y[r] = store.y[i];
     match[r] = store.match[i];
   }
@@ -1215,9 +1463,13 @@ function fit(store, groups, modelClass, classes, windowsList = null, variant = n
   store.columns.forEach(([name, group], idx) => {
     if (!groups.includes(group)) return;
     const at = name.indexOf("@");
+    if (opts.res && (name === T.CHASE_FEATURE_NAMES[7] && store.name === "chase"
+      || store.name === "first" && name === `${T.FIRST_INNINGS_FEATURE_NAMES[5]}${opts.rp ? `@${opts.rp}` : ""}`)) return;
     if (at >= 0) {
       const tag = name.slice(at + 1);
-      if (RP_TAGS.includes(tag)) { if (tag !== opts.rp) return; }
+      if (tag === "res") { if (!opts.res) return; }
+      else if (tag === "twoStage") { if (!opts.twoStage) return; }
+      else if (RP_TAGS.includes(tag)) { if (tag !== opts.rp) return; }
       else if (TV_TAGS.includes(tag) ? !terms.includes(tag) : tag !== variant) return;
     } else if (dropped.includes(name)) return;
     else if (opts.rp && RP_NAMES[store.name]?.includes(name)) return;
@@ -1315,7 +1567,7 @@ function fitShared(store, groups, modelClass, classes, windowsList = null, varia
     if (!windowIds.has(id)) windowIds.set(id, windowIds.size);
     w = `w${windowIds.get(id)}`;
   }
-  const key = [store.name, groups.join("+"), modelClass, classes, w, variant ?? "", (opts.terms ?? []).join("+"), opts.recal ?? "", opts.rp ?? "", opts.halfLife ?? ""].join("|");
+  const key = [store.name, groups.join("+"), modelClass, classes, w, variant ?? "", (opts.terms ?? []).join("+"), opts.recal ?? "", opts.rp ?? "", opts.halfLife ?? "", opts.res ? "res" : "", opts.twoStage ? "ts" : ""].join("|");
   if (!fitMemo.has(key)) fitMemo.set(key, fit(store, groups, modelClass, classes, windowsList, variant, opts));
   return fitMemo.get(key);
 }
@@ -1818,6 +2070,47 @@ for (const name of wanted) {
       earlyChase: name === "chase" ? earlyChaseTable(store, B, fitsHere) : null,
     };
     if (name === "chase") console.log(`  e2 earlyChase ${JSON.stringify(report.e2.chase.earlyChase.bands)}`);
+  }
+  if (name === "chase" || name === "first") {
+    // E3: (a) fitted resource table replaces the hand-set wicket factor, (c) two-stage z on first innings.
+    // (b) estResources x rolling-par era scaling is skipped: not cheap. The venueShape and crr extras keep 0.55 + 0.45 wf.
+    const all = [...root, ...optional];
+    const one = latestSeason ? [latest.windows] : null;
+    const baseOpts = name === "first" ? { terms: ["tvB"], rp: "rpN" } : { rp: "rpD" };
+    const B = fitShared(store, all, "linear", classes, null, null, baseOpts);
+    const BL = one ? fitShared(store, all, "linear", classes, one, null, baseOpts) : null;
+    checkBaseline(`${name} e3 vs e2 ${name === "first" ? "rpN" : "rpD"}`, B.full.logLoss, report.e2[name].variants[name === "first" ? "rpN" : "rpD"].logLoss);
+    const fitsHere = {};
+    const results = {};
+    const run = (label, opts) => {
+      const o = { ...baseOpts, ...opts };
+      fitsHere[label] = fitShared(store, all, "linear", classes, null, null, o);
+      const r = fitsHere[label];
+      const row = line(label, r, B);
+      const out = { ...row, deltaEce: r.full.ece - B.full.ece, ece: r.full.ece, opts: o, bands: bandsOf(store, B, r) };
+      if (one) {
+        const l = fitShared(store, all, "linear", classes, one, null, o);
+        const ci = bootstrap(BL.full.loss, l.full.loss, l.matchOf);
+        out.latestSeason = { logLoss: l.full.logLoss, delta: l.full.logLoss - BL.full.logLoss, ci: [ci.lo, ci.hi], ece: l.full.ece, deltaEce: l.full.ece - BL.full.ece };
+      }
+      out.gate = row.delta <= -0.001 && row.ci[1] < 0 && out.deltaEce <= 0.005 ? "PASS" : "FAIL";
+      results[label] = out;
+      console.log(`  e3 ${name} ${label}: d ${fmt(row.delta)} [${fmt(row.ci[0])}, ${fmt(row.ci[1])}] dECE ${fmt(out.deltaEce)} ${out.gate}`);
+    };
+    run("estResources", { res: true });
+    if (name === "first") {
+      run("twoStage", { twoStage: true });
+      run("estResources+twoStage", { res: true, twoStage: true });
+    }
+    report.e3 = report.e3 ?? {};
+    report.e3[name] = {
+      baseline: { logLoss: B.full.logLoss, ece: B.full.ece, latestSeason: BL ? { logLoss: BL.full.logLoss, ece: BL.full.ece } : null },
+      variants: results,
+      earlyChase: name === "chase" ? earlyChaseTable(store, B, fitsHere) : null,
+      monotonicity: resStatsLog.map((x) => ({ fold: x.key, cells: x.cells, violationsBefore: x.before, violationsAfter: x.after })),
+    };
+    if (name === "chase") console.log(`  e3 earlyChase ${JSON.stringify(report.e3.chase.earlyChase.bands)}`);
+    console.log(`  e3 monotonicity ${JSON.stringify(report.e3[name].monotonicity)}`);
   }
   report.repro = baselineChecks;
   report.models[name] = { rows, selected: chosen.slice(root.length) };
