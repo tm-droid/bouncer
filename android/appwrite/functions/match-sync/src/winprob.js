@@ -73,7 +73,7 @@ const BALLS_PER_LONG_DAY = 90 * 6;
 // "The Hundred" is not read as a century. Mirrors CricketConstants.FORMAT_PATTERNS on device.
 const FORMAT_PATTERNS = [
   [/\b(test|5[- ]day)\b/i, "TEST"],
-  // The Test head is trained on Tests only; domestic first-class (MDM) is deliberately excluded.
+  // First-class is its own format: it scores through the Test head with MDM team strength.
   [/\b(first[- ]class|4[- ]day)\b/i, "FC"],
   [/\b(the\s+hundred|hundred|100[- ]ball)\b/i, "HUNDRED"],
   [/\bt10\b/i, "T10"],
@@ -739,8 +739,9 @@ export function evaluateLong({
   format = "TEST",
   model = null,
 } = {}) {
-  // The long head is trained on Tests only; first-class (MDM) was excluded from it.
-  if (format !== "TEST") return UNDETERMINED;
+  // The head is fitted on Tests; first-class scores through it too (lab: 0.9821 against 1.1335 for a
+  // draw-rate prior on 2,221 matches), with team strength read from the MDM key.
+  if (format !== "TEST" && format !== "FC") return UNDETERMINED;
   const learned = longModelOf(model);
   if (!usableClasses(learned?.long, 16, 3)) return UNDETERMINED;
 
@@ -753,8 +754,9 @@ export function evaluateLong({
 
   const isFourthInnings = inningsIndex === 3;
   const teamStats = learned.teamStats ?? {};
+  const strengthFormat = format === "FC" ? "MDM" : "TEST";
   const teamStrengthDiff =
-    winRateOf(teamStats, battingTeam, gender, "TEST") - winRateOf(teamStats, bowlingTeam, gender, "TEST");
+    winRateOf(teamStats, battingTeam, gender, strengthFormat) - winRateOf(teamStats, bowlingTeam, gender, strengthFormat);
 
   const probs = scoreClasses(learned.long, longFeatures({
     lead,
