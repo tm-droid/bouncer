@@ -27,6 +27,7 @@ import {
   xiStrength,
 } from "./contextmath.js";
 import { resolvePlayer } from "./playerjoin.js";
+import { renamedTo, venueAliases } from "./venuealias.js";
 
 // 2: members carry their plain record, and a ground its usual first-innings score. A stored
 // context of an older version is rebuilt rather than read as if it had them.
@@ -73,6 +74,32 @@ export function pickGround(grounds, city) {
   const sameCity = grounds.filter((g) => g.city === wanted);
   if (sameCity.length === 1) return sameCity[0];
   return grounds.length === 1 ? grounds[0] : null;
+}
+
+/** A ground of [grounds] whose city is [city] and which is the only one there, or null. */
+function pickGroundByCity(grounds, city) {
+  if (!Array.isArray(grounds)) return null;
+  const same = grounds.filter((g) => g.city === squash(city));
+  return same.length === 1 && squash(city) ? same[0] : null;
+}
+
+/**
+ * The archive's record of the ground [venue] names: under its own name first, then under the
+ * names the archive may use for it, which must agree on the city.
+ */
+export function findGround(venues, venue) {
+  const own = pickGround(venues?.[venueName(venue.name)], venue.city);
+  if (own) return own;
+  const renamed = renamedTo(venue.name);
+  if (renamed) {
+    const found = pickGround(venues?.[renamed], venue.city);
+    if (found) return found;
+  }
+  for (const alias of venueAliases(venue.name)) {
+    const found = pickGroundByCity(venues?.[alias], venue.city);
+    if (found) return found;
+  }
+  return null;
 }
 
 /**
@@ -213,7 +240,7 @@ export function buildContext({ matchId, meta, squads, model, format, gender, tab
 
   let venue = null;
   if (meta?.venue) {
-    const ground = pickGround(tables?.venues?.[venueName(meta.venue.name)], meta.venue.city);
+    const ground = findGround(tables?.venues, meta.venue);
     const view = means ? venueView(ground?.slices?.[slice] ? countsOf(ground.slices[slice]) : null, means) : null;
     for (const t of teams) t.visits = t.key ? ground?.visits?.[`${t.key}|${gender}`] ?? 0 : 0;
     venue = {
@@ -318,7 +345,9 @@ export function sideContextFor(context, ownId) {
 export function shardIdsFor({ teamKeys, gender, format, venue }) {
   const ids = new Set();
   for (const key of teamKeys) if (key) ids.add(`wpx-${shardOf(`r:${key}|${gender}`)}`);
-  if (venue?.name) ids.add(`wpx-${shardOf(`v:${venueName(venue.name)}`)}`);
+  if (venue?.name) {
+    for (const name of [venueName(venue.name), ...venueAliases(venue.name)]) ids.add(`wpx-${shardOf(`v:${name}`)}`);
+  }
   if (teamKeys.length === 2 && teamKeys[0] && teamKeys[1]) {
     ids.add(`wpx-${shardOf(`h:${pairKey(teamKeys[0], teamKeys[1], gender, format)}`)}`);
   }

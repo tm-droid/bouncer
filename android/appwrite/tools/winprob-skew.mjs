@@ -18,10 +18,14 @@ const AdmZip = require("adm-zip");
 const { AsOfState, sideContextOf } = await import(path.join(trainerDir, "src", "asOfState.js"));
 const { richSkeletonOf } = await import(path.join(trainerDir, "src", "corpus.js"));
 const { unpackDelivery } = await import(path.join(trainerDir, "src", "training.js"));
-const { squash } = await import(path.join(trainerDir, "src", "contextmath.js"));
-const { sideContextFor } = await import(path.join(here, "..", "functions", "match-sync", "src", "context.js"));
+const { squash, venueName } = await import(path.join(trainerDir, "src", "contextmath.js"));
+const { sideContextFor, findGround } = await import(path.join(here, "..", "functions", "match-sync", "src", "context.js"));
+const { venueAliases } = await import(path.join(here, "..", "functions", "match-sync", "src", "venuealias.js"));
 
 const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i > 0 ? process.argv[i + 1] : d; };
+const venuesFlag = process.argv.includes("--venues");
+const venueTables = new Map();
+const venueFixed = new Set();
 const archive = arg("archive", process.env.WINPROB_ARCHIVE);
 const zipPath = arg("zip", path.join(os.homedir(), "Library/Caches/bouncer-winprob-lab/all_json.zip"));
 if (!archive) { console.error("pass --archive <dir holding m/>"); process.exit(2); }
@@ -85,6 +89,17 @@ const exact = new Map();
 for (const m of skel) {
   while (pi < pending.length && pending[pi].asOf <= m.date) {
     lagged.set(pending[pi].s, ctxOf(pending[pi].s));
+    if (venuesFlag && !pending[pi].e.context.venue?.known) {
+      const nm = venueName(pending[pi].s.venue);
+      const keys = new Set();
+      for (const k of state.venues.keys()) { const g = k.split("|")[0]; if (g.split("@")[0] === nm) keys.add(g); }
+      venueTables.set(pending[pi].s, [...keys]);
+      // the table serving would have read: every ground filed under a name this lookup tries
+      const want = new Set([venueName(pending[pi].e.context.venue?.name), ...venueAliases(pending[pi].e.context.venue?.name)]);
+      const table = {};
+      for (const k of state.venues.keys()) { const [n, city = ""] = k.split("|")[0].split("@"); if (want.has(n)) { const l = (table[n] ??= []); if (!l.some((x) => x.city === city)) l.push({ city }); } }
+      if (findGround(table, pending[pi].e.context.venue)) venueFixed.add(pending[pi].s);
+    }
     pi++;
   }
   if (joins.has(m)) exact.set(m, ctxOf(m));
@@ -100,6 +115,7 @@ const add = (group, feat, d) => {
   const t = stats[k]; t.n++; t.abs += Math.abs(d); t.signed += d; if (Math.abs(d) > 0.05) t.big++;
 };
 const worst = {};
+const venueMiss = { n: 0, byClass: {}, rows: [] };
 for (const [m, e] of joins) {
   for (const sideName of m.teams) {
     const tm = e.context.teams.find((t) => squash(t.key ?? t.name) === squash(sideName));
@@ -113,10 +129,17 @@ for (const [m, e] of joins) {
       for (const f of FEATS) {
         const d = Number(serving[f]) - Number(tr[f]);
         add(g, f, d);
+        if (g === "lagged" && venuesFlag) add("sim", f, f === "hasVenue" && venueFixed.has(m) ? 0 : d);
         if (g === "exact" && Math.abs(d) > 0.05) (worst[f] ??= []).push({ f: e.file, side: sideName, serving: serving[f], trainer: tr[f] });
       }
       add(g, "xiPresent(serving-vs-trainer)", (serving.xi ? 1 : 0) - (tr.xi ? 1 : 0));
       if (serving.xi && tr.xi) for (const x of XI) add(g, `xi.${x}`, serving.xi[x] - tr.xi[x]);
+    }
+    if (venuesFlag && sets.lagged && !e.context.venue?.known && sideContextOf(sets.lagged, m, sideName).hasVenue) {
+      const cities = venueTables.get(m) ?? [];
+      const cls = cities.length === 0 ? "name-miss" : cities.length === 1 ? "single-ground-not-picked" : "several-grounds-city-mismatch";
+      venueMiss.n++; venueMiss.byClass[cls] = (venueMiss.byClass[cls] ?? 0) + 1;
+      venueMiss.rows.push({ servingName: e.context.venue?.name, servingCity: e.context.venue?.city, trainerKey: m.venueKey, trainerVenue: m.venue, sameNameKeys: cities.slice(0, 4), cls });
     }
     // gating: serving neutralises team terms unless both known; venue unless known
     add("gating", "teamKnown(serving)", tm.known ? 1 : 0);
@@ -142,12 +165,19 @@ for (const [m, e] of joins) {
   }
 }
 
-for (const g of ["exact", "lagged", "gating"]) {
-  console.log(`-- ${g}${g === "exact" ? " (trainer as of match date)" : g === "lagged" ? " (trainer as of model asOf)" : " (mean = share true)"}`);
+for (const g of ["exact", "lagged", ...(venuesFlag ? ["sim"] : []), "gating"]) {
+  console.log(`-- ${g}${g === "sim" ? " (lagged, hasVenue zeroed where the new serving lookup finds the ground)" : ""}${g === "exact" ? " (trainer as of match date)" : g === "lagged" ? " (trainer as of model asOf)" : " (mean = share true)"}`);
   for (const [k, t] of Object.entries(stats)) if (k.startsWith(`${g}:`))
     console.log(`${k.slice(g.length + 1).padEnd(30)} n=${String(t.n).padStart(4)} mean|d|=${(t.abs / t.n).toFixed(4)} mean d=${(t.signed / t.n).toFixed(4)} >0.05: ${t.big}`);
 }
 console.log(`over-state: n=${ov.n} exactAtOver=${ov.exact} matchesNextOver=${ov.shifted} mean|score d|=${(ov.scoreAbs / Math.max(1, ov.n)).toFixed(2)} mean|wkt d|=${(ov.wktAbs / Math.max(1, ov.n)).toFixed(3)}`);
+if (venuesFlag) {
+  console.log(`new serving lookup finds the ground for ${venueFixed.size} matches of the ${venueTables.size} archived with an unknown ground`);
+  console.log(`-- venue misses (serving unknown, trainer hasVenue, lagged): ${venueMiss.n} sides`, JSON.stringify(venueMiss.byClass));
+  const uniq = new Map();
+  for (const r of venueMiss.rows) { const k = `${r.servingName} | ${r.servingCity} | ${r.trainerKey}`; uniq.set(k, (uniq.get(k) ?? 0) + 1); }
+  for (const [k, n] of [...uniq].slice(0, 15)) console.log(`${n}x ${k}`);
+}
 const dump = arg("dump");
 if (dump) fs.writeFileSync(dump, JSON.stringify({ stats, worst, ov }));
 for (const [f, list] of Object.entries(worst)) console.log(`worst ${f}:`, JSON.stringify(list.slice(0, 2)));
