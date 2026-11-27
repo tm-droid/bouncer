@@ -2261,7 +2261,15 @@ if (wanted.has("long") && wide.long?.length) {
     const eps = 1e-7;
     const nll = (p, y) => -Math.log(Math.min(1 - eps, Math.max(eps, p[y])));
     runVariant(ROOT, false, ({ windows, cols, means, stds, probsOf, trainY }) => {
-      const only = (w) => { const out = new Uint8Array(windows.length).fill(UNUSED); for (let m = 0; m < windows.length; m++) if (windows[m] === w && !isTest(m)) out[m] = w; return out; };
+      // windows only covers Test matches (the long store), so place each non-Test match by the fold's Test date boundaries.
+      const lo = { [WINDOW.valid]: null, [WINDOW.holdout]: null }; let hi = null;
+      for (let m = 0; m < windows.length; m++) {
+        const w = windows[m]; if (w !== WINDOW.valid && w !== WINDOW.holdout) continue;
+        const d = matches[m].date;
+        if (lo[w] === null || d < lo[w]) lo[w] = d;
+        if (w === WINDOW.holdout && (hi === null || d > hi)) hi = d;
+      }
+      const only = (w) => { const out = new Uint8Array(matches.length).fill(UNUSED); for (let m = 0; m < matches.length; m++) { if (isTest(m)) continue; const d = matches[m].date; const mw = d < lo[WINDOW.valid] ? WINDOW.train : d < lo[WINDOW.holdout] ? WINDOW.valid : d <= hi ? WINDOW.holdout : UNUSED; if (mw === w) out[m] = w; } return out; };
       const hold = slice(fc, only(WINDOW.holdout), WINDOW.holdout, cols, "none");
       const tr = slice(fc, only(WINDOW.train), WINDOW.train, cols, "none");
       const va = slice(fc, only(WINDOW.valid), WINDOW.valid, cols, "none");
