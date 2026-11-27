@@ -572,9 +572,10 @@ function longRowsWide(match, ctx, winRateFor, weather, emit, anyFormat = false) 
   const ballsTotal = T.longMatchBalls(match.scheduledDays);
   const runsByTeam = new Map(match.teams.map((t) => [t, 0]));
   let ballsBowled = 0;
-  const followedOn = match.innings.length > 2 && match.innings[1]?.team === match.innings[2]?.team;
 
   for (let idx = 0; idx < match.innings.length; idx++) {
+    // As of the row, like the trainer's walkLongRows: known only once innings 3 begins.
+    const followedOn = idx >= 2 && match.innings[1]?.team === match.innings[2]?.team;
     const inning = match.innings[idx];
     const batting = inning.team;
     if (!runsByTeam.has(batting)) continue;
