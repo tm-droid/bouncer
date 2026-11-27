@@ -2930,18 +2930,21 @@ export function orientToTeam1({ battingTeamWinProbability, drawProbability, batt
  */
 export function chaseStart(s, format) {
   if (!s || s.long || s.target != null || !s.battingTeamIsTeam1 || !Number.isFinite(s.runsScored)) return null;
-  const allotment = ballsRemainingFor({ ballsBowled: 0, format });
+  let allotment = ballsRemainingFor({ ballsBowled: 0, format });
   if (!allotment) return null;
   const left = ballsRemainingFor({ oversRemaining: s.oversRemaining, ballsBowled: s.ballsBowled, format });
-  if (!((s.wicketsLost ?? 0) >= 10 || left === 0)) return null;
+  // oversRem of 0 with balls bowled is a reduced innings that ran out: its allotment is what was bowled.
+  const overOnReducedBudget = s.oversRemaining === 0 && s.ballsBowled > 0 && s.ballsBowled < allotment;
+  if (!((s.wicketsLost ?? 0) >= 10 || left === 0 || overOnReducedBudget)) return null;
+  if (overOnReducedBudget) allotment = s.ballsBowled;
   const runsNeeded = s.runsScored + 1;
   const requiredRunRate = Math.round((runsNeeded / (allotment / 6)) * 100) / 100;
   return { runsNeeded, runsScored: 0, ballsRemaining: allotment, wicketsLost: 0, currentRunRate: requiredRunRate, requiredRunRate };
 }
 
-function liveSituationArgs(s, format) {
+export function liveSituationArgs(s, format) {
   const runsNeeded = s.runsNeeded ?? 0;
-  const ballsRemaining = ballsRemainingFor({ oversRemaining: s.oversRemaining, ballsBowled: s.ballsBowled, format }) ?? 0;
+  const ballsRemaining = ballsRemainingFor({ oversRemaining: s.oversRemaining, ballsBowled: s.ballsBowled, format, runsNeeded: s.runsNeeded, requiredRunRate: s.requiredRunRate }) ?? 0;
   return {
     runsNeeded,
     runsScored: s.runsScored ?? 0,

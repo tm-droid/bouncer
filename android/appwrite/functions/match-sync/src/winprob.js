@@ -168,11 +168,19 @@ export function ballsFromOvers(overs) {
  * status line read "need 100 runs in 95 balls". Returns null when neither source can answer, and
  * the caller must then report undetermined rather than substituting a guess.
  */
-export function ballsRemainingFor({ oversRemaining = null, ballsBowled = null, format = "UNKNOWN", totalBalls = null } = {}) {
-  if (Number.isFinite(oversRemaining) && oversRemaining > 0) return Math.round(oversRemaining * 6);
+export function ballsRemainingFor({ oversRemaining = null, ballsBowled = null, format = "UNKNOWN", totalBalls = null, runsNeeded = null, requiredRunRate = null } = {}) {
+  // `oversRem` sits beside `overs`, which is cricket notation: "3.4" is 22 balls, not 20.
+  if (Number.isFinite(oversRemaining) && oversRemaining > 0) return ballsFromOvers(oversRemaining) ?? Math.round(oversRemaining * 6);
   const budget = Number.isFinite(totalBalls) && totalBalls > 0 ? totalBalls : inningsBalls(format);
   if (budget == null || !Number.isFinite(ballsBowled)) return null;
   const remaining = budget - ballsBowled;
+  // A rain-reduced chase carries no revised-overs field; runs needed over the required rate is
+  // Cricbuzz's own figure for the balls left, and only ever shortens the full-format remainder.
+  // Overs are cut whole and the feed rounds the rate to 2 dp, so only a gap of an over or more counts.
+  if (remaining > 0 && runsNeeded > 0 && requiredRunRate > 0) {
+    const implied = Math.round((runsNeeded / requiredRunRate) * 6);
+    if (implied > 0 && implied <= remaining - 6) return implied;
+  }
   return remaining > 0 ? remaining : 0;
 }
 
