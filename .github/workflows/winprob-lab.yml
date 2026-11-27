@@ -1,0 +1,76 @@
+# Win-probability lab run (appwrite/tools/winprob-lab.mjs) on a GitHub-hosted runner.
+#
+# The lab wants a ~6 GB heap and the whole Cricsheet archive; a laptop with 8 GB cannot spare that.
+# Nothing here publishes: the output is report.json, uploaded as an artifact. Dispatch with
+#   gh workflow run winprob-lab.yml --ref <branch> -f args="--models chase,first" -f label=e1
+# and read it with `gh run download <id>`.
+
+name: Win probability lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      args:
+        description: Extra arguments for winprob-lab.mjs (not --zip or --out)
+        type: string
+        default: ''
+      label:
+        description: Artifact name suffix
+        type: string
+        default: run
+
+concurrency:
+  group: winprob-lab-${{ inputs.label }}
+  cancel-in-progress: false
+
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/appwrite/functions/train-win-probability/package-lock.json
+
+      - name: Install
+        working-directory: android/appwrite/functions/train-win-probability
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      # Cricsheet republishes all_json.zip daily; a week-keyed cache keeps runs in one week on the same corpus.
+      - name: Week key
+        id: week
+        run: echo "key=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/cricsheet
+          key: cricsheet-all-json-${{ steps.week.outputs.key }}
+
+      - name: Fetch Cricsheet
+        run: |
+          mkdir -p ~/cricsheet
+          [ -s ~/cricsheet/all_json.zip ] || curl -fsSL --retry 3 -o ~/cricsheet/all_json.zip https://cricsheet.org/downloads/all_json.zip
+          ls -la ~/cricsheet
+
+      - name: Lab
+        env:
+          LAB_ARGS: ${{ inputs.args }}
+        run: |
+          # shellcheck disable=SC2086
+          node --max-old-space-size=12288 appwrite/tools/winprob-lab.mjs --zip ~/cricsheet/all_json.zip $LAB_ARGS --out report.json 2>&1 | tee lab.log
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: winprob-lab-${{ inputs.label }}
+          path: |
+            android/report.json
+            android/lab.log
+          retention-days: 30
