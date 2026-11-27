@@ -183,10 +183,13 @@ class Wide {
     // Whether the row is oriented to the match's first-named side — what the strength term needs
     // to be rebuilt for a fold whose training window is not the trainer's.
     this.firstSide = new Uint8Array(this.capacity);
+    // Balls remaining and the innings' ball budget, for the balls-remaining bands (limited overs only).
+    this.rem = new Uint16Array(this.capacity);
+    this.budget = new Uint16Array(this.capacity);
     this.length = 0;
   }
 
-  push(features, label, matchIndex, window, mask, firstSide = 1) {
+  push(features, label, matchIndex, window, mask, firstSide = 1, rem = 0, budget = 0) {
     if (features.length !== this.k) throw new Error(`${this.name}: ${features.length} features for ${this.k} columns`);
     if (this.length === this.capacity) this.grow();
     this.X.set(features, this.length * this.k);
@@ -195,6 +198,8 @@ class Wide {
     this.window[this.length] = window;
     this.mask[this.length] = mask;
     this.firstSide[this.length] = firstSide;
+    this.rem[this.length] = rem;
+    this.budget[this.length] = budget;
     this.length++;
   }
 
@@ -211,6 +216,8 @@ class Wide {
     this.window = widen(this.window, Uint8Array);
     this.mask = widen(this.mask, Uint8Array);
     this.firstSide = widen(this.firstSide, Uint8Array);
+    this.rem = widen(this.rem, Uint16Array);
+    this.budget = widen(this.budget, Uint16Array);
     this.capacity = capacity;
   }
 }
@@ -407,6 +414,8 @@ function limitedOversRows(match, ctx, winRateFor, kind, weather, emit, random) {
       ],
       label,
       batting,
+      ballsRemaining,
+      budget,
     );
   }
 }
@@ -599,11 +608,11 @@ for (let m = 0; m < matches.length; m++) {
     (maskRandom() < MASK.weather.rate ? MASK.weather.bit : 0);
   const weather =
     (forecastByFile && window === WINDOW.holdout ? forecastByFile[match.file] : weatherByFile?.[match.file]) ?? NO_WEATHER;
-  const emitTo = (store, perRow) => (features, label, side) => {
+  const emitTo = (store, perRow) => (features, label, side, rem = 0, budget = 0) => {
     const rowMask = perRow
       ? (maskRandom() < MASK.recent.rate ? MASK.recent.bit : 0) | (maskRandom() < MASK.partnership.rate ? MASK.partnership.bit : 0)
       : 0;
-    store.push(features, label, m, window, matchMask | rowMask, side === undefined || side === match.teams[0] ? 1 : 0);
+    store.push(features, label, m, window, matchMask | rowMask, side === undefined || side === match.teams[0] ? 1 : 0, rem, budget);
   };
   if (wide.chase) limitedOversRows(match, ctx, winRateFor, "chase", weather, emitTo(wide.chase, true), rowRandom);
   if (wide.first) limitedOversRows(match, ctx, winRateFor, "first", weather, emitTo(wide.first, true), rowRandom);
@@ -772,6 +781,7 @@ function slice(store, windows, window, columns, maskMode) {
   const X = new Float32Array(rows.length * k);
   const y = new Uint8Array(rows.length);
   const match = new Int32Array(rows.length);
+  const index = Int32Array.from(rows);
   const bits = columns.map((c) => GROUP_BITS[store.columns[c][1]] ?? 0);
   for (let r = 0; r < rows.length; r++) {
     const i = rows[r];
@@ -785,7 +795,7 @@ function slice(store, windows, window, columns, maskMode) {
     y[r] = store.y[i];
     match[r] = store.match[i];
   }
-  return { X, y, match, length: rows.length, numFeatures: k };
+  return { X, y, match, index, length: rows.length, numFeatures: k };
 }
 
 function standardize(sinks) {
@@ -835,6 +845,8 @@ function score(sink, probsOf, classes) {
 function summarise(parts) {
   const rows = parts.reduce((n, p) => n + p.loss.length, 0);
   const loss = new Float64Array(rows);
+  const stated = new Float32Array(rows);
+  const happened = new Uint8Array(rows);
   const bins = 20;
   const sum = new Float64Array(bins);
   const hits = new Float64Array(bins);
@@ -845,6 +857,8 @@ function summarise(parts) {
   let brier = 0;
   for (const p of parts) {
     loss.set(p.loss, at);
+    stated.set(p.stated, at);
+    happened.set(p.happened, at);
     at += p.loss.length;
     correct += p.correct;
     for (let i = 0; i < p.loss.length; i++) {
@@ -858,21 +872,22 @@ function summarise(parts) {
   }
   let ece = 0;
   for (let b = 0; b < bins; b++) if (counts[b]) ece += (counts[b] / rows) * Math.abs(sum[b] / counts[b] - hits[b] / counts[b]);
-  return { rows, logLoss: total / Math.max(rows, 1), accuracy: correct / Math.max(rows, 1), brier: brier / Math.max(rows, 1), ece, loss };
+  return { rows, logLoss: total / Math.max(rows, 1), accuracy: correct / Math.max(rows, 1), brier: brier / Math.max(rows, 1), ece, loss, stated, happened };
 }
 
 const foldCache = new Map();
 
-function fit(store, groups, modelClass, classes) {
+function fit(store, groups, modelClass, classes, windowsList = null) {
   const columns = [];
   store.columns.forEach(([, group], idx) => {
     if (groups.includes(group)) columns.push(idx);
   });
-  if (!foldCache.has(store)) foldCache.set(store, foldWindows(store));
+  if (!windowsList && !foldCache.has(store)) foldCache.set(store, foldWindows(store));
   const parts = { full: [], mix: [], bare: [] };
   const matchOf = [];
+  const indexOf = [];
   const details = [];
-  for (const windows of foldCache.get(store)) {
+  for (const windows of windowsList ?? foldCache.get(store)) {
     const sinks = {
       train: slice(store, windows, WINDOW.train, columns, "mix"),
       valid: slice(store, windows, WINDOW.valid, columns, "mix"),
@@ -907,13 +922,18 @@ function fit(store, groups, modelClass, classes) {
     }
     for (const key of ["full", "mix", "bare"]) parts[key].push(score(sinks[key], probsOf, classes));
     matchOf.push(sinks.full.match);
+    indexOf.push(sinks.full.index);
   }
-  const allMatches = new Int32Array(matchOf.reduce((n, m) => n + m.length, 0));
-  let at = 0;
-  for (const m of matchOf) {
-    allMatches.set(m, at);
-    at += m.length;
-  }
+  const cat = (list) => {
+    const out = new Int32Array(list.reduce((n, m) => n + m.length, 0));
+    let at = 0;
+    for (const m of list) {
+      out.set(m, at);
+      at += m.length;
+    }
+    return out;
+  };
+  const allMatches = cat(matchOf);
   return {
     groups,
     modelClass,
@@ -923,6 +943,7 @@ function fit(store, groups, modelClass, classes) {
     mix: summarise(parts.mix),
     bare: summarise(parts.bare),
     matchOf: allMatches,
+    index: cat(indexOf),
   };
 }
 
@@ -1001,7 +1022,138 @@ function line(label, r, baseline) {
     (ci ? ` [${fmt(ci.lo)},${fmt(ci.hi)}]` : " ".repeat(19)) +
     `  ece ${fmt(row.ece)}  acc ${fmt(row.accuracy, 3)}  mix ${fmt(row.mixLogLoss)}  bare ${fmt(row.bareLogLoss)}  (${r.detail})`
   );
+  fitLog.push({ label, r });
   return row;
+}
+
+// ── bands, calibration, latest season ───────────────────────────────────────
+
+const fitLog = [];
+const sigmoid = (x) => 1 / (1 + Math.exp(-x));
+const percentile = (xs, q) => {
+  const a = Float64Array.from(xs).sort();
+  return a[Math.min(a.length - 1, Math.floor(a.length * q))];
+};
+
+/** Balls-remaining bands, edges scaled to a 120-ball innings (ODI x2.5, The Hundred x5/6). */
+const BANDS = ["0-24", "25-60", "61-120", "121+"];
+function bandsOf(store, baseline, r) {
+  const groups = BANDS.map(() => []);
+  for (let i = 0; i < r.index.length; i++) {
+    const budget = store.budget[r.index[i]];
+    if (!budget) continue;
+    const scaled = (store.rem[r.index[i]] * 120) / budget;
+    groups[scaled < 25 ? 0 : scaled < 61 ? 1 : scaled < 121 ? 2 : 3].push(i);
+  }
+  return groups.map((rows, b) => {
+    if (!rows.length) return { band: BANDS[b], rows: 0, matches: 0, delta: null, ci: null };
+    const base = Float64Array.from(rows, (i) => baseline.full.loss[i]);
+    const cand = Float64Array.from(rows, (i) => r.full.loss[i]);
+    const mo = Int32Array.from(rows, (i) => r.matchOf[i]);
+    let d = 0;
+    for (let i = 0; i < rows.length; i++) d += cand[i] - base[i];
+    const ci = bootstrap(base, cand, mo);
+    return { band: BANDS[b], rows: rows.length, matches: ci.matches, delta: d / rows.length, ci: [ci.lo, ci.hi] };
+  });
+}
+
+/** Logistic recalibration of logit(p) on the outcome, with a match-clustered bootstrap. */
+const CAL_STEP = 0.05;
+const CAL_OFF = 300;
+const CAL_BINS = 601;
+function calibrationOf(stated, happened, matchOf, rounds = 200, seed = 41) {
+  const per = new Map();
+  for (let i = 0; i < stated.length; i++) {
+    const p = Math.min(1 - 1e-6, Math.max(1e-6, stated[i]));
+    const bin = Math.max(0, Math.min(CAL_BINS - 1, Math.round(Math.log(p / (1 - p)) / CAL_STEP) + CAL_OFF));
+    let e = per.get(matchOf[i]);
+    if (!e) per.set(matchOf[i], (e = new Map()));
+    const c = e.get(bin);
+    if (c) {
+      c[0]++;
+      c[1] += happened[i];
+    } else e.set(bin, [1, happened[i]]);
+  }
+  const list = [...per.values()].map((e) => [...e.entries()]);
+  const solve = (n, y) => {
+    let a = 0;
+    let s = 1;
+    for (let it = 0; it < 30; it++) {
+      let g0 = 0, g1 = 0, h00 = 0, h01 = 0, h11 = 0;
+      for (let b = 0; b < CAL_BINS; b++) {
+        if (!n[b]) continue;
+        const z = (b - CAL_OFF) * CAL_STEP;
+        const p = sigmoid(a + s * z);
+        const w = n[b] * p * (1 - p);
+        const res = y[b] - n[b] * p;
+        g0 += res; g1 += res * z; h00 += w; h01 += w * z; h11 += w * z * z;
+      }
+      const det = h00 * h11 - h01 * h01;
+      if (!(det > 1e-12)) break;
+      const da = (h11 * g0 - h01 * g1) / det;
+      const ds = (h00 * g1 - h01 * g0) / det;
+      a += da;
+      s += ds;
+      if (Math.abs(da) + Math.abs(ds) < 1e-9) break;
+    }
+    return [a, s];
+  };
+  const tally = (pick) => {
+    const n = new Float64Array(CAL_BINS);
+    const y = new Float64Array(CAL_BINS);
+    for (const e of pick) for (const [b, c] of e) { n[b] += c[0]; y[b] += c[1]; }
+    return solve(n, y);
+  };
+  const [intercept, slope] = tally(list);
+  const random = lcg(seed);
+  const as = [];
+  const ss = [];
+  for (let r = 0; r < rounds; r++) {
+    const pick = [];
+    for (let i = 0; i < list.length; i++) pick.push(list[Math.floor(random() * list.length)]);
+    const [a, s] = tally(pick);
+    as.push(a);
+    ss.push(s);
+  }
+  return { rows: stated.length, intercept, interceptCI: [percentile(as, 0.025), percentile(as, 0.975)], slope, slopeCI: [percentile(ss, 0.025), percentile(ss, 0.975)] };
+}
+
+/** One extra fold: train on everything before the last 12 months of the corpus, score those months. */
+const latestSeason = argv.includes("--latest-season");
+let latest = null;
+if (latestSeason) {
+  const last = matches.reduce((d, m) => (m.date && m.date > d ? m.date : d), "");
+  const cut = new Date(Date.parse(last) - 365 * 864e5).toISOString().slice(0, 10);
+  const prior = [];
+  const windows = new Uint8Array(matches.length).fill(UNUSED);
+  matches.forEach((m, i) => {
+    if (!m.date) return;
+    if (m.date >= cut) windows[i] = WINDOW.holdout;
+    else prior.push(i);
+  });
+  const validStart = Math.floor(prior.length * (1 - VALIDATION_FRACTION));
+  prior.forEach((m, i) => { windows[m] = i < validStart ? WINDOW.train : WINDOW.valid; });
+  latest = { windows, cut, last };
+}
+report.bands = {};
+report.calibration = {};
+report.latestSeason = latestSeason ? { cutoff: latest.cut, last: latest.last, heads: {} } : null;
+
+/** The Test head as the trainer fits it (build.js fitLongModel): same rows, caps, windows and loss. */
+function trainerLong() {
+  const k = T.LONG_FEATURE_NAMES.length;
+  const sinks = [new T.RowSink(400_000, k), new T.RowSink(200_000, k), new T.RowSink(300_000, k)];
+  for (const { match, rows } of T.walkLongRows(matches, T.isLongTrainable)) {
+    const sink = sinks[windowOf(match.date)];
+    for (const row of rows) sink.push(row.features, row.label);
+  }
+  const [train, valid, holdout] = sinks;
+  if (!train.length) return null;
+  const standardizer = train.fitStandardizer();
+  for (const sink of sinks) sink.applyStandardizer(standardizer);
+  const model = T.trainMulticlass(train, valid, LONG_OPTIONS);
+  const metrics = T.multiclassMetrics(holdout, model);
+  return { logLoss: metrics.logLoss, accuracy: metrics.accuracy, rows: metrics.rows, trainRows: train.length, epoch: model.epoch };
 }
 
 for (const name of wanted) {
@@ -1012,6 +1164,7 @@ for (const name of wanted) {
   const optional = groupsOf.filter((g) => !["base", "strength", "team"].includes(g) && (g !== "weather" || weatherByFile));
   console.log(`\n== ${name}: ${store.length} rows; ${FOLDS > 1 ? `${FOLDS} rolling folds` : `holdout >= ${holdoutCutoff}`}; join-fail ${JOIN_FAIL} ==`);
   const rows = [];
+  fitLog.length = 0;
   const baseline = fit(store, ["base", "strength"], "linear", classes);
   rows.push(line("v5 features", baseline));
   const asOf = fit(store, ["base", "team"], "linear", classes);
@@ -1056,12 +1209,41 @@ for (const name of wanted) {
     rows.push(line(`selected: ${chosen.slice(root.length).join("+") || "team only"}`, fit(store, chosen, "gbt", classes), baseline));
     rows.push(line("all groups", fit(store, [...root, ...optional], "gbt", classes), baseline));
   }
+  if (name === "chase" || name === "first") {
+    report.bands[name] = fitLog.slice(1).map(({ label, r }) => ({ label, modelClass: r.modelClass, bands: bandsOf(store, baseline, r) }));
+  }
+  report.calibration[name] = fitLog.map(({ label, r }) => ({ label, modelClass: r.modelClass, ...calibrationOf(r.full.stated, r.full.happened, r.matchOf) }));
+
+  if (latestSeason) {
+    const one = [latest.windows];
+    const base = fit(store, ["base", "strength"], "linear", classes, one);
+    const asOfLatest = fit(store, root, "linear", classes, one);
+    const all = fit(store, [...root, ...optional], "linear", classes, one);
+    const ci = bootstrap(base.full.loss, all.full.loss, all.matchOf);
+    report.latestSeason.heads[name] = {
+      rows: base.full.rows,
+      matches: ci.matches,
+      baseline: base.full.logLoss,
+      asOfTeam: asOfLatest.full.logLoss,
+      allGroups: all.full.logLoss,
+      deltaAllGroups: all.full.logLoss - base.full.logLoss,
+      ci: [ci.lo, ci.hi],
+      ece: all.full.ece,
+    };
+    console.log(`  latest season (>= ${latest.cut}): base ${fmt(base.full.logLoss)} as-of ${fmt(asOfLatest.full.logLoss)} all ${fmt(all.full.logLoss)} (${base.full.rows} rows)`);
+  }
   report.models[name] = { rows, selected: chosen.slice(root.length) };
 }
 
 for (const head of Object.keys(report.a1)) {
   const row = report.models[head]?.rows?.find((r) => r.label === "all groups");
   if (row) report.a1[head].labAllGroups = row.logLoss;
+}
+if (wanted.has("long")) {
+  const t = trainerLong();
+  if (t) {
+    Object.assign(report.a1.long, { labTrainerLike: t.logLoss, labCoreOnly: t.logLoss, diffCore: t.logLoss - REFERENCE.long.core, trainerLike: t });
+  }
 }
 for (const head of Object.keys(report.a1)) console.log(`a1 ${head}: ${JSON.stringify(report.a1[head])}`);
 
