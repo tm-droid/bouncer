@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { AsOfState, sideContextOf } from "../src/asOfState.js";
-import { SERVED_CEILING, SERVED_FLOOR, buildShards, limitedOversRows, prematchContextRows, publishProblems, thinnedElevens, JOIN_FAILURE } from "../src/build.js";
+import { PREMATCH_SYMMETRY_TOLERANCE, prematchSymmetryError, SERVED_CEILING, SERVED_FLOOR, buildShards, limitedOversRows, prematchContextRows, publishProblems, thinnedElevens, JOIN_FAILURE } from "../src/build.js";
 import {
   NEUTRAL_CONTEXT, SHARDS, contextFeatureNames, contextFeatures, familiarityDiff, h2hAdvantage,
   pairKey, shardOf, sideContext, venueKey, xiStrength,
 } from "../src/contextmath.js";
 import { richSkeletonOf } from "../src/corpus.js";
-import { CHASE_FEATURE_NAMES, FIRST_INNINGS_FEATURE_NAMES, LONG_FEATURE_NAMES, PREMATCH_FEATURE_NAMES, chaseFeatures } from "../src/training.js";
+import { CHASE_FEATURE_NAMES, FIRST_INNINGS_FEATURE_NAMES, LONG_FEATURE_NAMES, PREMATCH_FEATURE_NAMES, RowSink, antisymmetricMask, chaseFeatures, fitSymmetricSinks } from "../src/training.js";
 
 const here = (p) => new URL(p, import.meta.url);
 
@@ -198,7 +198,7 @@ test("an old roster is not published", () => {
 
 function tierWith(names, weightsByName) {
   return {
-    weights: names.map((n) => weightsByName[n] ?? 0), bias: 0, temperature: 1,
+    featureNames: names, weights: names.map((n) => weightsByName[n] ?? 0), bias: 0, temperature: 1,
     featureMeans: names.map((n) => (n === "runsOverPar" || n === "projectedOverPar" ? 1 : 0)), featureStds: names.map(() => 1),
     holdout: { logLoss: 0.4, ece: 0.01 },
   };
@@ -349,4 +349,50 @@ test("the clamp the gate applies is the one match-sync serves", () => {
   const src = readFileSync(new URL("../../match-sync/src/winprob.js", import.meta.url), "utf8");
   assert.equal(Number(/PROB_FLOOR\s*=\s*([\d.]+)/.exec(src)[1]), SERVED_FLOOR);
   assert.equal(Number(/PROB_CEILING\s*=\s*([\d.]+)/.exec(src)[1]), SERVED_CEILING);
+});
+
+/** Rows the way a pre-match corpus has them: first-listed side wins more often, symmetric columns skewed. */
+function skewedSinks(names) {
+  const flips = antisymmetricMask(names);
+  let seed = 11;
+  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const fill = (n) => {
+    const sink = new RowSink(n, names.length);
+    for (let i = 0; i < n; i++) {
+      const x = flips.map((flip) => (flip ? rnd() * 2 - 1 : 3 + rnd()));
+      const z = 0.8 + flips.reduce((acc, flip, j) => acc + (flip ? 1.5 * x[j] : 0.4 * x[j]), 0);
+      sink.push(x, rnd() < 1 / (1 + Math.exp(-z)) ? 1 : 0);
+    }
+    return sink;
+  };
+  return { train: fill(1500), valid: fill(500), flips };
+}
+
+function symmetricTier() {
+  const names = contextFeatureNames("prematch", PREMATCH_FEATURE_NAMES, false);
+  const { train, valid, flips } = skewedSinks(names);
+  const fit = fitSymmetricSinks(train, valid, flips);
+  return { featureNames: names, flips, ...fit, temperature: 1.3 };
+}
+
+test("a pre-match head fitted symmetrically has no bias, no weight on shared columns, and p(A,B)+p(B,A)=1", () => {
+  const tier = symmetricTier();
+  assert.equal(tier.bias, 0);
+  tier.flips.forEach((flip, j) => {
+    if (!flip) assert.equal(tier.weights[j], 0);
+    assert.equal(tier.featureMeans[j], 0);
+  });
+  assert.ok(tier.weights.some((w) => w !== 0));
+  assert.ok(prematchSymmetryError(tier) <= PREMATCH_SYMMETRY_TOLERANCE);
+});
+
+test("the gate refuses a pre-match head whose bias or shared-column weight breaks p(A,B)+p(B,A)=1", () => {
+  assert.deepEqual(publishProblems(sensibleModel()), []);
+  const biased = sensibleModel();
+  biased.prematch.core.bias = 0.3;
+  assert.ok(publishProblems(biased).some((p) => /p\(A,B\)/.test(p)));
+  const shared = sensibleModel();
+  const venue = shared.prematch.core.featureNames.indexOf("venueScoring");
+  shared.prematch.core.weights[venue] = 0.4;
+  assert.ok(publishProblems(shared).some((p) => /p\(A,B\)/.test(p)));
 });

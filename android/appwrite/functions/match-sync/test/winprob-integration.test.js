@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { evaluate, evaluateLong, evaluatePrematch, longFeatures, formatFromText, ballsRemainingFor, inningsBalls } from "../src/winprob.js";
+import { MODEL_VERSION, evaluate, evaluateLong, evaluatePrematch, longFeatures, formatFromText, ballsRemainingFor, inningsBalls } from "../src/winprob.js";
 import { resolveMatchTeams } from "../src/teamnames.js";
 import { orientToTeam1 } from "../src/main.js";
 import { liveSituation } from "../src/cricbuzz.js";
@@ -458,4 +458,52 @@ test("a fixture whose teams are both in the corpus is still scored", () => {
   assert.equal(result.undetermined, false);
   assert.equal(result.prematch, true);
   assert.ok(result.battingTeamWinProbability > 0 && result.battingTeamWinProbability < 1);
+});
+
+/**
+ * The symmetric pre-match head the trainer now fits: no bias, weight only on the antisymmetric
+ * columns, zero means. Same shape as the old model, so serving needs no change to score it.
+ */
+function symmetricPrematch(bias = 0) {
+  return {
+    version: MODEL_VERSION,
+    prematch: {
+      core: {
+        weights: [0, 0, 0, 0.8, 0.5, 0.3, 0.6, 0.2, 0, 0],
+        bias,
+        temperature: 1.3,
+        featureMeans: new Array(10).fill(0),
+        featureStds: new Array(10).fill(1),
+      },
+      full: null,
+    },
+    teamStats: {
+      "Scotland|male|ODI": { winRate: 0.5, matchesPlayed: 126 },
+      "Canada|male|ODI": { winRate: 0.422, matchesPlayed: 103 },
+    },
+  };
+}
+
+const ctxAB = {
+  eloDiff: 0.7, formDiff: 0.2, h2hAdvantage: 0.4, winRateDiff: 0.1, familiarityDiff: -0.3,
+  venueScoring: 1.15, venueChaseAdvantage: 0.05, hasVenue: true, xi: null,
+};
+const ctxBA = {
+  ...ctxAB,
+  eloDiff: -0.7, formDiff: -0.2, h2hAdvantage: -0.4, winRateDiff: -0.1, familiarityDiff: 0.3,
+};
+
+test("pre-match p(A beats B) + p(B beats A) is one through the served path", () => {
+  const score = (first, second, context, model) => evaluatePrematch({
+    firstTeam: first, secondTeam: second, gender: "male", format: "ODI", resolved: true, context, model,
+  }).battingTeamWinProbability;
+  const model = symmetricPrematch();
+  const ab = score("Scotland", "Canada", ctxAB, model);
+  const ba = score("Canada", "Scotland", ctxBA, model);
+  assert.ok(ab > 0.5 && ab < 0.97, "the scored side is a real favourite, not the clamp");
+  assert.ok(Math.abs(ab + ba - 1) <= 1e-9, `sum ${ab + ba}`);
+  // A free bias is what made the old model asymmetric: the same swap no longer sums to one.
+  const biased = symmetricPrematch(0.4);
+  const sum = score("Scotland", "Canada", ctxAB, biased) + score("Canada", "Scotland", ctxBA, biased);
+  assert.ok(Math.abs(sum - 1) > 0.01);
 });

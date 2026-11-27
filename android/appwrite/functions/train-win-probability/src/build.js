@@ -66,6 +66,7 @@ import {
   PREMATCH_FEATURE_NAMES,
   PRIOR_SETTLE_PROGRESS,
   RowSink,
+  antisymmetricMask,
   baseRate,
   binaryMetrics,
   chaseFeatures,
@@ -73,6 +74,7 @@ import {
   expectedCalibrationError,
   firstInningsFeatures,
   walkLongRows,
+  fitSymmetricSinks,
   fitTemperature,
   matchRowWeights,
   holdoutCutoffDate,
@@ -266,16 +268,28 @@ function servedLogLoss(sink, weights, bias, temperature) {
   return loss / sink.length;
 }
 
-function fitTier({ label, sinks, featureNames, log }) {
+/**
+ * `symmetric` fits the head odd under swapping the two sides (the pre-match head): rows trained in
+ * both orientations, no intercept, no weight on columns that are the same from either side. The
+ * model keeps the usual shape, so the reader serves it unchanged.
+ */
+function fitTier({ label, sinks, featureNames, log, symmetric = false }) {
   if (sinks.train.length === 0) {
     log(`${label}: no training rows — model omitted`);
     return null;
   }
-  const standardizer = sinks.train.fitStandardizer();
-  for (const sink of Object.values(sinks)) sink.applyStandardizer(standardizer);
-
-  const rowWeight = sinks.train.matchIds ? matchRowWeights(sinks.train, 0.5) : null;
-  const fit = trainBinary(sinks.train, sinks.valid, { ...BINARY_OPTIONS, rowWeight });
+  let standardizer;
+  let fit;
+  if (symmetric) {
+    fit = fitSymmetricSinks(sinks.train, sinks.valid, antisymmetricMask(featureNames), BINARY_OPTIONS);
+    standardizer = { means: fit.featureMeans, stds: fit.featureStds };
+    for (const sink of Object.values(sinks)) sink.applyStandardizer(standardizer);
+  } else {
+    standardizer = sinks.train.fitStandardizer();
+    for (const sink of Object.values(sinks)) sink.applyStandardizer(standardizer);
+    const rowWeight = sinks.train.matchIds ? matchRowWeights(sinks.train, 0.5) : null;
+    fit = trainBinary(sinks.train, sinks.valid, { ...BINARY_OPTIONS, rowWeight });
+  }
   const temperature = fitTemperature(sinks.valid, fit.weights, fit.bias);
   const holdout = binaryMetrics(sinks.holdout, fit.weights, fit.bias, temperature);
   const ece = expectedCalibrationError(sinks.holdout, fit.weights, fit.bias, temperature);
@@ -353,14 +367,14 @@ export function headSinks({ head, coreNames, fullNames, matches, windowOf, rowsF
  * `system` is the number that matters: every holdout row scored by `full` where the match had an
  * eleven for both sides and by `core` where it did not — which is exactly how the reader chooses.
  */
-function fitHead({ label, head, baseNames, matches, windowOf, rowsFor, log }) {
+function fitHead({ label, head, baseNames, matches, windowOf, rowsFor, log, symmetric = false }) {
   const tv = head === "firstInnings";
   const coreNames = contextFeatureNames(head, baseNames, false, tv);
   const fullNames = contextFeatureNames(head, baseNames, true, tv);
   const { core, full } = headSinks({ head, coreNames, fullNames, matches, windowOf, rowsFor });
 
-  const coreFit = fitTier({ label: `${label} (teams and ground)`, sinks: core, featureNames: coreNames, log });
-  const fullFit = fitTier({ label: `${label} (with elevens)`, sinks: full, featureNames: fullNames, log });
+  const coreFit = fitTier({ label: `${label} (teams and ground)`, sinks: core, featureNames: coreNames, log, symmetric });
+  const fullFit = fitTier({ label: `${label} (with elevens)`, sinks: full, featureNames: fullNames, log, symmetric });
   if (!coreFit) return null;
 
   const withEleven = full.holdout.seen;
@@ -615,6 +629,7 @@ export function buildModel({ zipBuffer, log, error, onRaw = null }) {
     windowOf,
     rowsFor: (m) => prematchContextRows(m),
     log,
+    symmetric: true,
   });
 
   const long = fitLongModel({ matches, windowOf, log });
@@ -651,6 +666,20 @@ function scoreTier(sub, features) {
     logit += (sub.weights[i] * (features[i] - sub.featureMeans[i])) / (sub.featureStds[i] || 1);
   }
   return sigmoid(logit / (sub.temperature > 0 ? sub.temperature : 1));
+}
+
+/** How far p(A beats B) + p(B beats A) may sit from one; the structure makes it ~1e-16. */
+export const PREMATCH_SYMMETRY_TOLERANCE = 1e-9;
+
+/**
+ * |p(A,B) + p(B,A) - 1| for one pre-match tier, at a fixture with every column nonzero: the
+ * side differences negated for the swapped reading, the rest (format flags, ground) unchanged.
+ */
+export function prematchSymmetryError(sub) {
+  const flips = antisymmetricMask(sub.featureNames);
+  const own = flips.map((flip, j) => (flip ? 0.3 + 0.1 * j : 1));
+  const other = own.map((v, j) => (flips[j] ? -v : v));
+  return Math.abs(scoreTier(sub, own) + scoreTier(sub, other) - 1);
 }
 
 /** How much worse than the published model a refit may score before it is refused. */
@@ -859,6 +888,10 @@ export function publishProblems(model, previous = null) {
     if (!(even > 0.4 && even < 0.6)) problems.push(`${name}: two unknown sides scored ${fmt(even)}`);
     const stronger = scoreTier(sub, contextFeatures("prematch", base, state, { ...ctx, eloDiff: 0.75 }, withXi));
     if (!(stronger > even)) problems.push(`${name}: a 300-point Elo lead did not raise the probability`);
+    const asymmetry = prematchSymmetryError(sub);
+    if (!(asymmetry <= PREMATCH_SYMMETRY_TOLERANCE)) {
+      problems.push(`${name}: p(A,B) + p(B,A) is off one by ${fmt(asymmetry)}`);
+    }
   }
   return problems;
 }
