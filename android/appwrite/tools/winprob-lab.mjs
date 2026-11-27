@@ -1142,6 +1142,33 @@ function fit(store, groups, modelClass, classes, windowsList = null, variant = n
   };
 }
 
+/**
+ * The one fit-and-score path every report block uses. `fit` mirrors the trainer (build.js): population
+ * standardiser from train, trainBinary with the trainer's options, temperature on valid, probabilities
+ * clamped at 1e-7. A config is fitted once per run and shared, so two blocks cannot disagree on a baseline.
+ */
+const fitMemo = new Map();
+const windowIds = new Map();
+function fitShared(store, groups, modelClass, classes, windowsList = null, variant = null, opts = {}) {
+  let w = "folds";
+  if (windowsList) {
+    const id = windowsList.length === 1 ? windowsList[0] : windowsList;
+    if (!windowIds.has(id)) windowIds.set(id, windowIds.size);
+    w = `w${windowIds.get(id)}`;
+  }
+  const key = [store.name, groups.join("+"), modelClass, classes, w, variant ?? "", (opts.terms ?? []).join("+"), opts.recal ?? ""].join("|");
+  if (!fitMemo.has(key)) fitMemo.set(key, fit(store, groups, modelClass, classes, windowsList, variant, opts));
+  return fitMemo.get(key);
+}
+
+/** Logs (never throws) when two blocks report different baselines for one config. */
+const baselineChecks = [];
+function checkBaseline(label, a, b) {
+  const diff = Math.abs(a - b);
+  baselineChecks.push({ label, a, b, diff });
+  if (diff > 1e-6) console.log(`  !! BASELINE MISMATCH ${label}: ${a} vs ${b} (diff ${diff})`);
+}
+
 /** Bootstrap over matches of the mean per-row loss difference (candidate − baseline). */
 function bootstrap(baseline, candidate, matchOf, rounds = 400, seed = 31) {
   const byMatch = new Map();
@@ -1475,9 +1502,9 @@ for (const name of wanted) {
 
   if (latestSeason) {
     const one = [latest.windows];
-    const base = fit(store, ["base", "strength"], "linear", classes, one);
-    const asOfLatest = fit(store, root, "linear", classes, one);
-    const all = fit(store, [...root, ...optional], "linear", classes, one);
+    const base = fitShared(store, ["base", "strength"], "linear", classes, one);
+    const asOfLatest = fitShared(store, root, "linear", classes, one);
+    const all = fitShared(store, [...root, ...optional], "linear", classes, one);
     const ci = bootstrap(base.full.loss, all.full.loss, all.matchOf);
     report.latestSeason.heads[name] = {
       rows: base.full.rows,
@@ -1496,7 +1523,7 @@ for (const name of wanted) {
     // The run-rate experiment: each variant at all groups against the baseline at all groups.
     const all = [...root, ...optional];
     const one = latestSeason ? [latest.windows] : null;
-    const baseLatest = one ? fit(store, all, "linear", classes, one) : null;
+    const baseLatest = one ? fitShared(store, all, "linear", classes, one) : null;
     const cal = (r) => calibrationOf(r.full.stated, r.full.happened, r.matchOf);
     const entry = (label, r, variant) => {
       const row = line(`crr ${label}`, r, everything);
@@ -1509,7 +1536,7 @@ for (const name of wanted) {
       };
       out.earlyBand = out.bands[2];
       if (one) {
-        const l = fit(store, all, "linear", classes, one, variant);
+        const l = fitShared(store, all, "linear", classes, one, variant);
         const ci = bootstrap(baseLatest.full.loss, l.full.loss, l.matchOf);
         out.latestSeason = { logLoss: l.full.logLoss, delta: l.full.logLoss - baseLatest.full.logLoss, ci: [ci.lo, ci.hi], ece: l.full.ece, deltaEce: l.full.ece - baseLatest.full.ece };
       }
@@ -1527,7 +1554,7 @@ for (const name of wanted) {
     const variants = {};
     const fits = {};
     for (const v of CRR_VARIANTS) {
-      fits[v] = fit(store, all, "linear", classes, null, v);
+      fits[v] = fitShared(store, all, "linear", classes, null, v);
       variants[v] = entry(v, fits[v], v);
     }
     report.crr = report.crr ?? {};
@@ -1549,18 +1576,19 @@ for (const name of wanted) {
     report.e4e8 = report.e4e8 ?? {};
     report.e4e8[name] = {};
     for (const [baseKey, variant] of bases) {
-      const B = variant ? fit(store, all, "linear", classes, null, variant) : everything;
-      const BL = one ? fit(store, all, "linear", classes, one, variant) : null;
+      const B = variant ? fitShared(store, all, "linear", classes, null, variant) : everything;
+      const BL = one ? fitShared(store, all, "linear", classes, one, variant) : null;
+      if (!variant) checkBaseline(`${name} e4e8 vs crr`, B.full.logLoss, report.crr[name].baseline.logLoss);
       const fitsHere = {};
       const specs = {};
       const run = (label, opts) => {
         specs[label] = opts;
-        fitsHere[label] = fit(store, all, "linear", classes, null, variant, opts);
+        fitsHere[label] = fitShared(store, all, "linear", classes, null, variant, opts);
         const r = fitsHere[label];
         const row = line(label, r, B);
         const out = { ...row, deltaEce: r.full.ece - B.full.ece, ece: r.full.ece, opts, recal: r.recals?.[r.recals.length - 1] ?? null, bands: bandsOf(store, B, r) };
         if (one) {
-          const l = fit(store, all, "linear", classes, one, variant, opts);
+          const l = fitShared(store, all, "linear", classes, one, variant, opts);
           const ci = bootstrap(BL.full.loss, l.full.loss, l.matchOf);
           out.latestSeason = { logLoss: l.full.logLoss, delta: l.full.logLoss - BL.full.logLoss, ci: [ci.lo, ci.hi], ece: l.full.ece, deltaEce: l.full.ece - BL.full.ece };
         }
@@ -1585,6 +1613,7 @@ for (const name of wanted) {
       if (name === "chase") console.log(`  e4e8 earlyChase ${baseKey} ${JSON.stringify(report.e4e8[name][baseKey].earlyChase.bands)}`);
     }
   }
+  report.repro = baselineChecks;
   report.models[name] = { rows, selected: chosen.slice(root.length) };
 }
 
