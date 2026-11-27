@@ -183,6 +183,28 @@ const COLUMNS = {
   ],
 };
 
+/**
+ * E4: time-varying terms. Each context column also enters multiplied by the balls-left fraction
+ * (tvB) and the wickets-in-hand fraction (tvW); the chase head adds required rate times each
+ * (rrrB, rrrW). A tv column keeps its source group, so a group that is left out takes its terms too.
+ * Source columns exclude the crr-dependent ones, so the terms do not depend on the crr variant.
+ */
+const TV_GROUPS = ["team", "venue", "toss", "xi", "state", "recent", "partnership", "weather"];
+const TV_TAGS = ["tvB", "tvW", "rrrW", "rrrB"];
+const TV_SOURCE = {};
+for (const head of ["chase", "first"]) {
+  const src = [];
+  COLUMNS[head].forEach(([name, group], idx) => {
+    if (TV_GROUPS.includes(group) && !name.includes("@") && !(CRR_DROP[head] ?? []).includes(name)) src.push(idx);
+  });
+  TV_SOURCE[head] = src;
+  COLUMNS[head].push(
+    ...src.map((i) => [`${COLUMNS[head][i][0]}*bf@tvB`, COLUMNS[head][i][1]]),
+    ...src.map((i) => [`${COLUMNS[head][i][0]}*wf@tvW`, COLUMNS[head][i][1]]),
+    ...(head === "chase" ? [["rrr*wf@rrrW", "base"], ["rrr*bf@rrrB", "base"]] : []),
+  );
+}
+
 /** Which mask bits blank a group. The crease and the remaining order are unknowable without an XI. */
 const GROUP_BITS = {
   venue: MASK.venue.bit,
@@ -414,7 +436,7 @@ function limitedVector(o) {
     }
   }
 
-  return [
+  const v = [
     ...base,
     ...team,
     scoring - 1, o.chaseAdvantage, venueShape, fam, venueKnown,
@@ -427,6 +449,15 @@ function limitedVector(o) {
     ...weather,
     ...extras,
   ];
+  const source = TV_SOURCE[chase ? "chase" : "first"];
+  const bfRaw = Math.max(ballsRemaining, 0) / budget;
+  for (const i of source) v.push(v[i] * bfRaw);
+  for (const i of source) v.push(v[i] * wf);
+  if (chase) {
+    const rr = clamp(requiredRunRate / par, 0, 4);
+    v.push(rr * wf, rr * bfRaw);
+  }
+  return v;
 }
 
 function limitedOversRows(match, ctx, winRateFor, kind, weather, emit, random) {
@@ -881,7 +912,7 @@ function score(sink, probsOf, classes) {
   const features = new Array(sink.numFeatures);
   for (let i = 0; i < sink.length; i++) {
     for (let j = 0; j < sink.numFeatures; j++) features[j] = sink.X[i * sink.numFeatures + j];
-    const probs = probsOf(features);
+    const probs = probsOf(features, i, sink);
     const y = sink.y[i];
     const pTrue = classes === 1 ? (y ? probs[0] : 1 - probs[0]) : probs[y];
     loss[i] = -Math.log(Math.min(1 - eps, Math.max(eps, pTrue)));
@@ -935,14 +966,104 @@ function summarise(parts) {
 
 const foldCache = new Map();
 
-function fit(store, groups, modelClass, classes, windowsList = null, variant = null) {
+/**
+ * E8: recalibration on the validation split only. "phaseT" is one temperature per phase (balls-left
+ * fraction >= 0.75, 0.4-0.75, < 0.4) replacing the single one; "platt" is intercept + slope on the
+ * tempered logit, shrunk toward (0, 1) by a factor picked by 2-fold cross-fitting on validation
+ * (folds by match parity), since the in-sample best factor is always 1.
+ */
+const phaseOf = (fraction) => (fraction >= 0.75 ? 0 : fraction >= 0.4 ? 1 : 2);
+const softplus = (x) => (x > 30 ? x : Math.log1p(Math.exp(x)));
+const bceAt = (z, y) => (y ? softplus(-z) : softplus(z));
+function goldenMin(f, lo, hi) {
+  const g = (Math.sqrt(5) - 1) / 2;
+  let a = lo;
+  let b = hi;
+  let c = b - g * (b - a);
+  let d = a + g * (b - a);
+  let fc = f(c);
+  let fd = f(d);
+  for (let i = 0; i < 40; i++) {
+    if (fc < fd) { b = d; d = c; fd = fc; c = b - g * (b - a); fc = f(c); }
+    else { a = c; c = d; fc = fd; d = a + g * (b - a); fd = f(d); }
+  }
+  return (a + b) / 2;
+}
+function fitPlatt(z, y, rows) {
+  let a = 0;
+  let s = 1;
+  for (let it = 0; it < 30; it++) {
+    let g0 = 0, g1 = 0, h00 = 1e-6, h01 = 0, h11 = 1e-6;
+    for (const i of rows) {
+      const p = 1 / (1 + Math.exp(-(a + s * z[i])));
+      const r = p - y[i];
+      const w = p * (1 - p);
+      g0 += r; g1 += r * z[i];
+      h00 += w; h01 += w * z[i]; h11 += w * z[i] * z[i];
+    }
+    const det = h00 * h11 - h01 * h01;
+    if (!(det > 1e-12)) break;
+    const da = (h11 * g0 - h01 * g1) / det;
+    const ds = (h00 * g1 - h01 * g0) / det;
+    a -= da;
+    s -= ds;
+    if (Math.abs(da) + Math.abs(ds) < 1e-8) break;
+  }
+  return [a, s];
+}
+function fitRecal(kind, valid, store, model, temperature) {
+  const n = valid.length;
+  const raw = new Float64Array(n);
+  const f = new Array(valid.numFeatures);
+  const phase = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    let z = model.bias;
+    for (let j = 0; j < valid.numFeatures; j++) z += model.weights[j] * valid.X[i * valid.numFeatures + j];
+    raw[i] = z;
+    const row = valid.index[i];
+    phase[i] = phaseOf(store.rem[row] / store.budget[row]);
+  }
+  if (kind === "phaseT") {
+    const scales = [0, 1, 2].map((k) => {
+      const rows = [];
+      for (let i = 0; i < n; i++) if (phase[i] === k) rows.push(i);
+      if (rows.length < 300) return temperature;
+      return goldenMin((t) => { let l = 0; for (const i of rows) l += bceAt(raw[i] / t, valid.y[i]); return l; }, 0.2, 6);
+    });
+    return { scales, apply: (z, k) => z / scales[k] };
+  }
+  const z = raw.map((x) => x / temperature);
+  const all = [...Array(n).keys()];
+  const folds = [all.filter((i) => valid.match[i] % 2 === 0), all.filter((i) => valid.match[i] % 2 === 1)];
+  const lambdas = [0, 0.25, 0.5, 0.75, 1];
+  const cross = lambdas.map((lam) => {
+    let l = 0;
+    for (let k = 0; k < 2; k++) {
+      const [a, s] = fitPlatt(z, valid.y, folds[k]);
+      for (const i of folds[1 - k]) l += bceAt(lam * a + (1 + lam * (s - 1)) * z[i], valid.y[i]);
+    }
+    return l;
+  });
+  const lambda = lambdas[cross.indexOf(Math.min(...cross))];
+  const [a, s] = fitPlatt(z, valid.y, all);
+  const ia = lambda * a;
+  const is = 1 + lambda * (s - 1);
+  return { lambda, intercept: ia, slope: is, apply: (x) => ia + (is * x) / temperature };
+}
+
+function fit(store, groups, modelClass, classes, windowsList = null, variant = null, opts = {}) {
   const columns = [];
+  const terms = opts.terms ?? [];
   // A crr variant swaps the run-rate columns for its own `name@variant` ones; "a" only drops them.
+  // A time-varying column (E4) is kept only when its tag is in opts.terms.
   const dropped = variant ? CRR_DROP[store.name] ?? [] : [];
   store.columns.forEach(([name, group], idx) => {
     if (!groups.includes(group)) return;
     const at = name.indexOf("@");
-    if (at >= 0 ? name.slice(at + 1) !== variant : dropped.includes(name)) return;
+    if (at >= 0) {
+      const tag = name.slice(at + 1);
+      if (TV_TAGS.includes(tag) ? !terms.includes(tag) : tag !== variant) return;
+    } else if (dropped.includes(name)) return;
     columns.push(idx);
   });
   if (!windowsList && !foldCache.has(store)) foldCache.set(store, foldWindows(store));
@@ -951,6 +1072,7 @@ function fit(store, groups, modelClass, classes, windowsList = null, variant = n
   const indexOf = [];
   const details = [];
   const models = [];
+  const recals = [];
   for (const windows of windowsList ?? foldCache.get(store)) {
     const sinks = {
       train: slice(store, windows, WINDOW.train, columns, "mix"),
@@ -966,9 +1088,15 @@ function fit(store, groups, modelClass, classes, windowsList = null, variant = n
         const model = T.trainBinary(sinks.train, sinks.valid, BINARY_OPTIONS);
         const temperature = T.fitTemperature(sinks.valid, model.weights, model.bias);
         models.push({ columns, means, stds, weights: model.weights, bias: model.bias, temperature });
-        probsOf = (f) => {
+        const rec = opts.recal ? fitRecal(opts.recal, sinks.valid, store, model, temperature) : null;
+        if (rec) recals.push({ kind: opts.recal, scales: rec.scales, lambda: rec.lambda, intercept: rec.intercept, slope: rec.slope });
+        probsOf = (f, i, sink) => {
           let z = model.bias;
           for (let j = 0; j < f.length; j++) z += model.weights[j] * f[j];
+          if (rec) {
+            const row = sink.index[i];
+            return [T.sigmoid(rec.apply(z, phaseOf(store.rem[row] / store.budget[row])))];
+          }
           return [T.sigmoid(z / temperature)];
         };
         details.push(`e${model.epoch} T=${temperature.toFixed(2)}`);
@@ -1010,6 +1138,7 @@ function fit(store, groups, modelClass, classes, windowsList = null, variant = n
     matchOf: allMatches,
     index: cat(indexOf),
     models,
+    recals,
   };
 }
 
@@ -1069,7 +1198,7 @@ function chaseProbe(store, r) {
  */
 const TARGET_BANDS = [["<=140", 0, 140], ["141-160", 141, 160], ["161-180", 161, 180], ["181+", 181, 1e9]];
 function earlyChaseTable(store, baseline, models) {
-  const crrColumn = store.columns.findIndex(([name]) => name === "currentRunRate" || name === "crr");
+  const crrColumn = store.columns.findIndex(([name]) => name === "currentRunRate" || name === "crr" || name === "currentRateOverPar");
   const bandRows = TARGET_BANDS.map(() => new Map());
   const zero = { rows: 0, matches: new Set(), crr: [] };
   const spans = [["baseline", baseline], ...Object.entries(models)];
@@ -1409,6 +1538,52 @@ for (const name of wanted) {
     }
     console.log(`  probe baseline ${JSON.stringify(baseOut.probe)}`);
     for (const v of CRR_VARIANTS) console.log(`  probe ${v} ${JSON.stringify(variants[v].probe)} gate ${variants[v].gate}`);
+  }
+  if (name === "chase" || name === "first") {
+    // E4 (time-varying terms) and E8 (recalibration on validation), each against its own base.
+    const all = [...root, ...optional];
+    const one = latestSeason ? [latest.windows] : null;
+    const bases = name === "chase" ? [["baseline", null], ["k48", "k48"]] : [["baseline", null]];
+    const e4 = { tvB: ["tvB"], tvW: ["tvW"], tvBW: ["tvB", "tvW"] };
+    if (name === "chase") Object.assign(e4, { rrrW: ["rrrW"], rrrB: ["rrrB"], rrr: ["rrrW", "rrrB"], "tvBW+rrr": ["tvB", "tvW", "rrrW", "rrrB"] });
+    report.e4e8 = report.e4e8 ?? {};
+    report.e4e8[name] = {};
+    for (const [baseKey, variant] of bases) {
+      const B = variant ? fit(store, all, "linear", classes, null, variant) : everything;
+      const BL = one ? fit(store, all, "linear", classes, one, variant) : null;
+      const fitsHere = {};
+      const specs = {};
+      const run = (label, opts) => {
+        specs[label] = opts;
+        fitsHere[label] = fit(store, all, "linear", classes, null, variant, opts);
+        const r = fitsHere[label];
+        const row = line(label, r, B);
+        const out = { ...row, deltaEce: r.full.ece - B.full.ece, ece: r.full.ece, opts, recal: r.recals?.[r.recals.length - 1] ?? null, bands: bandsOf(store, B, r) };
+        if (one) {
+          const l = fit(store, all, "linear", classes, one, variant, opts);
+          const ci = bootstrap(BL.full.loss, l.full.loss, l.matchOf);
+          out.latestSeason = { logLoss: l.full.logLoss, delta: l.full.logLoss - BL.full.logLoss, ci: [ci.lo, ci.hi], ece: l.full.ece, deltaEce: l.full.ece - BL.full.ece };
+        }
+        out.gate = row.delta <= -0.001 && row.ci[1] < 0 && out.deltaEce <= 0.005 ? "PASS" : "FAIL";
+        results[label] = out;
+        console.log(`  e4e8 ${name}/${baseKey} ${label}: d ${fmt(row.delta)} [${fmt(row.ci[0])}, ${fmt(row.ci[1])}] dECE ${fmt(out.deltaEce)} ${out.gate}`);
+      };
+      const results = {};
+      for (const [label, terms] of Object.entries(e4)) run(label, { terms });
+      for (const recal of ["phaseT", "platt"]) run(recal, { recal });
+      const best = (labels) => labels.reduce((a, b) => (results[b].delta < results[a].delta ? b : a));
+      const bestE4 = best(Object.keys(e4));
+      const bestE8 = best(["phaseT", "platt"]);
+      run(`${bestE4}+${bestE8}`, { terms: e4[bestE4], recal: bestE8 });
+      report.e4e8[name][baseKey] = {
+        baseline: { logLoss: B.full.logLoss, ece: B.full.ece, latestSeason: BL ? { logLoss: BL.full.logLoss, ece: BL.full.ece } : null },
+        bestE4,
+        bestE8,
+        variants: results,
+        earlyChase: name === "chase" ? earlyChaseTable(store, B, fitsHere) : null,
+      };
+      if (name === "chase") console.log(`  e4e8 earlyChase ${baseKey} ${JSON.stringify(report.e4e8[name][baseKey].earlyChase.bands)}`);
+    }
   }
   report.models[name] = { rows, selected: chosen.slice(root.length) };
 }
