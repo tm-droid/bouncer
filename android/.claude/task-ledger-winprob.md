@@ -16,14 +16,14 @@ Gate: >=0.001 log-loss gain, match-bootstrap interval excluding 0, holdout ECE n
 - [x] E1: early-chase rate variants + 172-chase probe | files: lab (+trainer if adopted) | done when: lab table with intervals + probe numbers
 - [ ] E2: era drift (rolling par, recency weights) | done when: lab table vs E1-winner baseline
 - [ ] E3: estimated resource table / two-stage first innings | done when: lab table
-- [ ] E4: time-varying context terms | done when: lab table
+- [x] E4: time-varying context terms | done when: lab table
 - [ ] E5: strength model (Elo scale, MoV, K decay, shrinkage) | done when: lab table
 - [x] B4: Test head as-of followedOn + strength | files: training.js, build.js | done when: as-of pin test passes; npm test green
 - [ ] B5: symmetric pre-match | done when: test p(A,B)+p(B,A)=1±1e-9 on published model
 - [x] B6: publish gate coverage + monotonic grid + clamp-as-served | files: build.js | done when: each check fails on crafted bad model, passes on current
 - [ ] E6: data hygiene (drop DLS, per-match weights, T10) | done when: lab table ball- and match-weighted
 - [ ] E7: Test head rebuild | done when: four-fold Test lab table
-- [ ] E8: recalibration variants | done when: lab table incl. ECE
+- [x] E8: recalibration variants | done when: lab table incl. ECE
 - [x] B2: reduced-overs serving + oversRem notation | done when: 15-over chase and x.4-overs tests pass
 - [x] B3: format routing (FC, T10) | done when: tests pin each format's route
 - [x] B10: train/serve skew replay | done when: report lists per-feature mean |diff|; each >0.05 explained
@@ -74,3 +74,5 @@ Gate: >=0.001 log-loss gain, match-bootstrap interval excluding 0, holdout ECE n
 - E1b: the 0.26 is not a bug (probe and training share limitedVector, lab:362; baseline's 0.474 comes from serving's invented crr = required rate at 0 balls, lab:369, which training never sees). earlyChase (men's T20 holdout, ≤6 legal balls), 161-180 target, 309 matches: actual 0.450, baseline 0.405, k48 0.366; baseline closest in all four bands. Everything under-predicts the early chase.
 - Decision (E1): k48 is a conditional winner, not adopted yet. It wins overall but widens the early-chase under-prediction. E4/E8 run on both bases (baseline, k48) and report earlyChase; k48 is adopted only if one of them brings its early-chase bias to the baseline's or better. First-innings crr unchanged.
 - E4+E8 (not ticked): run 46000590470 (e0434dbc). Chase: no E4/E8 variant passes on either base; time-varying terms push the early chase lower (tvBW+rrr 0.311); Platt picked lambda 0. First innings: baseline + tvB (context groups × balls-left) Δ -0.0061 [-0.0087, -0.0036], ΔECE -0.0020, PASS. BUT this run's chase baseline is 0.36838 vs E1's 0.37192 on the same corpus and cutoffs, and k48 here is only -0.0003 (fails). Two lab code paths fit differently -> R1 (shared fit path) before any E1/E4/E8 verdict is used. Nothing adopted.
+- R1: run 46003010073 (43ae1706, R1.md 5c26ebaf), verified by fresh verifier. Inside one process the blocks already shared one fit; the E1/E4E8 baseline gap (0.37192 vs 0.36838) was cross-run, cause unproven (E4E8 code/corpus state). Lab now fits every crr/e4e8 block on memoised `fitShared` with `checkBaseline` (report.repro): crr and e4e8 baselines equal, diff 0 (chase 0.371923, first 0.558536), `grep -ci mismatch lab.log` = 0. The older `models.*` block still calls fit() directly (same config, unguarded). Unified-path verdicts: k48 chase Δ -0.006006 [-0.008701, -0.003728], ΔECE -0.0024, PASS; tvB first Δ -0.004498 [-0.007499, -0.001932], ΔECE -0.0021, PASS (latest season -0.0003 [-0.0018, 0.0013], ΔECE +0.0029); tvB chase +0.0028 FAIL. earlyChase (actual/baseline/k48): ≤140 0.837/0.797/0.759; 141-160 0.650/0.583/0.537; 161-180 0.450/0.405/0.366; 181+ 0.253/0.206/0.188.
+- Decision (R1): k48 NOT adopted: its early-chase bias is worse than the baseline's in all four bands (the fixed E1 condition). tvB on first innings ADOPTED for D1 (passes the holdout gate; latest-season gain is not significant, noted). E4/E8 ticked: lab tables exist (E4E8.md + R1.md). Every band under-predicts the early chase by 0.04-0.07: E2 (era drift) tests whether the scoring-rate rise explains it.
