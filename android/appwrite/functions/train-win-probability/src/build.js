@@ -67,18 +67,16 @@ import {
   classBaseRates,
   expectedCalibrationError,
   firstInningsFeatures,
+  walkLongRows,
   fitTemperature,
   holdoutCutoffDate,
   inningsTotals,
   isLimitedOvers,
   isLongTrainable,
-  longRows,
   multiclassMetrics,
   parRunRateFor,
   prematchFeatures,
-  shrunkWinRate,
   sigmoid,
-  teamKey,
   trainBinary,
   trainMulticlass,
   unpackDelivery,
@@ -324,18 +322,18 @@ function fitHead({ label, head, baseNames, matches, windowOf, rowsFor, log }) {
   };
 }
 
-/** The three-outcome Test model, unchanged from v5. */
-function fitLongModel({ matches, windowOf, winRateLookup, log }) {
+/** The three-outcome Test model: v5's features, with strength and follow-on read as of the match. */
+function fitLongModel({ matches, windowOf, log }) {
   const k = LONG_FEATURE_NAMES.length;
   const sinks = {
     train: new RowSink(CAP_TRAIN, k),
     valid: new RowSink(CAP_VALID, k),
     holdout: new RowSink(CAP_HOLDOUT, k),
   };
-  for (const match of matches) {
-    if (!isLongTrainable(match.formatClass)) continue;
+  // Strength is as of each match (walkLongRows), never including its own result.
+  for (const { match, rows } of walkLongRows(matches, isLongTrainable)) {
     const sink = sinks[windowOf(match.date)];
-    for (const row of longRows(match, winRateLookup(match))) sink.push(row.features, row.label);
+    for (const row of rows) sink.push(row.features, row.label);
   }
   if (sinks.train.length === 0) {
     log("Test model: no training rows — omitted from this build");
@@ -527,21 +525,7 @@ export function buildModel({ zipBuffer, log, error, onRaw = null }) {
     log,
   });
 
-  // The Test model keeps v5's strength term, built as v5 built it: win rates over the training
-  // window for the rows, the whole corpus for what ships.
-  const trainingCounters = {};
-  for (const match of matches) {
-    if (windowOf(match.date) !== "train") continue;
-    for (const team of match.teams) {
-      (trainingCounters[teamKey(team, match.gender, match.formatClass)] ??= { wins: 0, matches: 0 }).matches++;
-    }
-    if (match.winner) (trainingCounters[teamKey(match.winner, match.gender, match.formatClass)] ??= { wins: 0, matches: 0 }).wins++;
-  }
-  const winRateLookup = (match) => (team) => {
-    const c = trainingCounters[teamKey(team, match.gender, match.formatClass)];
-    return c ? shrunkWinRate(c.wins, c.matches) : 0.5;
-  };
-  const long = fitLongModel({ matches, windowOf, winRateLookup, log });
+  const long = fitLongModel({ matches, windowOf, log });
 
   const shards = buildShards(state, asOf);
   log(`Published tables: ${shards.files.size} files, ${shards.players} players, RSS ${mb(process.memoryUsage().rss)} MB`);

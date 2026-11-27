@@ -457,6 +457,58 @@ export function inningsTotals(inning) {
 // score. The Test rows stay here: that head reads no context.
 
 /**
+ * Team win rates as of a match: only matches already recorded count, never the match itself.
+ * Read `lookup(match)` before `record(match)`, the same discipline as AsOfState. An unseen team
+ * reads 0.5.
+ */
+export class AsOfWinRates {
+  #counters = new Map();
+  #pending = [];
+
+  lookup(match) {
+    // A result counts only once its date is strictly before this match's, so a same-day match
+    // (a Test may still be running) does not see it. Matches arrive in date order.
+    const rest = [];
+    for (const done of this.#pending) {
+      if (done.date && done.date === match.date) rest.push(done);
+      else this.#fold(done);
+    }
+    this.#pending = rest;
+    return (team) => {
+      const c = this.#counters.get(teamKey(team, match.gender, match.formatClass));
+      return c ? shrunkWinRate(c.wins, c.matches) : 0.5;
+    };
+  }
+
+  record(match) {
+    this.#pending.push(match);
+  }
+
+  #fold(match) {
+    const bump = (team) => {
+      const key = teamKey(team, match.gender, match.formatClass);
+      let c = this.#counters.get(key);
+      if (!c) this.#counters.set(key, (c = { wins: 0, matches: 0 }));
+      return c;
+    };
+    for (const team of match.teams) bump(team).matches++;
+    if (match.winner) bump(match.winner).wins++;
+  }
+}
+
+/**
+ * Walk date-ordered matches and yield the Test rows of each trainable one, with strength read
+ * as of that match. This is the seam `fitLongModel` uses, so a test can drive it directly.
+ */
+export function* walkLongRows(matches, isTrainable) {
+  const winRates = new AsOfWinRates();
+  for (const match of matches) {
+    if (isTrainable(match.formatClass)) yield { match, rows: longRows(match, winRates.lookup(match)) };
+    winRates.record(match);
+  }
+}
+
+/**
  * Feature rows for a completed Test, one per over rather than per delivery.
  *
  * Per-over because a Test runs to ~2,700 balls against a T20's 120: per-delivery rows would let 911
@@ -474,12 +526,11 @@ export function longRows(match, winRateFor) {
   const rows = [];
   let ballsBowled = 0;
 
-  // A side batting innings 2 and 3 back to back was made to follow on. Cricsheet has no flag for
-  // it; the innings order is the only record.
-  const followedOn =
-    match.innings.length > 2 && match.innings[1]?.team === match.innings[2]?.team;
-
   for (let idx = 0; idx < match.innings.length; idx++) {
+    // A side batting innings 2 and 3 back to back was made to follow on. Cricsheet has no flag for
+    // it; the innings order is the only record, and it is known only once innings 3 begins (serving
+    // reads Cricbuzz's isFollowOn on that innings), so earlier rows must not carry it.
+    const followedOn = idx >= 2 && match.innings[1]?.team === match.innings[2]?.team;
     const inning = match.innings[idx];
     const batting = inning.team;
     if (!runsByTeam.has(batting)) continue;

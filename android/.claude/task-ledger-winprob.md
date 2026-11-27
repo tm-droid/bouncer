@@ -18,7 +18,7 @@ Gate: >=0.001 log-loss gain, match-bootstrap interval excluding 0, holdout ECE n
 - [ ] E3: estimated resource table / two-stage first innings | done when: lab table
 - [ ] E4: time-varying context terms | done when: lab table
 - [ ] E5: strength model (Elo scale, MoV, K decay, shrinkage) | done when: lab table
-- [ ] B4: Test head as-of followedOn + strength | files: training.js, build.js | done when: as-of pin test passes; npm test green
+- [x] B4: Test head as-of followedOn + strength | files: training.js, build.js | done when: as-of pin test passes; npm test green
 - [ ] B5: symmetric pre-match | done when: test p(A,B)+p(B,A)=1±1e-9 on published model
 - [ ] B6: publish gate coverage + monotonic grid + clamp-as-served | files: build.js | done when: each check fails on crafted bad model, passes on current
 - [ ] E6: data hygiene (drop DLS, per-match weights, T10) | done when: lab table ball- and match-weighted
@@ -27,7 +27,7 @@ Gate: >=0.001 log-loss gain, match-bootstrap interval excluding 0, holdout ECE n
 - [ ] B2: reduced-overs serving + oversRem notation | done when: 15-over chase and x.4-overs tests pass
 - [ ] B3: format routing (FC, T10) | done when: tests pin each format's route
 - [ ] B10: train/serve skew replay | done when: report lists per-feature mean |diff|; each >0.05 explained
-- [ ] B11: Test scheduledDays = days played (corpus.js:94 -> training.js:549) | done when: as-of pin test passes; npm test green
+- [x] B11: Test scheduledDays = days played (corpus.js:94 -> training.js:549) | done when: as-of pin test passes; npm test green
 - [ ] B12: ballsBowled counts wides/no-balls (training.js:516, lab) | done when: test pins legal-ball count; lab+trainer agree with serving
 - [x] B13: contextstore swallowed shard read keeps degraded context (contextstore.js:51-110) | done when: test: failed shard read -> retry/not cached; npm test green
 - [x] B14: squad/team pairing by position (context.js:341-352) | done when: test with swapped squad order joins correctly
@@ -52,3 +52,4 @@ Gate: >=0.001 log-loss gain, match-bootstrap interval excluding 0, holdout ECE n
 - B9: reports/B9.md: a b c d e f h i j k CONFIRMED, m o WRONG (m was nonetheless real per B7's failing test), g UNSURE; new N1-N13. Added units B11 (N1 scheduledDays leak), B12 (N2 ballsBowled counts wides/no-balls), B13 (N4 contextstore swallowed shard read), B14 (N5 squad/team pairing by position). N3 -> folded into B2/E6, N6 = B4.
 - Live vs Cricbuzz (archive m/*.json evalLog -> scratchpad/wpe, 360 logs, `winprob-live-score.mjs --dir <wpe> --resolve`, all resolved): live chase 0.4006 [0.295,0.513], first 0.5671, pre-match 0.6446, ECE all 0.0357 (356 matches, 2986 points). Cricbuzz paired 42 matches/343 points: ours 0.5356 vs Cricbuzz 0.5111, diff +0.0245 [-0.0687, +0.1351], Brier 0.1645 vs 0.1633 -> no verdict (~7000 paired matches to settle at this gap: a tie in practice). Cricinfo: no paired points (wci- files are not archived; Appwrite paused since ~2026-11-24, keep-alive failing in bouncer-archive "Appwrite alive"). Live chase/pre-match trail the lab (0.3765/0.6241) by 0.024/0.020; first innings matches -> B10 skew replay and B5 target those two.
 - B13+B14: verifier PASS. `node --test test/context.test.js` -> 22/22; `npm test` (match-sync) -> tests 477, pass 477, fail 0. HEAD contextstore.js+context.js + new tests -> exactly 2 fail (failed shard read not stored as final; swapped squad order). 404 still caches empty shard; other errors uncached, rebuild within 2-builds budget. Left: patch() preview/summary can still write a degraded held context.
+- B4+B11: verifier PASS. `npm test` (trainer) -> 62 pass, 0 fail. HEAD corpus.js + HEAD followedOn + new tests -> 2 fail (follow-on flagged from innings 3 only; scheduled length 2 !== 5). walkLongRows: lookup before record; same-date results buffered (training.js:468-483); matches date-sorted at build.js:466 before fitLongModel (528). Serving agrees: scheduledDays TEST 5 else 4 (cricbuzz.js:1153), followedOn from feed, strength from shipped winRate (0.5 unseen). Test head holdout log-loss will rise (old figures included leaks); Test head is not in publishProblems (-> B6).

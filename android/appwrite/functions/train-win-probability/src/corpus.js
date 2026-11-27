@@ -91,7 +91,9 @@ export function richSkeletonOf(raw) {
     gender: info.gender ?? "male",
     formatClass,
     date: matchDate(info),
-    scheduledDays: info.dates?.length ?? 1,
+    // The schedule, as serving has it (cricbuzz.js): 5 for a Test, 4 otherwise. `dates.length` is
+    // days played and gives a short finish away.
+    scheduledDays: formatClass === "TEST" ? 5 : 4,
     ballsBudget: inningsBudgetBalls(info),
     winner: info.outcome?.winner ?? null,
     result: info.outcome?.result ?? null,
