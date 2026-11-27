@@ -4,6 +4,7 @@ import { MODEL_VERSION, evaluate, evaluateLong, evaluatePrematch, longFeatures, 
 import { resolveMatchTeams } from "../src/teamnames.js";
 import { orientToTeam1 } from "../src/main.js";
 import { liveSituation } from "../src/cricbuzz.js";
+import { sideContextFor } from "../src/context.js";
 
 
 test("balls remaining falls back to the format budget when oversRem is absent", () => {
@@ -506,4 +507,22 @@ test("pre-match p(A beats B) + p(B beats A) is one through the served path", () 
   const biased = symmetricPrematch(0.4);
   const sum = score("Scotland", "Canada", ctxAB, biased) + score("Canada", "Scotland", ctxBA, biased);
   assert.ok(Math.abs(sum - 1) > 0.01);
+});
+
+test("pre-match symmetry holds when each side's context comes from sideContextFor, as main.js builds it", () => {
+  const match = {
+    teams: [
+      { id: 27, known: true, elo: 1610, form: 0.7, winRate: 0.58, visits: 6, xi: null },
+      { id: 9, known: true, elo: 1480, form: 0.4, winRate: 0.45, visits: 1, xi: null },
+    ],
+    h2h: { firstWins: 5, secondWins: 2, games: 7 },
+    venue: { known: true, scoring: 1.1, chaseAdvantage: 0.04, drawAdvantage: 0, matches: 30 },
+  };
+  const score = (first, second, context) => evaluatePrematch({
+    firstTeam: first, secondTeam: second, gender: "male", format: "ODI", resolved: true, context, model: symmetricPrematch(),
+  }).battingTeamWinProbability;
+  const ab = score("Scotland", "Canada", sideContextFor(match, 27));
+  const ba = score("Canada", "Scotland", sideContextFor(match, 9));
+  assert.ok(ab > 0.5 && ab < 0.97, `the stronger side is favoured off the clamp: ${ab}`);
+  assert.ok(Math.abs(ab + ba - 1) <= 1e-9, `sum ${ab + ba}`);
 });
