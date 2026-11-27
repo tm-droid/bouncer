@@ -1061,6 +1061,48 @@ function chaseProbe(store, r) {
   return out;
 }
 
+/**
+ * Men's T20 holdout chases, rows with at most 6 legal balls bowled, by target band: the actual
+ * chase win rate (match level) against each model's mean p (per match, then across matches).
+ * Also the rows at exactly 0 balls bowled (training emits a state only after a delivery, so these
+ * are a wide or no-ball before the first legal ball) with the crr they carry.
+ */
+const TARGET_BANDS = [["<=140", 0, 140], ["141-160", 141, 160], ["161-180", 161, 180], ["181+", 181, 1e9]];
+function earlyChaseTable(store, baseline, models) {
+  const crrColumn = store.columns.findIndex(([name]) => name === "currentRunRate" || name === "crr");
+  const bandRows = TARGET_BANDS.map(() => new Map());
+  const zero = { rows: 0, matches: new Set(), crr: [] };
+  const spans = [["baseline", baseline], ...Object.entries(models)];
+  const targetOf = new Map();
+  for (let i = 0; i < baseline.index.length; i++) {
+    const row = baseline.index[i];
+    const bowled = store.budget[row] - store.rem[row];
+    if (store.budget[row] !== 120 || bowled > 6) continue;
+    const m = store.match[row];
+    const match = matches[m];
+    if (match.formatClass !== "T20" || match.gender !== "male") continue;
+    if (!targetOf.has(m)) targetOf.set(m, T.inningsTotals(match.innings[0]).runs + 1);
+    const target = targetOf.get(m);
+    const b = TARGET_BANDS.findIndex(([, lo, hi]) => target >= lo && target <= hi);
+    const byMatch = bandRows[b];
+    if (!byMatch.has(m)) byMatch.set(m, { y: store.y[row], p: spans.map(() => []) });
+    spans.forEach(([, r], k) => byMatch.get(m).p[k].push(r.full.stated[i]));
+    if (bowled === 0) {
+      zero.rows++;
+      zero.matches.add(m);
+      if (crrColumn >= 0) zero.crr.push(store.X[row * store.k + crrColumn]);
+    }
+  }
+  const mean = (xs) => xs.reduce((a, b) => a + b, 0) / Math.max(xs.length, 1);
+  const bands = TARGET_BANDS.map(([label], b) => {
+    const list = [...bandRows[b].values()];
+    const out = { band: label, matches: list.length, actual: list.length ? mean(list.map((e) => e.y)) : null };
+    spans.forEach(([name], k) => { out[name] = list.length ? mean(list.map((e) => mean(e.p[k]))) : null; });
+    return out;
+  });
+  return { filter: "male T20 holdout chases, legal balls bowled <= 6", bands, atZeroBalls: { rows: zero.rows, matches: zero.matches.size, crrMean: zero.crr.length ? mean(zero.crr) : null, crrColumn } };
+}
+
 const report = { cutoffs: { validCutoff, holdoutCutoff }, masks: MASK, joinFail: JOIN_FAIL, folds: FOLDS, models: {} };
 
 // a1: the lab's holdout against the trainer's published figures (2026-11-23 windows). Pass
@@ -1354,9 +1396,17 @@ for (const name of wanted) {
       latestSeason: baseLatest ? { logLoss: baseLatest.full.logLoss, ece: baseLatest.full.ece } : null,
     };
     const variants = {};
-    for (const v of CRR_VARIANTS) variants[v] = entry(v, fit(store, all, "linear", classes, null, v), v);
+    const fits = {};
+    for (const v of CRR_VARIANTS) {
+      fits[v] = fit(store, all, "linear", classes, null, v);
+      variants[v] = entry(v, fits[v], v);
+    }
     report.crr = report.crr ?? {};
     report.crr[name] = { baseline: baseOut, variants };
+    if (name === "chase") {
+      report.crr.earlyChase = earlyChaseTable(store, everything, { a: fits.a, k48: fits.k48, par: fits.par });
+      console.log(`  earlyChase ${JSON.stringify(report.crr.earlyChase)}`);
+    }
     console.log(`  probe baseline ${JSON.stringify(baseOut.probe)}`);
     for (const v of CRR_VARIANTS) console.log(`  probe ${v} ${JSON.stringify(variants[v].probe)} gate ${variants[v].gate}`);
   }
