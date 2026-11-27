@@ -564,8 +564,8 @@ export function longRows(match, winRateFor) {
       runsByTeam.set(batting, runsByTeam.get(batting) + d.runs);
       inningsRuns += d.runs;
       wicketsLost += d.wickets;
-      ballsBowled++;
       if (d.legal) {
+        ballsBowled++;
         inningsBalls++;
         ballsThisOver++;
       }
@@ -646,7 +646,7 @@ export class RowSink {
   }
 
   /** Mean/std per feature over the rows held here. */
-  fitStandardizer() {
+  fitStandardizer({ center = true } = {}) {
     const { X, length, numFeatures } = this;
     const means = new Array(numFeatures).fill(0);
     const stds = new Array(numFeatures).fill(1);
@@ -654,7 +654,7 @@ export class RowSink {
     for (let i = 0; i < length; i++) {
       for (let j = 0; j < numFeatures; j++) means[j] += X[i * numFeatures + j];
     }
-    for (let j = 0; j < numFeatures; j++) means[j] /= length;
+    for (let j = 0; j < numFeatures; j++) means[j] = center ? means[j] / length : 0;
     const variance = new Array(numFeatures).fill(0);
     for (let i = 0; i < length; i++) {
       for (let j = 0; j < numFeatures; j++) {
@@ -787,6 +787,7 @@ const ADAM_EPS = 1e-8;
 export function trainBinary(train, valid, options = {}) {
   const {
     epochs = 100, batchSize = 512, learningRate = 0.05, l2 = 1e-4, patience = 8, seed = 12345,
+    fitBias = true,
   } = options;
   const k = train.numFeatures;
   const weights = new Float64Array(k);
@@ -841,7 +842,7 @@ export function trainBinary(train, valid, options = {}) {
       const gb = gradB / n;
       mB = ADAM_BETA1 * mB + (1 - ADAM_BETA1) * gb;
       vB = ADAM_BETA2 * vB + (1 - ADAM_BETA2) * gb * gb;
-      bias -= learningRate * (mB / c1) / (Math.sqrt(vB / c2) + ADAM_EPS);
+      if (fitBias) bias -= learningRate * (mB / c1) / (Math.sqrt(vB / c2) + ADAM_EPS);
     }
 
     const scored = valid.length > 0 ? valid : train;
@@ -854,6 +855,52 @@ export function trainBinary(train, valid, options = {}) {
     }
   }
   return { ...best, validLogLoss: best.logLoss };
+}
+
+/**
+ * Which [PREMATCH_FEATURE_NAMES] flip sign when the two sides swap. Only the strength difference
+ * does; the format flags are the same whichever side is named first, so a model that weighs them
+ * (or has an intercept) answers p(A,B) + p(B,A) != 1.
+ */
+export const PREMATCH_ANTISYMMETRIC = [true, false, false, false];
+
+/**
+ * Fits a pre-match head that is odd in its antisymmetric features: p(A,B) + p(B,A) = 1 exactly.
+ *
+ * `train` / `valid` are `[{ features, label }]` oriented to the first named side. Every row is
+ * trained in BOTH orientations (antisymmetric columns negated, label flipped), the intercept is
+ * forced to zero and the standardizer is not centred, and the symmetric columns are left out of the
+ * fit and given weight 0. The result has the full feature layout (weights 0 on the dropped columns,
+ * `bias` 0, `featureMeans` 0), so the reader's `scoreBinary` serves it unchanged.
+ */
+export function fitSymmetricHead(train, valid, antisymmetric = PREMATCH_ANTISYMMETRIC, options = {}) {
+  const cols = antisymmetric.map((a, j) => (a ? j : -1)).filter((j) => j >= 0);
+  const sinkOf = (rows) => {
+    const sink = new RowSink(Math.max(1, rows.length * 2), cols.length);
+    for (const { features, label } of rows) {
+      const x = cols.map((j) => features[j]);
+      sink.push(x, label);
+      sink.push(x.map((v) => -v), 1 - label);
+    }
+    return sink;
+  };
+  const trainSink = sinkOf(train);
+  const validSink = sinkOf(valid);
+  const { stds } = trainSink.fitStandardizer({ center: false });
+  trainSink.applyStandardizer({ means: cols.map(() => 0), stds });
+  validSink.applyStandardizer({ means: cols.map(() => 0), stds });
+  const fit = trainBinary(trainSink, validSink, { ...options, fitBias: false });
+  const weights = antisymmetric.map(() => 0);
+  const featureStds = antisymmetric.map(() => 1);
+  cols.forEach((j, i) => { weights[j] = fit.weights[i]; featureStds[j] = stds[i]; });
+  return {
+    weights,
+    bias: 0,
+    featureMeans: antisymmetric.map(() => 0),
+    featureStds,
+    validLogLoss: fit.validLogLoss,
+    epoch: fit.epoch,
+  };
 }
 
 /** Multinomial logistic regression by Adam, same early-stopping contract as [trainBinary]. */

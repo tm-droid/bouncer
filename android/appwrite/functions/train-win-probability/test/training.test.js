@@ -31,6 +31,8 @@ import {
   sigmoid,
   softmax,
   trainBinary,
+  fitSymmetricHead,
+  prematchFeatures,
   trainMulticlass,
   fitTemperature,
   binaryMetrics,
@@ -244,6 +246,62 @@ test("a match with no context yields no rows rather than rows on invented terms"
 
 test("an abandoned long match contributes no rows, not draw-labelled ones", () => {
   assert.equal(longRows(testFixture({ result: "no result" }), winRateFlat).length, 0);
+});
+
+test("a Test over with a wide and a no-ball is 8 deliveries but 6 legal balls, and the row says 6", () => {
+  // `ballsBowled++` counted every delivery, so ballsRemaining drifted from serving (Cricbuzz's
+  // ballNbr counts legal balls only) by one ball per extra.
+  const deliveries = [
+    ball(1), ball(1, 0, { wides: 1 }), ball(1), ball(2, 0, { noballs: 1 }),
+    ball(1), ball(0), ball(1), ball(1),
+  ];
+  assert.equal(deliveries.length, 8);
+  const match = testFixture();
+  match.innings[0].balls = deliveries.map((d) => {
+    const legal = d.extras?.wides == null && d.extras?.noballs == null;
+    return packDelivery(d.runs.total, d.wickets?.length ?? 0, legal);
+  });
+  assert.equal(match.innings[0].balls.map(unpackDelivery).filter((d) => d.legal).length, 6);
+  const rows = longRows(match, winRateFlat);
+  assert.equal(rows.length, 1, "one over of six legal balls is one row");
+  const ballsTotal = longMatchBalls(match.scheduledDays);
+  assert.equal(rows[0].features[LONG_FEATURE_NAMES.indexOf("ballsRemainingFraction")], (ballsTotal - 6) / ballsTotal);
+});
+
+// serving's scoreBinary (match-sync/src/winprob.js), copied: the temperature divides the logit
+const servingScore = (sub, x) => {
+  let logit = sub.bias ?? 0;
+  for (let i = 0; i < sub.weights.length; i++) {
+    logit += sub.weights[i] * ((x[i] - (sub.featureMeans[i] ?? 0)) / (sub.featureStds[i] || 1));
+  }
+  return sigmoid(logit / (sub.temperature > 0 ? sub.temperature : 1));
+};
+
+test("the pre-match head is symmetric: p(A,B) + p(B,A) = 1 through serving's scorer", () => {
+  // The first-named side wins 70% of the time whatever the strengths, and formats are skewed, so an
+  // intercept or a format weight would be fitted and would break the symmetry.
+  let r = 7;
+  const rand = () => ((r = (r * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const formats = ["T20", "ODI", "HUNDRED", "TEST"];
+  const rows = Array.from({ length: 400 }, (_, i) => {
+    const d = (rand() - 0.5) * 2;
+    const format = formats[i % 4];
+    const win = rand() < 1 / (1 + Math.exp(-(2 * d + 0.85 + (format === "ODI" ? 0.5 : 0))));
+    return { features: prematchFeatures({ teamStrengthDiff: d, format }), label: win ? 1 : 0 };
+  });
+  const head = fitSymmetricHead(rows.slice(0, 300), rows.slice(300));
+  assert.equal(head.bias, 0);
+  assert.ok(head.weights[0] > 0.1, "strength is used");
+  assert.deepEqual(head.weights.slice(1), [0, 0, 0]);
+  head.temperature = 1.3;
+  for (const d of [-1.7, -0.4, 0, 0.05, 0.9, 2.5]) {
+    for (const format of formats) {
+      const ab = servingScore(head, prematchFeatures({ teamStrengthDiff: d, format }));
+      const ba = servingScore(head, prematchFeatures({ teamStrengthDiff: -d, format }));
+      assert.ok(Math.abs(ab + ba - 1) < 1e-9, `d=${d} ${format}: ${ab} + ${ba}`);
+    }
+  }
+  assert.equal(servingScore(head, prematchFeatures({ teamStrengthDiff: 0, format: "T20" })), 0.5);
 });
 
 // ── features ─────────────────────────────────────────────────────────────────
