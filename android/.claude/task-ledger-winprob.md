@@ -25,7 +25,7 @@ Gate: >=0.001 log-loss gain, match-bootstrap interval excluding 0, holdout ECE n
 - [ ] E7: Test head rebuild | done when: four-fold Test lab table
 - [ ] E8: recalibration variants | done when: lab table incl. ECE
 - [x] B2: reduced-overs serving + oversRem notation | done when: 15-over chase and x.4-overs tests pass
-- [ ] B3: format routing (FC, T10) | done when: tests pin each format's route
+- [x] B3: format routing (FC, T10) | done when: tests pin each format's route
 - [x] B10: train/serve skew replay | done when: report lists per-feature mean |diff|; each >0.05 explained
 - [x] B11: Test scheduledDays = days played (corpus.js:94 -> training.js:549) | done when: as-of pin test passes; npm test green
 - [ ] B12: ballsBowled counts wides/no-balls (training.js:516, lab) | done when: test pins legal-ball count; lab+trainer agree with serving
@@ -61,3 +61,4 @@ Gate: >=0.001 log-loss gain, match-bootstrap interval excluding 0, holdout ECE n
 - E0 (part): `winprob-live-score.mjs --simulate-ece 2000` on 356 resolved live matches: ECE p50/p95 of a perfectly calibrated model vs observed: all 0.0548/0.0919 vs 0.0357; pre-match 0.0590/0.0936 vs 0.0351; first 0.0744/0.1216 vs 0.0535; chase 0.0589/0.0922 vs 0.0507. Observed is at or below p50: live ECE is sampling noise. 74-match synthetic: p50 0.040, p95 0.071.
 - B10: `node --max-old-space-size=3072 appwrite/tools/winprob-skew.mjs --archive <archive>` re-run by main session reproduces the report: joined 223/333; exact vs lagged mean |d|: eloDiff 0.0418->0.0036, formDiff 0.1697->0.0080, familiarityDiff 0.1279->0.0583, hasVenue 0.2152->0.0942. Causes: model-table lag (-> B15), ground join (-> B16), XI join failures (overstated: trainer side unthinned). Over state 7870/8008 exact. Known-both-sides neutralisation ruled out (99.55% known).
 - B15: cron '0 2 * * 1' -> '0 2 * * *'; `ruby -ryaml` parse -> {"schedule"=>[{"cron"=>"0 2 * * *"}], "workflow_dispatch"=>nil}. Trainer prunes to current+previous (main.js:40,121). Effect measurable after Appwrite returns.
+- B3: verifier PASS. `node --test test/format-routing.test.js` -> 7/7; `npm test` (match-sync) -> 489/489. HEAD winprob.js+main.js -> 3 pass 4 fail (FC/T10 tests). T20/ODI/HUNDRED evaluate() identical old vs new (0.4718/0.4457/0.4780). 'Test', 'Women's Test', '5-day' -> TEST; 'first-class', '4-day' -> FC (undetermined). Clients hide the bar on undetermined (Android mapNotNull; iOS nil check).

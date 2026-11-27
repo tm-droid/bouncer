@@ -3000,6 +3000,7 @@ function winProbFor(detail, title, model, matchContext = null) {
       battingTeam,
       bowlingTeam,
       gender,
+      format,
       model,
     })
     : evaluate({

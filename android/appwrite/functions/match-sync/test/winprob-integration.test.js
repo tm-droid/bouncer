@@ -237,7 +237,7 @@ test("Cricbuzz's own format codes resolve, not just prose", () => {
   );
   // LIST_A has an underscore where the loose `\blist\s*a\b` rule wants a space.
   assert.equal(formatFromText("LIST_A"), "ODI");
-  assert.equal(formatFromText("FC"), "TEST");
+  assert.equal(formatFromText("FC"), "FC", "first-class is not a Test; the Test head never trained on it");
   assert.equal(formatFromText("ODI"), "ODI");
   assert.equal(formatFromText("T20I"), "T20");
 });

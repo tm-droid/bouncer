@@ -38,11 +38,13 @@ export const MODEL_VERSION = 6;
 /** The previous contract, still read: one model per head, team strength as an all-time win rate. */
 const LEGACY_MODEL_VERSION = 5;
 
-/** Balls in one innings, by format. Test is absent on purpose — it has no fixed budget. */
+/**
+ * Balls in one innings, by format. Test is absent on purpose — it has no fixed budget. So is T10:
+ * the trainer has no T10 class (no head, par rate or team key), so a T10 game must not borrow T20's.
+ */
 export const FORMAT_INNINGS_BALLS = {
   T20: 120,
   ODI: 300,
-  T10: 60,
   HUNDRED: 100,
 };
 
@@ -70,7 +72,9 @@ const BALLS_PER_LONG_DAY = 90 * 6;
 // Longest / most specific tokens first, so "T20I" does not fall through to a broader rule and
 // "The Hundred" is not read as a century. Mirrors CricketConstants.FORMAT_PATTERNS on device.
 const FORMAT_PATTERNS = [
-  [/\b(test|first[- ]class|4[- ]day|5[- ]day)\b/i, "TEST"],
+  [/\b(test|5[- ]day)\b/i, "TEST"],
+  // The Test head is trained on Tests only; domestic first-class (MDM) is deliberately excluded.
+  [/\b(first[- ]class|4[- ]day)\b/i, "FC"],
   [/\b(the\s+hundred|hundred|100[- ]ball)\b/i, "HUNDRED"],
   [/\bt10\b/i, "T10"],
   [/\b(t20|twenty20|t20i)\b/i, "T20"],
@@ -91,7 +95,7 @@ const FORMAT_PATTERNS = [
  */
 const FORMAT_CODES = {
   TEST: "TEST",
-  FC: "TEST",
+  FC: "FC",
   ODI: "ODI",
   LIST_A: "ODI",
   T20: "T20",
@@ -545,6 +549,9 @@ export function evaluate({
 } = {}) {
   if (!Number.isFinite(ballsRemaining) || ballsRemaining <= 0) return UNDETERMINED;
 
+  // No head was trained for these, and a caller-supplied totalBalls must not unlock one.
+  if (format === "T10" || format === "FC") return UNDETERMINED;
+
   // A format with no ball budget cannot be scored by this model. Returning UNDETERMINED rather
   // than assuming 120 is the whole point: a Test past ball 120 previously computed
   // ballsRemaining = 1 and carried a permanent late-innings penalty. Tests go through
@@ -724,8 +731,11 @@ export function evaluateLong({
   battingTeam = "",
   bowlingTeam = "",
   gender = "male",
+  format = "TEST",
   model = null,
 } = {}) {
+  // The long head is trained on Tests only; first-class (MDM) was excluded from it.
+  if (format !== "TEST") return UNDETERMINED;
   const learned = longModelOf(model);
   if (!usableClasses(learned?.long, 16, 3)) return UNDETERMINED;
 
