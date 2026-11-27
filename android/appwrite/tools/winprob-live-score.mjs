@@ -338,8 +338,31 @@ async function fromStorage(since) {
   const projectId = process.env.APPWRITE_PROJECT_ID || props.APPWRITE_PROJECT_ID;
   const apiKey = process.env.APPWRITE_API_KEY || props.APPWRITE_API_KEY;
   if (!endpoint || !projectId || !apiKey) throw new Error("missing APPWRITE_ENDPOINT / APPWRITE_PROJECT_ID / APPWRITE_API_KEY");
-  const { Client, Storage, Query } = await import("node-appwrite");
-  const storage = new Storage(new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey));
+  // Plain REST: node-appwrite 15's fetch shim (node-fetch-native-with-agent) throws
+  // "invalid onError method" under Node 26's undici, and the scorer needs only two calls.
+  const headers = { "X-Appwrite-Project": projectId, "X-Appwrite-Key": apiKey };
+  const q = (method, attribute, values) => JSON.stringify(attribute ? { method, attribute, values } : { method, values });
+  const Query = {
+    startsWith: (a, v) => q("startsWith", a, [v]),
+    greaterThanEqual: (a, v) => q("greaterThanEqual", a, [v]),
+    limit: (n) => q("limit", null, [n]),
+    cursorAfter: (id) => q("cursorAfter", null, [id]),
+  };
+  const call = async (url) => {
+    const r = await fetch(url, { headers, signal: AbortSignal.timeout(60_000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status} ${url.split("?")[0]}`);
+    return r;
+  };
+  const storage = {
+    listFiles: async (bucket, queries) => {
+      const qs = queries.map((x) => `queries[]=${encodeURIComponent(x)}`).join("&");
+      return (await call(`${endpoint}/storage/buckets/${bucket}/files?${qs}`)).json();
+    },
+    getFileDownload: async (bucket, id) => {
+      const text = await (await call(`${endpoint}/storage/buckets/${bucket}/files/${id}/download`)).text();
+      return JSON.parse(text);
+    },
+  };
   const bucket = process.env.MATCH_CACHE_BUCKET_ID || "cricket-stats";
   const logs = [];
   let cursor = null;
@@ -350,10 +373,7 @@ async function fromStorage(since) {
     const page = await storage.listFiles(bucket, queries);
     for (const file of page.files) {
       if (!String(file.$id).startsWith("wpe-")) continue;
-      const raw = await storage.getFileDownload(bucket, file.$id);
-      // node-appwrite hands back an already-parsed object for a JSON file, and bytes otherwise.
-      const bytes = raw instanceof ArrayBuffer || ArrayBuffer.isView(raw);
-      logs.push(bytes ? JSON.parse(Buffer.from(raw).toString("utf8")) : raw);
+      logs.push(await storage.getFileDownload(bucket, file.$id));
     }
     if (page.files.length < 100) break;
     cursor = page.files[page.files.length - 1].$id;
@@ -389,6 +409,30 @@ function laptopCricinfo() {
   });
 }
 
+/**
+ * ECE the model would show on this many matches if every logged forecast were exactly right.
+ * One uniform draw per match decides all its points (point i happens when u < p_i, so each is
+ * Bernoulli(p_i) and a match's points stay correlated), ECE uses `metrics`' bins.
+ */
+export function simulateEce(rows, { reps = 2000, seed = 11 } = {}) {
+  const next = rng(seed);
+  const ids = [...new Set(rows.map((r) => r.matchId))];
+  const out = {};
+  for (const phase of ["all", "pre-match", "first innings", "chase"]) {
+    const sub = phase === "all" ? rows : rows.filter((r) => r.phase === phase);
+    if (!sub.length) continue;
+    const eces = [];
+    for (let k = 0; k < reps; k++) {
+      const u = new Map(ids.map((id) => [id, next()]));
+      eces.push(metrics(sub.map((r) => ({ ...r, y: u.get(r.matchId) < r.p ? 1 : 0 }))).ece);
+    }
+    eces.sort((a, b) => a - b);
+    const q = (x) => eces[Math.min(reps - 1, Math.floor(reps * x))];
+    out[phase] = { matches: new Set(sub.map((r) => r.matchId)).size, points: sub.length, observed: metrics(sub).ece, p50: q(0.5), p95: q(0.95) };
+  }
+  return out;
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const argv = process.argv.slice(2);
   const flag = (name, fallback) => {
@@ -404,5 +448,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     }
     : await fromStorage(flag("--since", null));
   if (argv.includes("--resolve")) logs = await resolveOutcomes(logs);
+  if (argv.includes("--simulate-ece")) {
+    const rows = logs.flatMap(rowsOf);
+    const sim = simulateEce(rows, { reps: Number(flag("--simulate-ece", "2000")) });
+    console.log("Simulated ECE if the logged forecasts were true (matches as units):");
+    for (const [phase, v] of Object.entries(sim)) console.log(`${phase.padEnd(14)} ${String(v.matches).padStart(4)} matches ${String(v.points).padStart(6)} points  observed ${v.observed.toFixed(4)}  p50 ${v.p50.toFixed(4)}  p95 ${v.p95.toFixed(4)}`);
+  }
   console.log(report(logs, { rounds: Number(flag("--boot", "2000")), cricinfo: [...cricinfo, ...laptopCricinfo()] }));
 }

@@ -543,8 +543,11 @@ matches.sort((a, b) => String(a.date ?? "").localeCompare(String(b.date ?? "")) 
 log(`${matches.length} matches, RSS ${(process.memoryUsage().rss / 1048576).toFixed(0)} MB`);
 
 const dates = matches.map((m) => m.date).filter(Boolean).sort();
-const holdoutCutoff = T.holdoutCutoffDate(dates, HOLDOUT_FRACTION);
-const validCutoff = T.holdoutCutoffDate(dates.filter((d) => d < holdoutCutoff), VALIDATION_FRACTION);
+let holdoutCutoff = T.holdoutCutoffDate(dates, HOLDOUT_FRACTION);
+let validCutoff = T.holdoutCutoffDate(dates.filter((d) => d < holdoutCutoff), VALIDATION_FRACTION);
+// --cutoffs <validCutoff>,<holdoutCutoff> pins the windows (e.g. the trainer's 2024-03-08,2025-01-27).
+const pinned = flag("--cutoffs", null);
+if (pinned) [validCutoff, holdoutCutoff] = pinned.split(",");
 log(`Windows — training < ${validCutoff}, validation < ${holdoutCutoff}, holdout >= ${holdoutCutoff}`);
 const windowOf = (date) => (date && date >= holdoutCutoff ? WINDOW.holdout : date && date >= validCutoff ? WINDOW.valid : WINDOW.train);
 
