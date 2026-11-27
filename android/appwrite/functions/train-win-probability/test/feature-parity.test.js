@@ -223,3 +223,66 @@ test("time-varying terms are first-innings only, scale by the balls-left fractio
   assert.deepEqual(readerCtx.contextFeatures("firstInnings", base, s, c, false, true), tv);
   assert.deepEqual(ctx.contextFeatures("chase", trainer.chaseFeatures(s), s, c, false, true), ctx.contextFeatures("chase", trainer.chaseFeatures(s), s, c, false), "chase never takes the terms");
 });
+
+test("end to end: the trainer's row vector equals the vector serving builds for the same state", async () => {
+  const { limitedOversRows } = await import("../src/build.js");
+  const rows = (runs, n, wicketEvery = 0) => Array.from({ length: n }, (_, i) => trainer.packDelivery(runs, wicketEvery && (i + 1) % wicketEvery === 0 ? 1 : 0, true));
+  const c = { eloDiff: 0.5, formDiff: 0.1, h2hAdvantage: 0.05, winRateDiff: 0.02, venueScoring: 1.1, venueChaseAdvantage: 0.03, venueDrawAdvantage: 0, familiarityDiff: 0.2, hasVenue: true, xi: null };
+  const match = {
+    formatClass: "T20", gender: "male", winner: "B", ballsBudget: 120, teams: ["A", "B"],
+    innings: [{ team: "A", balls: rows(2, 60, 7) }, { team: "B", balls: rows(1, 40, 9) }],
+    context: { A: c, B: c },
+    rollingPar: { N: 9.1, D: 8.3 },
+  };
+  const shipped = { "T20|male": { N: match.rollingPar.N, D: match.rollingPar.D } };
+  const target = trainer.inningsTotals(match.innings[0]).runs + 1;
+
+  for (const head of ["chase", "firstInnings"]) {
+    const chase = head === "chase";
+    const inning = match.innings[chase ? 1 : 0];
+    const produced = [...limitedOversRows(head, match)];
+    assert.ok(produced.length > 10, `${head}: rows were produced`);
+    const names = readerCtx.contextFeatureNames(head, chase ? trainer.CHASE_FEATURE_NAMES : trainer.FIRST_INNINGS_FEATURE_NAMES, false, !chase);
+
+    let runs = 0, wickets = 0, faced = 0, k = 0;
+    for (const code of inning.balls) {
+      const d = trainer.unpackDelivery(code);
+      runs += d.runs; wickets += d.wickets; if (d.legal) faced++;
+      const ballsRemaining = 120 - faced;
+      const runsNeeded = target - runs;
+      if (ballsRemaining <= 0 || wickets >= 10 || (chase && runsNeeded <= 0)) continue;
+      // The state serving derives from a live scoreboard, written out independently of the trainer.
+      const state = {
+        runsScored: runs, currentRunRate: (runs * 6) / Math.max(faced, 1), requiredRunRate: chase ? Math.max((runsNeeded * 6) / ballsRemaining, 0.1) : 0,
+        wicketsInHand: 10 - wickets, ballsRemaining, ballsBudget: 120, runsNeeded, target: chase ? target : 0,
+        teamStrengthDiff: 0, parRunRate: 8.0, format: "T20",
+      };
+      state.parRunRate = trainer.parRunRateFor("T20");
+      const builder = chase ? reader.chaseFeatures : reader.firstInningsFeatures;
+      let base = builder(state);
+      const rolling = readerCtx.shippedRollingPar(shipped, head, "T20", "male");
+      if (rolling !== null) base = readerCtx.withRollingPar(head, base, builder({ ...state, parRunRate: rolling }));
+      const served = readerCtx.contextFeatures(head, base, state, c, false, readerCtx.hasTimeVaryingTerms(names));
+      assert.deepEqual(produced[k].core, served, `${head}: ball ${k}`);
+      assert.equal(served.length, names.length, `${head}: width follows the names`);
+      k++;
+    }
+    assert.equal(k, produced.length, `${head}: same number of states`);
+  }
+});
+
+test("the table buildModel publishes as model.rollingPar is keyed format|gender with both windows", () => {
+  const inn = (runs, balls) => ({ balls: Array.from({ length: balls }, (_, i) => trainer.packDelivery(i < runs ? 1 : 0, 0, true)) });
+  const day = (i) => new Date(Date.UTC(2023, 0, 1 + i)).toISOString().slice(0, 10);
+  const matches = [];
+  for (let i = 0; i < 60; i++) {
+    matches.push({ formatClass: "T20", gender: i % 2 ? "male" : "female", date: day(i), innings: [inn(120, 120), inn(100, 120)] });
+    matches.push({ formatClass: "ODI", gender: "male", date: day(i), innings: [inn(250, 300), inn(200, 300)] });
+  }
+  const table = rollingParTable(matches);
+  assert.deepEqual(Object.keys(table).sort(), ["ODI|male", "T20|female", "T20|male"]);
+  for (const entry of Object.values(table)) {
+    assert.ok(Number.isFinite(entry.N) && Number.isFinite(entry.D), "both windows present");
+  }
+  assert.ok(Math.abs(table["ODI|male"].N - (6 * 450) / 600) < 1e-9);
+});

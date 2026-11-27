@@ -296,9 +296,15 @@ test("a chase reads the shipped rolling par, and an old model without the table 
 
 test("only the window of the head is read: chase D, first innings N", () => {
   const first = { currentRunRate: 8, ballsRemaining: 60, wicketsLost: 3, runsScored: 90, format: "T20", gender: "male" };
-  const base = { version: 6, firstInnings: { core: tier(24, 0), full: null }, teamStats: {} };
+  // The width and names a shipped first-innings head really carries: 19 plain columns plus the 8 `*bf@tvB` terms.
+  const names = Array.from({ length: 19 }, (_, i) => `c${i}`).concat(Array.from({ length: 8 }, (_, i) => `t${i}*bf@tvB`));
+  const fiTier = (pick) => ({ ...tier(27, pick), featureNames: names });
+  const base = { version: 6, firstInnings: { core: fiTier(0), full: null }, teamStats: {} };
   const constant = evaluate({ ...first, model: base });
-  const onlyD = evaluate({ ...first, model: { ...base, rollingPar: { "T20|male": { D: 9.5 } } } });
-  if (constant.undetermined || constant.battingTeamWinProbability === null) return;
-  assert.equal(onlyD.battingTeamWinProbability, constant.battingTeamWinProbability, "N is the first-innings window");
+  assert.ok(!constant.undetermined && constant.battingTeamWinProbability !== null, "the 27-wide head is used, not rejected by usable()");
+  const withN = (n) => evaluate({ ...first, model: { ...base, rollingPar: { "T20|male": { N: n } } } }).battingTeamWinProbability;
+  const withD = evaluate({ ...first, model: { ...base, rollingPar: { "T20|male": { D: 9.5 } } } }).battingTeamWinProbability;
+  assert.notEqual(withN(9.5), constant.battingTeamWinProbability, "N is the first-innings window");
+  assert.notEqual(withN(9.5), withN(6.5), "the result follows N");
+  assert.equal(withD, constant.battingTeamWinProbability, "D is not read by the first innings");
 });

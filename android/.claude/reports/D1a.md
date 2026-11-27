@@ -14,3 +14,9 @@ Design: model ships `rollingPar["format|gender"] = {N, D}` (thin windows omitted
 
 Checks: `cmp` clean; train-win-probability 78/78, match-sync 498/498; Gradle `*ContextMathVendorParityTest*` BUILD SUCCESSFUL.
 First innings gain (0.006) is below the lab's 0.010 prediction but above the 0.005 bar.
+
+## Test gap fixes (verifier on cf3d16f8)
+
+- `match-sync/test/winprob.test.js`: the first-innings window test used a 24-wide tier, which `usable()` rejects, so every case fell to the old path. It now uses a 27-wide head with `*bf@tvB` names; it asserts the head is used, that rollingPar N moves the result (and follows N), and that D does not. Dead early return removed.
+- `train-win-probability/test/feature-parity.test.js`: end-to-end parity of `limitedOversRows` (trainer) against serving's composition (`shippedRollingPar`, `withRollingPar`, `contextFeatures` with the tv flag from `hasTimeVaryingTerms`), chase and first innings, every ball, same order. Mutation check: swapping the trainer's windows (chase N, first innings D) failed it; reverted.
+- Same file: `rollingParTable` (what `buildModel` stores as `model.rollingPar`) is keyed `format|gender` and carries finite N and D.
