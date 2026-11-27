@@ -140,4 +140,23 @@ class MatchLiveDetailAlignmentTest {
         assertEquals(6_000L, moved.lastUpdatedMs)
         assertEquals(6_000L, moved.copy().withScoreStamp(moved, 9_000L).lastUpdatedMs)
     }
+
+    private fun listed() = CricketMatch(
+        id = "1", seriesId = "0", matchTitle = "CZ vs EZ", matchType = "TEST",
+        status = "Live", teams = teams, venue = "", date = "", matchTime = "", score = null, currentStatus = "", info = "",
+    )
+
+    @Test
+    fun `the list shows each side its own chance when the server's first side is listed second`() {
+        val stored = WinProbabilityStore.Probability(team1Percent = 50.0, drawPercent = 20.0, team1Id = "235")
+        val shown = listed().withStoredProbability(stored)
+        assertEquals(30.0, shown.winProbability!!, 1e-9)
+        assertEquals(20.0, shown.winProbabilityDraw!!, 1e-9)
+    }
+
+    @Test
+    fun `the list keeps the figure as is when the server's first side is listed first`() {
+        val stored = WinProbabilityStore.Probability(team1Percent = 70.0, drawPercent = null, team1Id = "237")
+        assertEquals(70.0, listed().withStoredProbability(stored).winProbability!!, 1e-9)
+    }
 }

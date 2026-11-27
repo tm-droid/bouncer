@@ -536,11 +536,7 @@ class LiveActivityViewModel(
                     winProbabilityIsPrematch = seeded.winProbabilityIsPrematch,
                 )
             } else {
-                match.copy(
-                    winProbability = probability?.team1Percent,
-                    winProbabilityDraw = probability?.drawPercent,
-                    winProbabilityIsPrematch = probability?.isPrematch == true,
-                )
+                match.withStoredProbability(probability)
             }
         }
         else -> match

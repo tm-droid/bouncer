@@ -91,3 +91,16 @@ internal fun MatchDetailViewModel.UiState.withScoreStamp(
         (liveTeam1Score.isNotBlank() || liveTeam2Score.isNotBlank())
     return copy(lastUpdatedMs = if (changed || firstSight) nowMs else before.lastUpdatedMs)
 }
+
+/**
+ * [this] carrying the store's figure for it, in this match's own team order: the file speaks for
+ * the first-innings side, which is `teams[1]` when the chasing side is listed first.
+ */
+internal fun CricketMatch.withStoredProbability(probability: WinProbabilityStore.Probability?): CricketMatch {
+    val own = probability?.alignedTo(teams)
+    return copy(
+        winProbability = own?.team1Percent,
+        winProbabilityDraw = own?.drawPercent,
+        winProbabilityIsPrematch = own?.isPrematch == true,
+    )
+}
