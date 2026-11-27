@@ -205,6 +205,24 @@ for (const head of ["chase", "first"]) {
   );
 }
 
+/**
+ * E2: era. The par run rate is a constant per format; scoring has risen. `rpN` / `rpD` recompute the
+ * par-dependent shipped features from an as-of rolling mean (previous RP_MATCHES matches, previous
+ * 365 days, same format and gender, strictly earlier dates). They replace the originals when
+ * opts.rp names the tag. `eraY` / `eraP` are required rate times the era (years since 2015, or the
+ * rolling par over the constant par); they are kept through opts.terms like the tv terms.
+ */
+const RP_TAGS = ["rpN", "rpD"];
+const RP_MATCHES = 300;
+const RP_MIN_MATCHES = 30;
+const RP_INDEX = { chase: [3, 4, 8, 10, 11, 12], first: [0, 1, 5] };
+const RP_NAMES = { chase: RP_INDEX.chase.map((i) => T.CHASE_FEATURE_NAMES[i]), first: RP_INDEX.first.map((i) => T.FIRST_INNINGS_FEATURE_NAMES[i]) };
+TV_TAGS.push("eraY", "eraP");
+for (const head of ["chase", "first"]) {
+  for (const tag of RP_TAGS) COLUMNS[head].push(...RP_NAMES[head].map((n) => [`${n}@${tag}`, "base"]));
+}
+COLUMNS.chase.push(["rrr*era@eraY", "base"], ["rrr*rp@eraP", "base"]);
+
 /** Which mask bits blank a group. The crease and the remaining order are unknowable without an XI. */
 const GROUP_BITS = {
   venue: MASK.venue.bit,
@@ -389,19 +407,20 @@ function limitedVector(o) {
   const wf = (10 - s.wickets) / 10;
   const requiredRunRate = Math.max((runsNeeded * 6) / ballsRemaining, 0.1);
   const currentRunRate = o.servingStart ? requiredRunRate : (s.runs * 6) / Math.max(s.legalBalls, 1);
-  let base;
+  const baseAt = (p) => (chase
+    ? T.chaseFeatures({
+      currentRunRate, requiredRunRate, wicketsInHand: 10 - s.wickets, ballsRemaining, ballsBudget: budget,
+      runsNeeded, target, teamStrengthDiff: strength, parRunRate: p, format: o.format,
+    })
+    : T.firstInningsFeatures({
+      runsScored: s.runs, currentRunRate, wicketsInHand: 10 - s.wickets, ballsRemaining, ballsBudget: budget,
+      teamStrengthDiff: strength, parRunRate: p, format: o.format,
+    }));
+  const base = baseAt(par);
   let venueShape;
   if (chase) {
-    base = T.chaseFeatures({
-      currentRunRate, requiredRunRate, wicketsInHand: 10 - s.wickets, ballsRemaining, ballsBudget: budget,
-      runsNeeded, target, teamStrengthDiff: strength, parRunRate: par, format: o.format,
-    });
     venueShape = target / parTotal / scoring - target / parTotal;
   } else {
-    base = T.firstInningsFeatures({
-      runsScored: s.runs, currentRunRate, wicketsInHand: 10 - s.wickets, ballsRemaining, ballsBudget: budget,
-      teamStrengthDiff: strength, parRunRate: par, format: o.format,
-    });
     const projected = s.runs + currentRunRate * (ballsRemaining / 6) * (0.55 + 0.45 * wf);
     venueShape = projected / parTotal / scoring - projected / parTotal;
   }
@@ -457,6 +476,16 @@ function limitedVector(o) {
     const rr = clamp(requiredRunRate / par, 0, 4);
     v.push(rr * wf, rr * bfRaw);
   }
+  // E2 columns, after every tv term so TV_SOURCE indices are untouched.
+  const rolling = { rpN: o.rp?.N ?? par, rpD: o.rp?.D ?? par };
+  for (const tag of RP_TAGS) {
+    const alt = baseAt(rolling[tag]);
+    for (const i of RP_INDEX[chase ? "chase" : "first"]) v.push(alt[i]);
+  }
+  if (chase) {
+    const rr = clamp(requiredRunRate / par, 0, 4);
+    v.push(rr * (o.eraYears ?? 0) / 10, rr * (rolling.rpN / par - 1));
+  }
   return v;
 }
 
@@ -499,6 +528,7 @@ function limitedOversRows(match, ctx, winRateFor, kind, weather, emit, random) {
       limitedVector({
         chase, s, budget, par, target, strength, team, scoring, chaseAdvantage: ctx.venue.chaseAdvantage,
         venueKnown, fam, toss, xi, recentBalls, weather, format: match.formatClass,
+        rp: rollingParFor.get(match), eraYears: match.date ? new Date(match.date).getUTCFullYear() - 2015 : 0,
       }),
       label,
       batting,
@@ -650,6 +680,46 @@ const pinned = flag("--cutoffs", null);
 if (pinned) [validCutoff, holdoutCutoff] = pinned.split(",");
 log(`Windows — training < ${validCutoff}, validation < ${holdoutCutoff}, holdout >= ${holdoutCutoff}`);
 const windowOf = (date) => (date && date >= holdoutCutoff ? WINDOW.holdout : date && date >= validCutoff ? WINDOW.valid : WINDOW.train);
+
+// E2: as-of rolling par per match, per format x gender. Only matches strictly before the match's date
+// count (same-date matches excluded), so nothing from the match or later leaks in. Fewer than
+// RP_MIN_MATCHES matches in the window falls back to the constant par.
+const rollingParFor = new Map();
+{
+  const groups = new Map();
+  for (const m of matches) {
+    if (!T.isLimitedOvers(m.formatClass) || !m.date) continue;
+    let runs = 0;
+    let balls = 0;
+    for (const inning of m.innings) {
+      const t = T.inningsTotals(inning);
+      runs += t.runs;
+      balls += t.legalBalls;
+    }
+    const key = `${m.formatClass}|${m.gender}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({ m, day: Date.parse(m.date) / 864e5, date: m.date, runs, balls });
+  }
+  for (const list of groups.values()) {
+    const cr = [0];
+    const cb = [0];
+    for (const e of list) {
+      cr.push(cr[cr.length - 1] + e.runs);
+      cb.push(cb[cb.length - 1] + e.balls);
+    }
+    let hi = 0;
+    let lo = 0;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      while (hi < list.length && list[hi].date < e.date) hi++;
+      while (lo < hi && list[lo].day < e.day - 365) lo++;
+      const rate = (a, b) => (b - a >= RP_MIN_MATCHES && cb[b] > cb[a] ? (6 * (cr[b] - cr[a])) / (cb[b] - cb[a]) : null);
+      const fallback = T.parRunRateFor(e.m.formatClass);
+      rollingParFor.set(e.m, { N: rate(Math.max(0, hi - RP_MATCHES), hi) ?? fallback, D: rate(lo, hi) ?? fallback });
+    }
+  }
+  log(`rolling par for ${rollingParFor.size} limited-overs matches`);
+}
 
 // The shipped strength feature: training-window win rates, exactly as the trainer builds them.
 const counters = {};
@@ -1051,6 +1121,91 @@ function fitRecal(kind, valid, store, model, temperature) {
   return { lambda, intercept: ia, slope: is, apply: (x) => ia + (is * x) / temperature };
 }
 
+/**
+ * E2 (b): T.trainBinary with a per-row weight on the gradient. Same optimiser, same stopping rule on
+ * the UNWEIGHTED validation window; weights are normalised to mean 1 so l2 and the learning rate
+ * mean what they do elsewhere.
+ */
+function trainBinaryWeighted(train, valid, options, rowWeight) {
+  const { epochs = 100, batchSize = 512, learningRate = 0.05, l2 = 1e-4, patience = 8, seed = 12345 } = options;
+  const k = train.numFeatures;
+  const weights = new Float64Array(k);
+  let bias = 0;
+  const mW = new Float64Array(k);
+  const vW = new Float64Array(k);
+  const gradW = new Float64Array(k);
+  let mB = 0;
+  let vB = 0;
+  let step = 0;
+  let rng = seed >>> 0;
+  const random = () => ((rng = (rng * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const order = new Int32Array(train.length);
+  for (let i = 0; i < train.length; i++) order[i] = i;
+  let best = { logLoss: Infinity, weights: Array.from(weights), bias, epoch: -1 };
+  let since = 0;
+  for (let epoch = 0; epoch < epochs; epoch++) {
+    for (let i = train.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      const tmp = order[i];
+      order[i] = order[j];
+      order[j] = tmp;
+    }
+    for (let start = 0; start < train.length; start += batchSize) {
+      const end = Math.min(start + batchSize, train.length);
+      gradW.fill(0);
+      let gradB = 0;
+      for (let i = start; i < end; i++) {
+        const row = order[i];
+        const off = row * k;
+        let z = bias;
+        for (let j = 0; j < k; j++) z += weights[j] * train.X[off + j];
+        const err = (T.sigmoid(z) - train.y[row]) * rowWeight[row];
+        gradB += err;
+        for (let j = 0; j < k; j++) gradW[j] += err * train.X[off + j];
+      }
+      const n = end - start;
+      step++;
+      const c1 = 1 - 0.9 ** step;
+      const c2 = 1 - 0.999 ** step;
+      for (let j = 0; j < k; j++) {
+        const g = gradW[j] / n + l2 * weights[j];
+        mW[j] = 0.9 * mW[j] + 0.1 * g;
+        vW[j] = 0.999 * vW[j] + 0.001 * g * g;
+        weights[j] -= learningRate * (mW[j] / c1) / (Math.sqrt(vW[j] / c2) + 1e-8);
+      }
+      const gb = gradB / n;
+      mB = 0.9 * mB + 0.1 * gb;
+      vB = 0.999 * vB + 0.001 * gb * gb;
+      bias -= learningRate * (mB / c1) / (Math.sqrt(vB / c2) + 1e-8);
+    }
+    const { logLoss } = T.binaryMetrics(valid.length > 0 ? valid : train, weights, bias);
+    if (logLoss < best.logLoss - 1e-5) {
+      best = { logLoss, weights: Array.from(weights), bias, epoch };
+      since = 0;
+    } else if (++since >= patience) break;
+  }
+  return { ...best, validLogLoss: best.logLoss };
+}
+
+/** Recency weights: 0.5 ^ (age / halfLife) with age from the fold's validation cutoff, mean 1. */
+function recencyWeights(train, windows, halfLifeYears) {
+  let cutoff = "9999";
+  windows.forEach((w, m) => {
+    if (w === WINDOW.valid && matches[m].date && matches[m].date < cutoff) cutoff = matches[m].date;
+  });
+  const end = Date.parse(cutoff);
+  const out = new Float64Array(train.length);
+  let sum = 0;
+  for (let r = 0; r < train.length; r++) {
+    const d = matches[train.match[r]].date;
+    const age = d ? Math.max(0, (end - Date.parse(d)) / (864e5 * 365.25)) : halfLifeYears * 4;
+    out[r] = 0.5 ** (age / halfLifeYears);
+    sum += out[r];
+  }
+  for (let r = 0; r < train.length; r++) out[r] *= train.length / sum;
+  return out;
+}
+
 function fit(store, groups, modelClass, classes, windowsList = null, variant = null, opts = {}) {
   const columns = [];
   const terms = opts.terms ?? [];
@@ -1062,8 +1217,10 @@ function fit(store, groups, modelClass, classes, windowsList = null, variant = n
     const at = name.indexOf("@");
     if (at >= 0) {
       const tag = name.slice(at + 1);
-      if (TV_TAGS.includes(tag) ? !terms.includes(tag) : tag !== variant) return;
+      if (RP_TAGS.includes(tag)) { if (tag !== opts.rp) return; }
+      else if (TV_TAGS.includes(tag) ? !terms.includes(tag) : tag !== variant) return;
     } else if (dropped.includes(name)) return;
+    else if (opts.rp && RP_NAMES[store.name]?.includes(name)) return;
     columns.push(idx);
   });
   if (!windowsList && !foldCache.has(store)) foldCache.set(store, foldWindows(store));
@@ -1085,7 +1242,9 @@ function fit(store, groups, modelClass, classes, windowsList = null, variant = n
     if (modelClass === "linear") {
       const { means, stds } = standardize(sinks);
       if (classes === 1) {
-        const model = T.trainBinary(sinks.train, sinks.valid, BINARY_OPTIONS);
+        const model = opts.halfLife
+          ? trainBinaryWeighted(sinks.train, sinks.valid, BINARY_OPTIONS, recencyWeights(sinks.train, windows, opts.halfLife))
+          : T.trainBinary(sinks.train, sinks.valid, BINARY_OPTIONS);
         const temperature = T.fitTemperature(sinks.valid, model.weights, model.bias);
         models.push({ columns, means, stds, weights: model.weights, bias: model.bias, temperature });
         const rec = opts.recal ? fitRecal(opts.recal, sinks.valid, store, model, temperature) : null;
@@ -1156,7 +1315,7 @@ function fitShared(store, groups, modelClass, classes, windowsList = null, varia
     if (!windowIds.has(id)) windowIds.set(id, windowIds.size);
     w = `w${windowIds.get(id)}`;
   }
-  const key = [store.name, groups.join("+"), modelClass, classes, w, variant ?? "", (opts.terms ?? []).join("+"), opts.recal ?? ""].join("|");
+  const key = [store.name, groups.join("+"), modelClass, classes, w, variant ?? "", (opts.terms ?? []).join("+"), opts.recal ?? "", opts.rp ?? "", opts.halfLife ?? ""].join("|");
   if (!fitMemo.has(key)) fitMemo.set(key, fit(store, groups, modelClass, classes, windowsList, variant, opts));
   return fitMemo.get(key);
 }
@@ -1612,6 +1771,53 @@ for (const name of wanted) {
       };
       if (name === "chase") console.log(`  e4e8 earlyChase ${baseKey} ${JSON.stringify(report.e4e8[name][baseKey].earlyChase.bands)}`);
     }
+  }
+  if (name === "chase" || name === "first") {
+    // E2: rolling par (a), recency weights (b), era x rrr (c, chase), best a + best b (d). Chase base: plain baseline; first base: baseline + tvB.
+    const all = [...root, ...optional];
+    const one = latestSeason ? [latest.windows] : null;
+    const baseTerms = name === "first" ? ["tvB"] : [];
+    const B = fitShared(store, all, "linear", classes, null, null, baseTerms.length ? { terms: baseTerms } : {});
+    const BL = one ? fitShared(store, all, "linear", classes, one, null, baseTerms.length ? { terms: baseTerms } : {}) : null;
+    checkBaseline(`${name} e2 vs ${name === "first" ? "e4e8 tvB" : "crr"}`, B.full.logLoss, name === "first" ? report.e4e8.first.baseline.variants.tvB.logLoss : report.crr[name].baseline.logLoss);
+    const fitsHere = {};
+    const results = {};
+    const run = (label, opts) => {
+      const o = { ...opts, terms: [...baseTerms, ...(opts.terms ?? [])] };
+      fitsHere[label] = fitShared(store, all, "linear", classes, null, null, o);
+      const r = fitsHere[label];
+      const row = line(label, r, B);
+      const out = { ...row, deltaEce: r.full.ece - B.full.ece, ece: r.full.ece, opts: o, bands: bandsOf(store, B, r) };
+      if (one) {
+        const l = fitShared(store, all, "linear", classes, one, null, o);
+        const ci = bootstrap(BL.full.loss, l.full.loss, l.matchOf);
+        out.latestSeason = { logLoss: l.full.logLoss, delta: l.full.logLoss - BL.full.logLoss, ci: [ci.lo, ci.hi], ece: l.full.ece, deltaEce: l.full.ece - BL.full.ece };
+      }
+      out.gate = row.delta <= -0.001 && row.ci[1] < 0 && out.deltaEce <= 0.005 ? "PASS" : "FAIL";
+      results[label] = out;
+      console.log(`  e2 ${name} ${label}: d ${fmt(row.delta)} [${fmt(row.ci[0])}, ${fmt(row.ci[1])}] dECE ${fmt(out.deltaEce)} ${out.gate}`);
+    };
+    const best = (labels) => labels.reduce((a, b) => (results[b].delta < results[a].delta ? b : a));
+    const aLabels = ["rpN", "rpD"];
+    for (const t of aLabels) run(t, { rp: t });
+    const hLabels = [0.5, 1, 2, 4].map((h) => `hl${h}`);
+    for (const h of [0.5, 1, 2, 4]) run(`hl${h}`, { halfLife: h });
+    if (name === "chase") {
+      run("eraY", { terms: ["eraY"] });
+      run("eraP", { terms: ["eraP"] });
+    }
+    const bestA = best(aLabels);
+    const bestB = best(hLabels);
+    run(`${bestA}+${bestB}`, { rp: bestA, halfLife: Number(bestB.slice(2)) });
+    report.e2 = report.e2 ?? {};
+    report.e2[name] = {
+      baseline: { logLoss: B.full.logLoss, ece: B.full.ece, latestSeason: BL ? { logLoss: BL.full.logLoss, ece: BL.full.ece } : null },
+      bestA,
+      bestB,
+      variants: results,
+      earlyChase: name === "chase" ? earlyChaseTable(store, B, fitsHere) : null,
+    };
+    if (name === "chase") console.log(`  e2 earlyChase ${JSON.stringify(report.e2.chase.earlyChase.bands)}`);
   }
   report.repro = baselineChecks;
   report.models[name] = { rows, selected: chosen.slice(root.length) };
