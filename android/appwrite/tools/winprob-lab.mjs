@@ -110,6 +110,31 @@ const TOSS = col("toss", ["tossWonByBatting"]);
 const STATE = col("state", ["remainingBatQuality", "creaseQuality", "creaseSet", "hasState"]);
 const WEATHER = col("weather", ["rainMm", "humidity", "dewSpread", "windKph", "cloud", "hasWeather"]);
 
+/** The shrunk-rate variants (balls of par-rate prior) and the runs-above-par one, for the crr experiment. */
+const CRR_K = [12, 24, 48, 96];
+const CRR_VARIANTS = ["a", ...CRR_K.map((k) => `k${k}`), "par"];
+/** Baseline columns that read the current run rate; a variant drops them and, but for "a", adds its own `name@variant`. */
+const CRR_DROP = {
+  chase: ["logRateRatio", "currentRateOverPar", "rateGapOverPar", "urgentRateGap", "last5RateDelta"],
+  first: ["currentRateOverPar", "projectedOverPar", "projectedVsVenue", "last5RateDelta"],
+};
+const crrExtraColumns = (head) => {
+  const out = [];
+  for (const v of CRR_VARIANTS.slice(1)) {
+    const par = v === "par";
+    if (head === "chase") {
+      out.push(...(par
+        ? [["aboveParRuns@par", "base"], ["aboveParUrgent@par", "base"], ["last5VsPar@par", "recent"]]
+        : [[`logRateRatio@${v}`, "base"], [`currentRateOverPar@${v}`, "base"], [`rateGapOverPar@${v}`, "base"], [`urgentRateGap@${v}`, "base"], [`last5RateDelta@${v}`, "recent"]]));
+    } else {
+      out.push(...(par
+        ? [["aboveParRuns@par", "base"], ["projectedOverPar@par", "base"], ["projectedVsVenue@par", "venue"], ["last5VsPar@par", "recent"]]
+        : [[`currentRateOverPar@${v}`, "base"], [`projectedOverPar@${v}`, "base"], [`projectedVsVenue@${v}`, "venue"], [`last5RateDelta@${v}`, "recent"]]));
+    }
+  }
+  return out;
+};
+
 const COLUMNS = {
   chase: [
     ...shipped(T.CHASE_FEATURE_NAMES),
@@ -328,30 +353,6 @@ function* inningsStates(match, inning, ctx, recentBalls) {
 
 // ── row builders ─────────────────────────────────────────────────────────────
 
-/** The shrunk-rate variants (balls of par-rate prior) and the runs-above-par one, for the crr experiment. */
-const CRR_K = [12, 24, 48, 96];
-const CRR_VARIANTS = ["a", ...CRR_K.map((k) => `k${k}`), "par"];
-/** Baseline columns that read the current run rate; a variant drops them and, but for "a", adds its own `name@variant`. */
-const CRR_DROP = {
-  chase: ["logRateRatio", "currentRateOverPar", "rateGapOverPar", "urgentRateGap", "last5RateDelta"],
-  first: ["currentRateOverPar", "projectedOverPar", "projectedVsVenue", "last5RateDelta"],
-};
-const crrExtraColumns = (head) => {
-  const out = [];
-  for (const v of CRR_VARIANTS.slice(1)) {
-    const par = v === "par";
-    if (head === "chase") {
-      out.push(...(par
-        ? [["aboveParRuns@par", "base"], ["aboveParUrgent@par", "base"], ["last5VsPar@par", "recent"]]
-        : [[`logRateRatio@${v}`, "base"], [`currentRateOverPar@${v}`, "base"], [`rateGapOverPar@${v}`, "base"], [`urgentRateGap@${v}`, "base"], [`last5RateDelta@${v}`, "recent"]]));
-    } else {
-      out.push(...(par
-        ? [["aboveParRuns@par", "base"], ["projectedOverPar@par", "base"], ["projectedVsVenue@par", "venue"], ["last5VsPar@par", "recent"]]
-        : [[`currentRateOverPar@${v}`, "base"], [`projectedOverPar@${v}`, "base"], [`projectedVsVenue@${v}`, "venue"], [`last5RateDelta@${v}`, "recent"]]));
-    }
-  }
-  return out;
-};
 
 /**
  * One limited-overs feature vector in COLUMNS order, from a state and a context. Shared by the row
