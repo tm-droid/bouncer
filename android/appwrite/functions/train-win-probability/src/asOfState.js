@@ -11,7 +11,23 @@ import { ELO_SCALE, ELO_START, h2hAdvantage, pairKey, playerRating, sideContext,
 import { OUT_BOWLER_CREDIT, outIndex } from "./corpus.js";
 import { inningsTotals, isLimitedOvers, parRunRateFor, shrunkWinRate, teamKey, unpackDelivery } from "./training.js";
 
-export const ELO_K = 24;
+export const ELO_K = 120;
+
+/** Margin of a decided limited-overs result in [0, ~1]: runs / first total batting first; (wickets in hand + balls left) / 2 chasing; 0.3 when unknown. Mirrors the lab's `marginNorm`. */
+export function marginNorm(match) {
+  if (!match.winner || !isLimitedOvers(match.formatClass) || match.innings.length < 2 || !match.ballsBudget) return 0.3;
+  const a = inningsTotals(match.innings[0]);
+  const b = inningsTotals(match.innings[1]);
+  if (match.winner === match.innings[0].team) return Math.max(0, (a.runs - b.runs) / Math.max(a.runs, 1));
+  if (match.winner === match.innings[1].team) return (0.5 * (10 - b.wickets)) / 10 + (0.5 * Math.max(match.ballsBudget - b.legalBalls, 0)) / match.ballsBudget;
+  return 0.3;
+}
+
+/** The lab's "mov120" multiplier: log margin, damped when the winner was already the favourite. */
+export function eloMargin(scoreA, a, b, match) {
+  const lead = scoreA === 0.5 ? 0 : scoreA === 1 ? a.elo - b.elo : b.elo - a.elo;
+  return (Math.log(1 + marginNorm(match)) * 2.2) / (lead * 0.001 + 2.2);
+}
 /** Weight of the newest result in a team's form; about the last eight matches. */
 export const FORM_ALPHA = 0.25;
 /** Per-innings decay of a player's recent figures; about the last ten innings. */
@@ -139,7 +155,7 @@ export class AsOfState {
       const b = bump(this.teams, teamKey(second, match.gender, match.formatClass), newTeam);
       const scoreA = match.winner === first ? 1 : match.winner === second ? 0 : 0.5;
       const expectedA = 1 / (1 + 10 ** ((b.elo - a.elo) / ELO_SCALE));
-      const delta = ELO_K * (scoreA - expectedA);
+      const delta = ELO_K * eloMargin(scoreA, a, b, match) * (scoreA - expectedA);
       a.elo += delta;
       b.elo -= delta;
       a.games += 1;
