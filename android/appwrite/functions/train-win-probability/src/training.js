@@ -896,22 +896,45 @@ export const PREMATCH_ANTISYMMETRIC = [true, false, false, false];
  * `bias` 0, `featureMeans` 0), so the reader's `scoreBinary` serves it unchanged.
  */
 export function fitSymmetricHead(train, valid, antisymmetric = PREMATCH_ANTISYMMETRIC, options = {}) {
-  const cols = antisymmetric.map((a, j) => (a ? j : -1)).filter((j) => j >= 0);
   const sinkOf = (rows) => {
-    const sink = new RowSink(Math.max(1, rows.length * 2), cols.length);
-    for (const { features, label } of rows) {
-      const x = cols.map((j) => features[j]);
-      sink.push(x, label);
-      sink.push(x.map((v) => -v), 1 - label);
+    const sink = new RowSink(Math.max(1, rows.length), antisymmetric.length);
+    for (const { features, label } of rows) sink.push(features, label);
+    return sink;
+  };
+  return fitSymmetricSinks(sinkOf(train), sinkOf(valid), antisymmetric, options);
+}
+
+/** Context-head columns that flip sign when the two sides swap: every side difference. */
+export const ANTISYMMETRIC_NAME = /Diff$|Advantage$/;
+
+/** `true` per feature name that flips sign when the sides swap (the rest are the same from either side). */
+export function antisymmetricMask(names) {
+  return names.map((n) => ANTISYMMETRIC_NAME.test(n));
+}
+
+/**
+ * [fitSymmetricHead] over RowSinks (full feature width, oriented to the first side). The sinks are
+ * read, not modified. Result has the sinks' layout: weights 0 on the symmetric columns, `bias` 0,
+ * `featureMeans` 0, `featureStds` from the uncentred fit.
+ */
+export function fitSymmetricSinks(trainSink, validSink, antisymmetric, options = {}) {
+  const cols = antisymmetric.map((a, j) => (a ? j : -1)).filter((j) => j >= 0);
+  const k = antisymmetric.length;
+  const mirrored = (src) => {
+    const sink = new RowSink(Math.max(1, src.length * 2), cols.length);
+    for (let i = 0; i < src.length; i++) {
+      const x = cols.map((j) => src.X[i * k + j]);
+      sink.push(x, src.y[i]);
+      sink.push(x.map((v) => -v), 1 - src.y[i]);
     }
     return sink;
   };
-  const trainSink = sinkOf(train);
-  const validSink = sinkOf(valid);
-  const { stds } = trainSink.fitStandardizer({ center: false });
-  trainSink.applyStandardizer({ means: cols.map(() => 0), stds });
-  validSink.applyStandardizer({ means: cols.map(() => 0), stds });
-  const fit = trainBinary(trainSink, validSink, { ...options, fitBias: false });
+  const trainM = mirrored(trainSink);
+  const validM = mirrored(validSink);
+  const { stds } = trainM.fitStandardizer({ center: false });
+  trainM.applyStandardizer({ means: cols.map(() => 0), stds });
+  validM.applyStandardizer({ means: cols.map(() => 0), stds });
+  const fit = trainBinary(trainM, validM, { ...options, fitBias: false });
   const weights = antisymmetric.map(() => 0);
   const featureStds = antisymmetric.map(() => 1);
   cols.forEach((j, i) => { weights[j] = fit.weights[i]; featureStds[j] = stds[i]; });
