@@ -17,7 +17,32 @@ paths:
 
 **Every team, ground and player term is computed as of the match.** v5 knew a team by its win rate over the whole training window, which includes the match being trained on, so the calibration temperature had to undo it (1.87 pre-match). `asOfState.js` walks the archive once in date order and reads each match's context BEFORE folding the match in: Elo, form and head-to-head per side; a ground's scoring, chase record and how often each side has played there (the only "home" signal Cricsheet has); each eleven's batting and bowling against the format's mean. Holdout (2024-12-27 on), log-loss as served: **chase 0.3949 → 0.3729, first innings 0.6110 → 0.5654, pre-match 0.6775 → 0.6274**. The Test head is v5's, unchanged.
 
-**Measured and left out — do not re-add on intuition** (on top of team + ground + elevens, chase head, same holdout):
+## v7 (in code on `winprob-v7`; live only after a refit and a match-sync deploy)
+
+Each change passed the lab gate (Δ log-loss, 95% match-bootstrap CI). Reports: `.claude/reports/E*.md`.
+
+- **Rolling par** (E2): the constant par rates are replaced by an as-of par per format × gender. Chase uses 365 days (−0.0117 [−0.0148, −0.0085]); first innings uses the last 300 matches (−0.0052). With fewer than 30 matches it falls back to the constant. The constant par caused the early-chase under-prediction. With rolling par, the early-chase bands match actual win rates within 0.03.
+- **First innings** (E4): adds the context groups × balls-left fraction (`tvB`, −0.0061). Training drops DLS/rain-reduced matches (E6, −0.0038; the holdout keeps them).
+- **Chase rows** are weighted 1/√(rows in the match) (E6, −0.0030).
+- **Pre-match is symmetric** (B5, −0.0021). It has no bias term and only antisymmetric columns (`…Diff`, `…Advantage`); shared columns get weight 0. So p(A,B)+p(B,A)=1: `publishProblems` refuses a model off by more than 1e-9, and a serving test builds both sides through `sideContextFor`. The old bias encoded what Cricsheet `teams[0]` means, while serving uses Cricbuzz team1.
+- **Elo is `mov120`** (E5, `asOfState.js`). K is 120 and the update is multiplied by ln(1+margin)·2.2/(lead·0.001+2.2), so a favourite's win moves Elo less. Gains: pre-match −0.0054, first innings −0.0020, chase neutral. match-sync has no Elo walk; it reads the shipped tables.
+- **FC routes to the Test head** (E7/B3), with strength under the MDM key; it beats a draw-rate prior by 0.14–0.15. T10 stays undetermined.
+- The trainer refits daily (B15), so serving's tables no longer lag the model.
+- Combined local holdout (trainer cutoff, as served): chase 0.3802 → 0.3697, first innings 0.5617 → 0.5523, pre-match 0.6219 → 0.6146. Symmetry costs pre-match about +0.0005 on this single holdout, against mov120 alone.
+- **Live ECE is sampling noise** (E0, 356 resolved matches). The observed ECE is at or below the p50 a perfectly calibrated model would show (0.036 against p50 0.055).
+
+**Measured and left out in v7 — do not re-add on intuition:**
+
+- E1: chase rate shrunk toward par (k48). It won overall but made the early chase worse in every band.
+- E2: recency row weights failed both heads; era × rrr fell below rolling par.
+- E3: an estimated V(balls, wickets) resource table (Δ ≤ 0.0001) and a two-stage first innings. The hand-set `.55+.45wf` and `.3+.7wf` resource terms stay.
+- E4: time-varying terms on the chase head.
+- E8: recalibration (per-phase temperature, Platt).
+- E5: inactivity regression and shrinkage toward tier means. kByGames was not tested on top of mov120.
+- E6: chase drop-DLS (+0.0015), 1/n weights (ECE +0.0081), and first-innings match weights. T10: no Cricsheet rows.
+- E7: Test +declared (−0.0048, CI includes 0), +oversLeft, +fourth-innings-vs-par, and a two-stage head (worse). Re-test declared only with a real declaration flag.
+
+**Measured and left out in v6 — do not re-add on intuition** (on top of team + ground + elevens, chase head, same holdout):
 
 - Toss 0.0004; current partnership 0.0008; last five overs 0.0006 (against the innings' own rate and against the required rate); crease pair plus remaining order 0.0012, which needs a scorecard a non-viewed match never fetches.
 - Boosted trees on the same columns: 0.3672 against the logistic model's 0.3667, worse calibration, and worse outright on first innings and Tests.
@@ -40,7 +65,7 @@ paths:
 
 **`winProbabilityFactors`** on the detail payload is up to three of `teams` / `ground` / `elevens`, each the probability as scored minus the probability with that group neutral, oriented to team1 (a Test has none). Kept out of `live-winprob`: every list downloads that file and no list shows factors.
 
-**A first innings that is over is scored as the chase it has become** (`chaseStart`, `main.js`). All out with balls unused was scored as a side still batting ten down, which the model puts on its 0.03 floor (West Indies all out 171, a minute after 0.52 at 171/9); a full innings was `undetermined`. The position is now the other side needing one more from the full allotment, with the current rate set to the required one, because the chase head is very sensitive to the current rate early (chase of 172: 0.50 after one dot ball, 0.37 after a single, 0.19 after a 15-run over) and zero reads as a side scoring nothing. That early-chase sensitivity is the model's and is unexamined.
+**A first innings that is over is scored as the chase it has become** (`chaseStart`, `main.js`). All out with balls unused was scored as a side still batting ten down, which the model puts on its 0.03 floor (West Indies all out 171, a minute after 0.52 at 171/9); a full innings was `undetermined`. The position is now the other side needing one more from the full allotment, with the current rate set to the required one, because the chase head is very sensitive to the current rate early (chase of 172: 0.50 after one dot ball, 0.37 after a single, 0.19 after a 15-run over) and zero reads as a side scoring nothing. E1/E2 traced most of that early-chase sensitivity to the constant par; v7's rolling par fixes the bias.
 
 **Orientation.** The payload and `live-winprob` are oriented to the first-innings side and aligned on the device by team id (`viewmodels/MatchLiveDetailAlignment.kt`); never by name.
 
